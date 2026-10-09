@@ -119,19 +119,6 @@
     </style>
 </head>
 {% include '_navbar.html' %}
-    <header>
-        <div class="container">
-            <div style="float:left;">
-                <h1>评价</h1>
-            </div>
-            <nav>
-                <ul style="float:right;">
-                    <li><a href="{{ url_for('main.index') }}">主页</a></li>
-                    <li><a href="{{ url_for('main.about')}}">关于我们</a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
     <div class="container">
         <div class="main">
             <div class="submit-banner">🎉 评价提交成功！</div>
@@ -159,7 +146,10 @@
             {% endif %}
             {% endif %}
             {% if avg_rating %}
-            <h3>当前评分: {{ avg_rating }}/5 星（{{ review_count }} 条评价）</h3>
+            <h3>
+                <span style="color:#F5A623; letter-spacing:2px;">{% for i in range(avg_rating|int) %}★{% endfor %}{% for i in range(5 - (avg_rating|int)) %}☆{% endfor %}</span>
+                &nbsp;{{ avg_rating }}/5 · {{ review_count }} 条评价
+            </h3>
             {% else %}
             <h3>暂无评分，来抢沙发吧</h3>
             {% endif %}

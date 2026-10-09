@@ -50,7 +50,7 @@ body.themepad {
 
 body.theme { padding-top: var(--nav-h); } /* 给固定顶栏留位 */
 
-a { color: var(--c-primary-deep); text-decoration: none; }
+a { color: #A85416; text-decoration: none; }   /* 链接暖棕橙 5.32:1@白 */
 a:hover { text-decoration: underline; }
 
 :focus-visible {
@@ -150,8 +150,8 @@ a:hover { text-decoration: underline; }
   color: var(--c-text); /* 深棕字 5.24:1，白字 2.04:1 不达标 */
   font-weight: 600;
 }
-.btn:hover:not(:disabled) { background: var(--c-primary-deep); transform: translateY(-1px); box-shadow: var(--shadow); color: #fff; }
-.btn:active:not(:disabled) { transform: translateY(0); background: var(--c-primary-deep); }
+.btn:hover:not(:disabled) { background: var(--c-primary-deep); transform: translateY(-1px); box-shadow: var(--shadow); color: #2F231B; /* 深蜜橙底配更深棕字 5.62:1 */ }
+.btn:active:not(:disabled) { transform: translateY(0); background: var(--c-primary-deep); color: #2F231B; }
 .btn:disabled { background: var(--c-disabled-bg); color: var(--c-disabled-text); cursor: not-allowed; }
 .btn.loading { pointer-events: none; opacity: .85; }
 
@@ -161,7 +161,7 @@ a:hover { text-decoration: underline; }
   border: 1.5px solid var(--c-primary);
 }
 .btn-outline:hover:not(:disabled) { background: var(--c-primary); color: var(--c-text); }
-.btn-outline:active:not(:disabled) { background: var(--c-primary-deep); }
+.btn-outline:active:not(:disabled) { background: var(--c-primary-deep); color: #2F231B; }
 .btn-outline:disabled { border-color: var(--c-line); color: var(--c-disabled-text); cursor: not-allowed; }
 
 .btn-ghost {
@@ -294,6 +294,7 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; }
   z-index: 200;
   padding: 16px;
 }
+.modal-mask[hidden] { display: none; }  /* display:flex 会覆盖 hidden 属性，必须显式关 */
 .modal {
   width: min(92vw, 380px);
   background: #fff;

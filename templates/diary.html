@@ -31,6 +31,7 @@
         }
         .diary-head h2 { margin: 0; font-family: var(--font-round); font-size: 20px; }
         .paper {
+            position: relative;
             width: min(1000px, 100%);
             min-height: 60vh;
             background: url("/images/paper.png") no-repeat center center;
@@ -41,14 +42,26 @@
             overflow-y: auto;
             max-height: 75vh;
         }
+        /* 纸张自带横线纹理会"穿字"：垫一层半透明白底，纹理保留但退到文字后 */
+        .paper::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 253, 248, .82);
+            border-radius: 12px;
+        }
         .diary-content {
+            position: relative;
             font-size: 15px;
-            line-height: 1.9;
+            line-height: 1.8;
             color: #3c342c;
-            white-space: pre-wrap;
             max-width: 720px;
             margin: 0 auto;
         }
+        .diary-content .entry {
+            margin: 0 0 14px;
+        }
+        .diary-content .entry strong { color: #2f2620; }
         .diary-empty {
             text-align: center;
             color: var(--c-text-sub);
@@ -80,8 +93,9 @@
     // 日期标题
     (function () {
         const d = new Date();
+        const pad = n => String(n).padStart(2, '0');
         document.getElementById('diary-date').textContent =
-            `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`;
+            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     })();
 
     // 加载日记（localStorage 与聊天页同源：chatHistory）
@@ -101,11 +115,23 @@
             el.appendChild(empty);
             return;
         }
-        const lines = chatHistory
-            .filter(e => e && e.message)
-            .map(e => `${e.sender || (e.role === 'user' ? '我' : '宠物')}: ${e.message}`)
-            .join('\n\n');
-        el.textContent = lines;
+        // 统一渲染：用户=「我」，宠物用其名；空消息过滤；条目等距
+        const entries = chatHistory
+            .filter(e => e && e.message && String(e.message).trim())
+            .map(e => {
+                const name = e.role === 'user'
+                    ? '我'
+                    : (e.sender || '宠物');
+                const div = document.createElement('p');
+                div.className = 'entry';
+                const strong = document.createElement('strong');
+                strong.textContent = name + '：';
+                div.appendChild(strong);
+                div.appendChild(document.createTextNode(String(e.message).trim()));
+                return div;
+            });
+        el.innerHTML = '';
+        entries.forEach(d => el.appendChild(d));
     }
     loadDiary();
 

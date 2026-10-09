@@ -1,6 +1,6 @@
 # 宠物聊天系统 · UI/UX 重构设计文档
 
-> 版本：v3（第二轮评审修订） · 日期：2026-10-10
+> 版本：v4（第四轮评审修订，对比度全项收口） · 日期：2026-10-10
 > 范围：全部页面的交互修复 + 视觉统一 + 按钮布局重排
 > **不改**：所有背景图（css/a-d.jpg、sakura、书房、鲸鱼插画、纸张纹理）、宠物头像等现有图片素材、数据库结构、AI 对话逻辑、账号体系
 > 品牌名沿用现有页头「MPC 宠物聊天系统」（不新造品牌）
@@ -80,8 +80,8 @@
 
 | 组件 | default | hover | active | focus | disabled | loading |
 |---|---|---|--- |---|---|---|
-| `.btn` | 蜜橙填充**深棕字 #4A3B32**（5.24:1；白字仅 2.04:1 不达标已弃用） | 深蜜橙+上移1px | 回落+加深 | `outline:2px solid var(--c-primary);outline-offset:2px` | 底 `#F3E9E0`、字 `#B8A99E`、`cursor:not-allowed` | 左侧 16px 旋转 spinner，文字保留 |
-| `.btn-outline` | 蜜橙描边透明底 | 蜜橙填充**深棕字**（同 .btn，白字 2.04:1 不达标） | 深蜜橙+深棕字 | 同上 | 描边 `#E5D9CE` 字 `#B8A99E` | 同上 |
+| `.btn` | 蜜橙填充**深棕字 #4A3B32**（5.24:1；白字仅 2.04:1 不达标已弃用） | 深蜜橙 #E8833C + **更深棕字 #2F231B**（5.62:1）+上移1px | 同 hover 回落 | `outline:2px solid var(--c-primary);outline-offset:2px` | 底 `#F3E9E0`、字 `#B8A99E`、`cursor:not-allowed` | 左侧 16px 旋转 spinner，文字保留 |
+| `.btn-outline` | 蜜橙描边透明底 | 蜜橙填充**深棕字 #4A3B32** | 深蜜橙 + #2F231B 字（5.62:1） | 同上 | 描边 `#E5D9CE` 字 `#B8A99E` | 同上 |
 | `.btn-ghost` | 无边框棕灰字 | 底 `rgba(74,59,50,.06)` | 加深 | 同上 | 同 disabled | 不使用 |
 | `.input` | 白底 1px `#E5D9CE` 边 | 边加深 | — | 蜜橙边+`box-shadow:0 0 0 3px rgba(255,158,88,.2)` | 同 disabled | — |
 | `.card` | 白卡+阴影 | 阴影加深+上移2px（仅可点卡片） | — | — | — | — |
@@ -235,7 +235,7 @@
 
 | 阶段 | 内容 | 交付判据 |
 |---|---|---|
-| P1 | theme.css + 顶栏 _navbar.html + toast + vendor 本地化 + git 基线 | 全站公共件就绪，页面未变 |
+| P1 | theme.css + 顶栏 _navbar.html + 页脚 _footer.html + layout.html 接线（引入 navbar/footer/theme）+ toast + vendor 本地化 + git 基线 | 全站公共件就绪；layout.html 完成接线但继承页内容未改 |
 | P2 | 聊天页重写（B1–B11） | 三.1 验收基准通过 |
 | P3 | 首页+登录注册+读者区（C/D/E） | 问题清单 C/D/E 勾销；全站页面（含 P3 改页与 layout 继承页）均已引入 _footer，A3 勾销 |
 | P4 | 评分反馈合并（F1–F5） | 职责对照表行为一致 |
@@ -252,7 +252,7 @@
 ---
 
 ## 七、可访问性基线
-正文对比度 ≥4.5:1。全套实测值：--c-text #4A3B32 于 --c-bg #FFF8F0 = 10.16:1；--c-text-sub #7A695D 于 --c-bg = 4.98:1；按钮深棕字 #4A3B32 于 --c-primary #FF9E58 = 5.24:1；深棕字于用户气泡 #FFE3C9 = 8.7:1。全文对比度数值以本行为准；所有可交互元素 `:focus-visible` 蜜橙描边；图标按钮必须 aria-label；弹层 Esc 可关、打开时焦点入内；星级控件支持键盘左右选择。
+正文对比度 ≥4.5:1。全套实测值：--c-text #4A3B32 于 --c-bg #FFF8F0 = 10.16:1；--c-text-sub #7A695D 于 --c-bg = 4.98:1；按钮深棕字 #4A3B32 于 --c-primary #FF9E58 = 5.24:1；hover/active 深棕字 #2F231B 于 --c-primary-deep #E8833C = 5.62:1；深棕字于用户气泡 #FFE3C9 = 8.7:1；链接色 #A85416 于白 = 5.32:1。全文对比度数值以本行为准；所有可交互元素 `:focus-visible` 蜜橙描边；图标按钮必须 aria-label；弹层 Esc 可关、打开时焦点入内；星级控件支持键盘左右选择。
 
 ## 八、明确不改动
 背景图与图片素材、数据库结构、GLM 对话协议（/get_gpt_response 入出参）、账号体系与密码逻辑。

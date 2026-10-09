@@ -43,17 +43,22 @@
         }
         .chat-nav .spacer { flex: 1; }
         .icon-btn {
-            width: 36px; height: 36px;
+            width: auto; min-width: 36px; height: 36px;
             display: inline-flex; align-items: center; justify-content: center;
-            border: none; background: transparent; border-radius: 50%;
-            font-size: 17px; cursor: pointer; color: var(--c-text-sub);
+            gap: 4px; padding: 0 8px;
+            border: none; background: transparent; border-radius: 999px;
+            font-size: 15px; cursor: pointer; color: var(--c-text-sub);
             transition: background .12s ease;
         }
+        .icon-btn .btn-label { font-size: 12px; }
         .icon-btn:hover { background: rgba(74,59,50,.08); color: var(--c-text); }
 
-        /* 宠物选择条 */
+        /* 宠物选择条（内容与下方消息卡片同宽对齐） */
         .pet-strip {
             flex: none;
+            width: 100%;
+            max-width: 892px;  /* 860 卡片 + 16*2 边距 */
+            align-self: center;
             display: flex;
             gap: 16px;
             align-items: center;
@@ -71,17 +76,20 @@
             width: 48px; height: 48px;
             border-radius: 50%;
             object-fit: cover;
-            border: 2.5px solid transparent;
+            border: 3px solid transparent;
             background: #fff;
-            transition: border-color .15s ease, transform .15s ease;
+            transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
         }
         .pet-tile:hover img { transform: scale(1.08); }
-        .pet-tile.selected img { border-color: var(--c-primary); }
+        .pet-tile.selected img {
+            border-color: var(--c-primary);
+            box-shadow: 0 0 0 4px rgba(255, 158, 88, .35);
+        }
         .pet-tile .pet-name {
             font-size: 12px; color: var(--c-text-sub); line-height: 1.2;
             white-space: nowrap;
         }
-        .pet-tile.selected .pet-name { color: var(--c-primary-deep); font-weight: 600; }
+        .pet-tile.selected .pet-name { color: var(--c-primary-deep); font-weight: 700; }
         .pet-tile.upload-tile img {
             display: flex; align-items: center; justify-content: center;
             font-size: 20px; color: var(--c-text-sub);
@@ -113,7 +121,7 @@
             flex: 1;
             min-height: 0;
             overflow-y: auto;
-            padding: 16px;
+            padding: 16px 16px 28px;   /* 底部留足，末条消息不被裁切 */
             scroll-behavior: smooth;
         }
         .msg-row {
@@ -142,7 +150,7 @@
         .msg-row.user .msg-bubble { background: var(--c-bubble-user); border-top-right-radius: 4px; }
         .msg-bubble p { margin: 0 0 8px; } .msg-bubble p:last-child { margin: 0; }
         .msg-bubble pre { background: #F6EFE7; padding: 8px; border-radius: 8px; overflow-x: auto; }
-        .msg-time { font-size: 12px; color: var(--c-text-sub); margin-top: 2px; }
+        .msg-time { font-size: 12px; color: var(--c-text-sub); margin-top: 2px; font-weight: 500; }
         .msg-row.user .msg-time { text-align: right; }
         .msg-error .msg-bubble { background: var(--c-danger-bg); color: var(--c-danger); font-size: 14px; }
         .msg-error .retry-btn {
@@ -221,10 +229,10 @@
         </a>
         <span class="current-pet" id="current-pet-name">柯基</span>
         <div class="spacer"></div>
-        <button class="icon-btn" id="btn-diary" aria-label="我的日记" title="我的日记">📖</button>
-        <button class="icon-btn" id="btn-feedback" aria-label="宠物反馈" title="宠物反馈">⭐</button>
-        <button class="icon-btn" id="btn-pdf" aria-label="导出聊天记录 PDF" title="导出 PDF">📄</button>
-        <button class="icon-btn" id="btn-settings" aria-label="设置" title="设置">⚙️</button>
+        <button class="icon-btn" id="btn-diary" aria-label="我的日记" title="我的日记">📖<span class="btn-label">日记</span></button>
+        <button class="icon-btn" id="btn-feedback" aria-label="宠物反馈" title="宠物反馈">⭐<span class="btn-label">反馈</span></button>
+        <button class="icon-btn" id="btn-pdf" aria-label="导出聊天记录 PDF" title="导出 PDF">📄<span class="btn-label">PDF</span></button>
+        <button class="icon-btn" id="btn-settings" aria-label="设置" title="设置">⚙️<span class="btn-label">设置</span></button>
     </header>
 
     <!-- 宠物选择条 -->
@@ -360,19 +368,28 @@
             return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         }
         function currentPet() { return PETS[currentPetIndex] || PETS[0]; }
+        // 旧格式历史条目没有 petId：按 sender 名字推断是哪只宠物
+        function inferPetId(row) {
+            if (row.petId != null) return row.petId;
+            const s = String(row.sender || '');
+            const hit = PETS.find(p => s.includes(p.name) || (p.role && s.includes(p.role)));
+            return hit ? hit.id : null;
+        }
         function petDisplayAvatar(petId) {
             if (useCustomAvatar && customAvatarUrl) return customAvatarUrl;
-            const pet = PETS.find(p => p.id === petId) || currentPet();
-            return `/images/${pet.avatar}`;
+            if (petId == null) return null;   // 无法识别：不显示头像
+            const pet = PETS.find(p => p.id === petId);
+            return pet ? `/images/${pet.avatar}` : null;
         }
 
         // ---------- 消息渲染 ----------
         function bubbleHtml(row) {
             // row: {role:'user'|'assistant', sender, message, petId, ts}
             const isUser = row.role === 'user';
+            const rowPetId = inferPetId(row);
             const sender = isUser
                 ? (escapeHtml(prefs.nickname || row.sender || '我'))
-                : (escapeHtml(prefs.petNickname || row.sender || (PETS.find(p => p.id === row.petId) || currentPet()).name || '宠物'));
+                : (escapeHtml(prefs.petNickname || row.sender || (PETS.find(p => p.id === rowPetId) || currentPet()).name || '宠物'));
             let content;
             if (!isUser && window.marked) {
                 content = marked.parse(row.message);  // AI 回复渲染 Markdown
@@ -381,16 +398,17 @@
             }
             const avatarSrc = isUser
                 ? "{{ url_for('static', filename='images/头像2原图.png') }}"
-                : petDisplayAvatar(row.petId);
-            const time = row.ts ? escapeHtml(row.ts) : '';
+                : petDisplayAvatar(rowPetId);
+            const avatarHtml = avatarSrc ? `<img class="avatar" src="${avatarSrc}" alt="">` : '';
+            const meta = [sender, row.ts ? escapeHtml(row.ts) : null].filter(Boolean).join(' · ');
             return `
               <div class="msg-row ${isUser ? 'user' : 'pet'}">
-                ${isUser ? '' : `<img class="avatar" src="${avatarSrc}" alt="">`}
+                ${isUser ? '' : avatarHtml}
                 <div class="msg-bubble-wrap">
                     <div class="msg-bubble">${content}</div>
-                    <div class="msg-time">${sender} · ${time}</div>
+                    <div class="msg-time">${meta}</div>
                 </div>
-                ${isUser ? `<img class="avatar" src="${avatarSrc}" alt="">` : ''}
+                ${isUser ? avatarHtml : ''}
               </div>`;
         }
 
