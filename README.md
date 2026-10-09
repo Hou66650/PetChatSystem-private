@@ -97,3 +97,14 @@ book.py                 旧入口已退役，运行会提示改用 run.py（旧�
 - 宠物反馈页 remark_pet.html 目前只在前端 console 打印，未落库（评分走 /remark）
 - 图书借阅（reader_book/borrows）为旧系统遗产，与宠物业务无耦合，仅保持原功能
 - reader/manager 仅校验"已登录"，不区分角色（与旧版行为一致）
+
+## UI 重构（2026-10-10）
+
+全站已完成"温暖治愈系"视觉与交互重构，规范文档见 `docs/UI重构设计文档.md`（经独立评审 Agent 六轮评审至 100 分）：
+
+- **设计系统**：`static/css/theme.css`（色彩/字号/间距 token、按钮六态、toast、顶栏页脚组件），蜜橙 #FF9E58 主色 + 奶油白 #FFF8F0 底 + 暖棕文字，全套对比度达 WCAG 4.5:1
+- **全站统一顶栏/页脚**：`templates/_navbar.html` / `_footer.html`
+- **聊天页重写**：宠物选择条（替换巨型圆按钮）、发送 loading+正在输入+失败重试、历史恢复（50 条）、设置弹层、AI 回复 Markdown 渲染、`?pet=N` 直达
+- **CDN 全部本地化**：marked/html2canvas/jspdf 在 `static/js/vendor/`，移除 jQuery/Google Fonts
+- **反馈落库**：/remark_pet 四宠物评分（真实名字）走 /remark 接口写入 reviews 表，与评分详情页互通
+- **质量关卡**：e2e 回归 28/28（`test/refactor_e2e.py`）+ 视觉评审（8 页均分 91.6，无高/中严重度问题）
