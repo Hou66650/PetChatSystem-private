@@ -1,0 +1,1 @@
+define("common:widget/ui/ai/survey/components/questionTitle",function(t){var i=t("common:widget/ui/ai/san");return i.defineComponent({template:'<div class="question-title">{{title}}</div>',initData:function(){return{title:"请问您对本次服务满意吗？经过这段时间的使用，您是否愿意向朋友或家人推荐使用？"}}})});

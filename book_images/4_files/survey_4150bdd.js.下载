@@ -1,0 +1,434 @@
+define('common:widget/ui/ai/survey/survey', function(require, exports, module) {
+
+  var san = require('common:widget/ui/ai/san');
+  var QuestionTitle = require('common:widget/ui/ai/survey/components/questionTitle');
+  var QuestionContent = require('common:widget/ui/ai/survey/components/questionContent');
+  var QuestionButton = require('common:widget/ui/ai/survey/components/questionButton');
+  var $ = require('common:widget/ui/base/base');
+  var utils = require('common:widget/ui/ai/survey/utils');
+  var containerManager = require('common:widget/ui/ai/survey/container-manager');
+  var commonUtil = require('common:widget/ui/utils/utils');
+  var typeChecker = require('common:widget/ui/utils/dataType');
+  
+  return san.defineComponent({
+      template: ''
+          + ' <div '
+          + '     s-ref="container"'
+          + '     class="survey {{theme}} {{show ? \'show\' : \'\'}}"'
+          + '     on-transitionend="handleTransitionEnd($event)">'
+          + '     <div class="survey-mask">'
+          + '     <div class="survey-content {{fadeOut ? \'question-fade-out\' : \'\'}}">'
+          + '         <question-title title="{{currentQuestion.title}}"/>'
+          + '         <div s-if="errorText" class="question-error">{{errorText}}</div>'
+          + '         <question-content'
+          + '             s-ref="content"'
+          + '             style="height: {{currentHeight}};"'
+          + '             fade-out="{{fadeOut}}"'
+          + '             question-data="{{currentQuestion}}"'
+          + '             on-current-height="handleCurrentHeight"'
+          + '         />'
+          // 透明的假元素，用于计算下一题的高度
+          + '         <question-content'
+          + '             s-ref="fakeContent"'
+          + '             fake'
+          + '             question-data="{{nextQuestion}}"'
+          + '             on-next-height="handleNextHeight"'
+          + '         />'
+          + '         <question-button'
+          + '             disabled="{{buttonDisabled}}"'
+          + '             text="{{text}}"'
+          + '             class="{{!showButton ? \'question-button-fadeout\' : \'\'}}"'
+          + '             on-next="handleNextQuestion"/>'
+          + '     </div>'
+          + '     <div class="survey-close-icon" on-click="handleClose">'
+          + '         <img src="https://psstatic.cdn.bcebos.com/basics/image_fe/close_pc_1708917968000.png"/>'
+          + '     </div>'
+          + ' </div>'
+          + ' </div>',
+      properties: {
+          single: {
+              arr: ['rate12', 'rate13', 'rate14', 'rate15', 'rate16'],
+              current: 'rate11'
+          },
+          multi: {
+              arr: ['multi_option10', 'multi_option11', 'multi_option12', 'multi_option13', 'multi_option14'],
+              current: 'multi_option9'
+          }
+      },
+      hasAnswer: false,
+      hasSendClickLog: false,
+      hasSubmit: false,
+      timestamp: 0,
+      timer: 0,
+      components: {
+          'question-title': QuestionTitle,
+          'question-content': QuestionContent,
+          'question-button': QuestionButton
+      },
+      computed: {
+  
+          text() {
+              return this.data.get('questionList').length > 2 ? '下一题' : '提交';
+          }
+      },
+  
+      messages: {
+          'SURVEY:updateAnswer': function (arg) {
+              this.updateAnswer(arg.value);
+          }
+      },
+      initData() {
+          return {
+              id: 0,
+              show: false,
+              theme: '',
+              type: 'nps',
+              currentHeight: '',
+              nextHeight: '',
+              fadeOut: false,
+              feedbackType: 0,
+              showButton: true,
+              currentQuestionIndex: 0,
+              currentQuestion: {},
+              currentAnswer: -1,
+              currentFunction: -1,
+              function: -1,
+              errorText: '',
+              theme: '',
+              answer: {},
+              answerContent: '',
+              nextQuestion: {},
+              questionList: [],
+              logParams: {},
+              buttonFadeOut: false,
+              buttonDisabled: false,
+              query: '',
+              showButton: true,
+              itemId: 0,
+          };
+      },
+      created: function () {
+          var _this = this;
+          this.watch('questionList', function () {
+              var currentQuestion = _this.data.get('questionList[0]');
+              _this.data.set('currentQuestion', currentQuestion);
+              _this.data.set('nextQuestion', _this.getNextQuestion());
+              _this.data.set('showButton', _this.shouldShowButton(currentQuestion));
+          });
+      },
+      attached: function () {
+          if (this.data.get('questionList').length === 0) {
+              return;
+          }
+          var currentQuestion = this.data.get('questionList[0]');
+          this.data.set('currentQuestion', currentQuestion);
+          this.data.set('nextQuestion', this.getNextQuestion());
+      },
+  
+      close: function () {
+          clearTimeout(this.timer);
+          this.data.set('show', false);
+      },
+  
+      show: function (delay = 0) {
+          if (this.data.get('questionList').length === 0) {
+              return;
+          }
+          var _this = this;
+          // 展现后至少 24h 内不再弹出
+          clearTimeout(this.timer);
+          this.timer = setTimeout(function () {
+              utils.setFrequency(_this.data.get('itemId'), new Date().getTime() + 24 * 60 * 60 * 1000);
+              _this.data.set('show', true);
+              _this.sendLog('show', 'feedback', {});
+          }, delay * 1000);
+      },
+  
+      handleClose: function () {
+          this.close();
+  
+          // 主动关闭后 30 天内不再弹出
+          utils.setFrequency(this.data.get('itemId'), new Date().getTime() + 30 * 24 * 60 * 60 * 1000);
+      },
+  
+      handleCurrentHeight: function (height) {
+          this.data.set('currentHeight', height);
+      },
+  
+      handleNextHeight: function (height) {
+          this.data.set('nextHeight', height);
+      },
+  
+      handleNextQuestion: function () {
+          if (this.data.get('currentQuestion.mustAnswer') && !this.hasAnswer) {
+              this.data.set('errorText', this.data.get('currentQuestion.errorText'));
+              return;
+          }
+          if (this.data.get('currentQuestion.type') === 'input') {
+              this.uploadToUFO();
+          }
+          var nextType = this.data.get('nextQuestion.type');
+          if (nextType !== 'feedback') {
+              this.sendLog('show', 'feedback', {});
+          }
+          this.data.set('fadeOut', true);
+          this.ref('fakeContent').calcHeight();
+          this.data.set('currentHeight', this.data.get('nextHeight'));
+          var _this = this;
+          this.data.set('showButton', this.shouldShowButton(
+              this.data.get('nextQuestion')
+          ));
+  
+          setTimeout(function () {
+              _this.data.set('errorText', '');
+              _this.updateQuestion();
+              _this.data.set('fadeOut', false);
+  
+          // 240ms 是动画时间
+          }, 240);
+      },
+  
+      updateQuestion: function () {
+          var current = this.data.get('currentQuestion');
+          var next = this.data.get('nextQuestion');
+          // 更新下一题的字段
+          if (current.type === 'option' || current.type === 'nps') {
+              var properties = this.getOptionProperties();
+              properties.current = properties.arr.shift();
+          }
+          this.hasAnswer = !current.mustAnswer;
+          this.hasSendClickLog = false;
+          this.data.set('currentAnswer', -1);
+          this.data.set('currentQuestion', next);
+          if (next.type === 'feedback') {
+              var _this = this;
+              setTimeout(function () {
+                  _this.close();
+              }, 2 * 1000);
+          }
+          else if (next.type === 'questionnaire') {
+              var next = this.getNextQuestion();
+              this.data.set('nextQuestion', next);
+          }
+      },
+  
+      updateAnswer: function (arg) {
+          this.data.set('errorText', '');
+          if (!this.timestamp) {
+              this.timestamp = Math.floor(new Date().getTime() / 1000);
+          }
+          if (!this.hasSendClickLog) {
+              this.sendLog('click', 'feedback', {});
+              this.hasSendClickLog = true;
+          }
+  
+          var current = this.data.get('currentQuestion');
+          if (current.type === 'option' || current.type === 'nps') {
+              var properties = this.getOptionProperties();
+              this.data.set('answer.' + properties.current, arg.ans);
+              this.data.set('currentAnswer', arg.index);
+              this.hasAnswer = true;
+              if (current.isMultiOption) {
+                  this.hasAnswer = arg.ans.length > 0;
+              }
+          }
+          else if (current.type === 'input') {
+              this.data.set('answerContent', arg.ans);
+              this.hasAnswer = arg.ans.trim().length > 0;
+          }
+          if (current.type !== 'input' && current.type !== 'questionnaire') {
+              this.uploadToUFO();
+          }
+          var next = this.getNextQuestion();
+          this.data.set('nextQuestion', next);
+          // 单选（包括 nps）且单题, 或最后一题是单选题，自动跳转下一题
+          if ((!this.data.get('showButton') && next)
+              || (current.type === 'option' && !current.isMultiOption)
+              || current.type === 'nps'
+              || (current.type === 'questionnaire' && next.type === 'feedback')) {
+              var _this = this;
+              _this.data.set('buttonDisabled', true);
+              setTimeout(function () {
+                  _this.handleNextQuestion();
+                  _this.data.set('buttonDisabled', false);
+              }, 300);
+          }
+      },
+  
+      getOptionProperties: function () {
+          var current = this.data.get('currentQuestion');
+          var isMultiOption = current.isMultiOption;
+          if (current.type === 'nps') {
+              isMultiOption = false;
+          }
+          return isMultiOption ? this.properties.multi : this.properties.single;
+      },
+  
+      /**
+       * 敏捷中台的数据格式可读性较差，需要做一次转换
+       */
+      processData: function (data) {
+          var res = [];
+          for (var question of data) {
+              var type = question.type;
+              question.mustAnswer = true;
+              switch (type) {
+                  case 1:
+                      question.type = 'option';
+                      question.displayMode = 'equal';
+                      question.column = question.column || 2;
+                      question.errorText = '请选择一个选项';
+                      break;
+                  case 2:
+                      question.type = 'questionnaire';
+                      question.switchType = 0;
+                      question.mustAnswer = false;
+                      if (!question.title) {
+                          question.title = question.questionTitle || '';
+                      }
+                      break;
+                  case 3:
+                      question.type = 'option';
+                      question.displayMode = 'auto';
+                      question.errorText = '请选择一个选项';
+                      break;
+                  case 4:
+                      question.type = 'nps';
+                      question.errorText = '请选择一个选项';
+                      question.options = (new Array(11)).fill(0);
+                      break;
+                  case 6:
+                      question.type = 'input';
+                      question.switchType = 0;
+                      question.errorText = '请输入内容';
+                      break;
+                  default:
+                      question.type = 'feedback';
+                      break;
+              }
+              if (question.type !== 'feedback') {
+                  question.index = res.length;
+                  res.push(question);
+              }
+              if (question.type === 'option') {
+                  // questionType: 1 单选 2 多选
+                  question.isMultiOption = question.questionType === 2;
+              }
+          }
+  
+          // 为了方便处理，手动将 feedback 作为题目放到最后
+          var feedback = '感谢评价，我们会努力做得更好';
+          res.push({
+              type: 'feedback',
+              title: data[0].feedback || feedback,
+          });
+          this.data.set('questionList', res);
+      },
+  
+      getNextQuestion: function () {
+          var currentQuestion = this.data.get('currentQuestion');
+          var currentQuestionIndex = currentQuestion.index;
+          var questionList = this.data.get('questionList');
+          var currentAnswer = this.data.get('currentAnswer');
+          for (var i = currentQuestionIndex + 1; i < questionList.length; i++) {
+              var next = questionList[i];
+              if (typeChecker.isUndef(next.parentId)) {
+                  return next;
+              }
+              else if (next.parentId === currentQuestion.cardIndex && next.switchCardOpt.includes(currentAnswer - 1)) {
+                  return next;
+              }
+          }
+          return null;
+      },
+  
+      sendLog: function (type, value, extra) {
+  
+          // window.ubcLoggerInstance 在各个页面中自行初始化
+          // pcsearch: widget/ui/app/page.js  initUBC
+          // pcmediacy: widget/ui/app/page.js  initUbcLogger
+          if (!window.ubcLoggerInstance || !window.ubcLoggerInstance.surveyLogger) {
+              return;
+          }
+          var ext = $.extend({}, window.ubcLoggerInstance.surveyLogger.options.ext, this.data.get('logParams'), extra);
+          window.ubcLoggerInstance.surveyLogger.send({
+              type: type,
+              value: value,
+              ext
+          });
+      },
+  
+      uploadToUFO: function () {
+          var url = 'https://ufosdk.baidu.com/?m=Api&a=postNps';
+          if (this.hasSubmit) {
+              url = 'https://ufosdk.baidu.com/?m=Api&a=updateNps';
+          }
+          // 未回答过当前题目时才更新 function，回答后固定
+          else {
+              // 答题后 30 天内不再弹出
+              utils.setFrequency(this.data.get('itemId'), new Date().getTime() + 30 * 24 * 60 * 60 * 1000);
+              this.data.set('function', this.data.get('currentFunction'));
+              this.data.set('answer.ext_show176', this.data.get('currentFunction'));
+              this.data.set('answer.desc20', this.data.get('query'));
+              this.hasSubmit = true;
+          }
+          var answerContent = this.data.get('answerContent');
+          if (Object.keys(this.data.get('answer')).length === 0 && !answerContent) {
+              return;
+          }
+          var currentFeedbackType = this.data.get('currentQuestion.feedbackType');
+          if (currentFeedbackType >= 0) {
+              this.data.set('feedbackType', currentFeedbackType);
+          }
+          var feedbackType = this.data.get('feedbackType');
+          var param = {
+              appid: 255100,
+              feedback_type: feedbackType,
+              nettype: 'unknown',
+              submit_time: this.timestamp,
+              extrastring: JSON.stringify(this.data.get('answer')),
+              content: answerContent || '',
+          };
+          if (this.data.get('id')) {
+              param.id = this.data.get('id');
+          }
+          var queryXhr = commonUtil.ajax({
+              url: url,
+              type: 'POST',
+              data: param,
+              dataType: 'json',
+              error: function (err) {}
+          });
+          var _this = this;
+          queryXhr.then(function (res) {
+              if (res.id) {
+                  _this.data.set('id', res.id);
+              }
+          });
+      },
+  
+      shouldShowButton: function (question) {
+          // 多题或者单题是 主观题、多选题 时显示下一题按钮
+          if (!question || !question.type) {
+              return false;
+          }
+          else if (question.type === 'option' && !question.isMultiOption) {
+              return false;
+          }
+          else if (question.type === 'nps'
+              || question.type === 'questionnaire'
+              || question.type === 'feedback') {
+              return false;
+          }
+          return true;
+      },
+  
+      handleTransitionEnd: function (e) {
+          if (this.el === e.target && !this.data.get('show') && e.propertyName === 'transform') {
+              containerManager.hide();
+          }
+      }
+  });
+  
+
+});

@@ -1,0 +1,122 @@
+{% extends "layout.html" %}
+
+{% block title %} 注册 {% endblock %}
+
+{% block link %}
+    <a href="{{ url_for('reader_login')}}" style="color: #007aff; text-decoration: none;"> 返回 </a>
+{% endblock %}
+
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style2.css') }}">
+<style>
+    body {
+        font-family: "SF Pro Text", "SF Pro Icons", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+        background-color: #f9f9f9;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+
+   .container {
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: 32px;
+        width: 400px;
+    }
+
+   .error {
+        background-color: #ffebe8;
+        border: 1px solid #dd3c10;
+        border-radius: 4px;
+        color: #dd3c10;
+        padding: 12px;
+        margin-bottom: 20px;
+    }
+
+   .page h2 {
+        font-size: 28px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    form dl dt {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 6px;
+    }
+
+    form dl dd {
+        margin: 0 0 20px 0;
+    }
+
+    form input[type="text"],
+    form input[type="password"],
+    form input[type="email"] {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #d2d2d7;
+        border-radius: 8px;
+        font-size: 16px;
+        outline: none;
+        transition: border-color 0.2s ease;
+    }
+
+    form input[type="text"]:focus,
+    form input[type="password"]:focus,
+    form input[type="email"]:focus {
+        border-color: #007aff;
+    }
+
+   .actions input[type="submit"] {
+        background-color: #007aff;
+        border: none;
+        border-radius: 8px;
+        color: #fff;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        padding: 12px;
+        width: 100%;
+        transition: background-color 0.2s ease;
+    }
+
+   .actions input[type="submit"]:hover {
+        background-color: #0066cc;
+    }
+</style>
+
+{% block body %}
+<div class="container">
+    {% if error %}
+    <div class="error">
+        <strong>错误: </strong> {{ error }}
+    </div>
+    {% endif %}
+    <div class="page">
+        <h2>用户注册</h2>
+        <form action="" method="post">
+            <dl>
+                <dt>用户名:</dt>
+                <dd><input type="text" name="username" size="30" value="{{ request.form.username }}" autocomplete="username" required></dd>
+                <dt>密码:</dt>
+                <dd><input type="password" name="password" size="30" autocomplete="new-password" required></dd>
+                <dt>密码<small>(重复)</small>:</dt>
+                <dd><input type="password" name="password2" size="30" autocomplete="new-password" required></dd>
+                <dt>学院:</dt>
+                <dd><input type="text" name="college" size="30" autocomplete="organization" required></dd>
+                <dt>学号:</dt>
+                <dd><input type="text" name="number" size="30" autocomplete="student-id" required></dd>
+                <dt>邮箱:</dt>
+                <dd><input type="email" name="email" size="30" autocomplete="email" required></dd>
+            </dl>
+            <div class="actions">
+                <input type="submit" value="注册">
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

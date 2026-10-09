@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cherry Blossoms</title>
+    <style>
+        body {
+            perspective: 1000px;
+            /* 给body添加背景图片 */
+            background: url('sakura2.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        .cherry-blossoms {
+            width: 10px;
+            height: 10px;
+            position: absolute;
+            background: #FFB7C5;
+            animation: fall infinite linear 5s;
+        }
+        @keyframes fall {
+            from {
+                transform: rotateZ(0deg) rotateY(0deg) translateZ(0);
+            }
+            to {
+                transform: rotateZ(360deg) rotateY(720deg) translateZ(-1000px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        function createCherryBlossoms() {
+            var cherryBlossom = $('<div class="cherry-blossoms"></div>');
+            cherryBlossom.css({
+                top: Math.random() * $(window).height(),
+                left: Math.random() * $(window).width(),
+                animationDuration: (Math.random() * 3 + 4) + 's',
+                animationDelay: -(Math.random() * 2) + 's',
+            });
+            $('body').append(cherryBlossom);
+        }
+        for(var i = 0; i < 100; i++) {
+            createCherryBlossoms();
+        }
+    </script>
+</body>
+</html>

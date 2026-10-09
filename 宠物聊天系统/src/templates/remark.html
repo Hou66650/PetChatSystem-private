@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style4.css') }}">
+    <title>图书评价 - {{ book['book_name'] }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+        }
+        header {
+            background: #50b3a2;
+            color: white;
+            padding-top: 30px;
+            min-height: 70px;
+            border-bottom: #e8491d 3px solid;
+        }
+        header a {
+            color: #ffffff;
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 16px;
+            padding: 16px 30px;
+            display: inline-block;
+        }
+        header ul {
+            overflow: hidden;
+        }
+        header ul li {
+            display: inline-block;
+        }
+        header ul li a {
+            color: #ffffff;
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 16px;
+            padding: 16px 30px;
+            display: inline-block;
+        }
+        header ul li a:hover {
+            background-color: #e8491d;
+        }
+        .main {
+            padding: 20px;
+            background-color: #ffffff;
+            margin-top: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .footer {
+            background: #333;
+            color: #fff;
+            text-align: center;
+            padding: 1px 0;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+        .review-form {
+            margin-top: 20px;
+        }
+        .review-form label {
+            display: block;
+            margin-top: 10px;
+        }
+        .review-form textarea {
+            width: 100%;
+            resize: vertical;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .review-form button {
+            padding: 10px 20px;
+            background-color: #50b3a2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .review-form button:hover {
+            background-color: #42998a;
+        }
+
+
+
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div style="float:left;">
+                <h1>图书评价</h1>
+            </div>
+            <nav>
+                <ul style="float:right;">
+                    <li><a href="{{ url_for('index') }}">主页</a></li>
+                    <li><a href="{{ url_for('about')}}">关于我们</a></li>
+                    <li><a href="{{ url_for('about')}}">联系我们</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <div class="container">
+        <div class="main">
+            <h2 id="book_name">{{book_name}}评价</h2>
+            <p><strong>作者:</strong> {{ book['author'] }}</p>
+            <p><strong>ISBN:</strong>{{ book['book_id'] }}</p>
+            <p><strong>出版社:</strong> {{ book['publish_com'] }}</p>
+            <p><strong>出版日期:</strong> {{ book['publish_data'] }}</p>
+            <p><strong>定价:</strong> 36.00元</p>
+            <h3>内容简介:</h3>
+            <p>{{book['summary']}}</p>
+            <p>此外，小说中的插图和设计也相当精美，增加了阅读的愉悦感。总的来说，《解忧杂货店》是一部值得推荐的佳作，它能够带给读者正能量和思考，是一部适合各个年龄段读者的书籍。</p>
+            <h3>评分: 4.5/5星</h3>
+            <h3>推荐指数: ★★★★★</h3>
+            <h3>购买链接:</h3>
+            <ul>
+                <li>当当网: <a href="https://www.dangdang.com/product-url">点击购买</a></li>
+                <li>京东: <a href="https://www.jd.com/product-url">点击购买</a></li>
+            </ul>
+            <h3>作者简介:</h3>
+            <p>{{book['author_jj']}}</p>
+            <h3>读者评论:</h3>
+            <blockquote>
+                {% if reviews %}
+        <ul class="review-list">
+    {% for review in reviews %}
+        {# 开始 if 语句 #}
+        {% if book['book_id'] == review['book_id'] %}
+            <li class="review-item">
+                <div class="review-header">
+                    <strong class="reviewer-name">评论者:</strong> {{ review['name'] }}<br>
+                    <strong class="review-rating">评分:</strong>
+                    <span class="stars">
+                        {# 开始 for 语句 #}
+                        {% for star in range(review['rating']|int) %}
+                            ★
+                        {% endfor %} {# 结束 for 语句 #}
+                    </span>
+                </div>
+                <div class="recommendation">
+                    <strong class="review-content-label">评论内容:</strong>
+                    <pre class="review-text">{{ review['review_text'] }}</pre>
+                </div>
+            </li>
+        {% endif %} {# 结束 if 语句 #}
+    {% endfor %}
+        {% endif %}
+</ul>
+
+            </blockquote>
+            <h3>相关书籍推荐:</h3>
+            <ul>
+                <li>《白夜行》</li>
+                <li>《嫌疑人X的献身》</li>
+                <li>《秘密》</li>
+            </ul>
+            <div class="review-form">
+                <h3>留下你的评价</h3>
+                <form action="/remark" method="post">
+                     <label for="book_name">书籍名称:</label>
+                    <input type="text" id="book_name" name="book_name" required>
+                    <label for="name">姓名:</label>
+                    <input type="text" id="name" name="name" required>
+
+                    <label for="rating">评分:</label>
+                    <select id="rating" name="rating" required>
+                        <option value="1">1星</option>
+                        <option value="2">2星</option>
+                        <option value="3">3星</option>
+                        <option value="4">4星</option>
+                        <option value="5">5星</option>
+                    </select>
+
+                    <label for="review">评价内容:</label>
+                    <textarea id="review" name="review" required></textarea>
+
+                    <button type="submit">提交评价</button>
+
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="footer">
+        <p style="font-size: 8px">版权所有 &copy; 2024 图书评价网站</p>
+    </div>
+</body>
+{#<script>#}
+{#        document.getElementById('reviewForm').addEventListener('submit', function(event) {#}
+{#            event.preventDefault(); // 阻止表单默认提交行为#}
+{##}
+{#            const form = event.target;#}
+{#            const formData = new FormData(form);#}
+{##}
+{#            // 使用 Fetch API 提交表单数据#}
+{#            fetch(form.action, {#}
+{#                method: form.method,#}
+{#                body: formData#}
+{#            })#}
+{#            .then(response => {#}
+{#                if (response.ok) {#}
+{#                    alert('提交成功'); // 弹出提交成功的消息#}
+{#                    form.reset(); // 重置表单#}
+{#                } else {#}
+{#                    alert('提交失败，请稍后重试'); // 弹出提交失败的消息#}
+{#                }#}
+{#            })#}
+{#            .catch(error => {#}
+{#                alert('网络错误，请稍后重试'); // 弹出网络错误的消息#}
+{#            });#}
+{#        });#}
+{#</script>#}
+</html>

@@ -1,0 +1,62 @@
+define('common:widget/ui/ai/survey/components/questionContent', function(require, exports, module) {
+
+  var san = require('common:widget/ui/ai/san');
+  var QuestionNPS = require('common:widget/ui/ai/survey/components/questionNPS');
+  var QuestionOption = require('common:widget/ui/ai/survey/components/questionOption');
+  var QuestionTextInput = require('common:widget/ui/ai/survey/components/questionTextInput');
+  var Questionnaire = require('common:widget/ui/ai/survey/components/questionnaire');
+  
+  return san.defineComponent({
+      template: ''
+          + ' <div class="question-content survey-scrollbar'
+          + '     {{fake ? \'fake-content\' : \'\'}}"'
+          + '     style="{{margin}}"'
+          + ' >'
+          + '     <question-option s-if="questionData.type === \'option\'" question-data="{{questionData}}"/>'
+          + '     <question-nps s-else-if="questionData.type === \'nps\'" question-data="{{questionData}}"/>'
+          + '     <questionnaire s-else-if="questionData.type === \'questionnaire\'" question-data="{{questionData}}"/>'
+          + '     <question-text-input s-else-if="questionData.type === \'input\'"/>'
+          + ' </div>',
+      components: {
+          'question-nps': QuestionNPS,
+          'question-option': QuestionOption,
+          'question-text-input': QuestionTextInput,
+          'questionnaire': Questionnaire
+      },
+  
+      computed: {
+          margin() {
+              return this.data.get('questionData.type') === 'feedback' ? 'margin: 0' : '';
+          }
+      },
+      initData: function () {
+          return {
+              fake: false,
+              fadeOut: false,
+              questionData: {}
+          };
+      },
+  
+      attached: function () {
+          this.calcHeight();
+      },
+  
+      calcHeight: function () {
+          var height = this.el.getBoundingClientRect().height;
+          var _this = this;
+          if (!height && this.data.get('questionData.type') !== 'feedback') {
+              setTimeout(function () {
+                  _this.calcHeight();
+              }, 10);
+              return;
+          }
+          if (this.data.get('fake')) {
+              this.fire('next-height', height + 'px');
+          }
+          else {
+              this.fire('current-height', height + 'px');
+          }
+      }
+  });
+
+});

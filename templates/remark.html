@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style4.css') }}">
+    <title>图书评价 - {{ book['book_name'] }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+        }
+        header {
+            background: #50b3a2;
+            color: white;
+            padding-top: 30px;
+            min-height: 70px;
+            border-bottom: #e8491d 3px solid;
+        }
+        header a {
+            color: #ffffff;
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 16px;
+            padding: 16px 30px;
+            display: inline-block;
+        }
+        header ul {
+            overflow: hidden;
+        }
+        header ul li {
+            display: inline-block;
+        }
+        header ul li a {
+            color: #ffffff;
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 16px;
+            padding: 16px 30px;
+            display: inline-block;
+        }
+        header ul li a:hover {
+            background-color: #e8491d;
+        }
+        .main {
+            padding: 20px;
+            background-color: #ffffff;
+            margin-top: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .footer {
+            background: #333;
+            color: #fff;
+            text-align: center;
+            padding: 1px 0;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+        .review-form {
+            margin-top: 20px;
+        }
+        .review-form label {
+            display: block;
+            margin-top: 10px;
+        }
+        .review-form textarea {
+            width: 100%;
+            resize: vertical;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .review-form button {
+            padding: 10px 20px;
+            background-color: #50b3a2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .review-form button:hover {
+            background-color: #42998a;
+        }
+
+
+
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div style="float:left;">
+                <h1>图书评价</h1>
+            </div>
+            <nav>
+                <ul style="float:right;">
+                    <li><a href="{{ url_for('main.index') }}">主页</a></li>
+                    <li><a href="{{ url_for('main.about')}}">关于我们</a></li>
+                    <li><a href="{{ url_for('main.about')}}">联系我们</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <div class="container">
+        <div class="main">
+            <h2 id="book_name">{{ book_name }} · 评价</h2>
+            {% if pet %}
+            <div style="text-align:center; margin: 16px 0;">
+                <img src="{{ url_for('main.serve_images', filename=pet.avatar) }}" alt="{{ pet.name }}"
+                     style="width: 180px; height: 180px; border-radius: 50%; object-fit: cover;">
+                <h3 style="margin: 10px 0 4px;">{{ pet.name }}</h3>
+            </div>
+            <h3>宠物简介:</h3>
+            <p>{{ pet.description }}</p>
+            {% else %}
+            <p><strong>作者:</strong> {{ book['author'] }}</p>
+            <p><strong>ISBN:</strong> {{ book['book_id'] }}</p>
+            <p><strong>出版社:</strong> {{ book['publish_com'] }}</p>
+            <p><strong>出版日期:</strong> {{ book['publish_date'] }}</p>
+            {% if book['summary'] %}
+            <h3>内容简介:</h3>
+            <p>{{ book['summary'] }}</p>
+            {% endif %}
+            {% if book['author_jj'] %}
+            <h3>作者简介:</h3>
+            <p>{{ book['author_jj'] }}</p>
+            {% endif %}
+            {% endif %}
+            {% if avg_rating %}
+            <h3>当前评分: {{ avg_rating }}/5 星（{{ review_count }} 条评价）</h3>
+            {% else %}
+            <h3>暂无评分，来抢沙发吧</h3>
+            {% endif %}
+            <h3>{{ '大家' if pet else '读者' }}评论:</h3>
+            <blockquote>
+                {% if reviews %}
+        <ul class="review-list">
+    {% for review in reviews %}
+        {# 开始 if 语句 #}
+        {% if book['book_id'] == review['book_id'] %}
+            <li class="review-item">
+                <div class="review-header">
+                    <strong class="reviewer-name">评论者:</strong> {{ review['name'] }}<br>
+                    <strong class="review-rating">评分:</strong>
+                    <span class="stars">
+                        {# 开始 for 语句 #}
+                        {% for star in range(review['rating']|int) %}
+                            ★
+                        {% endfor %} {# 结束 for 语句 #}
+                    </span>
+                </div>
+                <div class="recommendation">
+                    <strong class="review-content-label">评论内容:</strong>
+                    <pre class="review-text">{{ review['review_text'] }}</pre>
+                </div>
+            </li>
+        {% endif %} {# 结束 if 语句 #}
+    {% endfor %}
+        {% endif %}
+</ul>
+
+            </blockquote>
+            <h3>相关推荐:</h3>
+            <ul>
+                {% for p in pets_in_recommend %}
+                <li><a href="/remark?book_name={{ p }}">{{ p }}</a></li>
+                {% else %}
+                <li>暂无</li>
+                {% endfor %}
+            </ul>
+            <div class="review-form">
+                <h3>留下你的评价</h3>
+                <form action="/remark" method="post">
+                     <label for="book_name">名称(书名/宠物名):</label>
+                    <input type="text" id="book_name" name="book_name" required>
+                    <label for="name">姓名:</label>
+                    <input type="text" id="name" name="name" required>
+
+                    <label for="rating">评分:</label>
+                    <select id="rating" name="rating" required>
+                        <option value="1">1星</option>
+                        <option value="2">2星</option>
+                        <option value="3">3星</option>
+                        <option value="4">4星</option>
+                        <option value="5">5星</option>
+                    </select>
+
+                    <label for="review">评价内容:</label>
+                    <textarea id="review" name="review" required></textarea>
+
+                    <button type="submit">提交评价</button>
+
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="footer">
+        <p style="font-size: 8px">版权所有 &copy; 2024 图书评价网站</p>
+    </div>
+</body>
+{#<script>#}
+{#        document.getElementById('reviewForm').addEventListener('submit', function(event) {#}
+{#            event.preventDefault(); // 阻止表单默认提交行为#}
+{##}
+{#            const form = event.target;#}
+{#            const formData = new FormData(form);#}
+{##}
+{#            // 使用 Fetch API 提交表单数据#}
+{#            fetch(form.action, {#}
+{#                method: form.method,#}
+{#                body: formData#}
+{#            })#}
+{#            .then(response => {#}
+{#                if (response.ok) {#}
+{#                    alert('提交成功'); // 弹出提交成功的消息#}
+{#                    form.reset(); // 重置表单#}
+{#                } else {#}
+{#                    alert('提交失败，请稍后重试'); // 弹出提交失败的消息#}
+{#                }#}
+{#            })#}
+{#            .catch(error => {#}
+{#                alert('网络错误，请稍后重试'); // 弹出网络错误的消息#}
+{#            });#}
+{#        });#}
+{#</script>#}
+</html>

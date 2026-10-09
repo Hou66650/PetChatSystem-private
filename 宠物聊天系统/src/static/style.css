@@ -1,0 +1,186 @@
+ body {
+            font-family: 'San Francisco', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            /* 使用 background-image 属性插入背景图片，需将 url 里的内容替换为你的图片路径 */
+            background-image: url('images/g.png');
+            background-size: cover; /* 让背景图片覆盖整个页面 */
+            background-position: center; /* 背景图片居中显示 */
+            background-repeat: no-repeat; /* 背景图片不重复 */
+            color: #1d1d1f;
+            margin: 0;
+            padding: 0;
+
+        }
+
+.page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+header {
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo {
+    text-align: center;
+    font-size: 1.8rem;
+    color: #8a2be2; /* 紫色 */
+}
+
+.nav-container {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 1rem;
+}
+
+.navigation a {
+    color: #fff; /* 紫色 */
+    font-size: 16px;
+    margin-left: 1rem;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.navigation a:hover {
+    color: #dda0dd; /* 浅紫色 */
+}
+
+.body {
+    margin: 2rem 0;
+}
+
+.welcome-container {
+    text-align: center;
+}
+
+.welcome-container h2 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: #fff; /* 紫色 */
+}
+
+.welcome-container p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    color: #fff; /* 白色 */
+}
+
+.features {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.feature {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+.feature:hover {
+    transform: scale(1.05);
+}
+
+.feature img {
+    width: 300px; /* 照片尺寸加大 */
+    height: 300px; /* 照片尺寸加大 */
+    margin-bottom: 1rem;
+}
+
+.feature h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #fff; /* 紫色 */
+}
+
+.feature p {
+    color: #525255;
+}
+
+.footer {
+    background-color: #fff;
+    text-align: center;
+    padding: 1rem 0;
+    margin-top: 2rem;
+    box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+}
+.features_p1 img{
+            position: fixed; /* 固定图片位置 */
+            bottom: 0px; /* 距离底部为 0 */
+            left: 0; /* 距离左侧为 0 */
+            width: 330px; /* 设置图片宽度 */
+            height: auto; /* 保持图片的高度比例 */
+}
+.features_p2 img{
+            position: fixed; /* 固定图片位置 */
+            bottom: 10px; /* 距离底部为 0 */
+            right: 0; /* 距离左侧为 0 */
+            width: 300px; /* 设置图片宽度 */
+            height: auto; /* 保持图片的高度比例 */
+}
+.features_p3 img{
+            position: fixed ; /* 固定图片位置 */
+            top: 10px; /* 距离顶部为 0 */
+            right: 0; /* 距离左侧为 0 */
+            width: 300px; /* 设置图片宽度 */
+            height: auto; /* 保持图片的高度比例 */
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.footer-container p {
+    color: #525255;
+}
+
+/* 动态效果 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.welcome-container, .features {
+    animation: fadeIn 1s ease;
+    margin: 50px auto;
+}
+.login{
+     font-size: 39px;
+        color:#6A5ACD;
+}
+.recommendation  {
+            backdrop-filter: blur(10px); /* 高斯模糊效果 */
+            background-color: rgba(255, 255, 255, 0.5); /* 半透明背景 */
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+
+.recommendation img {
+    flex: 1 1 30%; /* 每张图片占据三分之一的宽度 */
+    max-width: 100%;
+    height: auto;
+    margin: 10px;
+}
+.re1{
+    cursor: pointer;
+}

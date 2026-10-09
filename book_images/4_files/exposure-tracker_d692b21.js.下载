@@ -1,0 +1,215 @@
+define('common:widget/ui/utils/exposure-tracker', function(require, exports, module) {
+
+  /**
+   * @file 真实曝光日志
+   * @author caigang@baidu.com
+   */
+  var $ = require('common:widget/ui/base/base');
+  var SHOW_PROP = 'data-show';
+  var SHOW_EXT = 'data-show-ext';
+  var THRESHOLD = 0.6;
+  
+  function ExposureTracker(options = {}) {
+      this.selector = options.selector || '';
+      this.logValue = options.logValue;
+      this.commonExt = options.commonExt || {};
+      this.logLimit = options.logLimit || 10;
+      this.showExtKey = options.showExtKey || 'pic_order_url';
+  
+      this.observeList = [];
+      this.exposureLogWaitForSend = [];
+      this.observer = null;
+      this.init();
+  }
+  
+  $.extend(ExposureTracker.prototype, {
+  
+      /**
+       * 初始化
+       */
+      init: function () {
+  
+          // 初始先找到页面上所有需要被监听的元素
+          this.setupObserve();
+          this.refreshObserveList();
+          this.bindEvent();
+      },
+  
+      bindEvent: function () {
+          document.addEventListener('visibilitychange', this.handlePageVisibilityChange.bind(this));
+          window.addEventListener('beforeunload', this.handlePageLeave.bind(this));
+      },
+  
+      handlePageVisibilityChange: function () {
+          if (document.visibilityState === 'hidden') {
+              this.sendLog();
+          }
+      },
+  
+      handlePageLeave: function () {
+          this.sendLog();
+      },
+  
+      /**
+       * 刷新需要监听的元素列表
+       * @returns 需要监听的元素列表
+       */
+      refreshObserveList: function () {
+          if (!this.selector) {
+              return [];
+          }
+  
+          var observeList = [];
+  
+          // 找到页面上所有需要被监听的元素
+          var domList = $(this.selector + '[' + SHOW_PROP + ']');
+  
+          // 如果没有的话，直接返回
+          if (!domList.length) {
+              return observeList;
+          }
+  
+          domList.each(function (_, element) {
+              var observeDom = {
+                  dom: element,
+                  observed: false
+              };
+              observeList.push(observeDom);
+          });
+  
+          this.observeList = observeList;
+          this.startObserve();
+  
+          return observeList;
+      },
+  
+      /**
+       * 监听曝光（IntersectionObserver）
+       */
+      setupObserve: function () {
+          this.observer = new IntersectionObserver(
+              this.handleIntersection.bind(this),
+              {
+                  threshold: THRESHOLD
+              }
+          );
+  
+          // 开始监听
+          this.startObserve();
+      },
+  
+      /**
+       * 元素曝光处理
+       * @param {*} entries 相交内容
+       */
+      handleIntersection: function (entries) {
+          var self = this;
+          entries.forEach(function (entry) {
+              if (entry.intersectionRatio >= THRESHOLD) {
+                  self.observeList.forEach(function (curData) {
+                      if (entry.target === curData.dom) {
+                          self.observer.unobserve(curData.dom);
+                          self.handleExposure(curData);
+                      }
+                  });
+              }
+          });
+      },
+  
+      startObserve: function () {
+          var self = this;
+          this.observeList.forEach(function (curData) {
+  
+              // 如果没有监听过，就加入监听
+              if (!curData.observed) {
+                  curData.observed = true;
+                  self.observer.observe(curData.dom);
+              }
+          });
+      },
+  
+      handleExposure: function (item) {
+  
+          // 如果已经曝光，则不处理
+          if (item.hasBeenExposed) {
+              return;
+          }
+  
+          // 记录该图片已经被曝光
+          item.hasBeenExposed = true;
+          var targetDom = item.dom;
+          var logData = this.collectLogData(targetDom);
+          this.exposureLogWaitForSend.push(logData);
+  
+          // 删除属性，不重复监听了
+          $(targetDom).removeAttr(SHOW_PROP);
+          this.checkAndSendLog(this.exposureLogWaitForSend);
+      },
+  
+      collectLogData: function (dom) {
+          var element = $(dom);
+          var ext = {};
+  
+          try {
+              var extStr = $(element).attr(SHOW_EXT);
+              ext = JSON.parse(extStr);
+          }
+          catch (e) {
+              ext = {};
+          }
+  
+          return ext;
+      },
+  
+      checkAndSendLog: function () {
+  
+          // 满 X 条发送日志
+          if (this.exposureLogWaitForSend.length >= this.logLimit) {
+              this.sendLog();
+          }
+      },
+  
+      sendLog: function () {
+  
+          // 一条日志中有10条数据
+          while (this.exposureLogWaitForSend.length) {
+              var curList = this.exposureLogWaitForSend.splice(0, this.logLimit);
+              this.sendUbcLog(curList);
+          }
+      },
+  
+      sendUbcLog: function (logList) {
+  
+          // window.ubcLoggerInstance 在各个页面中自行初始化
+          // pcsearch: widget/ui/app/page.js  initUBC
+          // pcmediacy: widget/ui/app/page.js  initUbcLogger
+          if (!window.ubcLoggerInstance || !window.ubcLoggerInstance.pageLogger) {
+              return;
+          }
+  
+          var newObserveList = [];
+          var observeList = this.observeList;
+          for (var i = 0; i < observeList.length; i++) {
+              if (!observeList[i].hasBeenExposed) {
+                  newObserveList.push(observeList[i]);
+              }
+          }
+  
+          // 过滤已经曝光过的
+          this.observeList = newObserveList;
+  
+          var ext = this.logLimit > 1
+              ? {[this.showExtKey]: logList}
+              : (logList.length > 0 ? Object.assign({}, logList[0]) : {});
+          window.ubcLoggerInstance.pageLogger.send({
+              type: 'show',
+              value: this.logValue,
+              ext: Object.assign({}, ext, this.commonExt)
+          });
+      },
+  });
+  
+  return ExposureTracker;
+  
+
+});

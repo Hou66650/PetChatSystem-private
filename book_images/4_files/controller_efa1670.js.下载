@@ -1,0 +1,104 @@
+define('common:widget/ui/ai/survey/controller', function(require, exports, module) {
+
+  var $ = require('common:widget/ui/base/base');
+  var events = require('common:widget/ui/base/events');
+  var SurveyComponent = require('common:widget/ui/ai/survey/survey');
+  var containerManager = require('common:widget/ui/ai/survey/container-manager');
+  var utils = require('common:widget/ui/ai/survey/utils');
+  
+  function SurveyController() {
+      this.component = null;
+      this.hasShown = false;
+      this.displayParams = {};
+  }
+  $.extend(SurveyController.prototype, events, {
+      render: function () {
+          var surveyContainer = containerManager.create();
+          var surveyComponent = new SurveyComponent();
+          this.component = surveyComponent;
+          surveyComponent.attach(surveyContainer);
+      },
+      setData: function (key, value) {
+          if (this.component) {
+              this.component.data.set(key, value);
+          }
+      },
+  
+      init: function (data) {
+          if (this.component) {
+              this.updateQuestionList(data.templates);
+              this.displayParams = data.displayParams || {};
+              this.setData('itemId', data.itemId);
+          }
+      },
+  
+      addExtra: function (extra) {
+          if (this.component) {
+              var logParams = this.component.data.get('logParams');
+              this.setData('logParams', $.extend(logParams, extra));
+          }
+      },
+  
+      updateQuestionList: function (questionData) {
+          if (this.component && questionData) {
+              var data = [];
+              if (!Array.isArray(questionData)) {
+                  data.push(questionData);
+              }
+              else {
+                  data = questionData;
+              }
+              for (var i = 0; i < data.length; i++) {
+                  if (!data[i] || !data[i].type) {
+                      return;
+                  }
+              }
+              this.component.processData(data);
+          }
+      },
+  
+      setTheme: function (theme) {
+          if (this.component) {
+              this.setData('theme', theme);
+          }
+      },
+  
+      show(delay = 0) {
+          if (this.component && !this.hasShown) {
+              this.hasShown = true;
+              this.component.show(delay);
+          }
+      },
+  
+      close() {
+          if (this.component) {
+              this.component.close();
+          }
+      },
+  
+      // 确认是否命中频控
+      shouldShowSurvey: function (itemId) {
+          if (!itemId) {
+              return false;
+          }
+          try {
+              var nextSurveyTime = utils.getNextSurveyTime(itemId);
+              if (!nextSurveyTime) {
+                  return true;
+              }
+              return Date.now() > nextSurveyTime;
+          }
+          catch (e) {
+              console.error(e);
+              return true;
+          }
+      },
+  
+      setZIndex: function (zIndex) {
+          containerManager.setZIndex(zIndex);
+      },
+  });
+  
+  return new SurveyController();
+
+});

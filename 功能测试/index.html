@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试页面</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-image: url('3.png');
+            background-size: cover;
+            background-position: center;
+            height: 100vh;
+            position: relative;
+        }
+
+        #button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        #top-right-image {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 100px;
+            height: 100px;
+        }
+
+        #json-data {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <button id="button">点击改变背景图片并读取 JSON 文件</button>
+    <img id="top-right-image" src="用户头像1原图.png" alt="右上角图片">
+    <div id="json-data"></div>
+
+    <script>
+        const button = document.getElementById('button');
+        const body = document.body;
+        const jsonDataDiv = document.getElementById('json-data');
+        const topRightImage = document.getElementById('top-right-image');
+
+        // 背景图片数组
+        const backgroundImages = ['3.png', '4.png', '5.png', '6.png'];
+        let currentImageIndex = 0;
+
+        // JSON 文件数组
+        const jsonFiles = ['1.json', '2.json', '3.json', '4.json'];
+
+        button.addEventListener('click', async () => {
+            jsonDataDiv.innerHTML = '';
+
+            // 改变背景图片
+            currentImageIndex = (currentImageIndex + 1) % backgroundImages.length;
+            body.style.backgroundImage = `url('${backgroundImages[currentImageIndex]}')`;
+
+            const file = jsonFiles[currentImageIndex];
+            try {
+                const response = await fetch(file);
+                const data = await response.json();
+
+                // 展示 JSON 数据
+                const pre = document.createElement('pre');
+                pre.textContent = `文件 ${file} 的内容:\n${JSON.stringify(data, null, 2)}`;
+                jsonDataDiv.appendChild(pre);
+
+                // 根据 role 值修改右上角图片
+                const role = data.role;
+                if (role === 'admin') {
+                    topRightImage.src = '3.png';
+                } else if (role === 'user') {
+                    topRightImage.src = '4.png';
+                } else if (role === 'guest') {
+                    topRightImage.src = 'c.png';
+                }
+            } catch (error) {
+                console.error(`读取 ${file} 出错:`, error);
+            }
+        });
+    </script>
+</body>
+
+</html>

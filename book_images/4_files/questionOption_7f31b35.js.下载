@@ -1,0 +1,97 @@
+define('common:widget/ui/ai/survey/components/questionOption', function(require, exports, module) {
+
+  var san = require('common:widget/ui/ai/san');
+  
+  return san.defineComponent({
+      template: ''
+          + ' <div class="question-option {{questionData.displayMode === \'auto\' ? \'auto-option\' : \'equal-option\'}}"'
+          + '     style="{{optionDisplayStyle}}"'
+          + ' >'
+          + '     <div'
+          + '         s-for="option, index in questionData.options"'
+          + '         class="question-option-item {{selected[index] ? \'question-option-item-selected\' : \'\'}}"'
+          + '         on-click="handleSelectOption(index)"'
+          + '     >'
+          + '        {{option.title}}'
+          + '     </div>'
+          + ' </div>',
+      computed: {
+          optionDisplayStyle() {
+              var displayMode = this.data.get('questionData.displayMode');
+              if (displayMode === 'auto') {
+                  return '';
+              }
+              else {
+                  var column = this.data.get('questionData.column');
+                  return 'grid-template-columns: repeat(' + column + ', 1fr);';
+              }
+          }
+      },
+      initData: function () {
+          return {
+              questionData: {},
+              selected: [],
+          };
+      },
+      attached: function () {
+          var options = this.data.get('questionData.options');
+          this.data.set('selected', options.map(function () {
+              return false;
+          }));
+  
+          this.watch('questionData.options', function (value) {
+              var options = this.data.get('questionData.options');
+              this.data.set('selected', options.map(function () {
+                  return false;
+              }));
+          });
+      },
+      handleSelectOption: function (index) {
+          var selected = this.data.get('selected');
+          if (this.data.get('questionData.isMultiOption')) {
+              this.data.set('selected[' + index + ']', !selected[index]);
+              var options = this.data.get('questionData.options');
+  
+              // selected map后是形如['' ,'a' ,'' ,'b']的数组，需要先过滤掉空字符串再join
+              var ans =
+                  this.data.get('selected').map(function (e, i) {
+                      return e ? options[i].title : '';
+                  }).filter(function (e) {
+                      return e;
+                  }).join('|');
+              if (!ans) {
+                  this.dispatch('SURVEY:updateAnswer', {ans: '', index: -1});
+                  return;
+              }
+              var firstIndex = this.data.get('selected').findIndex(function (e) {
+                  return e;
+              });
+              this.dispatch('SURVEY:updateAnswer', {
+                      ans: ans,
+                      index: this.data.get('questionData.options')[firstIndex].index
+                  }
+              );
+          }
+          else {
+              if (selected.find(function (e) {
+                  return e;
+              })) {
+                  return;
+              }
+              this.data.set(
+                  'selected',
+                  selected.map(function () {
+                      return false;
+                  }
+              ));
+              this.data.set('selected[' + index + ']', true);
+              var options = this.data.get('questionData.options');
+  
+              // 选项排列随机，因此ans为选项的index
+              var ans = options[index].index;
+              this.dispatch('SURVEY:updateAnswer', {ans: ans, index: ans});
+          }
+      }
+  });
+
+});

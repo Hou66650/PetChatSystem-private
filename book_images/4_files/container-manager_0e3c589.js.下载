@@ -1,0 +1,1 @@
+define("common:widget/ui/ai/survey/container-manager",function(){var e=null,n={create:function(){if(e)return e;var n=document.createElement("div");return n.id="survey-container",document.body.appendChild(n),e=n,n},hide:function(){e&&(e.style.display="none")},setZIndex:function(n){e&&(e.style.zIndex=n)}};return n});

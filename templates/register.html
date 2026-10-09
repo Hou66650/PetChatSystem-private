@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户注册</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style2.css') }}">
+    <style>
+        /* 页面整体样式 */
+        body {
+            font-family: "SF Pro Text", "SF Pro Icons", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+            background: url('css/c.jpg') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* 容器样式 */
+        .container {
+            background: rgba(255, 255, 255, 0.8); /* 半透明背景 */
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            width: 420px;
+            backdrop-filter: blur(10px); /* 背景模糊效果 */
+            animation: fadeIn 0.5s ease-in-out; /* 动画效果 */
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* 错误信息样式 */
+        .error {
+            background-color: #ffe6e6;
+            border: 1px solid #ff4d4d;
+            border-radius: 8px;
+            color: #ff4d4d;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        /* 标题样式 */
+        .page h2 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        /* 表单样式 */
+        form dl dt {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+
+        form dl dd {
+            margin: 0 0 20px 0;
+        }
+
+        form input[type="text"],
+        form input[type="password"],
+        form input[type="email"] {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        form input[type="text"]:focus,
+        form input[type="password"]:focus,
+        form input[type="email"]:focus {
+            border-color: #007aff;
+            box-shadow: 0 0 6px rgba(0, 122, 255, 0.5);
+        }
+
+        /* 提交按钮样式 */
+        .actions input[type="submit"] {
+            background: linear-gradient(90deg, #007aff, #0056b3);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 14px;
+            width: 100%;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        .actions input[type="submit"]:hover {
+            background: linear-gradient(90deg, #0056b3, #003d7a);
+            transform: scale(1.05);
+        }
+
+        /* 返回链接样式 */
+        .link {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .link a {
+            color: #007aff;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s ease;
+        }
+
+        .link a:hover {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if error %}
+        <div class="error">
+            <strong>错误: </strong> {{ error }}
+        </div>
+        {% endif %}
+        <div class="page">
+            <h2>用户注册</h2>
+            <form action="" method="post">
+                <dl>
+                    <dt>用户名:</dt>
+                    <dd><input type="text" name="username" size="30" value="{{ request.form.username }}" autocomplete="username" required></dd>
+                    <dt>密码:</dt>
+                    <dd><input type="password" name="password" size="30" autocomplete="new-password" required></dd>
+                    <dt>密码<small>(重复)</small>:</dt>
+                    <dd><input type="password" name="password2" size="30" autocomplete="new-password" required></dd>
+                    <dt>标签:</dt>
+                    <dd><input type="text" name="college" size="30" autocomplete="organization" required></dd>
+                    <dt>学号:</dt>
+                    <dd><input type="text" name="number" size="30" autocomplete="student-id" required></dd>
+                    <dt>邮箱:</dt>
+                    <dd><input type="email" name="email" size="30" autocomplete="email" required></dd>
+                </dl>
+                <div class="actions">
+                    <input type="submit" value="注册">
+                </div>
+            </form>
+            <div class="link">
+                <a href="{{ url_for('auth.reader_login') }}">返回</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

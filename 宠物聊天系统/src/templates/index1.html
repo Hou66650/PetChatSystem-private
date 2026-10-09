@@ -1,0 +1,119 @@
+{% extends "layout.html" %}
+{% block title %}主页{% endblock %}
+{% block link %}
+  <a href="{{ url_for('manager_login')}}">管理员登录</a> |
+  <a href="{{ url_for('reader_login')}}">用户登录</a> |
+{% endblock %}
+<style>
+    .top-recommendation {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background-color: #f9f9f9;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.top-recommendation img {
+  width: 200px;
+  height: 300px;
+  border-radius: 10px;
+}
+
+.top-recommendation h4 {
+  margin: 10px 0;
+  font-size: 9.9rem;
+  color: #333;
+}
+
+.top-recommendation p {
+  font-size: 1rem;
+  color: #666;
+}
+
+.recommended-pets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.pet-card {
+  text-align: center;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background-color: #f9f9f9;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 200px;
+}
+
+.pet-card img {
+  width: 200px;
+  height: 300px;
+  border-radius: 10px;
+}
+
+.pet-card p {
+  margin: 5px 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+</style>
+{% block body %}
+<div class="welcome-container">
+  <h2>欢迎使用 宠物智能聊天系统</h2>
+  <p>让您体验前所未有的便捷和高效。</p>
+
+  <div class="features">
+    <div class="feature" onclick="window.location.href='/manager_login';">
+      <img src="{{ url_for('static', filename='images/e.png') }}" alt="Icon 1">
+      <h3>简单易用</h3>
+      <a class="login">管理员登录</a>
+      <p>强大的管理功能，提升工作效率。</p>
+    </div>
+    <div class="feature" onclick="window.location.href='/reader_login';">
+      <img src="{{ url_for('static', filename='images/dd.png') }}" alt="Icon 2">
+      <h3>高效管理</h3>
+      <a class="login">用户登录</a>
+      <p>便捷的使用体验，让您生活愉悦</p>
+    </div>
+    <div class="feature" onclick="window.location.href='/register_admin';">
+      <img src="{{ url_for('static', filename='images/df.png') }}" alt="Icon 3">
+      <h3>安全可靠</h3>
+      <a class="login">管理员注册</a>
+      <p>多重安全机制，保护您的数据。</p>
+    </div>
+  </div>
+
+  <!-- 当家宠物推荐模块 -->
+  <div class="recommendation">
+    <h3 class="login">当家宠物推荐</h3>
+
+    <!-- 评分最高的宠物 -->
+    <div class="top-recommendation" onclick="window.location.href='/remark?book_name={{ top_pet.book_name if top_pet else '' }}';">
+      {% if top_pet %}
+        <h4>评分最高的宠物</h4>
+        <img src="{{ url_for('static', filename='images/' ~ top_pet.image_name) }}" alt="{{ top_pet.book_name }}" width="200" height="300">
+        <p><strong>{{ top_pet.book_name }}</strong></p>
+        <p>评分：{{ top_pet.rating }}</p>
+      {% else %}
+        <p>暂无评分最高的宠物。</p>
+      {% endif %}
+    </div>
+
+    <!-- 其他推荐宠物 -->
+    <div class="recommended-pets">
+      {% for book in books_p %}
+        <div class="pet-card" onclick="window.location.href='/remark?book_name={{ book.book_name }}';">
+          <img src="{{ url_for('static', filename='images/' ~ book.image_name) }}" alt="{{ book.book_name }}" width="200" height="300">
+          <p><strong>{{ book.book_name }}</strong></p>
+          <p>评分：{{ book.rating }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

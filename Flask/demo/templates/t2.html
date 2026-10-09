@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Message with Avatar</title>
+    <style>
+        /* 简单的样式，可根据需求调整 */
+        .chat-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-right: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="chatBody"></div>
+    <script>
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString();
+        }
+
+        function createChatMessage(assistantName, htmlResponse, avatarUrl) {
+            // 创建头像 img 元素
+            const avatar = document.createElement('img');
+            avatar.src = avatarUrl;
+            avatar.classList.add('chat-avatar');
+
+            // 创建 p 元素
+            const p = document.createElement('p');
+
+            // 创建 strong 元素
+            const strong = document.createElement('strong');
+            strong.textContent = `${assistantName}【`;
+
+            // 创建 span 元素
+            const span = document.createElement('span');
+            span.classList.add('timer');
+            span.textContent = getCurrentTime();
+
+            // 将 span 元素添加到 strong 元素中
+            strong.appendChild(span);
+            strong.innerHTML += '】:';
+
+            // 将头像添加到 p 元素
+            p.appendChild(avatar);
+
+            // 将 strong 元素添加到 p 元素中
+            p.appendChild(strong);
+
+            // 创建文本节点并添加到 p 元素中
+            const textNode = document.createTextNode(htmlResponse);
+            p.appendChild(textNode);
+
+            return p;
+        }
+
+        // 示例使用
+        const chatBody = document.getElementById('chatBody');
+        const assistantName = 'Assistant';
+        const htmlResponse = '这是一条聊天消息。';
+        const avatarUrl = 'images/sakura2.jpg'; // 替换为实际的头像 URL
+
+        const message = createChatMessage(assistantName, htmlResponse, avatarUrl);
+        chatBody.appendChild(message);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,45 @@
+.search {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px;
+}
+
+/* 搜索输入框的边框 */
+.search_border {
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    background: white;
+}
+
+/* 输入框样式 */
+.search_input {
+    border: none;
+    outline: none;
+    width: 300px;
+    padding: 10px;
+    font-size: 16px;
+}
+
+/* 搜索按钮样式 */
+.search_btn {
+    margin-left: 10px;
+}
+
+.search_button {
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.search_button:hover {
+    background-color: #0056b3;
+}

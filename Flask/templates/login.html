@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>这是URL演示界面</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='static/static.css') }}">
+</head>
+<body>
+    <ul>
+        <li><a href="/">首页</a></li>
+        <li><a href="/gpt">USE_GPT</a></li>
+    </ul>
+    <img src="{{ url_for('static', filename='demo.png') }}" alt="Demo Image">
+    <div class="content">
+        <h1>欢迎来到演示页面</h1>
+        <p>这是一个使用 Flask 框架构建的简单网页示例。</p>
+    </div>
+<link rel="stylesheet" href="{{url_for('static',filename='static.css')}}">
+</body>

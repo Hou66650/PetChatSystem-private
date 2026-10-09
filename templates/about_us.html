@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关于我们 - WeTab AI</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .jumbotron {
+            background-color: #007bff;
+            color: #fff;
+            padding: 8rem 2rem;
+        }
+        .about-section {
+            padding: 5rem 2rem;
+            background-color: #fff;
+        }
+        .mission, .vision {
+            margin-bottom: 3rem;
+        }
+        .team-member {
+            margin-bottom: 2rem;
+        }
+        .team-member img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        footer {
+            background-color: #343a40;
+            color: #fff;
+            text-align: center;
+            padding: 1rem 0;
+            position: absolute;
+            width: 100%;
+            bottom: 0;
+        }
+        @media (min-width: 992px) {
+            .jumbotron {
+                padding: 10rem 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand" href="#">WeTab AI</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item active">
+                        <a class="nav-link" href="{{ url_for('main.index') }}">首页 <span class="sr-only">(current)</span></a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">关于我们</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">联系我们</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <section class="jumbotron jumbotron-fluid" id="about">
+        <div class="container">
+            <h1 class="display-4">关于我们</h1>
+            <p class="lead">探索 WeTab AI 的世界，了解我们的使命和愿景。</p>
+        </div>
+    </section>
+
+    <section class="about-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h2>我们的故事</h2>
+                    <p>自成立以来，WeTab AI 一直致力于通过人工智能技术改善人们的生活和工作方式。我们的团队由一群充满激情的技术专家组成，他们不断追求创新，以解决现实世界的问题。</p>
+                </div>
+                <div class="col-md-6">
+                    <img src="images/1.png" alt="关于我们" class="img-fluid">
+                </div>
+            </div>
+
+            <div class="mission">
+                <h2>我们的使命</h2>
+                <p>我们的使命是通过开发先进的人工智能解决方案，帮助企业和个人提高效率，实现更大的成功。</p>
+            </div>
+
+            <div class="vision">
+                <h2>我们的愿景</h2>
+                <p>我们的愿景是成为全球领先的人工智能服务提供商，推动技术的边界，为用户创造无限可能。</p>
+            </div>
+
+            <div class="team">
+                <h2>我们的团队</h2>
+                <div class="row">
+                    <div class="col-md-4 team-member">
+                        <img src="team-member1.jpg" alt="团队成员1" class="img-fluid rounded-circle mb-2">
+                        <h5>张三</h5>
+                        <p>首席执行官</p>
+                    </div>
+                    <div class="col-md-4 team-member">
+                        <img src="team-member2.jpg" alt="团队成员2" class="img-fluid rounded-circle mb-2">
+                        <h5>李四</h5>
+                        <p>技术总监</p>
+                    </div>
+                    <div class="col-md-4 team-member">
+                        <img src="team-member3.jpg" alt="团队成员3" class="img-fluid rounded-circle mb-2">
+                        <h5>王五</h5>
+                        <p>产品总监</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="contact-section" id="contact">
+        <div class="container">
+            <h2>联系我们</h2>
+            <form>
+                <div class="form-group">
+                    <label for="name">姓名</label>
+                    <input type="text" class="form-control" id="name" placeholder="请输入您的姓名">
+                </div>
+                <div class="form-group">
+                    <label for="email">电子邮件</label>
+                    <input type="email" class="form-control" id="email" placeholder="请输入您的电子邮件">
+                </div>
+                <div class="form-group">
+                    <label for="message">消息</label>
+                    <textarea class="form-control" id="message" rows="5" placeholder="请输入您的消息"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">发送</button>
+            </form>
+        </div>
+    </section>
+
+    <footer>
+        <p>© 2023 WeTab AI. All rights reserved.</p>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

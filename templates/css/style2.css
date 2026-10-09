@@ -1,0 +1,24 @@
+/* 导航栏样式 */
+.nav-links {
+    position: relative; /* 确保导航栏在页面顶部 */
+    z-index: 10; /* 确保导航栏在其他内容之上 */
+    display: flex;
+    justify-content: center; /* 水平居中 */
+    align-items: center; /* 垂直居中 */
+    padding: 1rem 0;
+    background-color: #f5f5f7; /* 浅灰色背景 */
+    border-bottom: 1px solid #ddd; /* 底部边框 */
+    width: 100%;
+}
+
+.nav-links a {
+    color: #8a2be2; /* 紫色链接 */
+    text-decoration: none;
+    font-size: 1rem;
+    margin: 0 1rem; /* 链接之间的间距 */
+    transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+    color: #dda0dd; /* 浅紫色，鼠标悬停效果 */
+}
