@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """宠物聊天相关路由：聊天页、AI 对话、头像动漫化、日记本、评价。"""
-from flask import (Blueprint, current_app, jsonify, render_template, request)
+from flask import (Blueprint, current_app, jsonify, render_template,
+                   request, session)
 
 from ..db import execute_db, query_db
 from ..llm import pets as pet_registry
@@ -12,8 +13,16 @@ bp = Blueprint('chat', __name__)
 @bp.route('/gpt')
 def gpt():
     pets = [pet_registry.public_info(p) for p in pet_registry.list_pets()]
+    # ?pet=N 预选宠物（首页宠物卡直达；非法值回落到第一只）
+    try:
+        initial = int(request.args.get('pet', pets[0]['id']))
+    except (TypeError, ValueError):
+        initial = pets[0]['id']
+    if not any(p['id'] == initial for p in pets):
+        initial = pets[0]['id']
     return render_template('gpt_me.html', pets=pets,
-                           models=current_app.config['GLM_MODELS'])
+                           models=current_app.config['GLM_MODELS'],
+                           initial_pet=initial)
 
 
 @bp.route('/get_gpt_response', methods=['POST'])
@@ -53,7 +62,17 @@ def get_diary():
 
 @bp.route('/remark_pet')
 def remark_pet():
-    return render_template('remark_pet.html')
+    """宠物反馈页：真实宠物注册表 + 各宠实时评分（v2 前端用）。"""
+    pets = []
+    for p in pet_registry.list_pets():
+        info = pet_registry.public_info(p)
+        row = query_db('SELECT AVG(rating) AS r, COUNT(*) AS c FROM reviews WHERE book_id = ?',
+                       [f"pet{p['id']}"], one=True)
+        info['avg_rating'] = round(row['r'], 1) if row and row['c'] else None
+        info['review_count'] = row['c'] or 0
+        pets.append(info)
+    return render_template('remark_pet.html', pets=pets,
+                           user_name=session.get('user_id') or '')
 
 
 # ---------------------------------------------------------------------
@@ -73,7 +92,7 @@ def _resolve_target(name):
     return None, None
 
 
-def _remark_view(target_id, target_name):
+def _remark_view(target_id, target_name, submitted=False):
     """组装评价页上下文：宠物显示头像与简介，图书显示出版信息；评论列表两种都显示。"""
     pet = None
     if target_id.startswith('pet'):
@@ -95,7 +114,7 @@ def _remark_view(target_id, target_name):
     return render_template('remark.html', book=book, pet=pet,
                            book_name=target_name, reviews=reviews,
                            avg_rating=avg_rating, review_count=len(reviews),
-                           pets_in_recommend=recommends)
+                           pets_in_recommend=recommends, submitted=submitted)
 
 
 @bp.route('/remark', methods=['GET', 'POST'])
@@ -114,7 +133,7 @@ def remark():
                        [name, int(rating), review_text, target_id])
         except (ValueError, TypeError):
             return '评分必须是数字', 400
-        return _remark_view(target_id, target_name)
+        return _remark_view(target_id, target_name, submitted=True)
 
     target_id, target_name = _resolve_target(request.args.get('book_name'))
     if not target_id:

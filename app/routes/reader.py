@@ -26,9 +26,9 @@ def reader_info():
         user_tag = request.form.get('user_tag')
         if user_tag:
             execute_db('UPDATE users SET college = ? WHERE user_name = ?', [user_tag, g.user])
-            flash('标签已更新！', 'success')
+            flash('个性签名已更新！', 'success')
         else:
-            flash('请选择一个标签！', 'error')
+            flash('请输入个性签名！', 'error')
     return render_template('reader_info.html', user=user)
 
 

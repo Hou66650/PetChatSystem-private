@@ -27,13 +27,14 @@ def pet_display_rating(pet):
 @bp.route('/')
 def index():
     pets = pet_registry.list_pets()
-    books_p = [{
-        'book_name': pet.get('name', pet['role']),
-        'image_name': pet.get('avatar', 'c.png'),
+    cards = [{
+        'id': pet['id'],
+        'name': pet.get('name', pet['role']),
+        'avatar': pet.get('avatar', 'c.png'),
         'rating': pet_display_rating(pet),
     } for pet in pets]
-    top_pet = max(books_p, key=lambda p: p['rating']) if books_p else None
-    return render_template('index1.html', books_p=books_p, top_pet=top_pet)
+    top_pet = max(cards, key=lambda c: c['rating']) if cards else None
+    return render_template('index1.html', pets=cards, top_pet=top_pet)
 
 
 @bp.route('/about')

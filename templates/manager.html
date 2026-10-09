@@ -136,8 +136,10 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 </head>
-<body>
+<body class="theme">
+    {% include '_navbar.html' %}
     <!-- 导航栏 -->
     <div class="nav-container">
         <a href="{{ url_for('main.logout') }}" class="nav-link">注销 [{{ g.user }}]</a>

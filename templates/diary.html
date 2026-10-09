@@ -1,109 +1,138 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日记本</title>
+    <title>我的日记 · MPC 宠物聊天</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: url('images/study-room.jpg') no-repeat center center fixed;
+        body.theme {
+            padding-top: var(--nav-h);
+            min-height: 100vh;
+            /* 保留原书房/纸张背景（设计文档 二.8：背景图不改） */
+            background: var(--c-bg) url("/images/study-room.jpg") no-repeat center center fixed;
             background-size: cover;
-            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive;
+            font-family: var(--font-body);
         }
-
-        .diary-container {
+        .diary-wrap {
             display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             flex-direction: column;
+            align-items: center;
+            padding: 24px 16px;
         }
-
+        .diary-head {
+            width: min(1000px, 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            color: var(--c-text);
+            text-shadow: 0 1px 0 rgba(255,255,255,.6);
+        }
+        .diary-head h2 { margin: 0; font-family: var(--font-round); font-size: 20px; }
         .paper {
-            width: 90%; /* 增加宽度 */
-            max-width: 1000px; /* 增加最大宽度 */
-            height: 95%; /* 增加高度 */
-            max-height: 800px; /* 增加最大高度 */
-            background: url('images/paper.png') no-repeat center center;
-            background-size: contain; /* 调整背景图片大小以适应容器 */
-            padding: 30px; /* 增加内边距，让内容更舒适 */
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); /* 增加阴影效果 */
-            overflow-y: auto; /* 保留滚动条 */
-            border-radius: 15px; /* 增加圆角 */
+            width: min(1000px, 100%);
+            min-height: 60vh;
+            background: url("/images/paper.png") no-repeat center center;
+            background-size: 100% 100%;
+            padding: clamp(24px, 5vw, 64px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, .3);
+            border-radius: 12px;
+            overflow-y: auto;
+            max-height: 75vh;
         }
-
         .diary-content {
-            font-size: 1.2rem;
-            line-height: 1.8;
-            color: #333;
+            font-size: 15px;
+            line-height: 1.9;
+            color: #3c342c;
             white-space: pre-wrap;
-            padding: 0 260px; /* 增加左右内边距 */
-            margin-left: 80px;
+            max-width: 720px;
+            margin: 0 auto;
         }
-
-        .back-button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 1rem;
-            background-color: #6c757d;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
+        .diary-empty {
+            text-align: center;
+            color: var(--c-text-sub);
+            padding: 48px 16px;
         }
-
-        .back-button:hover {
-            background-color: #495057;
-            transform: scale(1.05);
-        }
+        .diary-empty .btn { margin-top: 16px; }
     </style>
 </head>
-<body>
-    <div class="diary-container">
-        <div class="paper">
-            <div id="diary-content" class="diary-content">
-                正在加载日记内容，请稍候...
+<body class="theme">
+    {% include '_navbar.html' %}
+    <div class="diary-wrap">
+        <div class="diary-head">
+            <h2>📖 我的聊天日记</h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <span id="diary-date" class="text-sub" style="font-size:13px;"></span>
+                <button class="btn-outline btn-sm" id="btn-export-pdf">导出 PDF</button>
+                <button class="btn btn-sm" onclick="location.href='/gpt'">继续聊天</button>
             </div>
         </div>
-        <button class="back-button" onclick="goBack()">返回</button>
+        <div class="paper">
+            <div id="diary-content" class="diary-content">正在加载日记内容…</div>
+        </div>
     </div>
-
+    {% include '_footer.html' %}
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/vendor/html2canvas.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/vendor/jspdf.umd.min.js') }}"></script>
     <script>
-        function goBack() {
-            window.location.href = "/gpt"; // 返回入口页面
+    // 日期标题
+    (function () {
+        const d = new Date();
+        document.getElementById('diary-date').textContent =
+            `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`;
+    })();
+
+    // 加载日记（localStorage 与聊天页同源：chatHistory）
+    async function loadDiary() {
+        const el = document.getElementById('diary-content');
+        let chatHistory = [];
+        try {
+            chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+        } catch (e) { chatHistory = []; }
+
+        if (!chatHistory.length) {
+            el.innerHTML = '';
+            const empty = document.createElement('div');
+            empty.className = 'diary-empty';
+            empty.innerHTML = `还没有聊天记录。<br>去和宠物聊两句，再回来翻开这页日记吧。
+                <div><button class="btn" onclick="location.href='/gpt'">开始聊天</button></div>`;
+            el.appendChild(empty);
+            return;
         }
+        const lines = chatHistory
+            .filter(e => e && e.message)
+            .map(e => `${e.sender || (e.role === 'user' ? '我' : '宠物')}: ${e.message}`)
+            .join('\n\n');
+        el.textContent = lines;
+    }
+    loadDiary();
 
-        // 加载日记内容
-        async function loadDiary() {
-            try {
-                const response = await fetch('/get-diary', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        chatHistory: JSON.parse(localStorage.getItem('chatHistory')) || []
-                    }),
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    const diaryContent = document.getElementById('diary-content');
-                    diaryContent.textContent = data.text;
-                } else {
-                    alert('加载日记失败: ' + data.error);
-                }
-            } catch (error) {
-                console.error('加载日记失败:', error);
-                alert('加载日记失败，请检查网络连接！');
+    // 导出 PDF（复用聊天页导出逻辑，本地化依赖）
+    document.getElementById('btn-export-pdf').addEventListener('click', function () {
+        const paper = document.querySelector('.paper');
+        toast('正在生成 PDF…', 'info');
+        html2canvas(paper).then(canvas => {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfW = pdf.internal.pageSize.getWidth();
+            const pdfH = pdf.internal.pageSize.getHeight();
+            const imgH = canvas.height * pdfW / canvas.width;
+            let y = 0;
+            while (y < canvas.height) {
+                const pageH = Math.min(canvas.height - y, pdfH * canvas.width / pdfW);
+                const pc = document.createElement('canvas');
+                pc.width = canvas.width; pc.height = pageH;
+                pc.getContext('2d').drawImage(canvas, 0, y, canvas.width, pageH, 0, 0, canvas.width, pageH);
+                pdf.addImage(pc.toDataURL('image/png'), 'PNG', 0, 0, pdfW, imgH);
+                y += pageH;
+                if (y < canvas.height) pdf.addPage();
             }
-        }
-
-        loadDiary();
+            pdf.save('my-diary.pdf');
+            toast('PDF 已导出', 'success');
+        }).catch(() => toast('PDF 生成失败', 'error'));
+    });
     </script>
 </body>
 </html>

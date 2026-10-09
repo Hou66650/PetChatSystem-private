@@ -24,9 +24,9 @@ def reader_login():
         user = query_db('SELECT * FROM users WHERE user_name = ?',
                         [request.form['username']], one=True)
         if user is None:
-            error = 'Invalid username'
+            error = '用户名或密码不正确'
         elif not check_password_hash(user['pwd'], request.form['password']):
-            error = 'Invalid password'
+            error = '用户名或密码不正确'
         else:
             session['user_id'] = user['user_name']
             return redirect(url_for('reader.reader'))
@@ -38,13 +38,13 @@ def register():
     error = None
     if request.method == 'POST':
         if not request.form.get('username'):
-            error = 'You have to enter a username'
+            error = '请输入用户名'
         elif not request.form.get('password'):
-            error = 'You have to enter a password'
+            error = '请输入密码'
         elif request.form['password'] != request.form['password2']:
-            error = 'The two passwords do not match'
+            error = '两次输入的密码不一致'
         elif _get_user_id(request.form['username']) is not None:
-            error = 'The username is already taken'
+            error = '该用户名已被注册'
         else:
             execute_db(
                 'INSERT INTO users (user_name, pwd, college, num, email) VALUES (?, ?, ?, ?, ?)',
@@ -65,9 +65,9 @@ def manager_login():
         manager = query_db('SELECT * FROM manager_info WHERE manager_id = ?',
                            [request.form['user_id']], one=True)
         if manager is None:
-            error = 'Invalid username'
+            error = '用户名或密码不正确'
         elif not check_password_hash(manager['password'], request.form['password']):
-            error = 'Invalid password'
+            error = '用户名或密码不正确'
         else:
             session['user_id'] = request.form['user_id']
             return redirect(url_for('manager.manager'))
@@ -79,9 +79,9 @@ def register_admin():
     error = None
     if request.method == 'POST':
         if not request.form.get('password'):
-            error = 'You have to input your password'
+            error = '请输入密码'
         elif not request.form.get('manager_id'):
-            error = 'You have to input your manager_id'
+            error = '请输入管理员账号'
         else:
             execute_db('INSERT INTO manager_info (manager_id, password) VALUES (?, ?)',
                        [request.form['manager_id'],

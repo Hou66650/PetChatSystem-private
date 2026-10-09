@@ -3,170 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>用户登录</title>
+    <title>登录 · MPC 宠物聊天</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <style>
+        body.theme {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* 保留原鲸鱼插画背景，降饱和（设计文档 二.8） */
+            background: var(--c-bg) url("{{ url_for('static', filename='images/c.jpg') }}") center / cover no-repeat;
+        }
+        body.theme::before {
+            content: '';
+            position: fixed; inset: 0;
+            backdrop-filter: saturate(.65) brightness(1.05);
+            -webkit-backdrop-filter: saturate(.65) brightness(1.05);
+            background: rgba(255, 248, 240, .35);
+        }
+        .login-card {
+            position: relative;
+            width: min(92vw, 360px);
+            background: var(--c-card);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-hover);
+            padding: 32px 28px;
+        }
+        .login-card h2 {
+            margin: 0 0 24px;
+            font-family: var(--font-round);
+            text-align: center;
+            font-size: 22px;
+        }
+        .form-tip { font-size: 13px; color: var(--c-danger); min-height: 20px; margin: 4px 0 8px; text-align: center; }
+        .login-links { display: flex; justify-content: space-between; margin-top: 16px; font-size: 14px; }
+    </style>
 </head>
-<body>
-<div class="nav-links">
-    <a href="{{ url_for('main.index') }}">返回</a>
-    <a href="{{ url_for('auth.register') }}">注册</a>
-</div>
-<div class="container">
-    <div class="page">
-        <h2>用户登录</h2>
-        {% if error %}
-        <div class="error">
-            <strong>错误: </strong> {{ error }}
-        </div>
-        {% endif %}
-        <form action="" method="post">
-            <dl>
-                <dt>用户名:</dt>
-                <dd><input type="text" name="username" size="30" value="{{ request.form.username }}"></dd>
-                <dt>密码:</dt>
-                <dd><input type="password" name="password" size="30"></dd>
-            </dl>
-            <div class="actions">
-                <input type="submit" value="登录">
+<body class="theme">
+    {% include '_navbar.html' %}
+    <div class="login-card">
+        <h2>🐾 欢迎回来</h2>
+        <form method="post" action="" novalidate>
+            <div class="form-tip">{{ error or '' }}</div>
+            <div class="field">
+                <label for="username">用户名</label>
+                <input class="input" type="text" id="username" name="username" size="30"
+                       value="{{ request.form.username }}" autocomplete="username" required>
             </div>
+            <div class="field">
+                <label for="password">密码</label>
+                <input class="input" type="password" id="password" name="password" size="30"
+                       autocomplete="current-password" required>
+            </div>
+            <button class="btn" type="submit" style="width: 100%;">登录</button>
         </form>
+        <div class="login-links">
+            <a href="{{ url_for('main.index') }}">← 返回首页</a>
+            <a href="{{ url_for('auth.register') }}">注册新账号</a>
+        </div>
     </div>
-</div>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
-<style>
-    body {
-        font-family: 'San Francisco', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        background-image: url('static/images/c.jpg');
-        background-size: cover;
-        background-position: center;
-        color: #1d1d1f;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-    }
-
-    .page {
-        max-width: 400px;
-        background: #fff;
-        padding: 2rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        animation: fadeIn 0.8s ease;
-    }
-
-    h2 {
-        font-size: 2rem;
-        margin-bottom: 1.5rem;
-        color: #8a2be2;
-        text-align: center;
-    }
-
-    .error {
-        background: #ffeded;
-        color: #d9534f;
-        padding: 0.75rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
-        border: 1px solid #d9534f;
-    }
-
-    dl {
-        margin: 0;
-        padding: 0;
-    }
-
-    dt {
-        font-size: 1rem;
-        color: #525255;
-        margin-bottom: 0.5rem;
-    }
-
-    dd {
-        margin: 0 0 1rem 0;
-    }
-
-    input[type="text"],
-    input[type="password"] {
-        width: 100%;
-        padding: 0.75rem;
-        font-size: 1rem;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    input[type="text"]:focus,
-    input[type="password"]:focus {
-        border-color: #8a2be2;
-        box-shadow: 0 0 5px rgba(138, 43, 226, 0.5);
-    }
-
-    .actions {
-        text-align: center;
-        margin-top: 1.5rem;
-    }
-
-    input[type="submit"] {
-        background-color: #4b0082; /* 暗紫色 */
-        color: #fff;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        font-size: 1rem;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
-        box-shadow: 0 4px 15px rgba(75, 0, 130, 0.5); /* 按钮光影效果 */
-    }
-
-    input[type="submit"]:hover {
-        background-color: #6a5acd; /* 浅紫色 */
-        transform: scale(1.1); /* 放大效果 */
-        box-shadow: 0 6px 20px rgba(106, 90, 205, 0.7); /* 更强光影效果 */
-    }
-
-    /* 导航栏样式 */
-    .nav-links {
-        position: fixed; /* 固定在页面顶部 */
-        top: 0;
-        left: 0;
-        width: 100%;
-        background: rgba(26, 26, 46, 0.8); /* 半透明背景 */
-        backdrop-filter: blur(10px); /* 模糊效果 */
-        padding: 1rem 0;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-        z-index: 1000;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .nav-links a {
-        color: #8a2be2;
-        text-decoration: none;
-        font-size: 1rem;
-        margin: 0 1rem;
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        transition: color 0.3s ease, background-color 0.3s ease, transform 0.3s ease;
-    }
-
-    .nav-links a:hover {
-        color: #fff; /* 白色文字 */
-        background-color: #4b0082; /* 暗紫色背景 */
-        transform: scale(1.1); /* 放大效果 */
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-</style>
 </html>

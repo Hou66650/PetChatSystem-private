@@ -68,8 +68,10 @@
             transform: translateY(0);
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 </head>
-<body>
+<body class="theme">
+    {% include '_navbar.html' %}
     <div class="container">
         <h1>管理员注册</h1>
         <form action="{{ url_for('auth.register_admin') }}" method="post">

@@ -176,8 +176,9 @@
         }
     </style>
 </head>
-<body>
-    <div class="nav-links">
+<body class="theme">
+    {% include '_navbar.html' %}
+    <div class="nav-links" style="padding-top:64px;">
         <a href="{{ url_for('reader.reader') }}">返回</a>
         <a href="{{ url_for('reader.reader_modify') }}">修改</a>
     </div>
@@ -186,25 +187,20 @@
         {% if user %}
         <ul class="profile-list fade-in">
             <li><strong>用户名:</strong> {{ user.user_name }}</li>
-            <li><strong>标签:</strong> {{ user.college }}</li>
-            <li><strong>学号:</strong> {{ user.num }}</li>
+            <li><strong>个性签名:</strong> {{ user.college or '还没有签名' }}</li>
             <li><strong>邮箱:</strong> {{ user.email }}</li>
         </ul>
         {% endif %}
 
         <!-- 用户标签选择 -->
         <div class="tag-selection fade-in">
-            <h3>选择你的标签</h3>
+            <h3>修改个性签名</h3>
             <form method="POST" action="{{ url_for('reader.reader_info') }}">
-                <select name="user_tag" id="user-tag" class="tag-dropdown">
-                    <option value="暗黑使者">暗黑使者</option>
-                    <option value="光之守护者">光之守护者</option>
-                    <option value="龙族后裔">龙族后裔</option>
-                    <option value="魔法学徒">魔法学徒</option>
-                    <option value="异界旅人">异界旅人</option>
-                    <option value="其他">其他</option>
-                </select>
-                <button type="submit" class="tag-submit-btn">确认</button>
+                <input type="text" name="user_tag" id="user-tag" class="tag-dropdown"
+                       maxlength="30" placeholder="一句话介绍自己（30 字内）"
+                       value="{{ user.college or '' }}"
+                       style="padding:8px 12px; border:1px solid #E5D9CE; border-radius:10px; font-size:14px; width:min(320px,80vw);">
+                <button type="submit" class="tag-submit-btn">保存</button>
             </form>
         </div>
     </div>

@@ -1,0 +1,26 @@
+{# 全站统一顶栏 —— 规范：docs/UI重构设计文档.md 二.7 #}
+<nav class="navbar">
+  <a class="brand" href="{{ url_for('main.index') }}">
+    <img src="{{ url_for('static', filename='images/dog1.png') }}" alt="MPC 宠物聊天">
+    MPC 宠物聊天
+  </a>
+  <nav id="navbar-links">
+    <a href="{{ url_for('main.index') }}"
+       {% if request.path == '/' %}class="active"{% endif %}>首页</a>
+    <a href="{{ url_for('chat.gpt') }}"
+       {% if request.path == '/gpt' %}class="active"{% endif %}>开始聊天</a>
+    <a href="{{ url_for('chat.remark_pet') }}"
+       {% if request.path == '/remark_pet' %}class="active"{% endif %}>宠物反馈</a>
+  </nav>
+  <div class="spacer"></div>
+  <div class="user-area">
+    {% if session.get('user_id') %}
+      <span class="text-sub">{{ session['user_id'] }}</span>
+      <a class="btn-ghost btn-sm" href="{{ url_for('main.logout') }}">退出</a>
+    {% else %}
+      <a class="btn-ghost btn-sm" href="{{ url_for('auth.reader_login') }}">登录</a>
+      <a class="btn-outline btn-sm" href="{{ url_for('auth.register') }}">注册</a>
+    {% endif %}
+  </div>
+  <button class="btn-ghost btn-sm burger" id="navbar-burger" aria-label="打开菜单">☰</button>
+</nav>

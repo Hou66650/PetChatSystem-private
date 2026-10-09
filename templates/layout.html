@@ -1,22 +1,19 @@
 <!doctype html>
-<title> {% block title %} 宠物智能聊天系统 {% endblock %} </title>
-<link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
-<div class=page>
-  <h1>宠物智能聊天系统</h1>
-  <div class=navigation>
-    {% block link %}{% endblock %}
-  </div>
-  <div class=body>
-    {% block body %}{% endblock %}
-   </div>
-  <div class=footer>
-     &mdash; ——上海理工大学——
-  </div>
-  <script>
-    {% block script %}
-    {% endblock %}
-  </script>
-</div>
-
-
-    
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MPC 宠物聊天{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body class="theme">
+    {% include '_navbar.html' %}
+    <div class="page-wrap">
+        {% block body %}{% endblock %}
+    </div>
+    {% include '_footer.html' %}
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block script %}{% endblock %}
+</body>
+</html>
