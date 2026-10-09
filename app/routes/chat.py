@@ -42,6 +42,14 @@ def diary():
     return render_template('diary.html')
 
 
+@bp.route('/den')
+def den():
+    """3D 宠物小窝：本地 Three.js 程序化宠物 + 抚摸/喂食/亲密度/场景内聊天。"""
+    pets = [pet_registry.public_info(p) for p in pet_registry.list_pets()]
+    return render_template('den.html', pets=pets,
+                           models=current_app.config['GLM_MODELS'])
+
+
 @bp.route('/get-diary', methods=['POST'])
 def get_diary():
     """把浏览器 localStorage 里的聊天记录整理成日记文本。"""
