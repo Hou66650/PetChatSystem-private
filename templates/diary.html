@@ -125,7 +125,7 @@
                 const div = document.createElement('p');
                 div.className = 'entry';
                 const strong = document.createElement('strong');
-                strong.textContent = name + '：';
+                strong.textContent = name + (e.ts ? `（${e.ts}）` : '') + '：';
                 div.appendChild(strong);
                 div.appendChild(document.createTextNode(String(e.message).trim()));
                 return div;

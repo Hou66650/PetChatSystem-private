@@ -388,7 +388,7 @@
             const isUser = row.role === 'user';
             const rowPetId = inferPetId(row);
             const sender = isUser
-                ? (escapeHtml(prefs.nickname || row.sender || '我'))
+                ? (escapeHtml(prefs.nickname || '我'))   // 用户统一显示"我"，不沿用旧记录里的"用户"
                 : (escapeHtml(prefs.petNickname || row.sender || (PETS.find(p => p.id === rowPetId) || currentPet()).name || '宠物'));
             let content;
             if (!isUser && window.marked) {

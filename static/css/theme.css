@@ -16,6 +16,8 @@
   --c-success: #5BB98C;
   --c-danger: #E5735B;
   --c-danger-bg: #FDEEEA;
+  --c-link: #A85416;            /* 链接 5.32:1@白 */
+  --c-link-hover: #8A4311;      /* 链接 hover 6.89:1@奶油底 */
   --c-line: #E5D9CE;           /* 边线/描边 */
   --c-disabled-bg: #F3E9E0;
   --c-disabled-text: #B8A99E;
@@ -50,8 +52,8 @@ body.themepad {
 
 body.theme { padding-top: var(--nav-h); } /* 给固定顶栏留位 */
 
-a { color: #A85416; text-decoration: none; }   /* 链接暖棕橙 5.32:1@白 */
-a:hover { text-decoration: underline; }
+a { color: var(--c-link); text-decoration: none; }
+a:hover { color: var(--c-link-hover); text-decoration: underline; }
 
 :focus-visible {
   outline: 2px solid var(--c-primary);
