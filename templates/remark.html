@@ -32,7 +32,7 @@
             background: var(--c-primary); color: var(--c-text); border: none; cursor: pointer;
             padding: 10px 28px; border-radius: 999px; font-size: 15px; font-weight: 600;
         }
-        .review-form button:hover { background: var(--c-primary-deep); color: #fff; }
+        .review-form button:hover { background: var(--c-primary-deep); color: #2F231B; }
         .footer { display: none; }
         .container {
             width: 80%;
@@ -102,17 +102,7 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
-        .review-form button {
-            padding: 10px 20px;
-            background-color: #50b3a2;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .review-form button:hover {
-            background-color: #42998a;
-        }
+/* 旧青绿按钮规则已删除，统一走 theme 规范（见文件头部 .review-form button） */
 
 
 
@@ -122,7 +112,7 @@
     <div class="container">
         <div class="main">
             <div class="submit-banner">🎉 评价提交成功！</div>
-            <h2 id="book_name">{{ book_name }} · 评价</h2>
+            <h2 id="book_name">{{ book_name }} <span style="color:var(--c-primary);">·</span> 评价</h2>
             {% if pet %}
             <div style="text-align:center; margin: 16px 0;">
                 <img src="{{ url_for('main.serve_images', filename=pet.avatar) }}" alt="{{ pet.name }}"
@@ -162,7 +152,7 @@
         {% if book['book_id'] == review['book_id'] %}
             <li class="review-item">
                 <div class="review-header">
-                    <strong class="reviewer-name">评论者:</strong> {{ review['name'] }}<br>
+                    <strong class="reviewer-name">{{ review['name'] }}</strong><br>
                     <strong class="review-rating">评分:</strong>
                     <span class="stars">
                         {# 开始 for 语句 #}
@@ -187,7 +177,9 @@
             <h3>相关推荐:</h3>
             <ul>
                 {% for p in pets_in_recommend %}
-                <li><a href="/remark?book_name={{ p }}">{{ p }}</a></li>
+                <li style="display:inline-block; margin: 0 8px 8px 0;">
+                    <a href="/remark?book_name={{ p }}" class="tag" style="text-decoration:none;">{{ p }} →</a>
+                </li>
                 {% else %}
                 <li>暂无</li>
                 {% endfor %}
@@ -199,14 +191,18 @@
                     <label for="name">姓名:</label>
                     <input type="text" id="name" name="name" required>
 
-                    <label for="rating">评分:</label>
-                    <select id="rating" name="rating" required>
-                        <option value="1">1星</option>
-                        <option value="2">2星</option>
-                        <option value="3">3星</option>
-                        <option value="4">4星</option>
-                        <option value="5">5星</option>
-                    </select>
+                    <label>评分:</label>
+                    <div class="stars" role="radiogroup" aria-label="评分" style="display:inline-flex; flex-direction:row-reverse; gap:2px; vertical-align:middle;">
+                        {% for i in range(5, 0, -1) %}
+                        <input type="radio" id="star{{ i }}" name="rating" value="{{ i }}" required
+                               style="position:absolute; opacity:0; width:0; height:0;">
+                        <label for="star{{ i }}" aria-label="{{ i }} 星"
+                               style="font-size:26px; color:#E5D9CE; cursor:pointer; padding:0 2px;"
+                               onmouseover="this.style.color='#F5A623'"
+                               onmouseout="if(!document.getElementById('star{{ i }}').checked) this.style.color='#E5D9CE'"
+                               onclick="this.style.color='#F5A623';">★</label>
+                        {% endfor %}
+                    </div>
 
                     <label for="review">评价内容:</label>
                     <textarea id="review" name="review" required></textarea>
@@ -220,6 +216,7 @@
     <div class="footer">
         <p style="font-size: 8px">版权所有 &copy; 2024 图书评价网站</p>
     </div>
+{% include '_footer.html' %}
 </body>
 {#<script>#}
 {#        document.getElementById('reviewForm').addEventListener('submit', function(event) {#}
