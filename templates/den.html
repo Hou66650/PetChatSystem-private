@@ -279,11 +279,11 @@
                 window.__denLamp.intensity = 1.2 - sunI;
                 // 右后冷色轮廓光：与暖灯形成冷暖对比，夜间立体感
                 if (!window.__denRim) {
-                    window.__denRim = new THREE.PointLight(0x6B7FBF, 0.4, 10);
-                    window.__denRim.position.set(2.4, 1.6, -1.8);
+                    window.__denRim = new THREE.PointLight(0x6B7FBF, 0.6, 10);
+                    window.__denRim.position.set(2.6, 1.4, -2.2);
                     scene.add(window.__denRim);
                 }
-                window.__denRim.intensity = 0.45;
+                window.__denRim.intensity = 0.6;
             } else if (window.__denLamp) {
                 window.__denLamp.intensity = 0;
                 if (window.__denRim) window.__denRim.intensity = 0;
