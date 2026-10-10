@@ -434,12 +434,12 @@
             } catch (e) {
                 toast('宠物模型加载失败，请刷新重试', 'error');
                 gltfCache[spec.glb] = null;     // 清失败缓存（rejected promise 不常驻，下次点击可重试）
+                spawnBusy = false;               // 先复位再回滚：子级调用时标志状态正确
                 if (prevId && !fromRollback) spawnPet(prevId, true);   // 回滚最多一跳：多资源损坏时不乒乓
-                spawnBusy = false;
                 return;
             }
-            // 用户等加载期间可能已切换到别的宠物
-            if (currentPetId !== id) { spawnBusy = false; return; }
+            // 用户等加载期间可能已切换到别的宠物：直接让位，busy 交给接管的 spawn 管理（其退出路径自会复位）
+            if (currentPetId !== id) return;
             const model = gltf.scene;
             // 归一化：目标高度、落地、居中（scene 会被缓存复用，先复位上次变换避免二次缩放）
             model.scale.setScalar(1);
