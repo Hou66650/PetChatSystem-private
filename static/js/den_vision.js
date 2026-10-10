@@ -193,6 +193,27 @@ class DenVision {
                 this.onGaze(false);
             }
         }
+
+        // ---- 眨眼检测（EAR：上下眼睑间距 / 眼宽，闭眼时骤降）----
+        if (lm && lm.length >= 478) {
+            const earR = Math.abs(lm[159].y - lm[145].y) / (Math.abs(lm[133].x - lm[33].x) || 1e-4);
+            const earL = Math.abs(lm[386].y - lm[374].y) / (Math.abs(lm[263].x - lm[362].x) || 1e-4);
+            const ear = (earR + earL) / 2;
+            const closed = ear < 0.13;                    // 阈值：闭眼 EAR 约 0.05-0.1，睁眼 0.25-0.35
+            if (closed) {
+                this._eyesClosedFrames = (this._eyesClosedFrames || 0) + 1;
+            } else if (this._eyesClosedFrames >= 1) {
+                // 闭→睁 = 一次完整眨眼；节流防重复触发
+                const now = performance.now();
+                if (now - (this._lastBlinkAt || 0) > 450) {
+                    this._lastBlinkAt = now;
+                    this.onBlink && this.onBlink();
+                }
+                this._eyesClosedFrames = 0;
+            } else {
+                this._eyesClosedFrames = 0;
+            }
+        }
     }
 
     _detectHand(ts) {

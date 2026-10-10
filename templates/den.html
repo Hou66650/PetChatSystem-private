@@ -1190,6 +1190,51 @@
             document.getElementById('chat-form').requestSubmit();
         });
 
+        // ---------- 宠物眨眼（同步用户眨眼 + 日常自动眨） ----------
+        function closedEyeTexture() {
+            const c = document.createElement('canvas');
+            c.width = c.height = 64;
+            const ctx = c.getContext('2d');
+            ctx.strokeStyle = '#3A2E24';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(32, 20, 18, Math.PI * 0.15, Math.PI * 0.85);   // 向下弧线 ⌒
+            ctx.stroke();
+            const tex = new THREE.CanvasTexture(c);
+            tex.needsUpdate = true;
+            return tex;
+        }
+        const closedEyeTex = closedEyeTexture();
+        let blinkSprites = [];
+        function petBlink(dur) {
+            if (!petModel) return;
+            // 清理上一次未消失的
+            blinkSprites.forEach(s => scene.remove(s));
+            blinkSprites = [];
+            const headPos = petHeadPos();
+            const sz = (petModel.userData.height || 1) * 0.14;
+            [-1, 1].forEach((side) => {
+                const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: closedEyeTex, transparent: true, opacity: 0.9 }));
+                sp.scale.set(sz * 1.4, sz, 1);
+                sp.position.copy(headPos).add(new THREE.Vector3(side * sz * 0.55, -0.02, sz * 0.9));
+                scene.add(sp);
+                blinkSprites.push(sp);
+            });
+            setTimeout(() => {
+                blinkSprites.forEach(s => scene.remove(s));
+                blinkSprites = [];
+            }, dur || 240);
+        }
+        // 日常自动眨眼：不依赖视觉互动，每 3-6 秒随机眨一次
+        let autoBlinkAt = performance.now() + 3000 + Math.random() * 3000;
+        function autoBlinkTick(now) {
+            if (now > autoBlinkAt) {
+                autoBlinkAt = now + 3000 + Math.random() * 4000;
+                if (anim.state !== 'sleep') petBlink(180);
+            }
+        }
+
         // ---------- 视觉互动（眼神对视 + 伸手抚摸；本地 WASM 推理，画面不上传） ----------
         let dv = null, visionOn = false, visionTick = null;
         let gazeNow = false, gazeSec = 0, lastGazeHeart = 0;
@@ -1240,6 +1285,10 @@
             window.__denVision = dv;   // 调试/验收钩子
             // 第三个参数 = 主画布：虚拟手与触摸判定的坐标换算基准（勿传预览小窗）
             const ok = await dv.start(document.getElementById('vision-cam'), {
+                onBlink() {
+                    // 用户眨眼 → 宠物同步眨（闭眼弧线闪现 220ms）
+                    if (anim.state !== 'sleep') petBlink(220);
+                },
                 onGaze(on) {
                     gazeNow = on;
                     if (on) {
@@ -1340,6 +1389,7 @@
             const now = performance.now();
 
             if (now - timeOfDayChecked > 60000) { applyTimeOfDay(); timeOfDayChecked = now; }
+            autoBlinkTick(now);
 
             if (petModel) {
                 // 出生缩放（弹性放大）
