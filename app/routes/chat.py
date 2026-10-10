@@ -147,3 +147,41 @@ def remark():
     if not target_id:
         return '未提供或未找到名称', 404
     return _remark_view(target_id, target_name)
+
+
+@bp.route('/api/tts', methods=['POST'])
+def tts():
+    """GLM-TTS 真人级语音合成：POST {text, voice?} → audio/wav 二进制"""
+    data = request.get_json(silent=True) or {}
+    text = (data.get('text') or '').strip()[:500]
+    voice = data.get('voice', 'tongtong')
+    if not text:
+        return jsonify({'error': 'empty text'}), 400
+    try:
+        import requests as _req
+        session = _req.Session()
+        session.trust_env = False   # bigmodel.cn 直连不走系统代理
+        resp = session.post(
+            f"{current_app.config['GLM_BASE_URL']}/audio/speech",
+            headers={
+                'Authorization': f"Bearer {current_app.config['GLM_API_KEY']}",
+                'Content-Type': 'application/json',
+            },
+            json={
+                'model': 'glm-tts',
+                'input': text,
+                'voice': voice,
+                'response_format': 'wav',
+                'speed': 0.9,
+                'volume': 1.0,
+            },
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            current_app.logger.warning('GLM TTS failed [%s]: %s', resp.status_code, resp.text[:200])
+            return jsonify({'error': f'tts failed: {resp.status_code}'}), 502
+        return current_app.response_class(resp.content, mimetype='audio/wav',
+                                          headers={'Cache-Control': 'public, max-age=3600'})
+    except Exception as e:
+        current_app.logger.warning('GLM TTS error: %s', e)
+        return jsonify({'error': str(e)}), 502

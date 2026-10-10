@@ -907,32 +907,53 @@
         window.addEventListener('focus', () => { userInteracted = true; }, { passive: true });
         // 温柔模式参数（TTS 尽量柔和）
         const TTS_GENTLE = { rate: 0.88, pitch: 0.95 };
+        // GLM 后端 TTS（真人级）：fire-and-forget，失败降级浏览器语音
+        const ttsAudioCache = {};
+        function glmTTS(text) {
+            const key = text.slice(0, 50);
+            if (ttsAudioCache[key]) {
+                const audio = new Audio(ttsAudioCache[key]);
+                audio.volume = 0.85;
+                audio.play();
+                return;
+            }
+            fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text }),
+            }).then((r) => {
+                if (!r.ok) throw new Error('tts ' + r.status);
+                return r.blob();
+            }).then((blob) => {
+                const url = URL.createObjectURL(blob);
+                ttsAudioCache[key] = url;
+                const audio = new Audio(url);
+                audio.volume = 0.85;
+                audio.play();
+            }).catch(() => {
+                // 后端 TTS 失败 → 降级浏览器语音
+                browserSpeak(text);
+            });
+        }
+        // 浏览器 SpeechSynthesis 降级
+        function browserSpeak(text) {
+            if (!window.speechSynthesis) return;
+            try {
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = 'zh-CN';
+                u.rate = TTS_GENTLE.rate;
+                u.pitch = TTS_GENTLE.pitch;
+                if (zhVoice) u.voice = zhVoice;
+                speechSynthesis.cancel();
+                speechSynthesis.speak(u);
+            } catch (e) {}
+        }
         function speak(text, opts = {}) {
             const clean = String(text).replace(/[～~♪🎯🎉🧣🎀✨]/g, '').trim().slice(0, 140);
             if (opts.talk !== false && petModel && clean) setAnim('talk', 1200 + clean.length * 60);   // 说话动画不随静音关闭
             if (!ttsOn || !userInteracted || !clean) return;
-            if (!window.speechSynthesis) {
-                toast('当前浏览器不支持语音合成，建议用 Chrome/Edge 打开', 'info');
-                return;
-            }
-            // 检查是否有可用语音（有些系统需要等 voices 加载完）
-            if (!zhVoice && speechSynthesis.getVoices().length === 0) {
-                refreshVoices();   // 再试一次
-                if (speechSynthesis.getVoices().length === 0) {
-                    toast('系统没有可用语音，请在 Windows 设置中安装中文语音包', 'info');
-                    return;
-                }
-            }
-            try {
-                const u = new SpeechSynthesisUtterance(clean);
-                u.lang = 'zh-CN';
-                u.rate = opts.rate || TTS_GENTLE.rate;
-                u.pitch = opts.pitch || TTS_GENTLE.pitch;
-                u.volume = 0.9;
-                if (zhVoice) u.voice = zhVoice;
-                speechSynthesis.cancel();
-                speechSynthesis.speak(u);
-            } catch (e) { /* 无语音库环境静默 */ }
+            // 优先 GLM 后端 TTS（真人级声音），失败自动降级浏览器
+            glmTTS(clean);
         }
         document.getElementById('btn-tts').addEventListener('click', function () {
             ttsOn = !ttsOn;
