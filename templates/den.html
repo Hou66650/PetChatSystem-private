@@ -404,7 +404,7 @@
             },
             snow: {     // 静静雪原：雪堆 + 松树 + 落雪
                 rug: 0xE8F0F8,
-                ground: { grass: false, base: 0xF2F6FA, day: 0xFFFFFF, dusk: 0xD8E0EA, night: 0x9AA6B8 },
+                ground: { grass: false, day: 0xFFFFFF, dusk: 0xD8E0EA, night: 0x9AA6B8 },
                 env: { ch: '❄️', n: 22, rise: false },
                 build(g) {
                     [[-2.0, -1.2, 0.55], [1.9, -0.9, 0.4], [1.2, -1.9, 0.62], [-1.1, -2.1, 0.34]].forEach(([x, z, r]) => {
@@ -428,7 +428,7 @@
             },
             room: {     // 温馨小窝：木地板 + 纸箱 + 毛线球 + 串灯
                 rug: 0xF5C9A0,
-                ground: { grass: false, base: 0xC9A177, day: 0xD9B98F, dusk: 0xC8A87E, night: 0x8A7E72 },
+                ground: { grass: false, day: 0xD9B98F, dusk: 0xC8A87E, night: 0x8A7E72 },
                 env: { ch: '🫧', n: 10, rise: true, tiny: true },
                 build(g) {
                     const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.9), M(0xC89858));
@@ -498,19 +498,34 @@
             },
         };
 
-        // 环境粒子（樱花/落雪/微尘/星光，主题切换时重建）
+        // 环境粒子（樱花/落雪/微尘/星光，主题切换时重建；纹理缓存复用避免重复创建）
         let envSprites = [];
+        let themeFireLight = null, themeFlame = null;   // tick 用引用缓存，避免每帧 getObjectByName
+        const envTexCache = {};
+        function disposeObjectTree(root) {
+            root.traverse((o) => {
+                if (o.geometry) o.geometry.dispose();
+                if (o.material) {
+                    (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
+                }
+            });
+        }
         function applyTheme(name) {
             const t = THEMES[name];
             if (!t) return;
             currentTheme = name;
+            disposeObjectTree(decorGroup);   // 显式释放 GPU 资源，防止反复切宠累积
             while (decorGroup.children.length) decorGroup.remove(decorGroup.children[0]);
+            themeFireLight = null; themeFlame = null;
             t.build(decorGroup);
+            themeFireLight = decorGroup.getObjectByName('__fireLight') || null;
+            themeFlame = decorGroup.getObjectByName('__flame') || null;
             rug.material.color.setHex(t.rug);
             applyTimeOfDay();
-            envSprites.forEach(s => scene.remove(s));
+            envSprites.forEach((s) => { scene.remove(s); s.material.dispose(); });
             envSprites = [];
-            const tex = emojiTexture(t.env.ch);
+            if (!envTexCache[t.env.ch]) envTexCache[t.env.ch] = emojiTexture(t.env.ch);
+            const tex = envTexCache[t.env.ch];
             for (let i = 0; i < t.env.n; i++) {
                 const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.75 }));
                 const sz = t.env.tiny ? 0.1 + Math.random() * 0.08 : 0.16 + Math.random() * 0.12;
@@ -668,6 +683,7 @@
             try {
                 gltf = await loadGlb(spec.glb);
             } catch (e) {
+                if (currentPetId !== id) { spawnBusy = false; return; }   // 已被接管：静默让位（不误报/不闪回）
                 toast('宠物模型加载失败，请刷新重试', 'error');
                 gltfCache[spec.glb] = null;     // 清失败缓存（rejected promise 不常驻，下次点击可重试）
                 spawnBusy = false;               // 先复位再回滚：子级调用时标志状态正确
@@ -1015,7 +1031,10 @@
         function loadMood() {
             try { return JSON.parse(localStorage.getItem(MOOD_KEY) || '{}'); } catch (e) { return {}; }
         }
-        function saveMood(m) { try { localStorage.setItem(MOOD_KEY, JSON.stringify(m)); } catch (e) {} }
+        function saveMood(m) {
+            try { localStorage.setItem(MOOD_KEY, JSON.stringify(m)); }
+            catch (e) { toast('心情记录暂时存不下来（存储受限）', 'error'); }
+        }
         const moodMask = document.getElementById('mood-mask');
         let moodSel = null;
         function moodDateStr(offset = 0) {
@@ -1054,8 +1073,10 @@
         });
         document.getElementById('mood-cancel').addEventListener('click', () => { moodMask.hidden = true; });
         moodMask.addEventListener('click', (e) => { if (e.target === moodMask) moodMask.hidden = true; });
-        document.getElementById('mood-ok').addEventListener('click', async () => {
+        document.getElementById('mood-ok').addEventListener('click', async function () {
+            if (this.disabled) return;
             if (!moodSel) { toast('先选一个今天的心情吧', 'info'); return; }
+            this.disabled = true; this.textContent = '它正在听…';
             const today = moodDateStr();
             const m = loadMood();
             if (!m.days) m.days = {};
@@ -1083,6 +1104,8 @@
                 showBubble(data.reply || `${SPECS[currentPetId].name}一直都在哦`, 4200);
             } catch (err) {
                 showBubble(`${SPECS[currentPetId].name}一直都在，别怕`, 3200);
+            } finally {
+                this.disabled = false; this.textContent = '告诉它';
             }
         });
 
@@ -1100,6 +1123,12 @@
             breathCircle.textContent = emoji;
         }
         function startBreath() {
+            breathClear();   // 防键盘重入：旧链先清
+            if (visionOn) {   // 练习期间收起视觉互动，保持沉浸（抚摸动画会打断呼吸同步）
+                stopVision();
+                const vb = document.getElementById('btn-vision');
+                if (vb) vb.textContent = '👁 眼神互动';
+            }
             breathMask.hidden = false;
             setAnim('sleep', 48000);   // 宠物同步进入舒缓呼吸（慢放动画）
             const ROUNDS = 3;
@@ -1118,7 +1147,7 @@
                 setAnim('petting', 2200);
                 showBubble('你做得很好，现在有没有轻松一点点？', 3600);
             }, ROUNDS * 14000));
-            breathTimers.push(setTimeout(() => { breathMask.hidden = true; }, ROUNDS * 14000 + 4000));
+            breathTimers.push(setTimeout(() => { breathClear(); breathMask.hidden = true; }, ROUNDS * 14000 + 4000));
         }
         function stopBreath() {
             breathClear();
@@ -1135,6 +1164,7 @@
         document.getElementById('chat-chips').addEventListener('click', (e) => {
             const btn = e.target.closest('button[data-say]');
             if (!btn) return;
+            if (typeof chatBusy !== 'undefined' && chatBusy) { toast('它正在回复，等一下下哦', 'info'); return; }
             chatInput.value = btn.dataset.say;
             document.getElementById('chat-form').requestSubmit();
         });
@@ -1327,10 +1357,8 @@
                     sp.position.y = 2.8 + Math.random() * 0.6; sp.position.x = (Math.random() - 0.5) * 7; sp.position.z = (Math.random() - 0.5) * 7;
                 }
             }
-            const fireLight = decorGroup.getObjectByName && decorGroup.getObjectByName('__fireLight');
-            if (fireLight) fireLight.intensity = 0.85 + Math.sin(t * 9) * 0.15 + Math.sin(t * 23) * 0.1;
-            const flameObj = decorGroup.getObjectByName && decorGroup.getObjectByName('__flame');
-            if (flameObj) flameObj.scale.setScalar(1 + Math.sin(t * 11) * 0.12);
+            if (themeFireLight) themeFireLight.intensity = 0.85 + Math.sin(t * 9) * 0.15 + Math.sin(t * 23) * 0.1;
+            if (themeFlame) themeFlame.scale.setScalar(1 + Math.sin(t * 11) * 0.12);
 
             // 粒子物理
             for (let i = particles.length - 1; i >= 0; i--) {
