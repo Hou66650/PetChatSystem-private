@@ -264,7 +264,10 @@
 2. toast 视觉规格：白底卡片 + 状态色描边（success 绿 / error 红 / info 边线棕）+ `--c-text` 文字 + 状态图标，圆角胶囊与阴影同 `.card`。
 
 ## 十、3D 宠物小窝（/den，2026-10-10 新增）
-- **技术**：Three.js r128 本地化（static/js/vendor/，零 CDN），四只宠物全部程序化建模（球/锥/圆柱组合，低多边形卡通风，无外部模型文件）；OrbitControls 拖拽旋转/滚轮缩放
+- **技术**：Three.js r128 + GLTFLoader 本地化（static/js/vendor/，零 CDN）；四只宠物为 **Quaternius CC0 骨骼动画 GLB 模型**（poly.pizza 下载至 static/models/：柴犬/哈士奇/猫/德牧，各 8-24 个动画片段），AnimationMixer 驱动状态机（idle/happy(跳跃奔跑)/eat(进食)/petting(低头享受)/talk/睡眠慢放），配饰挂 Head/Neck 骨骼随动，petHeadPos 取头部骨骼世界坐标；OrbitControls 拖拽旋转/滚轮缩放
+- **背景升级**：地面为草地纹理（three.js 官方 grasslight-big.jpg，本地化），昼夜联动调暗；灌木贴地化
+- **宠物说话（🔊 语音按钮）**：浏览器 SpeechSynthesis 本地 TTS（离线零上传），自动挑选中文音色；气泡显示即朗读（问候/摸摸/喂食/换装/对视/抚摸全覆盖），场景聊天回复同步朗读+talk 动画；开关一键静音
+- **品种更名与兼容**：柯基→柴犬、萨摩耶→哈士奇（匹配新模型），petN.json 增加 aliases（旧名评价链接仍可解析）
 - **场景**：地面+地毯+灌木+软阴影；昼夜系统按真实时间切换天空/光照（清晨/白天/黄昏/夜晚）；夜间自动启用暖色点光源小夜灯（0xFFD9A0，强度随夜深渐增），保证暗时段模型可辨识
 - **动画状态机**：idle（呼吸/摇尾/随机耳动/眨眼）/ happy（跳跃+小碎步+快速摇尾）/ eat（低头咀嚼）/ petting（仰头眯眼）/ talk（说话张嘴）/ sleep（45 秒无互动入睡+💤粒子）
 - **交互**：点击 3D 模型=摸摸（射线检测+节流）；喂食 3 种（🦴🐟🍪 食物抛物线飞行）；换装 4 态（无/派对帽/红围巾/蝴蝶结，逐宠持久化）；拍照（canvas 截图下载 PNG）；BGM 开关（本地 mp3）

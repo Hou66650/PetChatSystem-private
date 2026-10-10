@@ -70,8 +70,8 @@ r = s.post(BASE + '/get_gpt_response', json={
     'message': '用五个字打个招呼', 'chatHistory': [], 'model': 'glm-4.5-flash', 'petId': 1},
     timeout=120)
 d = r.json()
-check('柯基对话', r.status_code == 200 and d.get('reply'), d.get('reply', '')[:30])
-check('返回宠物信息', d.get('pet', {}).get('name') == '柯基' and d.get('pet', {}).get('avatar') == 'f.png')
+check('柴犬对话', r.status_code == 200 and d.get('reply'), d.get('reply', '')[:30])
+check('返回宠物信息', d.get('pet', {}).get('name') == '柴犬' and d.get('pet', {}).get('avatar') == 'f.png')
 r = s.post(BASE + '/get_gpt_response', json={
     'message': '你是猫还是狗？', 'chatHistory': [], 'model': 'glm-4.5-flash', 'petId': 3},
     timeout=120)
@@ -99,13 +99,13 @@ check('非法格式被拒', r.status_code == 400)
 print('== 6. 日记 ==')
 r = s.post(BASE + '/get-diary', json={'chatHistory': [
     {'sender': '小明', 'message': '你好', 'role': 'user'},
-    {'sender': '柯基', 'message': '汪汪！', 'role': 'assistant'}]})
+    {'sender': '柴犬', 'message': '汪汪！', 'role': 'assistant'}]})
 check('日记文本', r.status_code == 200 and '汪汪' in r.json().get('text', ''))
 
 print('== 7. 宠物评分 ==')
-r = s.post(BASE + '/remark', data={'book_name': '柯基', 'name': 'e2e_test',
+r = s.post(BASE + '/remark', data={'book_name': '柴犬', 'name': 'e2e_test',
                                    'rating': '5', 'review': '很可爱'})
-check('宠物评分提交', r.status_code == 200 and '柯基' in r.text)
+check('宠物评分提交', r.status_code == 200 and '柴犬' in r.text)
 r = s.post(BASE + '/remark', data={'book_name': '不存在的', 'name': 'x', 'rating': '5', 'review': 'y'})
 check('未知名称 404', r.status_code == 404)
 

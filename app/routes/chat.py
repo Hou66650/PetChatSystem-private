@@ -95,7 +95,7 @@ def _resolve_target(name):
     if book:
         return book['book_id'], book['book_name']
     for pet in pet_registry.list_pets():
-        if name in (pet.get('name'), pet.get('role')):
+        if name in (pet.get('name'), pet.get('role'), *(pet.get('aliases') or [])):
             return f"pet{pet['id']}", pet.get('name', pet['role'])
     return None, None
 
