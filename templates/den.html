@@ -1274,6 +1274,17 @@
                 onBlink() {
                     petBlink();   // 用户眨眼 → 宠物同步眨
                 },
+                onSnap() {
+                    // 打响指 → 宠物被惊到：跳起 + 星星 + 气泡 + 短暂缩一下
+                    if (!petModel || grabbed) return;
+                    setAnim('happy', 900);
+                    burst('star', 5);
+                    showBubble(`${SPECS[currentPetId].name}被吓了一跳！什么声音？！`, 2000);
+                    // 被吓缩一下（tick 里的恢复代码会自动恢复）
+                    if (petModel.scale.x > 0.7) {
+                        petModel.scale.setScalar(petModel.scale.x * 0.82);
+                    }
+                },
                 onGrab(pinching, pos) {
                     if (pinching && pos) {
                         // 捏住：缩小悬挂在手位置，挣扎动画

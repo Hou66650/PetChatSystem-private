@@ -240,6 +240,21 @@ class DenVision {
                 this._pinching = pinching;
                 this.onGrab && this.onGrab(pinching, { sx: (1 - mcp.x) * this.canvasSize.w, sy: mcp.y * this.canvasSize.h, palm });
             }
+
+            // 打响指检测：拇指尖(4)-中指尖(12)距离从很小→骤增（弹开动作）
+            const midTip = lms[12];
+            const snapDist = Math.hypot(thumbTip.x - midTip.x, thumbTip.y - midTip.y);
+            if (this._prevSnapDist !== undefined) {
+                const snapSpeed = snapDist - this._prevSnapDist;
+                if (this._prevSnapDist < 0.06 && snapSpeed > 0.05) {
+                    const now = performance.now();
+                    if (now - (this._lastSnapAt || 0) > 800) {
+                        this._lastSnapAt = now;
+                        this.onSnap && this.onSnap();
+                    }
+                }
+            }
+            this._prevSnapDist = snapDist;
             // 归一化坐标 → 画布坐标（x 镜像，符合照镜子直觉）
             const sx = (1 - mcp.x) * this.canvasSize.w;
             const sy = mcp.y * this.canvasSize.h;
