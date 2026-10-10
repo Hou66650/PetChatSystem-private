@@ -28,6 +28,7 @@ class DenVision {
         this.gazeContact = false;
         this.handState = { present: false, reaching: false, sx: 0, sy: 0, palm: 0 };
         this.canvasSize = { w: 0, h: 0 };
+        this._errStreak = 0;
         this.onGaze = () => {};
         this.onHand = () => {};
         this.onError = () => {};
@@ -35,8 +36,9 @@ class DenVision {
         this._raf = null;
     }
 
-    /* 启动：摄像头 → 模型 → 检测循环 */
-    async start(videoEl, callbacks = {}) {
+    /* 启动：摄像头 → 模型 → 检测循环
+       target：虚拟手/触摸判定所用主画布元素（坐标换算基准，勿传预览小窗） */
+    async start(videoEl, callbacks = {}, target = null) {
         if (this.running) return true;
         this.onGaze = callbacks.onGaze || this.onGaze;
         this.onHand = callbacks.onHand || this.onHand;
@@ -92,6 +94,7 @@ class DenVision {
         }
 
         this.running = true;
+        this.target = target || videoEl;
         this.timer = setInterval(() => this._detect(), DETECT_MS);
         this._followLoop();
         return true;
@@ -104,6 +107,9 @@ class DenVision {
         if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null; }
         if (this.video) this.video.srcObject = null;
         this.gazeContact = false;
+        this.gazeStreak = 0;          // 状态完全复位，重启需重新累计
+        this.gazeLost = 0;
+        this._errStreak = 0;
         this.handState = { present: false, reaching: false, sx: 0, sy: 0, palm: 0 };
         this._smooth.ok = false;
         this.onGaze(false);
@@ -111,19 +117,33 @@ class DenVision {
     }
 
     /* ---------- 每帧检测 ---------- */
+    _syncCanvasSize() {
+        // 坐标换算基准 = 主画布（虚拟手与触摸判定所在空间）
+        const el = this.target || this.video;
+        if (el) {
+            this.canvasSize.w = el.clientWidth || this.canvasSize.w || 640;
+            this.canvasSize.h = el.clientHeight || this.canvasSize.h || 480;
+        }
+    }
     _detect() {
         const v = this.video;
         if (!this.running || !v || v.readyState < 2) return;
         const ts = performance.now();
         if (v.currentTime === this.lastTs) return;      // 无新帧则跳过
         this.lastTs = v.currentTime;
-        this.canvasSize.w = v.clientWidth || 640;
-        this.canvasSize.h = v.clientHeight || 480;
-
-        // 视线
-        this._detectGaze(ts);
-        // 手
-        this._detectHand(ts);
+        this._syncCanvasSize();
+        try {
+            this._detectGaze(ts);
+            this._detectHand(ts);
+            this._errStreak = 0;
+        } catch (e) {
+            // 推理异常（如 GPU 委托运行中失效）：连续多次则自动停止，避免每 100ms 报错
+            this._errStreak = (this._errStreak || 0) + 1;
+            if (this._errStreak >= 3) {
+                this.stop();
+                this.onError('runtime', e);
+            }
+        }
     }
 
     _detectGaze(ts) {
@@ -136,14 +156,21 @@ class DenVision {
                 const cx = (lm[o].x + lm[i].x) / 2, w = Math.abs(lm[i].x - lm[o].x) || 1e-4;
                 return (lm[iris].x - cx) / w;
             };
+            // 竖直分量：虹膜相对上下眼睑中点（159上/145下 右眼，386上/374下 左眼）
+            const gazeYOf = (iris, up, dn) => {
+                const cy = (lm[up].y + lm[dn].y) / 2, h = Math.abs(lm[dn].y - lm[up].y) || 1e-4;
+                return (lm[iris].y - cy) / h;
+            };
             const gaze = (gazeOf(468, 33, 133) + gazeOf(473, 362, 263)) / 2;
+            const gazeY = (gazeYOf(468, 159, 145) + gazeYOf(473, 386, 374)) / 2;
             // 头部偏转代理：鼻尖相对两颊中点
             const faceCx = (lm[234].x + lm[454].x) / 2;
             const faceW = Math.abs(lm[454].x - lm[234].x) || 1e-4;
             const yaw = (lm[1].x - faceCx) / faceW;
             const faceCenterX = faceCx;
-            // 注视屏幕 ≈ 视线居中 + 头基本正对 + 人坐在画面中部
-            looking = Math.abs(gaze) < 0.17 && Math.abs(yaw) < 0.25 && faceCenterX > 0.2 && faceCenterX < 0.8;
+            // 注视屏幕 ≈ 视线水平+竖直都居中 + 头基本正对 + 人坐在画面中部
+            looking = Math.abs(gaze) < 0.17 && Math.abs(gazeY) < 0.4 && Math.abs(yaw) < 0.25
+                && faceCenterX > 0.2 && faceCenterX < 0.8;
         }
         if (looking) {
             this.gazeStreak++;
@@ -163,6 +190,7 @@ class DenVision {
     }
 
     _detectHand(ts) {
+        this._syncCanvasSize();
         const res = this.hand.detectForVideo(this.video, ts);
         const lms = res.landmarks && res.landmarks[0];
         if (lms && lms.length >= 21) {

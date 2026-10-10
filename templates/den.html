@@ -126,6 +126,9 @@
             .intimacy-panel { top: 66px; min-width: 150px; padding: 10px 12px; }
             .den-pets { top: 64px; }
             .den-chat { top: 120px; bottom: 116px; }
+            /* 视觉预览窗挪到左下，避开右侧聊天抽屉 */
+            .vision-box { left: 8px; right: auto; bottom: 76px; width: 108px; }
+            #vision-hand { font-size: 34px !important; }
         }
     </style>
 </head>
@@ -744,9 +747,13 @@
         let gazeNow = false, gazeSec = 0, lastGazeHeart = 0;
         let handTouch = false, handSec = 0, lastHandHeart = 0, lastHandBubble = 0;
         const GAZE_DAILY_CAP = 5, HAND_DAILY_CAP = 10;
-        // 日上限计数挂在 state.daily 上（与 saveState 同一份数据，避免互相覆盖）
+        // 日上限计数挂在 state.daily 上（与 saveState 同一份数据，避免互相覆盖）；按本地时区日期切片
+        function localDateStr() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
         function dailyLeft(kind, cap) {
-            const today = new Date().toISOString().slice(0, 10);
+            const today = localDateStr();
             if (!state.daily || state.daily.date !== today) { state.daily = { date: today, gaze: 0, hand: 0 }; }
             return Math.max(0, cap - (state.daily[kind] || 0));
         }
@@ -783,6 +790,7 @@
             this.disabled = true; this.textContent = '⏳ 开启中…';
             dv = dv || new window.DenVision();
             window.__denVision = dv;   // 调试/验收钩子
+            // 第三个参数 = 主画布：虚拟手与触摸判定的坐标换算基准（勿传预览小窗）
             const ok = await dv.start(document.getElementById('vision-cam'), {
                 onGaze(on) {
                     gazeNow = on;
@@ -819,9 +827,11 @@
                     visionRenderStatus();
                 },
                 onError(kind) {
-                    toast(kind === 'camera' ? '无法访问摄像头：请在浏览器地址栏允许摄像头权限' : '视觉模型加载失败', 'error');
+                    toast(kind === 'camera' ? '无法访问摄像头：请在浏览器地址栏允许摄像头权限'
+                        : kind === 'runtime' ? '视觉推理异常，已自动停止'
+                        : '视觉模型加载失败', 'error');
                 },
-            });
+            }, canvas);
             this.disabled = false;
             if (!ok) { this.textContent = '👁 眼神互动'; dv = null; window.__denVision = null; return; }
             visionOn = true;
@@ -853,6 +863,14 @@
             }, 500);
         });
         window.addEventListener('pagehide', () => { if (visionOn) stopVision(); });
+        // 切到其他标签页立即停摄像头（隐私指示灯不该常亮）
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && visionOn) {
+                stopVision();
+                const b = document.getElementById('btn-vision');
+                if (b) b.textContent = '👁 眼神互动';
+            }
+        });
 
         // ---------- 主循环 ----------
         const clock = new THREE.Clock();

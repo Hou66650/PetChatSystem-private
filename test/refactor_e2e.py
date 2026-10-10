@@ -45,6 +45,7 @@ r = s.get(BASE + '/static/js/den_vision.js')
 check('GET /static/js/den_vision.js', r.status_code == 200 and 'DenVision' in r.text, f'[{r.status_code}]')
 for path in ['/static/js/vendor/mediapipe/vision_bundle.mjs',
              '/static/js/vendor/mediapipe/vision_wasm_internal.wasm',
+             '/static/js/vendor/mediapipe/vision_wasm_nosimd_internal.wasm',
              '/static/js/vendor/mediapipe/face_landmarker.task',
              '/static/js/vendor/mediapipe/hand_landmarker.task']:
     r = s.get(BASE + path)
