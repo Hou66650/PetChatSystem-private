@@ -413,10 +413,12 @@
             playAction(state, state === 'sleep' ? 0.4 : 1);   // 睡觉=低头慢放
         }
 
-        async function spawnPet(id) {
+        let spawnBusy = false;   // 首载窗口并发守卫
+        async function spawnPet(id, fromRollback = false) {
             if (!SPECS[id]) { toast('这只宠物还不认识我们哦', 'error'); return; }
-            if (id === currentPetId && petModel) return;   // 快速连点同一只：忽略
+            if (id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
             const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
+            spawnBusy = true;
             if (petModel) scene.remove(petModel);
             currentPetId = id;
             if (typeof denHistory !== 'undefined') denHistory = [];   // 聊天记忆逐宠隔离
@@ -431,12 +433,13 @@
                 gltf = await loadGlb(spec.glb);
             } catch (e) {
                 toast('宠物模型加载失败，请刷新重试', 'error');
-                gltfCache[spec.glb] = null;     // 清失败缓存（rejected promise 不常驻；回滚链不循环）
-                if (prevId) spawnPet(prevId);   // 回滚到上一只，界面与场景保持一致
+                gltfCache[spec.glb] = null;     // 清失败缓存（rejected promise 不常驻，下次点击可重试）
+                if (prevId && !fromRollback) spawnPet(prevId, true);   // 回滚最多一跳：多资源损坏时不乒乓
+                spawnBusy = false;
                 return;
             }
             // 用户等加载期间可能已切换到别的宠物
-            if (currentPetId !== id) return;
+            if (currentPetId !== id) { spawnBusy = false; return; }
             const model = gltf.scene;
             // 归一化：目标高度、落地、居中（scene 会被缓存复用，先复位上次变换避免二次缩放）
             model.scale.setScalar(1);
@@ -488,6 +491,7 @@
             anim.birth = 0;
             setAnim('idle', 0);
             showBubble(spec.greet, 2600);
+            spawnBusy = false;
         }
 
         // ---------- 粒子（emoji 贴图 sprite，本地 canvas 生成） ----------
