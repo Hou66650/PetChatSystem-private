@@ -42,6 +42,7 @@ class DenVision {
         if (this.running) return true;
         this.onGaze = callbacks.onGaze || this.onGaze;
         this.onHand = callbacks.onHand || this.onHand;
+        this.onGrab = callbacks.onGrab || this.onGrab;
         this.onError = callbacks.onError || this.onError;
         try {
             // 1) 摄像头（前置，低分辨率即可）
@@ -224,15 +225,31 @@ class DenVision {
             const wrist = lms[0], mcp = lms[9];
             const palm = Math.hypot(mcp.x - wrist.x, mcp.y - wrist.y);
             const reaching = palm > HAND_REACH;
+            // 捏合检测：拇指尖(4)-食指尖(8)距离很小 = 捏手势
+            const thumbTip = lms[4], indexTip = lms[8];
+            const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+            const pinching = pinchDist < 0.06;   // 归一化阈值
+            // 捏合状态变化时通知
+            if (pinching !== this._pinching) {
+                this._pinching = pinching;
+                this.onGrab && this.onGrab(pinching, { sx: (1 - mcp.x) * this.canvasSize.w, sy: mcp.y * this.canvasSize.h, palm });
+            }
             // 归一化坐标 → 画布坐标（x 镜像，符合照镜子直觉）
             const sx = (1 - mcp.x) * this.canvasSize.w;
             const sy = mcp.y * this.canvasSize.h;
             const was = this.handState;
-            this.handState = { present: true, reaching, sx, sy, palm };
+            this.handState = { present: true, reaching, sx, sy, palm, pinching };
             if (was.present !== true || was.reaching !== reaching) this.onHand(this.handState);
-        } else if (this.handState.present) {
-            this.handState = { present: false, reaching: false, sx: 0, sy: 0, palm: 0 };
-            this.onHand(this.handState);
+        } else {
+            // 手消失时释放捏合
+            if (this._pinching) {
+                this._pinching = false;
+                this.onGrab && this.onGrab(false, null);
+            }
+            if (this.handState.present) {
+                this.handState = { present: false, reaching: false, sx: 0, sy: 0, palm: 0 };
+                this.onHand(this.handState);
+            }
         }
     }
 

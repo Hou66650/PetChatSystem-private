@@ -1222,6 +1222,7 @@
         // ---------- 视觉互动（眼神对视 + 伸手抚摸；本地 WASM 推理，画面不上传） ----------
         let dv = null, visionOn = false, visionTick = null;
         let gazeNow = false, gazeSec = 0, lastGazeHeart = 0;
+        let grabbed = false, dropping = false, grabHomeY = 0.02, bounceBack = 0;
         let handTouch = false, handSec = 0, lastHandHeart = 0, lastHandBubble = 0;
         const GAZE_DAILY_CAP = 5, HAND_DAILY_CAP = 10;
         // 日上限计数挂在 state.daily 上（与 saveState 同一份数据，避免互相覆盖）；按本地时区日期切片
@@ -1272,6 +1273,24 @@
                 onBlink() {
                     petBlink();   // 用户眨眼 → 宠物同步眨
                 },
+                onGrab(pinching, pos) {
+                    if (pinching && pos) {
+                        // 捏住：缩小悬挂在手位置，挣扎动画
+                        if (!grabbed && petModel) {
+                            grabbed = true;
+                            grabHomeY = petModel.position.y;
+                            playAction('happy', 1.4);   // 快速挣扎（跳跃动画加速）
+                            showBubble(`${SPECS[currentPetId].name}被拎起来了！放开我啦～`, 1800);
+                            burst('star', 3);
+                        }
+                    } else if (grabbed) {
+                        // 松手：掉落回地面
+                        grabbed = false;
+                        dropping = true;   // tick 里重力下落
+                        showBubble(`吓死我了…不要突然放手啦！`, 2200);
+                        if (dailyLeft('hand', HAND_DAILY_CAP) > 0) { dailyAdd('hand'); addIntimacy(1); }
+                    }
+                },
                 onGaze(on) {
                     gazeNow = on;
                     if (on) {
@@ -1291,9 +1310,9 @@
                     } else {
                         vHandEl.style.opacity = '0';
                     }
-                    // 触摸判定：伸手 且 虚拟手落在宠物头部附近
+                    // 触摸判定：伸手 且 虚拟手落在宠物头部附近（捏住时不算抚摸）
                     let nowTouch = false;
-                    if (h.present && h.reaching && petModel) {
+                    if (h.present && h.reaching && petModel && !grabbed) {
                         const hp = headScreenPos();
                         nowTouch = Math.hypot(h.sx - hp.x, h.sy - hp.y) < 110;
                     }
@@ -1375,6 +1394,52 @@
             autoBlinkTick(now);
 
             if (petModel) {
+                // 捏住跟随：缩小 + 挂在虚拟手前方（用视觉互动的手坐标）
+                if (grabbed && petModel) {
+                    const hs = dv ? dv.handState : null;
+                    if (hs && hs.present) {
+                        // 屏幕坐标 → 3D（反投影）
+                        const ndcX = (hs.sx / canvas.clientWidth) * 2 - 1;
+                        const ndcY = -(hs.sy / canvas.clientHeight) * 2 + 1;
+                        const vec = new THREE.Vector3(ndcX, ndcY, 0.5).unproject(camera);
+                        const dir = vec.sub(camera.position).normalize();
+                        const dy = 1.3 - camera.position.y;
+                        const dist = dy / (dir.y || 0.1);
+                        const target = camera.position.clone().add(dir.multiplyScalar(Math.abs(dist)));
+                        // 平滑跟随 + 悬空晃动
+                        const wob = Math.sin(performance.now() * 0.006) * 0.06;
+                        petModel.position.lerp(new THREE.Vector3(target.x, 1.3 + wob, target.z), 0.15);
+                    }
+                    // 缩小（渐变到 0.45）
+                    const ts = 0.45;
+                    if (petModel.scale.x > ts) petModel.scale.setScalar(Math.max(ts, petModel.scale.x - dt * 3));
+                    petModel.rotation.y += 0.025;   // 被拎着缓慢转
+                }
+
+                // 掉落回地面（松手后）
+                if (dropping && petModel) {
+                    petModel.position.y -= 6.5 * dt;   // 重力
+                    petModel.rotation.y *= 0.95;
+                    if (petModel.position.y <= grabHomeY) {
+                        petModel.position.y = grabHomeY;
+                        // 弹跳一下
+                        petModel.position.y = grabHomeY + 0.12;
+                        dropping = false;
+                        bounceBack = 0.12;   // tick 里衰减弹跳
+                        setAnim('idle', 0);
+                    }
+                }
+                // 弹跳衰减
+                if (bounceBack > 0 && petModel && !dropping && !grabbed) {
+                    bounceBack -= dt * 0.5;
+                    petModel.position.y = grabHomeY + Math.max(0, bounceBack) * Math.sin(bounceBack * 30);
+                    if (bounceBack <= 0) petModel.position.y = grabHomeY;
+                }
+                // 捏住时恢复正常大小（松手后渐回）
+                if (!grabbed && !dropping && petModel && petModel.scale.x < 0.95) {
+                    petModel.scale.setScalar(Math.min(1, petModel.scale.x + dt * 2));
+                }
+
                 // 出生缩放（弹性放大）
                 if (anim.birth !== undefined && anim.birth < 1) {
                     anim.birth = Math.min(1, anim.birth + dt * 2.2);
@@ -1462,6 +1527,7 @@
             get petModel() { return petModel; },
             get mixer() { return mixer; },
             SPECS, spawnPet, setAnim, speak, petBlink, camera: () => camera,
+            get grabbed() { return grabbed; }, get dropping() { return dropping; },
         };
     })();
     </script>
