@@ -888,7 +888,10 @@
         function refreshVoices() {
             if (!window.speechSynthesis) return;
             const vs = speechSynthesis.getVoices();
-            zhVoice = vs.find((v) => /^zh[-_]CN/i.test(v.lang)) ||
+            // 优先级：Natural(神经网络) > Online > 普通中文
+            zhVoice = vs.find((v) => /natural/i.test(v.name) && /zh/i.test(v.lang)) ||
+                      vs.find((v) => /online/i.test(v.name) && /zh/i.test(v.lang)) ||
+                      vs.find((v) => /^zh[-_]CN/i.test(v.lang)) ||
                       vs.find((v) => /^zh/i.test(v.lang)) ||
                       vs.find((v) => /Huihui|Yaoyao|Kangkang|Chinese/i.test(v.name)) || null;
         }
@@ -902,6 +905,8 @@
         });
         // 页面获得焦点也算交互（从别的标签页切回来）
         window.addEventListener('focus', () => { userInteracted = true; }, { passive: true });
+        // 温柔模式参数（TTS 尽量柔和）
+        const TTS_GENTLE = { rate: 0.88, pitch: 0.95 };
         function speak(text, opts = {}) {
             const clean = String(text).replace(/[～~♪🎯🎉🧣🎀✨]/g, '').trim().slice(0, 140);
             if (opts.talk !== false && petModel && clean) setAnim('talk', 1200 + clean.length * 60);   // 说话动画不随静音关闭
@@ -921,8 +926,8 @@
             try {
                 const u = new SpeechSynthesisUtterance(clean);
                 u.lang = 'zh-CN';
-                u.rate = opts.rate || 1.05;
-                u.pitch = opts.pitch || 1.2;
+                u.rate = opts.rate || TTS_GENTLE.rate;
+                u.pitch = opts.pitch || TTS_GENTLE.pitch;
                 u.volume = 0.9;
                 if (zhVoice) u.voice = zhVoice;
                 speechSynthesis.cancel();
