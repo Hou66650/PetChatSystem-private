@@ -109,6 +109,19 @@
 
         .toast-container { z-index: 300; }
 
+        /* ---------- 视觉互动（本地推理，画面不上传） ---------- */
+        .vision-box { position: absolute; right: 12px; bottom: 76px; width: 138px; z-index: 25;
+            background: rgba(255,255,255,.92); border: 1px solid var(--c-line); border-radius: 14px;
+            padding: 6px; box-shadow: 0 6px 18px rgba(74,59,50,.14); }
+        .vision-box video { width: 100%; border-radius: 9px; transform: scaleX(-1); background: #2f2620; display: block; }
+        .vision-status { font-size: 11px; line-height: 1.5; color: var(--c-text-sub); padding: 4px 2px 1px; }
+        .vision-status b { color: var(--c-text); font-weight: 700; }
+        .vision-privacy { font-size: 10px; color: var(--c-text-sub); opacity: .8; padding: 0 2px 2px; }
+        #vision-hand { position: absolute; left: 0; top: 0; z-index: 22; pointer-events: none;
+            opacity: 0; will-change: transform; line-height: 1;
+            filter: drop-shadow(0 4px 8px rgba(74,59,50,.25)); }
+        #vision-hand.reaching { filter: drop-shadow(0 6px 10px rgba(232,131,60,.45)); }
+
         @media (max-width: 767px) {
             .intimacy-panel { top: 66px; min-width: 150px; padding: 10px 12px; }
             .den-pets { top: 64px; }
@@ -139,6 +152,7 @@
             <button class="action-btn" id="btn-feed-cookie">🍪 饼干</button>
             <button class="action-btn" id="btn-dress">🎩 换装</button>
             <button class="action-btn" id="btn-photo">📸 拍照</button>
+            <button class="action-btn" id="btn-vision">👁 眼神互动</button>
             <button class="action-btn" id="btn-chat">💬 聊天</button>
             <button class="action-btn" id="btn-music">🎵 音乐</button>
         </div>
@@ -154,11 +168,20 @@
                 <button type="submit" id="chat-send">发送</button>
             </form>
         </div>
+
+        <!-- 视觉互动：本地 WASM 推理，摄像头画面不上传 -->
+        <div class="vision-box hidden" id="vision-box">
+            <video id="vision-cam" autoplay playsinline muted></video>
+            <div class="vision-status" id="vision-status">启动中…</div>
+            <div class="vision-privacy">🔒 画面仅本地处理，不会上传</div>
+        </div>
+        <div id="vision-hand" aria-hidden="true">🤚</div>
     </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/three.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/OrbitControls.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/den_vision.js') }}"></script>
     <script>
     /* ============================================================
        3D 宠物小窝 —— 本地 Three.js 程序化建模 + 交互系统
@@ -715,6 +738,121 @@
                 bgm.pause(); musicOn = false; this.textContent = '🎵 音乐';
             }
         });
+
+        // ---------- 视觉互动（眼神对视 + 伸手抚摸；本地 WASM 推理，画面不上传） ----------
+        let dv = null, visionOn = false, visionTick = null;
+        let gazeNow = false, gazeSec = 0, lastGazeHeart = 0;
+        let handTouch = false, handSec = 0, lastHandHeart = 0, lastHandBubble = 0;
+        const GAZE_DAILY_CAP = 5, HAND_DAILY_CAP = 10;
+        // 日上限计数挂在 state.daily 上（与 saveState 同一份数据，避免互相覆盖）
+        function dailyLeft(kind, cap) {
+            const today = new Date().toISOString().slice(0, 10);
+            if (!state.daily || state.daily.date !== today) { state.daily = { date: today, gaze: 0, hand: 0 }; }
+            return Math.max(0, cap - (state.daily[kind] || 0));
+        }
+        function dailyAdd(kind) {
+            dailyLeft(kind, 999);   // 确保结构已初始化
+            state.daily[kind] = (state.daily[kind] || 0) + 1;
+            saveState();
+        }
+        function headScreenPos() {
+            const v = petHeadPos().clone().project(camera);
+            return { x: (v.x * 0.5 + 0.5) * canvas.clientWidth, y: (-v.y * 0.5 + 0.5) * canvas.clientHeight };
+        }
+        const vStatus = document.getElementById('vision-status');
+        const vHandEl = document.getElementById('vision-hand');
+        const vBox = document.getElementById('vision-box');
+        let vStatusCache = '';
+        function visionRenderStatus() {
+            const txt = (gazeNow ? '👁 对视中' : '👁 看向别处') + '|' +
+                (handTouch ? '🖐 抚摸中' : (dv && dv.handState.present ? '🖐 手已识别' : '🖐 等待伸手'));
+            if (txt === vStatusCache) return;
+            vStatusCache = txt;
+            if (vStatus) vStatus.innerHTML = txt.split('|').map(s => s.includes('中') ? `<b>${s}</b>` : s).join('<br>');
+        }
+        function stopVision() {
+            if (visionTick) { clearInterval(visionTick); visionTick = null; }
+            if (dv) dv.stop();
+            visionOn = false; gazeNow = false; handTouch = false; gazeSec = 0; handSec = 0;
+            vBox.classList.add('hidden');
+            vHandEl.style.opacity = '0';
+        }
+        document.getElementById('btn-vision').addEventListener('click', async function () {
+            if (visionOn) { stopVision(); this.textContent = '👁 眼神互动'; return; }
+            if (!window.DenVision) { toast('视觉模块加载失败，请刷新页面', 'error'); return; }
+            this.disabled = true; this.textContent = '⏳ 开启中…';
+            dv = dv || new window.DenVision();
+            window.__denVision = dv;   // 调试/验收钩子
+            const ok = await dv.start(document.getElementById('vision-cam'), {
+                onGaze(on) {
+                    gazeNow = on;
+                    if (on) {
+                        gazeSec = 0;
+                        showBubble(`${SPECS[currentPetId].name}也正在看着你呢～`, 2200);
+                        setAnim('happy', 900);
+                    }
+                    visionRenderStatus();
+                },
+                onHand(h) {
+                    if (h.present) {
+                        const size = 34 + Math.min(h.palm, 0.55) * 95;
+                        vHandEl.style.opacity = h.reaching ? '0.95' : '0.35';
+                        vHandEl.style.fontSize = (h.reaching ? size : size * 0.7) + 'px';
+                        vHandEl.classList.toggle('reaching', !!h.reaching);
+                        vHandEl.style.transform = `translate(${h.sx - size / 2}px, ${h.sy - size / 2}px) rotate(${h.reaching ? -14 : 0}deg)`;
+                    } else {
+                        vHandEl.style.opacity = '0';
+                    }
+                    // 触摸判定：伸手 且 虚拟手落在宠物头部附近
+                    let nowTouch = false;
+                    if (h.present && h.reaching && petModel) {
+                        const hp = headScreenPos();
+                        nowTouch = Math.hypot(h.sx - hp.x, h.sy - hp.y) < 110;
+                    }
+                    if (nowTouch !== handTouch) {
+                        handTouch = nowTouch;
+                        if (nowTouch) {
+                            handSec = 0; lastHandBubble = performance.now();
+                            showBubble(`${SPECS[currentPetId].name}享受你的抚摸～`, 2200);
+                        }
+                    }
+                    visionRenderStatus();
+                },
+                onError(kind) {
+                    toast(kind === 'camera' ? '无法访问摄像头：请在浏览器地址栏允许摄像头权限' : '视觉模型加载失败', 'error');
+                },
+            });
+            this.disabled = false;
+            if (!ok) { this.textContent = '👁 眼神互动'; dv = null; window.__denVision = null; return; }
+            visionOn = true;
+            this.textContent = '👁 关闭视觉';
+            vBox.classList.remove('hidden');
+            visionRenderStatus();
+            // 低频节拍：对视/抚摸的亲密度累计与粒子节流
+            visionTick = setInterval(() => {
+                const now = performance.now();
+                if (gazeNow) {
+                    gazeSec += 0.5;
+                    if (now - lastGazeHeart > 4200) { lastGazeHeart = now; burst('heart', 1, petHeadPos().add(new THREE.Vector3(0, 0.25, 0))); }
+                    if (gazeSec >= 20) {
+                        gazeSec = 0;
+                        if (dailyLeft('gaze', GAZE_DAILY_CAP) > 0) { dailyAdd('gaze'); addIntimacy(1); showBubble('对视让感情更深了 +1', 1600); }
+                        else showBubble('今天的眼神互动已经够多啦～', 1600);
+                    }
+                } else gazeSec = 0;
+                if (handTouch) {
+                    handSec += 0.5;
+                    setAnim('petting', 600);
+                    if (now - lastHandHeart > 1000) { lastHandHeart = now; burst('heart', 1, petHeadPos().add(new THREE.Vector3(0, 0.2, 0))); }
+                    if (now - lastHandBubble > 7000) { lastHandBubble = now; showBubble(`${SPECS[currentPetId].name}轻轻蹭着你的手…`, 1800); }
+                    if (handSec >= 2.5) {
+                        handSec = 0;
+                        if (dailyLeft('hand', HAND_DAILY_CAP) > 0) { dailyAdd('hand'); addIntimacy(1); }
+                    }
+                } else handSec = 0;
+            }, 500);
+        });
+        window.addEventListener('pagehide', () => { if (visionOn) stopVision(); });
 
         // ---------- 主循环 ----------
         const clock = new THREE.Clock();

@@ -38,6 +38,18 @@ for path in ['/images/f.png', '/css/b.jpg', '/js/script.js',
 
 r = s.get(BASE + '/den')
 check('3D 宠物小窝页面', r.status_code == 200 and 'den-canvas' in r.text, f'[{r.status_code}]')
+check('视觉互动按钮', r.status_code == 200 and 'btn-vision' in r.text and 'den_vision.js' in r.text)
+
+print('== 2b. 视觉互动资产（MediaPipe 本地化）==')
+r = s.get(BASE + '/static/js/den_vision.js')
+check('GET /static/js/den_vision.js', r.status_code == 200 and 'DenVision' in r.text, f'[{r.status_code}]')
+for path in ['/static/js/vendor/mediapipe/vision_bundle.mjs',
+             '/static/js/vendor/mediapipe/vision_wasm_internal.wasm',
+             '/static/js/vendor/mediapipe/face_landmarker.task',
+             '/static/js/vendor/mediapipe/hand_landmarker.task']:
+    r = s.get(BASE + path)
+    big_ok = r.status_code == 200 and len(r.content) > 100000
+    check(f'GET {path}', big_ok, f'[{r.status_code} {len(r.content)}B]')
 
 print('== 3. 注册/登录/读者页 ==')
 s.post(BASE + '/register', data={
