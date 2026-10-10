@@ -31,9 +31,13 @@ for path in ['/', '/gpt', '/reader_login', '/register', '/manager_login',
     check(f'GET {path}', r.status_code == 200, f'[{r.status_code}]')
 
 print('== 2. 静态代理 ==')
-for path in ['/images/f.png', '/css/b.jpg', '/js/script.js']:
+for path in ['/images/f.png', '/css/b.jpg', '/js/script.js',
+             '/static/js/vendor/three.min.js']:
     r = s.get(BASE + path)
     check(f'GET {path}', r.status_code == 200, f'[{r.status_code}]')
+
+r = s.get(BASE + '/den')
+check('3D 宠物小窝页面', r.status_code == 200 and 'den-canvas' in r.text, f'[{r.status_code}]')
 
 print('== 3. 注册/登录/读者页 ==')
 s.post(BASE + '/register', data={

@@ -177,7 +177,7 @@
             2: { name: '萨摩耶', body: 0xF7F3EC, belly: 0xFFFFFF, ear: 'soft', tail: 'fluffy',
                  size: 1.05, legH: 0.42, greet: '汪呜~ 雪白的我在等你抱抱呢！' },
             3: { name: '猫咪', body: 0xE3B587, belly: 0xFFF3E4, ear: 'tri', tail: 'long',
-                 size: 0.8, legH: 0.28, greet: '喵~ 我的窝就是你的窝（才不让你走呢）。' },
+                 size: 0.88, legH: 0.28, greet: '喵~ 我的窝就是你的窝（才不让你走呢）。' },
             4: { name: '德牧', body: 0x8A6B4F, belly: 0xD9BFA4, ear: 'up', tail: 'bushy',
                  size: 1.12, legH: 0.46, greet: '汪！忠诚卫士报到，今天想玩点什么？' },
         };
@@ -254,9 +254,12 @@
             scene.add(bush);
         });
 
-        // 昼夜背景
+        // 昼夜背景（?scene=night/morning/day/dusk 可强制指定，便于演示与验收）
         function applyTimeOfDay() {
-            const h = new Date().getHours();
+            const q = new URLSearchParams(location.search).get('scene');
+            let h = new Date().getHours();
+            if (q === 'night') h = 22; else if (q === 'morning') h = 7;
+            else if (q === 'day') h = 12; else if (q === 'dusk') h = 18;
             let sky, fog, sunI;
             if (h >= 6 && h < 9) { sky = 0xFFE0C0; fog = 0xFFE0C0; sunI = 0.75; }        // 清晨
             else if (h >= 9 && h < 17) { sky = 0xCDEBF7; fog = 0xCDEBF7; sunI = 0.95; }  // 白天
@@ -266,6 +269,25 @@
             scene.fog = new THREE.Fog(fog, 9, 22);
             sun.intensity = sunI;
             hemi.intensity = 0.5 + sunI * 0.4;
+            // 夜晚/黄昏给宠物加一盏暖色"窝灯"，避免主体打光过平
+            if (sunI < 0.65) {
+                if (!window.__denLamp) {
+                    window.__denLamp = new THREE.PointLight(0xFFD9A0, 1.1, 8);
+                    window.__denLamp.position.set(-2.2, 1.8, 1.6);   // 左前暖光
+                    scene.add(window.__denLamp);
+                }
+                window.__denLamp.intensity = 1.2 - sunI;
+                // 右后冷色轮廓光：与暖灯形成冷暖对比，夜间立体感
+                if (!window.__denRim) {
+                    window.__denRim = new THREE.PointLight(0x6B7FBF, 0.4, 10);
+                    window.__denRim.position.set(2.4, 1.6, -1.8);
+                    scene.add(window.__denRim);
+                }
+                window.__denRim.intensity = 0.45;
+            } else if (window.__denLamp) {
+                window.__denLamp.intensity = 0;
+                if (window.__denRim) window.__denRim.intensity = 0;
+            }
         }
 
         // ---------- 程序化宠物建模 ----------
@@ -319,16 +341,30 @@
                 parts.headGroup.add(eye); parts.headGroup.add(hl);
                 parts.eyes.push(eye);
             });
-            // 耳朵（三种形态）
+            // 耳朵（三种形态；猫耳加大并加深色内耳保证辨识度）
             const earGeo = spec.ear === 'tri'
-                ? new THREE.ConeGeometry(0.17, 0.34, 4)
+                ? new THREE.ConeGeometry(0.24, 0.46, 3)
                 : new THREE.ConeGeometry(0.13, 0.3, 12);
             [-1, 1].forEach((side) => {
                 const ear = new THREE.Mesh(earGeo, toonMat(spec.body));
                 ear.position.set(0.22 * side, 0.34, 0.02);
                 if (spec.ear === 'up') { ear.rotation.z = -0.18 * side; }
                 if (spec.ear === 'soft') { ear.rotation.z = -0.75 * side; ear.scale.set(0.9, 1.2, 0.7); }
-                if (spec.ear === 'tri') { ear.rotation.z = -0.12 * side; ear.scale.set(1, 1, 0.5); }
+                if (spec.ear === 'tri') {
+                    // 三面锥猫耳：面法线在60°方位，负转60°让耳面正对镜头
+                    ear.rotation.z = -0.14 * side;
+                    ear.rotation.y = -Math.PI / 3;
+                    // 深色内耳：独立小锥贴在耳面正前方（挂 headGroup，绝不被耳锥遮挡）
+                    // 耳面距轴心 0.12，内耳放 z=0.17 保证整个在耳面之前，视觉上即"耳窝"
+                    // 平涂材质（不受光照）；renderer 为 sRGB 输出，此线性值最终呈色约 #7A4A2E 深棕
+                    const inner = new THREE.Mesh(
+                        new THREE.ConeGeometry(0.15, 0.34, 3),
+                        new THREE.MeshBasicMaterial({ color: 0x351408 }));
+                    inner.rotation.y = -Math.PI / 3;
+                    inner.rotation.z = -0.14 * side;
+                    inner.position.set(0.22 * side, 0.34, 0.17);
+                    parts.headGroup.add(inner);
+                }
                 ear.castShadow = true;
                 parts.headGroup.add(ear);
                 parts[side < 0 ? 'earL' : 'earR'] = ear;
@@ -347,8 +383,16 @@
                 tailMesh.scale.set(0.8, 0.8, 1.6);
                 tailMesh.position.z = -0.22; tailMesh.rotation.x = 0.5;
             } else if (spec.tail === 'long') {
-                tailMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.62, 8), toonMat(spec.body));
-                tailMesh.position.z = -0.28; tailMesh.rotation.x = 0.9;
+                // 猫尾：两段上弯 + 尾尖球；整体侧甩，正面也能看到 S 弯
+                tailMesh = new THREE.Group();
+                const seg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.09, 0.5, 10), toonMat(spec.body));
+                seg1.position.set(0, 0.16, -0.2); seg1.rotation.x = 0.55;
+                const seg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 0.45, 10), toonMat(spec.body));
+                seg2.position.set(0, 0.5, -0.42); seg2.rotation.x = -0.25;
+                const tip = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8), toonMat(0xFFF3E4));
+                tip.position.set(0, 0.72, -0.46);
+                tailMesh.add(seg1); tailMesh.add(seg2); tailMesh.add(tip);
+                tailMesh.rotation.y = 1.15;
             } else { // bushy
                 tailMesh = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.55, 10), toonMat(spec.belly));
                 tailMesh.position.z = -0.26; tailMesh.rotation.x = -1.1;
@@ -369,22 +413,37 @@
             // 配饰（换装）
             parts.accessories = [];
             const hat = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.36, 16), toonMat(0xFF7BA9));
-            hat.position.set(0, 0.55, 0.05);
-            const brim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.035, 8, 20), toonMat(0xFFFFFF));
-            brim.position.set(0, 0.4, 0.05); brim.rotation.x = Math.PI / 2;
+            hat.position.set(0, 0.2, 0);
+            const brim = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.035, 8, 20), toonMat(0xFFFFFF));
+            brim.position.set(0, 0.03, 0); brim.rotation.x = Math.PI / 2;
             const hatGroup = new THREE.Group(); hatGroup.add(hat); hatGroup.add(brim);
-            const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.075, 10, 24), toonMat(0xE5735B));
-            scarf.position.set(0, spec.legH + 0.72, 0.32); scarf.rotation.x = 0.5;
+            // 帽子挂在头顶（跟随头部动画），微倾更俏皮
+            hatGroup.position.set(0, 0.36, 0.04);
+            hatGroup.rotation.z = 0.14;
+            hatGroup.visible = false;
+            parts.headGroup.add(hatGroup);
+            const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.075, 10, 24), toonMat(0xE5735B));
+            scarf.position.set(0, spec.legH + 0.62, 0.38); scarf.rotation.x = 0.35;
             const bow = new THREE.Group();
             [-1, 1].forEach((side) => {
-                const wing = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.18, 8), toonMat(0xFF9E58));
+                const wing = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.3, 10), toonMat(0xFF9E58));
                 wing.rotation.z = Math.PI / 2 * side;
-                wing.position.x = 0.1 * side;
+                wing.position.x = 0.16 * side;
+                wing.scale.set(1, 1, 0.7);
                 bow.add(wing);
             });
-            bow.position.set(0.2, spec.legH + 0.82, 0.38);
+            const knot = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), toonMat(0xE8833C));
+            bow.add(knot);
+            // 蝴蝶结戴在耳侧（挂 headGroup，跟随头部），避免埋进头球内部
+            bow.position.set(0.33, 0.22, 0.16);
+            bow.rotation.y = 0.45;
+            bow.scale.setScalar(1.2);
+            bow.visible = false;
+            parts.headGroup.add(bow);
             parts.accessories = [hatGroup, scarf, bow];
-            parts.accessories.forEach(a => { a.visible = false; g.add(a); });
+            // hatGroup/bow 已挂在 headGroup 上（跟随头部），围巾挂身体
+            scarf.visible = false;
+            g.add(scarf);
 
             g.scale.setScalar(s);
             g.userData = parts;
@@ -403,6 +462,7 @@
         function spawnPet(id) {
             if (petModel) scene.remove(petModel);
             currentPetId = id;
+            if (typeof denHistory !== 'undefined') denHistory = [];   // 聊天记忆逐宠隔离
             const spec = SPECS[id];
             petModel = buildPet(spec);
             petModel.position.set(0, 0.02, 0);
@@ -543,8 +603,9 @@
 
         // 气泡
         let bubbleTimer = null;
+        const bubbleEl = document.getElementById('bubble');
         function showBubble(text, dur) {
-            const b = document.getElementById('bubble');
+            const b = bubbleEl;
             b.textContent = text;
             // 跟随宠物头部投影位置
             const head = petHeadPos().clone().project(camera);
@@ -575,6 +636,7 @@
         const chatInput = document.getElementById('chat-input');
         const chatSend = document.getElementById('chat-send');
         let chatBusy = false;
+        let denHistory = [];   // 场景内聊天多轮记忆（逐宠，切换即清空）
         function appendMsg(role, text) {
             const d = document.createElement('div');
             d.className = 'm ' + (role === 'user' ? 'user' : 'pet');
@@ -594,11 +656,14 @@
                 const resp = await fetch('/get_gpt_response', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text, chatHistory: [], model: MODELS[0], petId: currentPetId }),
+                    body: JSON.stringify({ message: text, chatHistory: denHistory.slice(-10), model: MODELS[0], petId: currentPetId }),
                 });
                 const data = await resp.json();
                 if (data.reply) {
                     appendMsg('pet', data.reply);
+                    // 多轮记忆：与 /gpt 同协议（后端拼装，前端只回传历史）
+                    denHistory.push({ role: 'user', content: text }, { role: 'assistant', content: data.reply });
+                    if (denHistory.length > 20) denHistory.splice(0, denHistory.length - 20);
                     setAnim('talk', 1200 + Math.min(data.reply.length * 40, 3000));
                     // 情绪联动：根据回复关键词触发动画与粒子
                     if (/汪汪|哈哈|嘿嘿|开心|高兴|好玩|！！|球/.test(data.reply)) { setAnim('happy', 1600); burst('star', 4); }
@@ -643,9 +708,12 @@
         bgm.loop = true; bgm.volume = 0.35;
         let musicOn = false;
         document.getElementById('btn-music').addEventListener('click', function () {
-            musicOn = !musicOn;
-            if (musicOn) { bgm.play().catch(() => toast('浏览器拒绝了自动播放，再点一次', 'error')); this.textContent = '🔇 静音'; }
-            else { bgm.pause(); this.textContent = '🎵 音乐'; }
+            if (!musicOn) {
+                bgm.play().then(() => { musicOn = true; this.textContent = '🔇 静音'; })
+                    .catch(() => { musicOn = false; this.textContent = '🎵 音乐'; toast('浏览器拦住了播放，请再点一次重试', 'info'); });
+            } else {
+                bgm.pause(); musicOn = false; this.textContent = '🎵 音乐';
+            }
         });
 
         // ---------- 主循环 ----------
@@ -682,10 +750,15 @@
                 const wagAmp = st === 'happy' ? 0.9 : st === 'petting' || st === 'eat' ? 0.55 : st === 'sleep' ? 0.05 : 0.28;
                 const wagSpd = st === 'happy' ? 16 : st === 'sleep' ? 1 : st === 'idle' ? 5 : 9;
                 P.tailGroup.rotation.y = Math.sin(t * wagSpd) * wagAmp;
-                // 耳朵抖动（随机）
+                // 耳朵抖动（随机，左右耳都可能；猫耳内衬补丁同步抖动）
                 if (Math.random() < 0.004 && st !== 'sleep') {
-                    P.earL.rotation.x = -0.3;
-                    setTimeout(() => { P.earL.rotation.x = 0; }, 160);
+                    const ear = Math.random() < 0.5 ? P.earL : P.earR;
+                    const side = ear === P.earL ? -1 : 1;
+                    const inner = P.headGroup.children.find(c =>
+                        c.type === 'Mesh' && c.material.color && c.material.color.getHexString() === '351408' && Math.sign(c.position.x) === side);
+                    if (inner) { inner.rotation.x = -0.3; setTimeout(() => { inner.rotation.x = 0; }, 160); }
+                    ear.rotation.x = -0.3;
+                    setTimeout(() => { ear.rotation.x = 0; }, 160);
                 }
                 // 眨眼
                 anim.nextBlink -= dt;
@@ -718,6 +791,12 @@
                 }
                 // 睡觉 Zzz
                 if (st === 'sleep' && Math.random() < 0.006) burst('zzz', 1, petHeadPos().add(new THREE.Vector3(0.25, 0.15, 0)));
+                // 气泡跟随：拖拽/缩放相机时实时贴住宠物头部投影
+                if (bubbleEl && bubbleEl.classList.contains('show')) {
+                    const hp = petHeadPos().clone().project(camera);
+                    bubbleEl.style.left = `${(hp.x * 0.5 + 0.5) * canvas.clientWidth + 16}px`;
+                    bubbleEl.style.top = `${(-hp.y * 0.5 + 0.5) * canvas.clientHeight - 70}px`;
+                }
                 // 腿的小碎步（开心时）
                 if (st === 'happy') {
                     P.legs.forEach((leg, i) => (leg.rotation.x = Math.sin(t * 16 + i) * 0.25));
@@ -766,6 +845,12 @@
         resize();
         tick();
         new ResizeObserver(resize).observe(canvas);
+        // 调试/测试钩子
+        window.__den = {
+            get scene() { return scene; },
+            get petModel() { return petModel; },
+            SPECS, spawnPet, setAnim, camera: () => camera,
+        };
     })();
     </script>
 </body>
