@@ -683,7 +683,7 @@
             try {
                 gltf = await loadGlb(spec.glb);
             } catch (e) {
-                if (currentPetId !== id) { spawnBusy = false; return; }   // 已被接管：静默让位（不误报/不闪回）
+                if (currentPetId !== id) return;   // 已被接管：静默让位（busy 归接管方管理，不误报/不闪回）
                 toast('宠物模型加载失败，请刷新重试', 'error');
                 gltfCache[spec.glb] = null;     // 清失败缓存（rejected promise 不常驻，下次点击可重试）
                 spawnBusy = false;               // 先复位再回滚：子级调用时标志状态正确
@@ -1115,6 +1115,7 @@
         const breathText = document.getElementById('breath-text');
         const breathRound = document.getElementById('breath-round');
         let breathTimers = [];
+        let breathActive = false;   // 与视觉互动双向互斥：任一启动时另一功能不激活
         function breathClear() { breathTimers.forEach(t => clearTimeout(t)); breathTimers = []; }
         function breathPhase(text, dur, scale, emoji) {
             breathText.textContent = text;
@@ -1124,6 +1125,7 @@
         }
         function startBreath() {
             breathClear();   // 防键盘重入：旧链先清
+            breathActive = true;
             if (visionOn) {   // 练习期间收起视觉互动，保持沉浸（抚摸动画会打断呼吸同步）
                 stopVision();
                 const vb = document.getElementById('btn-vision');
@@ -1147,10 +1149,11 @@
                 setAnim('petting', 2200);
                 showBubble('你做得很好，现在有没有轻松一点点？', 3600);
             }, ROUNDS * 14000));
-            breathTimers.push(setTimeout(() => { breathClear(); breathMask.hidden = true; }, ROUNDS * 14000 + 4000));
+            breathTimers.push(setTimeout(() => { breathClear(); breathActive = false; breathMask.hidden = true; }, ROUNDS * 14000 + 4000));
         }
         function stopBreath() {
             breathClear();
+            breathActive = false;
             breathMask.hidden = true;
             breathCircle.style.transitionDuration = '0.6s';
             breathCircle.style.transform = 'scale(1)';
@@ -1267,6 +1270,7 @@
             }, canvas);
             this.disabled = false;
             if (!ok) { this.textContent = '👁 眼神互动'; dv = null; window.__denVision = null; return; }
+            if (breathActive) { dv.stop(); dv = null; window.__denVision = null; this.textContent = '👁 眼神互动'; toast('先专注呼吸，练完再开启眼神互动吧', 'info'); return; }
             visionOn = true;
             this.textContent = '👁 关闭视觉';
             vBox.classList.remove('hidden');
