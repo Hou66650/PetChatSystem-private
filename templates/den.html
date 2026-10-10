@@ -897,11 +897,27 @@
             speechSynthesis.onvoiceschanged = refreshVoices;
         }
         let userInteracted = false;   // 浏览器自动播放策略：首次交互前不主动发声（说话动画照常）
-        window.addEventListener('pointerdown', () => { userInteracted = true; }, { once: true });
+        ['pointerdown', 'click', 'keydown', 'touchstart'].forEach(evt => {
+            window.addEventListener(evt, () => { userInteracted = true; }, { once: true, passive: true });
+        });
+        // 页面获得焦点也算交互（从别的标签页切回来）
+        window.addEventListener('focus', () => { userInteracted = true; }, { passive: true });
         function speak(text, opts = {}) {
             const clean = String(text).replace(/[～~♪🎯🎉🧣🎀✨]/g, '').trim().slice(0, 140);
             if (opts.talk !== false && petModel && clean) setAnim('talk', 1200 + clean.length * 60);   // 说话动画不随静音关闭
-            if (!ttsOn || !userInteracted || !window.speechSynthesis || !clean) return;
+            if (!ttsOn || !userInteracted || !clean) return;
+            if (!window.speechSynthesis) {
+                toast('当前浏览器不支持语音合成，建议用 Chrome/Edge 打开', 'info');
+                return;
+            }
+            // 检查是否有可用语音（有些系统需要等 voices 加载完）
+            if (!zhVoice && speechSynthesis.getVoices().length === 0) {
+                refreshVoices();   // 再试一次
+                if (speechSynthesis.getVoices().length === 0) {
+                    toast('系统没有可用语音，请在 Windows 设置中安装中文语音包', 'info');
+                    return;
+                }
+            }
             try {
                 const u = new SpeechSynthesisUtterance(clean);
                 u.lang = 'zh-CN';
@@ -1028,11 +1044,26 @@
         });
         const bgm = new Audio("{{ url_for('static', filename='mp3/m2.mp3') }}");
         bgm.loop = true; bgm.volume = 0.35;
+        bgm.preload = 'auto';
         let musicOn = false;
+        // 某些浏览器需要先 resume AudioContext
+        function unlockAudio() {
+            if (window.AudioContext || window.webkitAudioContext) {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                if (ctx.state === 'suspended') ctx.resume();
+            }
+        }
         document.getElementById('btn-music').addEventListener('click', function () {
             if (!musicOn) {
-                bgm.play().then(() => { musicOn = true; this.textContent = '🔇 静音'; })
-                    .catch(() => { musicOn = false; this.textContent = '🎵 音乐'; toast('浏览器拦住了播放，请再点一次重试', 'info'); });
+                unlockAudio();
+                bgm.volume = 0.35;   // 确保音量非零
+                bgm.play().then(() => {
+                    musicOn = true; this.textContent = '🔇 静音';
+                    if (bgm.volume === 0) { bgm.volume = 0.35; }
+                }).catch((e) => {
+                    musicOn = false; this.textContent = '🎵 音乐';
+                    toast('播放被浏览器拦截，请先点击页面任意位置再试', 'info');
+                });
             } else {
                 bgm.pause(); musicOn = false; this.textContent = '🎵 音乐';
             }
