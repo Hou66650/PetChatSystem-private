@@ -140,7 +140,7 @@
         <div class="den-pets" id="den-pets"></div>
 
         <div class="intimacy-panel" id="intimacy-panel">
-            <h4 id="ip-name">柯基</h4>
+            <h4 id="ip-name">小窝</h4>
             <div>亲密度 <span class="level" id="ip-level">初次见面</span> <span id="ip-num" class="text-sub" style="font-size:12px;">0/10</span></div>
             <div class="bar"><div id="ip-bar" style="width:0%"></div></div>
             <div class="hint" id="ip-hint">摸摸它、喂它好吃的、陪它聊天都能提升亲密度</div>
@@ -414,6 +414,8 @@
         }
 
         async function spawnPet(id) {
+            if (!SPECS[id]) { toast('这只宠物还不认识我们哦', 'error'); return; }
+            if (id === currentPetId && petModel) return;   // 快速连点同一只：忽略
             if (petModel) scene.remove(petModel);
             currentPetId = id;
             if (typeof denHistory !== 'undefined') denHistory = [];   // 聊天记忆逐宠隔离
@@ -423,11 +425,13 @@
             updateIntimacyUI();
             document.getElementById('chat-title').textContent = `和${spec.name}聊天`;
             document.getElementById('ip-name').textContent = `${spec.name}的小窝`;
+            const prevId = SPECS[currentPetId] && currentPetId !== id ? currentPetId : null;
             let gltf;
             try {
                 gltf = await loadGlb(spec.glb);
             } catch (e) {
                 toast('宠物模型加载失败，请刷新重试', 'error');
+                if (prevId) spawnPet(prevId);   // 回滚到上一只，界面与场景保持一致
                 return;
             }
             // 用户等加载期间可能已切换到别的宠物
@@ -615,11 +619,13 @@
             refreshVoices();
             speechSynthesis.onvoiceschanged = refreshVoices;
         }
+        let userInteracted = false;   // 浏览器自动播放策略：首次交互前不主动发声（说话动画照常）
+        window.addEventListener('pointerdown', () => { userInteracted = true; }, { once: true });
         function speak(text, opts = {}) {
-            if (!ttsOn || !window.speechSynthesis) return;
+            const clean = String(text).replace(/[～~♪🎯🎉🧣🎀✨]/g, '').trim().slice(0, 140);
+            if (opts.talk !== false && petModel && clean) setAnim('talk', 1200 + clean.length * 60);   // 说话动画不随静音关闭
+            if (!ttsOn || !userInteracted || !window.speechSynthesis || !clean) return;
             try {
-                const clean = String(text).replace(/[～~♪🎯🎉🧣🎀✨]/g, '').trim().slice(0, 140);
-                if (!clean) return;
                 const u = new SpeechSynthesisUtterance(clean);
                 u.lang = 'zh-CN';
                 u.rate = opts.rate || 1.05;
@@ -628,7 +634,6 @@
                 if (zhVoice) u.voice = zhVoice;
                 speechSynthesis.cancel();
                 speechSynthesis.speak(u);
-                if (opts.talk !== false && petModel) setAnim('talk', 1200 + clean.length * 60);
             } catch (e) { /* 无语音库环境静默 */ }
         }
         document.getElementById('btn-tts').addEventListener('click', function () {
@@ -662,6 +667,7 @@
             pointer.x = (e.clientX - canvas.getBoundingClientRect().left) / canvas.clientWidth * 2 - 1;
             pointer.y = -((e.clientY - canvas.getBoundingClientRect().top) / canvas.clientHeight) * 2 + 1;
             raycaster.setFromCamera(pointer, camera);
+            if (!petModel) return;
             const hit = raycaster.intersectObject(petModel, true);
             if (hit.length && performance.now() - lastPetClick > 900) {
                 lastPetClick = performance.now();
@@ -884,10 +890,13 @@
         window.addEventListener('pagehide', () => { if (visionOn) stopVision(); });
         // 切到其他标签页立即停摄像头（隐私指示灯不该常亮）
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden && visionOn) {
-                stopVision();
-                const b = document.getElementById('btn-vision');
-                if (b) b.textContent = '👁 眼神互动';
+            if (document.hidden) {
+                if (window.speechSynthesis) speechSynthesis.cancel();   // 切页停止朗读
+                if (visionOn) {
+                    stopVision();
+                    const b = document.getElementById('btn-vision');
+                    if (b) b.textContent = '👁 眼神互动';
+                }
             }
         });
 
@@ -912,8 +921,11 @@
 
                 // 状态到期回落 + 长时间无互动入睡（动画切换交给 setAnim）
                 if (anim.until && now > anim.until) { setAnim('idle', 0); anim.until = 0; }
-                if (anim.state === 'idle' && now - anim.lastInteract > 45000) setAnim('sleep', 0);
-                if (anim.state === 'sleep' && now - anim.lastInteract < 45000) setAnim('idle', 0);
+                else if (anim.state === 'idle' && now - anim.lastInteract > 45000) {
+                    anim.state = 'sleep'; playAction('sleep', 0.4);   // 直接切动作：不经 setAnim(会刷新互动时间,导致睡不着的死循环)
+                } else if (anim.state === 'sleep' && now - anim.lastInteract < 45000) {
+                    anim.state = 'idle'; playAction('idle', 1);
+                }
                 if (mixer) mixer.update(dt);
                 const st = anim.state;
                 // 睡觉 Zzz
