@@ -830,6 +830,12 @@
                     toast(kind === 'camera' ? '无法访问摄像头：请在浏览器地址栏允许摄像头权限'
                         : kind === 'runtime' ? '视觉推理异常，已自动停止'
                         : '视觉模型加载失败', 'error');
+                    // runtime 自停后同步复位页面 UI（按钮/预览窗/虚拟手）
+                    if (kind === 'runtime') {
+                        stopVision();
+                        const b = document.getElementById('btn-vision');
+                        if (b) b.textContent = '👁 眼神互动';
+                    }
                 },
             }, canvas);
             this.disabled = false;

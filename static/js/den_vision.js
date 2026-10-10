@@ -93,6 +93,11 @@ class DenVision {
             return false;
         }
 
+        // 模型加载期间可能已被 stop()（如切标签页触发 visibilitychange）——流已停则不发车
+        // （无轨道的空流放行：可能是测试注入，检测循环有 readyState 守卫兜底）
+        const tracks = this.stream ? this.stream.getTracks() : [];
+        const live = !tracks.length || tracks.some(t => t.readyState === 'live');
+        if (!live) { this.stop(); return false; }
         this.running = true;
         this.target = target || videoEl;
         this.timer = setInterval(() => this._detect(), DETECT_MS);
@@ -181,7 +186,8 @@ class DenVision {
             }
         } else {
             this.gazeLost++;
-            this.gazeStreak = 0;
+            // 单帧宽限：眨眼（~1-4 检测帧）时 gazeY 会短暂超阈，streak 衰减而非清零
+            this.gazeStreak = Math.max(0, this.gazeStreak - 1);
             if (this.gazeContact && this.gazeLost >= GAZE_LOST_FRAMES) {
                 this.gazeContact = false;
                 this.onGaze(false);
