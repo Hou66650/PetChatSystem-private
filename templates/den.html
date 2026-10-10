@@ -122,6 +122,50 @@
             filter: drop-shadow(0 4px 8px rgba(74,59,50,.25)); }
         #vision-hand.reaching { filter: drop-shadow(0 6px 10px rgba(232,131,60,.45)); }
 
+        /* ---------- 心理治愈：心情打卡 / 呼吸练习 / 倾诉 chips ---------- */
+        .mood-mask, .breath-mask { position: fixed; inset: 0; z-index: 200; display: flex;
+            align-items: center; justify-content: center; }
+        .mood-mask { background: rgba(74,59,50,.45); backdrop-filter: blur(2px); }
+        .mood-mask[hidden], .breath-mask[hidden] { display: none; }
+        .mood-card { width: min(92vw, 380px); background: #FFFDF8; border-radius: 18px; padding: 22px;
+            box-shadow: 0 14px 40px rgba(74,59,50,.25); }
+        .mood-card h3 { margin: 0 0 4px; font-size: 17px; color: var(--c-text); }
+        .mood-card .sub { font-size: 12px; color: var(--c-text-sub); margin-bottom: 14px; }
+        .mood-row { display: flex; gap: 8px; margin-bottom: 14px; }
+        .mood-opt { flex: 1; border: 2px solid var(--c-line); background: #fff; border-radius: 12px;
+            padding: 8px 2px 6px; text-align: center; cursor: pointer; transition: .15s; }
+        .mood-opt .e { font-size: 24px; display: block; }
+        .mood-opt .t { font-size: 11px; color: var(--c-text-sub); }
+        .mood-opt:hover { transform: translateY(-2px); }
+        .mood-opt.sel { border-color: var(--c-primary); background: #FFF3E4; }
+        .mood-note { width: 100%; border: 1px solid var(--c-line); border-radius: 10px; padding: 8px 12px;
+            font-size: 13px; font-family: var(--font-body); margin-bottom: 12px; resize: none; }
+        .mood-note:focus { outline: none; border-color: var(--c-primary); }
+        .mood-week { display: flex; gap: 6px; margin-bottom: 14px; }
+        .mood-week .d { flex: 1; text-align: center; font-size: 10px; color: var(--c-text-sub); }
+        .mood-week .d b { display: block; font-size: 17px; font-weight: 400; }
+        .mood-card .btn-row { display: flex; gap: 10px; }
+        .mood-card .btn-row button { flex: 1; height: 38px; border: none; border-radius: 999px; cursor: pointer;
+            font-family: var(--font-body); font-weight: 700; }
+        .mood-ok { background: var(--c-primary); color: var(--c-text); }
+        .mood-cancel { background: transparent; color: var(--c-text-sub); border: 1px solid var(--c-line) !important; }
+        .streak-tip { text-align: center; font-size: 11px; color: var(--c-primary); margin-top: 10px; }
+        .breath-mask { background: radial-gradient(circle at 50% 45%, rgba(255,214,165,.42), rgba(74,59,50,.38));
+            flex-direction: column; cursor: pointer; }
+        .breath-circle { width: 150px; height: 150px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,.95), rgba(255,214,165,.85));
+            box-shadow: 0 0 60px rgba(255,200,140,.7); display: flex; align-items: center; justify-content: center;
+            transition: transform 3.8s cubic-bezier(.4,0,.6,1); font-size: 40px; }
+        .breath-text { margin-top: 26px; font-size: 19px; color: #fff; text-shadow: 0 2px 10px rgba(74,59,50,.5);
+            letter-spacing: 2px; }
+        .breath-round { margin-top: 8px; font-size: 12px; color: rgba(255,255,255,.85); }
+        .breath-close { position: absolute; top: 18px; right: 22px; color: #fff; font-size: 13px;
+            background: rgba(255,255,255,.18); border: none; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+        .chat-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px 0; }
+        .chat-chips button { border: 1px solid var(--c-line); background: #FFF6EC; color: var(--c-text-sub);
+            border-radius: 999px; font-size: 11px; padding: 4px 10px; cursor: pointer; font-family: var(--font-body); }
+        .chat-chips button:hover { border-color: var(--c-primary); color: var(--c-text); }
+
         @media (max-width: 767px) {
             .intimacy-panel { top: 66px; min-width: 150px; padding: 10px 12px; }
             .den-pets { top: 64px; }
@@ -157,6 +201,8 @@
             <button class="action-btn" id="btn-photo">📸 拍照</button>
             <button class="action-btn" id="btn-vision">👁 眼神互动</button>
             <button class="action-btn" id="btn-tts">🔊 语音</button>
+            <button class="action-btn" id="btn-mood">💗 心情</button>
+            <button class="action-btn" id="btn-breath">🫁 呼吸</button>
             <button class="action-btn" id="btn-chat">💬 聊天</button>
             <button class="action-btn" id="btn-music">🎵 音乐</button>
         </div>
@@ -167,10 +213,47 @@
                 <button class="icon-btn" id="btn-chat-close" aria-label="收起聊天" style="width:28px;height:28px;">✕</button>
             </header>
             <div class="msgs" id="chat-msgs"></div>
+            <div class="chat-chips" id="chat-chips">
+                <button type="button" data-say="我今天有点难过，你能陪陪我吗">有点难过 😢</button>
+                <button type="button" data-say="我最近好焦虑，心里静不下来">好焦虑 😰</button>
+                <button type="button" data-say="压力好大，感觉快撑不住了">压力好大 😮‍💨</button>
+                <button type="button" data-say="最近总是睡不着，心里乱乱的">睡不着 🌙</button>
+                <button type="button" data-say="没什么特别的事，就想和你聊聊">就想聊聊 💬</button>
+            </div>
             <form id="chat-form">
                 <input id="chat-input" placeholder="和它说点什么…" autocomplete="off" maxlength="200">
                 <button type="submit" id="chat-send">发送</button>
             </form>
+        </div>
+
+        <!-- 心理治愈：心情打卡 -->
+        <div class="mood-mask" id="mood-mask" hidden>
+            <div class="mood-card" role="dialog" aria-label="今日心情">
+                <h3>今天心情怎么样？</h3>
+                <div class="sub">告诉它，它会一直陪着你</div>
+                <div class="mood-row" id="mood-row">
+                    <div class="mood-opt" data-mood="happy" data-label="开心"><span class="e">😊</span><span class="t">开心</span></div>
+                    <div class="mood-opt" data-mood="calm" data-label="平静"><span class="e">🙂</span><span class="t">平静</span></div>
+                    <div class="mood-opt" data-mood="low" data-label="低落"><span class="e">😔</span><span class="t">低落</span></div>
+                    <div class="mood-opt" data-mood="anxious" data-label="焦虑"><span class="e">😰</span><span class="t">焦虑</span></div>
+                    <div class="mood-opt" data-mood="sad" data-label="难过"><span class="e">😢</span><span class="t">难过</span></div>
+                </div>
+                <textarea class="mood-note" id="mood-note" rows="2" maxlength="120" placeholder="想说点什么给它听？（选填）"></textarea>
+                <div class="mood-week" id="mood-week"></div>
+                <div class="btn-row">
+                    <button class="mood-cancel" id="mood-cancel">先不了</button>
+                    <button class="mood-ok" id="mood-ok">告诉它</button>
+                </div>
+                <div class="streak-tip" id="mood-streak"></div>
+            </div>
+        </div>
+
+        <!-- 心理治愈：呼吸练习 -->
+        <div class="breath-mask" id="breath-mask" hidden>
+            <button class="breath-close" id="breath-close">结束练习</button>
+            <div class="breath-circle" id="breath-circle">🐾</div>
+            <div class="breath-text" id="breath-text">准备好了就开始啦</div>
+            <div class="breath-round" id="breath-round"></div>
         </div>
 
         <!-- 视觉互动：本地 WASM 推理，摄像头画面不上传 -->
@@ -202,16 +285,20 @@
         const SPECS = {
             1: { name: '柴犬', glb: '/static/models/shiba.glb', h: 0.95,
                  greet: '汪！欢迎来到我的小窝，摸摸我吧！',
-                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Idle_2_HeadLow' } },
+                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Idle_2_HeadLow' },
+                 theme: 'sakura', themeName: '樱花庭院' },
             2: { name: '哈士奇', glb: '/static/models/husky.glb', h: 1.05,
                  greet: '嗷呜~ 帅气的我在等你一起玩呢！',
-                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Idle_2_HeadLow' } },
+                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Idle_2_HeadLow' },
+                 theme: 'snow', themeName: '静静雪原' },
             3: { name: '猫咪', glb: '/static/models/cat.glb', h: 0.72,
                  greet: '喵~ 我的窝就是你的窝（才不让你走呢）。',
-                 anims: { idle: 'Idle', happy: 'Jump_Loop', eat: 'Idle_Eating', petting: 'Idle', talk: 'Idle', sleep: 'Idle' } },
+                 anims: { idle: 'Idle', happy: 'Jump_Loop', eat: 'Idle_Eating', petting: 'Idle', talk: 'Idle', sleep: 'Idle' },
+                 theme: 'room', themeName: '温馨小窝' },
             4: { name: '德牧', glb: '/static/models/shepherd.glb', h: 1.08,
                  greet: '汪！忠诚卫士报到，今天想玩点什么？',
-                 anims: { idle: 'Idle', happy: 'Run_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Idle_2_HeadLow' } },
+                 anims: { idle: 'Idle', happy: 'Run_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Idle_2_HeadLow' },
+                 theme: 'camp', themeName: '星空营地' },
         };
         const LEVELS = [
             [0, '初次见面'], [10, '有点熟悉'], [30, '心情不错'],
@@ -281,14 +368,159 @@
         rug.position.y = 0.01;
         rug.receiveShadow = true;
         scene.add(rug);
-        [[-1.6, 0.05, -1.3, 0x86B26F], [1.9, 0.03, -1.0, 0x6FA35D], [1.35, 0.04, -1.85, 0x9BC98A]].forEach(([x, y, z, c]) => {
-            const bush = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 10),
-                new THREE.MeshLambertMaterial({ color: c }));
-            bush.position.set(x, y, z);
-            bush.castShadow = true;
-            bush.receiveShadow = true;
-            scene.add(bush);
-        });
+        // ---------- 每宠专属场景主题（装饰/地面/环境粒子） ----------
+        const decorGroup = new THREE.Group();
+        scene.add(decorGroup);
+        let currentTheme = null;
+        const M = (c) => new THREE.MeshLambertMaterial({ color: c });
+
+        const THEMES = {
+            sakura: {   // 樱花庭院：樱花树 + 石灯笼 + 飘落花瓣
+                rug: 0xF7C8D0,
+                ground: { grass: true, day: 0xE0E4D0, dusk: 0xC8B8A8, night: 0x8A8A96 },
+                env: { ch: '🌸', n: 16, rise: false },
+                build(g) {
+                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.14, 1.5, 8), M(0x8A6248));
+                    trunk.position.set(-2.3, 0.75, -1.5); trunk.castShadow = true; g.add(trunk);
+                    [[-2.3, 1.75, -1.5, 0.62], [-2.0, 1.5, -1.75, 0.42], [-2.62, 1.45, -1.35, 0.4], [-2.3, 1.95, -1.72, 0.34]].forEach(([x, y, z, r]) => {
+                        const c = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10), M(0xF8C8D8));
+                        c.position.set(x, y, z); c.castShadow = true; g.add(c);
+                    });
+                    const lantern = new THREE.Group();
+                    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.7, 8), M(0x9AA0A0));
+                    pole.position.y = 0.35; lantern.add(pole);
+                    const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.22, 6), M(0xD8D4C4));
+                    lamp.position.y = 0.78; lantern.add(lamp);
+                    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.16, 6), M(0x8A9090));
+                    cap.position.y = 0.96; lantern.add(cap);
+                    lantern.position.set(2.15, 0, -1.35);
+                    lantern.traverse(o => { o.castShadow = true; });
+                    g.add(lantern);
+                    const lampLight = new THREE.PointLight(0xFFE8C0, 0.5, 3.5);
+                    lampLight.position.set(2.15, 1.0, -1.35);
+                    lampLight.name = '__themeLight';
+                    g.add(lampLight);
+                },
+            },
+            snow: {     // 静静雪原：雪堆 + 松树 + 落雪
+                rug: 0xE8F0F8,
+                ground: { grass: false, base: 0xF2F6FA, day: 0xFFFFFF, dusk: 0xD8E0EA, night: 0x9AA6B8 },
+                env: { ch: '❄️', n: 22, rise: false },
+                build(g) {
+                    [[-2.0, -1.2, 0.55], [1.9, -0.9, 0.4], [1.2, -1.9, 0.62], [-1.1, -2.1, 0.34]].forEach(([x, z, r]) => {
+                        const s = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), M(0xFAFCFF));
+                        s.scale.y = 0.45; s.position.set(x, r * 0.28, z); s.castShadow = true; s.receiveShadow = true; g.add(s);
+                    });
+                    [[-2.5, -0.8, 1.15], [2.5, -1.5, 0.95]].forEach(([x, z, h]) => {
+                        const tree = new THREE.Group();
+                        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 0.4, 8), M(0x7A5A40));
+                        trunk.position.y = 0.2; tree.add(trunk);
+                        [[0.45, 0.75], [0.33, 1.25]].forEach(([r, y]) => {
+                            const cone = new THREE.Mesh(new THREE.ConeGeometry(r, 0.85, 10), M(0x4E7A58));
+                            cone.position.y = y; cone.castShadow = true; tree.add(cone);
+                        });
+                        tree.position.set(x, 0, z);
+                        g.add(tree);
+                        const snowCap = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 10), M(0xFAFCFF));
+                        snowCap.position.set(x, 1.55, z); g.add(snowCap);
+                    });
+                },
+            },
+            room: {     // 温馨小窝：木地板 + 纸箱 + 毛线球 + 串灯
+                rug: 0xF5C9A0,
+                ground: { grass: false, base: 0xC9A177, day: 0xD9B98F, dusk: 0xC8A87E, night: 0x8A7E72 },
+                env: { ch: '🫧', n: 10, rise: true, tiny: true },
+                build(g) {
+                    const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.9), M(0xC89858));
+                    box.position.set(-2.1, 0.35, -1.3); box.rotation.y = 0.4; box.castShadow = true; box.receiveShadow = true; g.add(box);
+                    const box2 = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.45, 0.55), M(0xD8A868));
+                    box2.position.set(-2.05, 0.92, -1.25); box2.rotation.y = -0.2; box2.castShadow = true; g.add(box2);
+                    [[1.9, -1.1, 0xF2A0B5], [2.35, -0.7, 0x9AC8E8]].forEach(([x, z, c]) => {
+                        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 12), M(c));
+                        ball.position.set(x, 0.2, z); ball.castShadow = true; g.add(ball);
+                    });
+                    const stringLight = new THREE.Group();
+                    for (let i = 0; i < 7; i++) {
+                        const t = i / 6;
+                        const x = -2.6 + t * 5.2;
+                        const y = 2.3 - Math.sin(t * Math.PI) * 0.55;
+                        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8),
+                            new THREE.MeshBasicMaterial({ color: 0xFFE0A8 }));
+                        bulb.position.set(x, y, -1.9 + Math.sin(t * Math.PI) * 0.4);
+                        stringLight.add(bulb);
+                    }
+                    stringLight.name = '__stringLights';
+                    g.add(stringLight);
+                    const warm = new THREE.PointLight(0xFFD9A0, 0.55, 6);
+                    warm.position.set(0, 2.2, -1.6);
+                    warm.name = '__themeLight';
+                    g.add(warm);
+                },
+            },
+            camp: {     // 星空营地：篝火 + 帐篷 + 栅栏
+                rug: 0xD8C8A8,
+                ground: { grass: true, day: 0xDCD8C0, dusk: 0xC0B49C, night: 0x86847E },
+                env: { ch: '✨', n: 12, rise: true, tiny: true },
+                build(g) {
+                    const fire = new THREE.Group();
+                    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 8), M(0x7A5238));
+                    log.rotation.z = Math.PI / 2; log.position.y = 0.06; fire.add(log);
+                    const log2 = log.clone(); log2.rotation.y = Math.PI / 2; fire.add(log2);
+                    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 8),
+                        new THREE.MeshBasicMaterial({ color: 0xFF9A3C }));
+                    flame.position.y = 0.42; flame.name = '__flame'; fire.add(flame);
+                    const flameIn = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.34, 8),
+                        new THREE.MeshBasicMaterial({ color: 0xFFD070 }));
+                    flameIn.position.y = 0.36; fire.add(flameIn);
+                    fire.position.set(1.7, 0, 0.9);
+                    fire.traverse(o => { o.castShadow = true; });
+                    g.add(fire);
+                    const fireLight = new THREE.PointLight(0xFFAA50, 1.0, 5);
+                    fireLight.position.set(1.7, 0.8, 0.9);
+                    fireLight.name = '__fireLight';
+                    g.add(fireLight);
+                    const tent = new THREE.Group();
+                    const t1 = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.15, 4), M(0xE8DCC0));
+                    t1.position.y = 0.58; t1.rotation.y = Math.PI / 4; t1.castShadow = true; tent.add(t1);
+                    const door = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.6, 4), M(0x6A5646));
+                    door.position.set(0.18, 0.3, 0.42); door.rotation.y = Math.PI / 4; tent.add(door);
+                    tent.position.set(-2.2, 0, -1.2);
+                    g.add(tent);
+                    for (let i = 0; i < 4; i++) {
+                        const post = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.55, 0.09), M(0x9A7A58));
+                        post.position.set(-0.6 + i * 0.75, 0.27, -2.3); post.castShadow = true; g.add(post);
+                        if (i < 3) {
+                            const rail = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.07, 0.06), M(0xA88868));
+                            rail.position.set(-0.225 + i * 0.75, 0.4, -2.3); g.add(rail);
+                        }
+                    }
+                },
+            },
+        };
+
+        // 环境粒子（樱花/落雪/微尘/星光，主题切换时重建）
+        let envSprites = [];
+        function applyTheme(name) {
+            const t = THEMES[name];
+            if (!t) return;
+            currentTheme = name;
+            while (decorGroup.children.length) decorGroup.remove(decorGroup.children[0]);
+            t.build(decorGroup);
+            rug.material.color.setHex(t.rug);
+            applyTimeOfDay();
+            envSprites.forEach(s => scene.remove(s));
+            envSprites = [];
+            const tex = emojiTexture(t.env.ch);
+            for (let i = 0; i < t.env.n; i++) {
+                const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.75 }));
+                const sz = t.env.tiny ? 0.1 + Math.random() * 0.08 : 0.16 + Math.random() * 0.12;
+                sp.scale.setScalar(sz);
+                sp.position.set((Math.random() - 0.5) * 7, Math.random() * 3, (Math.random() - 0.5) * 7);
+                sp.userData = { v: (t.env.rise ? 0.1 : -0.12) - Math.random() * 0.1, sway: Math.random() * Math.PI * 2, rise: t.env.rise };
+                scene.add(sp);
+                envSprites.push(sp);
+            }
+        }
 
         // 昼夜背景（?scene=night/morning/day/dusk 可强制指定，便于演示与验收）
         function applyTimeOfDay() {
@@ -305,8 +537,11 @@
             scene.fog = new THREE.Fog(fog, 9, 22);
             sun.intensity = sunI;
             hemi.intensity = 0.5 + sunI * 0.4;
-            // 地面随昼夜明暗（贴图不能只靠灯光，夜里乘一层暗色）
-            groundMat.color.setHex(sunI < 0.5 ? 0x8a8a96 : sunI < 0.8 ? 0xc8c2b8 : 0xe8e0d0);
+            // 地面随昼夜明暗 + 主题配色（雪原/木地板为纯色，庭院/营地为草地贴图）
+            const gnd = (currentTheme && THEMES[currentTheme]) ? THEMES[currentTheme].ground : { grass: true, day: 0xe8e0d0, dusk: 0xc8c2b8, night: 0x8a8a96 };
+            groundMat.map = gnd.grass ? grassTex : null;
+            groundMat.needsUpdate = true;
+            groundMat.color.setHex(sunI < 0.5 ? (gnd.night || 0x8a8a96) : sunI < 0.8 ? (gnd.dusk || 0xc8c2b8) : (gnd.day || 0xe8e0d0));
             // 夜晚/黄昏给宠物加一盏暖色"窝灯"，避免主体打光过平
             if (sunI < 0.65) {
                 if (!window.__denLamp) {
@@ -423,6 +658,7 @@
             currentPetId = id;
             if (typeof denHistory !== 'undefined') denHistory = [];   // 聊天记忆逐宠隔离
             const spec = SPECS[id];
+            applyTheme(spec.theme);   // 每宠专属场景（需在 spec 定义后）
             // 先刷 UI（加载是异步的，界面不该等）
             renderPetChips();
             updateIntimacyUI();
@@ -773,6 +1009,136 @@
             }
         });
 
+        // ---------- 心理治愈 · 心情打卡（记录 + 连续陪伴天数 + 宠物语音安抚） ----------
+        const MOOD_KEY = 'denMood';
+        const MOOD_EMOJI = { happy: '😊', calm: '🙂', low: '😔', anxious: '😰', sad: '😢' };
+        function loadMood() {
+            try { return JSON.parse(localStorage.getItem(MOOD_KEY) || '{}'); } catch (e) { return {}; }
+        }
+        function saveMood(m) { try { localStorage.setItem(MOOD_KEY, JSON.stringify(m)); } catch (e) {} }
+        const moodMask = document.getElementById('mood-mask');
+        let moodSel = null;
+        function moodDateStr(offset = 0) {
+            const d = new Date(); d.setDate(d.getDate() - offset);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        function renderMoodWeek() {
+            const m = loadMood();
+            const box = document.getElementById('mood-week');
+            const wk = ['日', '一', '二', '三', '四', '五', '六'];
+            let html = '';
+            for (let i = 6; i >= 0; i--) {
+                const key = moodDateStr(i);
+                const rec = m.days && m.days[key];
+                const d = new Date(key.replace(/-/g, '/'));
+                html += `<div class="d">周${wk[d.getDay()]}<b>${rec ? MOOD_EMOJI[rec.mood] : '·'}</b></div>`;
+            }
+            box.innerHTML = html;
+            const streak = m.streak || 0;
+            document.getElementById('mood-streak').textContent =
+                streak > 0 ? `已连续互相陪伴 ${streak} 天 💛` : '每天来记一笔，它会更懂你';
+        }
+        document.getElementById('mood-row').addEventListener('click', (e) => {
+            const opt = e.target.closest('.mood-opt');
+            if (!opt) return;
+            document.querySelectorAll('.mood-opt').forEach(o => o.classList.remove('sel'));
+            opt.classList.add('sel');
+            moodSel = opt.dataset.mood;
+        });
+        document.getElementById('btn-mood').addEventListener('click', () => {
+            moodSel = null;
+            document.querySelectorAll('.mood-opt').forEach(o => o.classList.remove('sel'));
+            document.getElementById('mood-note').value = '';
+            renderMoodWeek();
+            moodMask.hidden = false;
+        });
+        document.getElementById('mood-cancel').addEventListener('click', () => { moodMask.hidden = true; });
+        moodMask.addEventListener('click', (e) => { if (e.target === moodMask) moodMask.hidden = true; });
+        document.getElementById('mood-ok').addEventListener('click', async () => {
+            if (!moodSel) { toast('先选一个今天的心情吧', 'info'); return; }
+            const today = moodDateStr();
+            const m = loadMood();
+            if (!m.days) m.days = {};
+            const label = document.querySelector(`.mood-opt[data-mood="${moodSel}"]`).dataset.label;
+            const note = document.getElementById('mood-note').value.trim();
+            m.days[today] = { mood: moodSel, note };
+            m.streak = (m.lastDate === moodDateStr(1)) ? (m.streak || 0) + 1
+                : (m.lastDate === today) ? (m.streak || 1) : 1;
+            m.lastDate = today;
+            saveMood(m);
+            moodMask.hidden = true;
+            burst('heart', 3);
+            setAnim('petting', 2000);
+            // 宠物安抚：真实 GLM 回应（人设本身温暖），回复由气泡+TTS 朗读
+            try {
+                const resp = await fetch('/get_gpt_response', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: `我今天心情是「${label}」。${note ? '我想对你说：' + note : '请你抱抱我，安慰我一下。'}`,
+                        chatHistory: [], model: MODELS[0], petId: currentPetId,
+                    }),
+                });
+                const data = await resp.json();
+                showBubble(data.reply || `${SPECS[currentPetId].name}一直都在哦`, 4200);
+            } catch (err) {
+                showBubble(`${SPECS[currentPetId].name}一直都在，别怕`, 3200);
+            }
+        });
+
+        // ---------- 心理治愈 · 跟它一起深呼吸（4-4-6 节律 ×3 轮） ----------
+        const breathMask = document.getElementById('breath-mask');
+        const breathCircle = document.getElementById('breath-circle');
+        const breathText = document.getElementById('breath-text');
+        const breathRound = document.getElementById('breath-round');
+        let breathTimers = [];
+        function breathClear() { breathTimers.forEach(t => clearTimeout(t)); breathTimers = []; }
+        function breathPhase(text, dur, scale, emoji) {
+            breathText.textContent = text;
+            breathCircle.style.transitionDuration = dur + 's';
+            breathCircle.style.transform = `scale(${scale})`;
+            breathCircle.textContent = emoji;
+        }
+        function startBreath() {
+            breathMask.hidden = false;
+            setAnim('sleep', 48000);   // 宠物同步进入舒缓呼吸（慢放动画）
+            const ROUNDS = 3;
+            for (let r = 0; r < ROUNDS; r++) {
+                breathTimers.push(setTimeout(() => {
+                    breathRound.textContent = `第 ${r + 1} / ${ROUNDS} 轮`;
+                    breathPhase('跟着它，慢慢吸气…', 4, 1.35, '🐶');
+                }, r * 14000));
+                breathTimers.push(setTimeout(() => breathPhase('轻轻屏住…', 4, 1.35, '🐾'), r * 14000 + 4000));
+                breathTimers.push(setTimeout(() => breathPhase('缓缓呼气，把烦恼吐出去…', 6, 0.62, '💨'), r * 14000 + 8000));
+            }
+            breathTimers.push(setTimeout(() => {
+                breathPhase('完成啦，做得很好', 2, 1, '💛');
+                breathRound.textContent = '';
+                burst('star', 5);
+                setAnim('petting', 2200);
+                showBubble('你做得很好，现在有没有轻松一点点？', 3600);
+            }, ROUNDS * 14000));
+            breathTimers.push(setTimeout(() => { breathMask.hidden = true; }, ROUNDS * 14000 + 4000));
+        }
+        function stopBreath() {
+            breathClear();
+            breathMask.hidden = true;
+            breathCircle.style.transitionDuration = '0.6s';
+            breathCircle.style.transform = 'scale(1)';
+            setAnim('idle', 0);
+        }
+        document.getElementById('btn-breath').addEventListener('click', startBreath);
+        document.getElementById('breath-close').addEventListener('click', (e) => { e.stopPropagation(); stopBreath(); });
+        breathMask.addEventListener('click', stopBreath);
+
+        // ---------- 心理治愈 · 快捷倾诉（聊天面板一键说出情绪） ----------
+        document.getElementById('chat-chips').addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-say]');
+            if (!btn) return;
+            chatInput.value = btn.dataset.say;
+            document.getElementById('chat-form').requestSubmit();
+        });
+
         // ---------- 视觉互动（眼神对视 + 伸手抚摸；本地 WASM 推理，画面不上传） ----------
         let dv = null, visionOn = false, visionTick = null;
         let gazeNow = false, gazeSec = 0, lastGazeHeart = 0;
@@ -949,6 +1315,22 @@
                     bubbleEl.style.top = `${(-hp.y * 0.5 + 0.5) * canvas.clientHeight - 70}px`;
                 }
             }
+
+            // 主题环境粒子（樱花飘落/落雪/微尘上浮）与篝火闪烁
+            for (const sp of envSprites) {
+                sp.position.y += sp.userData.v * dt;
+                sp.userData.sway += dt * 1.2;
+                sp.position.x += Math.sin(sp.userData.sway) * dt * 0.18;
+                if (sp.userData.rise) {
+                    if (sp.position.y > 3.2) { sp.position.y = 0.1; sp.position.x = (Math.random() - 0.5) * 7; sp.position.z = (Math.random() - 0.5) * 7; }
+                } else if (sp.position.y < 0.05) {
+                    sp.position.y = 2.8 + Math.random() * 0.6; sp.position.x = (Math.random() - 0.5) * 7; sp.position.z = (Math.random() - 0.5) * 7;
+                }
+            }
+            const fireLight = decorGroup.getObjectByName && decorGroup.getObjectByName('__fireLight');
+            if (fireLight) fireLight.intensity = 0.85 + Math.sin(t * 9) * 0.15 + Math.sin(t * 23) * 0.1;
+            const flameObj = decorGroup.getObjectByName && decorGroup.getObjectByName('__flame');
+            if (flameObj) flameObj.scale.setScalar(1 + Math.sin(t * 11) * 0.12);
 
             // 粒子物理
             for (let i = particles.length - 1; i >= 0; i--) {
