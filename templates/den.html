@@ -1258,6 +1258,7 @@
         function stopVision() {
             if (visionTick) { clearInterval(visionTick); visionTick = null; }
             if (dv) dv.stop();
+            if (grabbed) { grabbed = false; dropping = true; }   // 停视觉时松手
             visionOn = false; gazeNow = false; handTouch = false; gazeSec = 0; handSec = 0;
             vBox.classList.add('hidden');
             vHandEl.style.opacity = '0';
@@ -1394,6 +1395,12 @@
             autoBlinkTick(now);
 
             if (petModel) {
+                // 保底：被捏住但视觉互动已停（切页/关闭/异常）→ 强制释放掉落
+                if (grabbed && (!dv || !dv.running)) {
+                    grabbed = false;
+                    dropping = true;
+                }
+
                 // 捏住跟随：缩小 + 挂在虚拟手前方（用视觉互动的手坐标）
                 if (grabbed && petModel) {
                     const hs = dv ? dv.handState : null;
@@ -1420,12 +1427,10 @@
                 if (dropping && petModel) {
                     petModel.position.y -= 6.5 * dt;   // 重力
                     petModel.rotation.y *= 0.95;
-                    if (petModel.position.y <= grabHomeY) {
-                        petModel.position.y = grabHomeY;
-                        // 弹跳一下
-                        petModel.position.y = grabHomeY + 0.12;
+                    if (petModel.position.y <= 0.05) {  // 用固定地面高度，不依赖 grabHomeY
+                        petModel.position.y = 0.02;
                         dropping = false;
-                        bounceBack = 0.12;   // tick 里衰减弹跳
+                        bounceBack = 0.12;
                         setAnim('idle', 0);
                     }
                 }

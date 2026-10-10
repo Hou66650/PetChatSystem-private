@@ -226,9 +226,15 @@ class DenVision {
             const palm = Math.hypot(mcp.x - wrist.x, mcp.y - wrist.y);
             const reaching = palm > HAND_REACH;
             // 捏合检测：拇指尖(4)-食指尖(8)距离很小 = 捏手势
+            // 滞后阈值：捏合 <0.055 触发，松开 >0.10 才释放（防抖动）
             const thumbTip = lms[4], indexTip = lms[8];
             const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
-            const pinching = pinchDist < 0.06;   // 归一化阈值
+            let pinching;
+            if (this._pinching) {
+                pinching = pinchDist < 0.10;   // 已捏住：距离够大才算松开
+            } else {
+                pinching = pinchDist < 0.055;  // 未捏住：距离够小才触发
+            }
             // 捏合状态变化时通知
             if (pinching !== this._pinching) {
                 this._pinching = pinching;
