@@ -285,19 +285,19 @@
         const SPECS = {
             1: { name: '柴犬', glb: '/static/models/shiba.glb', h: 0.95,
                  greet: '汪！欢迎来到我的小窝，摸摸我吧！',
-                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death' },
+                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death', blinkL: 'Idle_HitReact_Left', blinkR: 'Idle_HitReact_Right' },
                  theme: 'sakura', themeName: '樱花庭院' },
             2: { name: '哈士奇', glb: '/static/models/husky.glb', h: 1.05,
                  greet: '嗷呜~ 帅气的我在等你一起玩呢！',
-                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death' },
+                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death', blinkL: 'Idle_HitReact_Left', blinkR: 'Idle_HitReact_Right' },
                  theme: 'snow', themeName: '静静雪原' },
             3: { name: '猫咪', glb: '/static/models/cat.glb', h: 0.72,
                  greet: '喵~ 我的窝就是你的窝（才不让你走呢）。',
-                 anims: { idle: 'Idle', happy: 'Jump_Loop', eat: 'Idle_Eating', petting: 'Idle', talk: 'Idle', sleep: 'Death' },
+                 anims: { idle: 'Idle', happy: 'Jump_Loop', eat: 'Idle_Eating', petting: 'Idle', talk: 'Idle', sleep: 'Death', blinkL: 'Idle_HitReact_Left', blinkR: 'Idle_HitReact_Right' },
                  theme: 'room', themeName: '温馨小窝' },
             4: { name: '德牧', glb: '/static/models/shepherd.glb', h: 1.08,
                  greet: '汪！忠诚卫士报到，今天想玩点什么？',
-                 anims: { idle: 'Idle', happy: 'Run_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death' },
+                 anims: { idle: 'Idle', happy: 'Run_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death', blinkL: 'Idle_HitReact_Left', blinkR: 'Idle_HitReact_Right' },
                  theme: 'camp', themeName: '星空营地' },
         };
         const LEVELS = [
@@ -1191,47 +1191,31 @@
         });
 
         // ---------- 宠物眨眼（同步用户眨眼 + 日常自动眨） ----------
-        function closedEyeTexture() {
-            const c = document.createElement('canvas');
-            c.width = c.height = 64;
-            const ctx = c.getContext('2d');
-            ctx.strokeStyle = '#3A2E24';
-            ctx.lineWidth = 5;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.arc(32, 20, 18, Math.PI * 0.15, Math.PI * 0.85);   // 向下弧线 ⌒
-            ctx.stroke();
-            const tex = new THREE.CanvasTexture(c);
-            tex.needsUpdate = true;
-            return tex;
+        // 不做贴片（位置难对准且生硬）——用模型自带快速头部动画（HitReact 抖头=眨眼反应）
+        // + 头顶小粒子增强反馈
+        function petBlink() {
+            if (!petModel || anim.state === 'sleep' || anim.state === 'breath') return;
+            // 随机左右 HitReact（头部快速偏转抖动，300-400ms，视觉像眨眼反应）
+            const key = Math.random() < 0.5 ? 'blinkL' : 'blinkR';
+            const a = actions[key];
+            if (a) {
+                a.reset();
+                a.setLoop(THREE.LoopOnce, 1);
+                a.clampWhenFinished = false;   // 播完自动回到权重 0
+                a.timeScale = 1.6;             // 加快更像快速反应
+                if (activeAction && activeAction !== a) a.crossFadeFrom(activeAction, 0.08, false);
+                a.play();
+                // 不改 activeAction（idle 继续作为基础层，HitReact 是叠加短暂层）
+            }
+            // 头顶小粒子（微妙的视觉提示）
+            burst('star', 1, petHeadPos().add(new THREE.Vector3(0, 0.18, 0)));
         }
-        const closedEyeTex = closedEyeTexture();
-        let blinkSprites = [];
-        function petBlink(dur) {
-            if (!petModel) return;
-            // 清理上一次未消失的
-            blinkSprites.forEach(s => scene.remove(s));
-            blinkSprites = [];
-            const headPos = petHeadPos();
-            const sz = (petModel.userData.height || 1) * 0.14;
-            [-1, 1].forEach((side) => {
-                const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: closedEyeTex, transparent: true, opacity: 0.9 }));
-                sp.scale.set(sz * 1.4, sz, 1);
-                sp.position.copy(headPos).add(new THREE.Vector3(side * sz * 0.55, -0.02, sz * 0.9));
-                scene.add(sp);
-                blinkSprites.push(sp);
-            });
-            setTimeout(() => {
-                blinkSprites.forEach(s => scene.remove(s));
-                blinkSprites = [];
-            }, dur || 240);
-        }
-        // 日常自动眨眼：不依赖视觉互动，每 3-6 秒随机眨一次
-        let autoBlinkAt = performance.now() + 3000 + Math.random() * 3000;
+        // 日常自动眨眼
+        let autoBlinkAt = performance.now() + 2000 + Math.random() * 3000;
         function autoBlinkTick(now) {
             if (now > autoBlinkAt) {
-                autoBlinkAt = now + 3000 + Math.random() * 4000;
-                if (anim.state !== 'sleep') petBlink(180);
+                autoBlinkAt = now + 2500 + Math.random() * 4000;
+                petBlink();
             }
         }
 
@@ -1286,8 +1270,7 @@
             // 第三个参数 = 主画布：虚拟手与触摸判定的坐标换算基准（勿传预览小窗）
             const ok = await dv.start(document.getElementById('vision-cam'), {
                 onBlink() {
-                    // 用户眨眼 → 宠物同步眨（闭眼弧线闪现 220ms）
-                    if (anim.state !== 'sleep') petBlink(220);
+                    petBlink();   // 用户眨眼 → 宠物同步眨
                 },
                 onGaze(on) {
                     gazeNow = on;
@@ -1478,7 +1461,7 @@
             get scene() { return scene; },
             get petModel() { return petModel; },
             get mixer() { return mixer; },
-            SPECS, spawnPet, setAnim, speak, camera: () => camera,
+            SPECS, spawnPet, setAnim, speak, petBlink, camera: () => camera,
         };
     })();
     </script>
