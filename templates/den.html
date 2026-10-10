@@ -342,40 +342,51 @@
         }
 
         // 配饰（帽子/围巾/蝴蝶结）：优先挂头/颈骨骼（跟随动画），无骨骼则按体高近似
+        // 幂等：gltfCache 会复用同一 scene，二次 spawn 同一宠物时按名字找回已挂配饰，避免重复叠加
         function buildAccessories(model, headBone, neckBone, origH) {
             const k = origH;
-            const M = (c) => new THREE.MeshLambertMaterial({ color: c });
-            const hat = new THREE.Mesh(new THREE.ConeGeometry(0.2 * k, 0.36 * k, 16), M(0xFF7BA9));
-            hat.position.set(0, 0.2 * k, 0);
-            const brim = new THREE.Mesh(new THREE.TorusGeometry(0.21 * k, 0.035 * k, 8, 20), M(0xFFFFFF));
-            brim.position.set(0, 0.03 * k, 0); brim.rotation.x = Math.PI / 2;
-            const hatGroup = new THREE.Group(); hatGroup.add(hat); hatGroup.add(brim);
-            hatGroup.rotation.z = 0.14; hatGroup.visible = false;
-            const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.34 * k, 0.075 * k, 10, 24), M(0xE5735B));
-            scarf.rotation.x = 0.35; scarf.visible = false;
-            const bow = new THREE.Group();
-            [-1, 1].forEach((side) => {
-                const wing = new THREE.Mesh(new THREE.ConeGeometry(0.15 * k, 0.3 * k, 10), M(0xFF9E58));
-                wing.rotation.z = Math.PI / 2 * side;
-                wing.position.x = 0.16 * k * side;
-                wing.scale.set(1, 1, 0.7);
-                bow.add(wing);
-            });
-            const knot = new THREE.Mesh(new THREE.SphereGeometry(0.075 * k, 10, 8), M(0xE8833C));
-            bow.add(knot);
-            bow.rotation.y = 0.45; bow.scale.setScalar(1.2); bow.visible = false;
-
-            if (headBone) {
-                hatGroup.position.set(0, 0.1 * k, 0.05 * k);
-                bow.position.set(0.28 * k, 0.0, 0.12 * k);
-                headBone.add(hatGroup); headBone.add(bow);
-            } else {
-                hatGroup.position.set(0, 0.92, 0.16);
-                bow.position.set(0.28, 0.78, 0.22);
-                model.add(hatGroup); model.add(bow);
+            const reuse = (name) => model.getObjectByName(name) || null;
+            let hatGroup = reuse('__den_hat');
+            let scarf = reuse('__den_scarf');
+            let bow = reuse('__den_bow');
+            if (!hatGroup) {
+                const M = (c) => new THREE.MeshLambertMaterial({ color: c });
+                const hat = new THREE.Mesh(new THREE.ConeGeometry(0.2 * k, 0.36 * k, 16), M(0xFF7BA9));
+                hat.position.set(0, 0.2 * k, 0);
+                const brim = new THREE.Mesh(new THREE.TorusGeometry(0.21 * k, 0.035 * k, 8, 20), M(0xFFFFFF));
+                brim.position.set(0, 0.03 * k, 0); brim.rotation.x = Math.PI / 2;
+                hatGroup = new THREE.Group(); hatGroup.add(hat); hatGroup.add(brim);
+                hatGroup.name = '__den_hat';
+                hatGroup.rotation.z = 0.14;
+                if (headBone) { hatGroup.position.set(0, 0.1 * k, 0.05 * k); headBone.add(hatGroup); }
+                else { hatGroup.position.set(0, 0.92, 0.16); model.add(hatGroup); }
             }
-            if (neckBone) { scarf.position.set(0, 0.02 * k, 0.04 * k); neckBone.add(scarf); }
-            else { scarf.position.set(0, 0.6, 0.34); model.add(scarf); }
+            if (!scarf) {
+                scarf = new THREE.Mesh(new THREE.TorusGeometry(0.34 * k, 0.075 * k, 10, 24),
+                    new THREE.MeshLambertMaterial({ color: 0xE5735B }));
+                scarf.name = '__den_scarf';
+                scarf.rotation.x = 0.35;
+                if (neckBone) { scarf.position.set(0, 0.02 * k, 0.04 * k); neckBone.add(scarf); }
+                else { scarf.position.set(0, 0.6, 0.34); model.add(scarf); }
+            }
+            if (!bow) {
+                bow = new THREE.Group();
+                const M2 = (c) => new THREE.MeshLambertMaterial({ color: c });
+                [-1, 1].forEach((side) => {
+                    const wing = new THREE.Mesh(new THREE.ConeGeometry(0.15 * k, 0.3 * k, 10), M2(0xFF9E58));
+                    wing.rotation.z = Math.PI / 2 * side;
+                    wing.position.x = 0.16 * k * side;
+                    wing.scale.set(1, 1, 0.7);
+                    bow.add(wing);
+                });
+                const knot = new THREE.Mesh(new THREE.SphereGeometry(0.075 * k, 10, 8), M2(0xE8833C));
+                bow.add(knot);
+                bow.name = '__den_bow';
+                bow.rotation.y = 0.45; bow.scale.setScalar(1.2);
+                if (headBone) { bow.position.set(0.28 * k, 0.0, 0.12 * k); headBone.add(bow); }
+                else { bow.position.set(0.28, 0.78, 0.22); model.add(bow); }
+            }
+            hatGroup.visible = false; scarf.visible = false; bow.visible = false;
             petModel.userData.accessories = [hatGroup, scarf, bow];
         }
 
@@ -422,10 +433,14 @@
             // 用户等加载期间可能已切换到别的宠物
             if (currentPetId !== id) return;
             const model = gltf.scene;
-            // 归一化：目标高度、落地、居中
+            // 归一化：目标高度、落地、居中（scene 会被缓存复用，先复位上次变换避免二次缩放）
+            model.scale.setScalar(1);
+            model.position.set(0, 0, 0);
+            model.updateMatrixWorld(true);
             const box = new THREE.Box3().setFromObject(model);
             const origH = Math.max(0.01, box.max.y - box.min.y);
             model.scale.setScalar(spec.h / origH);
+            model.updateMatrixWorld(true);
             const box2 = new THREE.Box3().setFromObject(model);
             model.position.set(-(box2.min.x + box2.max.x) / 2, -box2.min.y, -(box2.min.z + box2.max.z) / 2);
             model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
