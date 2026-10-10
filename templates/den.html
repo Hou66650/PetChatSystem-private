@@ -643,7 +643,7 @@
         // ---------- 动画状态机（GLB AnimationMixer 驱动） ----------
         let petModel = null;
         let mixer = null, actions = {}, activeAction = null;
-        const anim = { state: 'idle', until: 0, lastInteract: performance.now(), birth: 1 };
+        const anim = { state: 'idle', until: 0, lastInteract: performance.now(), birth: 1, lie: 0 };
         function playAction(key, timeScale) {
             const a = actions[key];
             if (!a) return;
@@ -660,6 +660,7 @@
             anim.state = state;
             anim.until = performance.now() + dur;
             anim.lastInteract = performance.now();
+            if (state === 'sleep') anim.sleptAt = performance.now();   // 入睡时刻：此后再有互动才唤醒
             playAction(state, state === 'sleep' ? 0.4 : 1);   // 睡觉=低头慢放
         }
 
@@ -1132,7 +1133,11 @@
                 if (vb) vb.textContent = '👁 眼神互动';
             }
             breathMask.hidden = false;
-            setAnim('sleep', 48000);   // 宠物同步进入舒缓呼吸（慢放动画）
+            // 舒缓呼吸坐姿（不借用 sleep 状态——那会侧躺）：独立状态播 idle 慢放
+            anim.state = 'breath';
+            anim.until = performance.now() + 48000;
+            anim.lastInteract = performance.now();
+            playAction('idle', 0.42);
             const ROUNDS = 3;
             for (let r = 0; r < ROUNDS; r++) {
                 breathTimers.push(setTimeout(() => {
@@ -1159,6 +1164,7 @@
             breathCircle.style.transform = 'scale(1)';
             setAnim('idle', 0);
         }
+        // 自然完成回调结束的是遮罩；状态回落由 anim.until 到期统一处理（breath → idle）
         document.getElementById('btn-breath').addEventListener('click', startBreath);
         document.getElementById('breath-close').addEventListener('click', (e) => { e.stopPropagation(); stopBreath(); });
         breathMask.addEventListener('click', stopBreath);
@@ -1334,12 +1340,20 @@
                 // 状态到期回落 + 长时间无互动入睡（动画切换交给 setAnim）
                 if (anim.until && now > anim.until) { setAnim('idle', 0); anim.until = 0; }
                 else if (anim.state === 'idle' && now - anim.lastInteract > 45000) {
-                    anim.state = 'sleep'; playAction('sleep', 0.4);   // 直接切动作：不经 setAnim(会刷新互动时间,导致睡不着的死循环)
-                } else if (anim.state === 'sleep' && now - anim.lastInteract < 45000) {
-                    anim.state = 'idle'; playAction('idle', 1);
+                    anim.state = 'sleep'; anim.sleptAt = now; playAction('sleep', 0.4);   // 不经 setAnim（它会刷新互动时间）
+                } else if (anim.state === 'sleep' && anim.lastInteract > (anim.sleptAt || 0)) {
+                    anim.state = 'idle'; playAction('idle', 1);   // 入睡后发生过新互动才唤醒
                 }
                 if (mixer) mixer.update(dt);
                 const st = anim.state;
+
+                // 睡觉侧躺姿势：多帧插值躺下/站起（模型包无躺卧动画，程序化补齐）
+                const lieTarget = st === 'sleep' ? 1 : 0;
+                anim.lie += (lieTarget - anim.lie) * Math.min(1, dt * 2.2);
+                if (anim.lie > 0.004 || petModel.rotation.z !== 0) {
+                    petModel.rotation.z = anim.lie * 1.22;
+                    petModel.position.y = 0.02 + anim.lie * ((petModel.userData.height || 1) * 0.24);
+                }
                 // 睡觉 Zzz
                 if (st === 'sleep' && Math.random() < 0.006) burst('zzz', 1, petHeadPos().add(new THREE.Vector3(0.25, 0.15, 0)));
                 // 气泡跟随：拖拽/缩放相机时实时贴住宠物头部投影
