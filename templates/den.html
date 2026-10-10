@@ -285,19 +285,19 @@
         const SPECS = {
             1: { name: '柴犬', glb: '/static/models/shiba.glb', h: 0.95,
                  greet: '汪！欢迎来到我的小窝，摸摸我吧！',
-                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Idle_2_HeadLow' },
+                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death' },
                  theme: 'sakura', themeName: '樱花庭院' },
             2: { name: '哈士奇', glb: '/static/models/husky.glb', h: 1.05,
                  greet: '嗷呜~ 帅气的我在等你一起玩呢！',
-                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Idle_2_HeadLow' },
+                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death' },
                  theme: 'snow', themeName: '静静雪原' },
             3: { name: '猫咪', glb: '/static/models/cat.glb', h: 0.72,
                  greet: '喵~ 我的窝就是你的窝（才不让你走呢）。',
-                 anims: { idle: 'Idle', happy: 'Jump_Loop', eat: 'Idle_Eating', petting: 'Idle', talk: 'Idle', sleep: 'Idle' },
+                 anims: { idle: 'Idle', happy: 'Jump_Loop', eat: 'Idle_Eating', petting: 'Idle', talk: 'Idle', sleep: 'Death' },
                  theme: 'room', themeName: '温馨小窝' },
             4: { name: '德牧', glb: '/static/models/shepherd.glb', h: 1.08,
                  greet: '汪！忠诚卫士报到，今天想玩点什么？',
-                 anims: { idle: 'Idle', happy: 'Run_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Idle_2_HeadLow' },
+                 anims: { idle: 'Idle', happy: 'Run_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death' },
                  theme: 'camp', themeName: '星空营地' },
         };
         const LEVELS = [
@@ -656,12 +656,24 @@
             a.play();
             activeAction = a;
         }
+        // 睡觉：播「倒下」动画一次并定格在躺平末帧（Death 片段即躺倒姿势），之后由 tick 做极慢呼吸起伏
+        function playSleep() {
+            const a = actions.sleep;
+            if (!a) { playAction('idle', 0.4); return; }
+            a.reset();
+            a.setLoop(THREE.LoopOnce, 1);
+            a.clampWhenFinished = true;
+            a.timeScale = 0.85;            // 慢慢倒下（约2-3秒）
+            if (activeAction) a.crossFadeFrom(activeAction, 0.3, false);
+            a.play();
+            activeAction = a;
+        }
         function setAnim(state, dur) {
             anim.state = state;
             anim.until = performance.now() + dur;
             anim.lastInteract = performance.now();
-            if (state === 'sleep') anim.sleptAt = performance.now();   // 入睡时刻：此后再有互动才唤醒
-            playAction(state, state === 'sleep' ? 0.4 : 1);   // 睡觉=低头慢放
+            if (state === 'sleep') { anim.sleptAt = performance.now(); playSleep(); }
+            else playAction(state, 1);
         }
 
         let spawnBusy = false;   // 首载窗口并发守卫
@@ -1340,20 +1352,13 @@
                 // 状态到期回落 + 长时间无互动入睡（动画切换交给 setAnim）
                 if (anim.until && now > anim.until) { setAnim('idle', 0); anim.until = 0; }
                 else if (anim.state === 'idle' && now - anim.lastInteract > 45000) {
-                    anim.state = 'sleep'; anim.sleptAt = now; playAction('sleep', 0.4);   // 不经 setAnim（它会刷新互动时间）
+                    anim.state = 'sleep'; anim.sleptAt = now; playSleep();   // 不经 setAnim（它会刷新互动时间）
                 } else if (anim.state === 'sleep' && anim.lastInteract > (anim.sleptAt || 0)) {
-                    anim.state = 'idle'; playAction('idle', 1);   // 入睡后发生过新互动才唤醒
+                    anim.state = 'idle'; playAction('idle', 1);   // 入睡后发生过新互动才唤醒（crossFade 翻身站起）
                 }
                 if (mixer) mixer.update(dt);
                 const st = anim.state;
 
-                // 睡觉侧躺姿势：多帧插值躺下/站起（模型包无躺卧动画，程序化补齐）
-                const lieTarget = st === 'sleep' ? 1 : 0;
-                anim.lie += (lieTarget - anim.lie) * Math.min(1, dt * 2.2);
-                if (anim.lie > 0.004 || petModel.rotation.z !== 0) {
-                    petModel.rotation.z = anim.lie * 1.22;
-                    petModel.position.y = 0.02 + anim.lie * ((petModel.userData.height || 1) * 0.24);
-                }
                 // 睡觉 Zzz
                 if (st === 'sleep' && Math.random() < 0.006) burst('zzz', 1, petHeadPos().add(new THREE.Vector3(0.25, 0.15, 0)));
                 // 气泡跟随：拖拽/缩放相机时实时贴住宠物头部投影
