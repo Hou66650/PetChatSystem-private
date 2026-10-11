@@ -585,6 +585,13 @@
                 scene.fog = new THREE.Fog(0x2A3A5C, 8, 20);
                 hemi.intensity = 0.35;
                 sun.intensity = 0.25;
+
+            } else if (name === 'room') {
+                // 温馨小窝：暖黄偏暗（标准日光会把木地板曝白）
+                scene.background = new THREE.Color(0xF5E8D0);
+                scene.fog = new THREE.Fog(0xF5E8D0, 10, 22);
+                hemi.intensity = 0.45;
+                sun.intensity = 0.55;
             }
             envSprites.forEach((s) => { scene.remove(s); s.material.dispose(); });
             envSprites = [];
@@ -669,7 +676,7 @@
                 const hat = new THREE.Mesh(new THREE.ConeGeometry(0.10 * spec.h, 0.20 * spec.h, 20),
                     new THREE.MeshBasicMaterial({ color: 0xFF6B9E }));
                 hat.position.set(0, 0.10 * spec.h, 0);
-                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * spec.h, 0.11 * spec.h, 0.015 * spec.h, 20),
+                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * spec.h, 0.14 * spec.h, 0.02 * spec.h, 20),
                     new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
                 brim.position.set(0, 0.01 * spec.h, 0);
                 const pom = new THREE.Mesh(new THREE.SphereGeometry(0.025 * spec.h, 10, 8),
