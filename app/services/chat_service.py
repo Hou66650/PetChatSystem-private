@@ -56,6 +56,9 @@ def handle_chat(data):
         reply = client.chat(messages, model=model)
     except LLMError as e:
         current_app.logger.error('GLM 调用失败: %s', e)
+        # 限流是瞬时的：明确告诉用户稍等再试，避免误以为服务坏了
+        if '429' in str(e):
+            return {'error': '当前聊天的人有点多，请几秒后再试一下'}, 503
         return {'error': f'AI 服务暂时不可用，请稍后再试（{e}）'}, 503
 
     return {

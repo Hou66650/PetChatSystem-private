@@ -48,6 +48,7 @@ class GLMClient:
 
     # ------------------------------------------------------------------
     # 内部：带重试的 POST。网络异常 / 429 / 5xx 重试，鉴权失败直接抛错。
+    # 429 指数退避（2s→4s→8s）并尊重 Retry-After——快速重试会加重限流。
     # ------------------------------------------------------------------
     def _post(self, path, payload, timeout=None):
         url = f'{self.base_url}{path}'
@@ -65,6 +66,15 @@ class GLMClient:
                 last_err = LLMError(f'GLM 服务返回 {resp.status_code}: {resp.text[:300]}')
                 if resp.status_code == 429 and '余额' in resp.text:
                     raise last_err  # 余额不足重试无意义，直接失败
+                if resp.status_code == 429:
+                    # 限流：按 Retry-After 或指数退避，等够了再试
+                    try:
+                        wait = max(int(resp.headers.get('Retry-After', 0)),
+                                   self.retry_delay * (2 ** attempt))
+                    except (TypeError, ValueError):
+                        wait = self.retry_delay * (2 ** attempt)
+                    time.sleep(min(wait, 15))
+                    continue
             except requests.RequestException as e:
                 last_err = LLMError(f'网络错误: {e}')
             if attempt < self.max_retries - 1:
