@@ -673,17 +673,17 @@
             if (!hatGroup) {
                 const M = (c) => new THREE.MeshLambertMaterial({ color: c });
                 // 派对帽：大锥体（亮粉）+ 宽帽沿（白色）+ 顶球（金色）——一眼可辨
-                const hat = new THREE.Mesh(new THREE.ConeGeometry(0.16 * spec.h, 0.32 * spec.h, 20),
+                const hat = new THREE.Mesh(new THREE.ConeGeometry(0.24 * spec.h, 0.48 * spec.h, 20),
                     new THREE.MeshBasicMaterial({ color: 0xFF6B9E }));
-                hat.position.set(0, 0.16 * spec.h, 0);
-                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * spec.h, 0.22 * spec.h, 0.03 * spec.h, 20),
+                hat.position.set(0, 0.24 * spec.h, 0);
+                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * spec.h, 0.34 * spec.h, 0.04 * spec.h, 20),
                     new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
                 brim.position.set(0, 0.015 * spec.h, 0);
-                const pom = new THREE.Mesh(new THREE.SphereGeometry(0.04 * spec.h, 10, 8),
+                const pom = new THREE.Mesh(new THREE.SphereGeometry(0.06 * spec.h, 10, 8),
                     new THREE.MeshBasicMaterial({ color: 0xFFD700 }));
-                pom.position.set(0, 0.33 * spec.h, 0);
-                const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.10 * spec.h, 0.015 * spec.h, 8, 20), M(0xFFFFFF));
-                stripe.position.set(0, 0.19 * spec.h, 0); stripe.rotation.x = Math.PI / 2;
+                pom.position.set(0, 0.49 * spec.h, 0);
+                const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.15 * spec.h, 0.02 * spec.h, 8, 20), M(0xFFFFFF));
+                stripe.position.set(0, 0.28 * spec.h, 0); stripe.rotation.x = Math.PI / 2;
                 hatGroup = new THREE.Group(); hatGroup.add(hat); hatGroup.add(brim);
                 hatGroup.add(pom); hatGroup.add(stripe);
                 hatGroup.name = '__den_hat';
@@ -1620,7 +1620,7 @@
                 if (accs) {
                     const pp = petModel.position;
                     const ph = petModel.userData.height || 1;
-                    accs[0].position.set(pp.x, pp.y + ph * 1.02, pp.z + 0.35);
+                    accs[0].position.set(pp.x, pp.y + ph * 0.95, pp.z + 0.3);
                     accs[1].position.set(pp.x, pp.y + ph * 0.5, pp.z + 0.25);
                     accs[2].position.set(pp.x + ph * 0.18, pp.y + ph * 0.72, pp.z + 0.12);
                 }
