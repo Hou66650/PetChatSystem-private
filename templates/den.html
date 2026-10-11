@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>宠物小窝 · MPC 宠物聊天</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     <style>
@@ -51,9 +51,18 @@
 
         /* 动作按钮（底部中央） */
         .action-bar {
-            position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 8px; z-index: 10; flex-wrap: wrap; justify-content: center;
-            max-width: 96vw;
+            position: absolute; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+            left: 50%; transform: translateX(-50%);
+            display: flex; gap: 8px; z-index: 10; flex-wrap: nowrap;
+            max-width: 96vw; overflow-x: auto; -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;   /* S1-12：单行横向滚动 + 两侧渐隐提示，滚动条隐藏 */
+            padding: 4px 10px;
+            mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent);
+            -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent);
+        }
+        .action-bar::-webkit-scrollbar { display: none; }
+        @media (max-width: 767px) {
+            .action-btn { height: 44px; padding: 0 14px; }   /* 触控 ≥44px */
         }
         
         .btn-icon { width: 20px; height: 20px; display: inline-block; vertical-align: -4px; margin-right: 6px; flex-shrink: 0; }
@@ -577,6 +586,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const rim = new THREE.DirectionalLight(0xbfd8ff, 0.55);
         rim.position.set(-4, 5, -3.5);   // 背侧上方，制造剪影亮边
         scene.add(rim);
+
+        // ---------- 能力检测（S1-12）：低性能降级 + ?quality=low/high 验收开关 ----------
+        const qParam = new URLSearchParams(location.search).get('quality');
+        const lowPower = qParam === 'low' ||
+            (qParam !== 'high' && ((navigator.deviceMemory && navigator.deviceMemory <= 4) ||
+                (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)));
+        const PARTICLE_SCALE = lowPower ? 0.6 : 1;   // 粒子约减 40%
+        if (lowPower) {
+            renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.25));
+            sun.shadow.mapSize.set(1024, 1024);   // 阴影贴图 2048→1024
+            if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+        }
+
+        // 摄像头能力：HTTP/VPN 非安全上下文无法 getUserMedia —— 按钮保留但友好降级
+        const cameraAvailable = Boolean(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+        // 网络波动提示（S1-12）：本地记录始终保留
+        window.addEventListener('offline', () => toast('网络断开，已保留本地记录', 'info'));
+        window.addEventListener('online', () => toast('网络已恢复，可以继续啦', 'success'));
 
         // 地面与小窝布景（草地纹理地面 + 地毯 + 灌木）
         const grassTex = new THREE.TextureLoader().load('/static/images/grasslight-big.jpg');
@@ -1270,6 +1298,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const TEX = { heart: shapeTexture('heart'), star: shapeTexture('star'), zzz: shapeTexture('zzz'), bone: shapeTexture('bone'), fish: shapeTexture('fish'), cookie: shapeTexture('cookie') };
         function burst(ch, n, pos) {
+            n = Math.max(1, Math.round(n * PARTICLE_SCALE));
             for (let i = 0; i < n; i++) {
                 const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX[ch], transparent: true }));
                 sp.scale.setScalar(0.22 + Math.random() * 0.14);
@@ -2556,6 +2585,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.getElementById('btn-vision').addEventListener('click', async function () {
             if (visionOn) { stopVision(); this.textContent = '眼神互动'; return; }
+            if (!cameraAvailable) {   // S1-12：HTTP/VPN 环境友好降级，不影响其他功能
+                toast('当前访问方式不支持摄像头互动。聊天、喂食和游戏仍可正常使用。', 'info', 5000);
+                return;
+            }
             if (!window.DenVision) { toast('视觉模块加载失败，请刷新页面', 'error'); return; }
             this.disabled = true; this.textContent = '开启中…';
             dv = dv || new window.DenVision();

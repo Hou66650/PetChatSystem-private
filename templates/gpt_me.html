@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>和宠物聊天 · MPC 宠物聊天</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     <style>
@@ -236,7 +236,8 @@
             border-color: var(--c-primary);
             box-shadow: 0 0 0 3px rgba(255, 158, 88, .2);
         }
-        .send-btn { width: 88px; flex: none; }
+        .send-btn { width: 88px; flex: none; min-height: 44px; }
+        .pet-strip::-webkit-scrollbar { display: none; }   /* S1-12：选宠条横滑不显滚动条 */
 
         .disclaimer {
             flex: none; text-align: center;
@@ -929,6 +930,16 @@
             }
         });
         sendBtn.addEventListener('click', () => doSend(inputEl.value));
+
+        // ---------- 手机适配（S1-12）----------
+        // 虚拟键盘弹出/收起：保持最后一条可见
+        if (window.visualViewport) {
+            const vvScroll = () => { messagesEl.scrollTop = messagesEl.scrollHeight; };
+            visualViewport.addEventListener('resize', vvScroll);
+        }
+        // 断网/恢复提示（本地记录不丢）
+        window.addEventListener('offline', () => toast('网络断开，已保留本地记录', 'info'));
+        window.addEventListener('online', () => toast('网络已恢复，可以继续啦', 'success'));
 
         // ---------- 初始化 ----------
         function showGreeting() {
