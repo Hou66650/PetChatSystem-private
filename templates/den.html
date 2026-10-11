@@ -432,7 +432,7 @@
             },
             room: {     // 温馨小窝：木地板 + 纸箱 + 毛线球 + 串灯
                 rug: 0xF5C9A0,
-                ground: { grass: false, day: 0xD9B98F, dusk: 0xC8A87E, night: 0x8A7E72 },
+                ground: { grass: false, day: 0xC8A070, dusk: 0xB89060, night: 0x7A6E62 },
                 env: { ch: '🫧', n: 10, rise: true, tiny: true },
                 build(g) {
                     const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.9), M(0xC89858));
@@ -479,11 +479,11 @@
                     }
                     stringLight.name = '__stringLights';
                     g.add(stringLight);
-                    const warm = new THREE.PointLight(0xFFD9A0, 0.85, 8);
+                    const warm = new THREE.PointLight(0xFFD9A0, 0.6, 7);
                     warm.position.set(0, 2.2, -1.6);
                     warm.name = '__themeLight';
                     g.add(warm);
-                    const warm2 = new THREE.PointLight(0xFFE8C0, 0.5, 4);
+                    const warm2 = new THREE.PointLight(0xFFE8C0, 0.35, 3);
                     warm2.position.set(0.5, 1.5, 0.5);
                     warm2.name = '__themeLight2';
                     g.add(warm2);
@@ -510,7 +510,7 @@
                     fire.position.set(1.7, 0, 0.9);
                     fire.traverse(o => { o.castShadow = true; });
                     g.add(fire);
-                    const fireLight = new THREE.PointLight(0xFF9030, 1.5, 4.5);
+                    const fireLight = new THREE.PointLight(0xFF9030, 1.4, 3.5);
                     fireLight.position.set(1.7, 0.9, 0.9);
                     fireLight.name = '__fireLight';
                     g.add(fireLight);
@@ -669,7 +669,7 @@
                 const hat = new THREE.Mesh(new THREE.ConeGeometry(0.10 * spec.h, 0.20 * spec.h, 20),
                     new THREE.MeshBasicMaterial({ color: 0xFF6B9E }));
                 hat.position.set(0, 0.10 * spec.h, 0);
-                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * spec.h, 0.14 * spec.h, 0.02 * spec.h, 20),
+                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * spec.h, 0.11 * spec.h, 0.015 * spec.h, 20),
                     new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
                 brim.position.set(0, 0.01 * spec.h, 0);
                 const pom = new THREE.Mesh(new THREE.SphereGeometry(0.025 * spec.h, 10, 8),
