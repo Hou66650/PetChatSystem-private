@@ -301,6 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <div class="intimacy-panel" id="intimacy-panel">
             <h4 id="ip-name">小窝</h4>
+            <div id="ip-companion" style="font-size:12.5px;color:#8a7a6c;margin:2px 0 4px;">陪伴第 1 天</div>
             <div>亲密度 <span class="level" id="ip-level">初次见面</span> <span id="ip-num" class="text-sub" style="font-size:12px;">0/10</span></div>
             <div class="bar"><div id="ip-bar" style="width:0%"></div></div>
             <div class="hint" id="ip-hint">摸摸它、喂它好吃的、陪它聊天都能提升亲密度</div>
@@ -468,8 +469,33 @@ document.addEventListener('DOMContentLoaded', () => {
         function saveState() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
         const state = loadState();
         let currentPetId = Number(Object.keys(SPECS)[0]);
+        // 陪伴天数（S1-07）：每只宠物独立记录领养日；旧数据只补今天，不按亲密度倒推
+        function localDateKey(d) {
+            const p = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+        }
+        function dateKeyToUtcDay(key) {
+            const [y, m, d] = key.split('-').map(Number);
+            return Math.floor(Date.UTC(y, m - 1, d) / 86400000);   // 避开夏令时 23/25 小时坑
+        }
+        function companionDays(adoptedOn) {
+            const diff = dateKeyToUtcDay(localDateKey(new Date())) - dateKeyToUtcDay(adoptedOn);
+            return Number.isFinite(diff) ? Math.max(1, diff + 1) : 1;
+        }
+        function companionStage(days) {
+            if (days <= 7) return '初见期';
+            if (days <= 30) return '幼年期';
+            if (days <= 90) return '成长期';
+            return '默契伙伴';
+        }
         function petState() {
-            if (!state[currentPetId]) state[currentPetId] = { intimacy: 0, accessory: 0 };
+            if (!state[currentPetId]) {
+                state[currentPetId] = { intimacy: 0, accessory: 0, adoptedOn: localDateKey(new Date()) };
+                saveState();
+            } else if (!state[currentPetId].adoptedOn) {
+                state[currentPetId].adoptedOn = localDateKey(new Date());
+                saveState();
+            }
             return state[currentPetId];
         }
 
@@ -1258,6 +1284,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const ps = petState();
             const lv = levelOf(ps.intimacy);
             const next = LEVELS[LEVELS.indexOf(lv) + 1];
+            // 陪伴天数（与"连续心情打卡"是两个概念，互不累计）
+            const days = companionDays(ps.adoptedOn);
+            document.getElementById('ip-companion').textContent = `陪伴第 ${days} 天 · ${companionStage(days)}`;
             document.getElementById('ip-level').textContent = lv[1];
             document.getElementById('ip-num').textContent = next ? `${ps.intimacy}/${next[0]}` : `${ps.intimacy} MAX`;
             document.getElementById('ip-bar').style.width = next
