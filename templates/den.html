@@ -623,6 +623,8 @@
             scene.fog = new THREE.Fog(fog, 9, 22);
             sun.intensity = sunI;
             hemi.intensity = 0.5 + sunI * 0.4;
+            // room 主题光照覆盖（持久化，不被周期刷新重置）
+            if (currentTheme === 'room') { hemi.intensity = 0.45; sun.intensity = 0.55; }
             // 地面随昼夜明暗 + 主题配色（雪原/木地板为纯色，庭院/营地为草地贴图）
             const gnd = (currentTheme && THEMES[currentTheme]) ? THEMES[currentTheme].ground : { grass: true, day: 0xe8e0d0, dusk: 0xc8c2b8, night: 0x8a8a96 };
             groundMat.map = gnd.grass ? grassTex : null;
