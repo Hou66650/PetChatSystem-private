@@ -265,6 +265,7 @@
             <span>MPC 宠物聊天</span>
         </a>
         <span class="current-pet" id="current-pet-name">小家伙</span>
+        <button type="button" id="btn-pet-profile" class="btn-link" style="border:0;background:transparent;color:#A89484;font:inherit;font-size:12px;cursor:pointer;padding:4px 6px;text-decoration:underline;">资料</button>
         <div class="spacer"></div>
         <button class="icon-btn" id="btn-diary" aria-label="我的日记" title="我的日记">📖<span class="btn-label">日记</span></button>
         <button class="icon-btn" id="btn-feedback" aria-label="宠物反馈" title="宠物反馈">⭐<span class="btn-label">反馈</span></button>
@@ -321,6 +322,7 @@
     <script src="{{ url_for('static', filename='js/vendor/html2canvas.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/jspdf.umd.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/share-card.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pet-profile.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
     /* ===== 聊天页逻辑（规范：docs/UI重构设计文档.md 三.1） ===== */
@@ -691,8 +693,10 @@
                 b.className = 'pet-tile' + (i === currentPetIndex && !useCustomAvatar ? ' selected' : '');
                 b.setAttribute('role', 'tab');
                 b.setAttribute('aria-label', '选择宠物' + pet.name);
+                // 性别标注（S1-09）：未设定时只显示名字，不加问号
+                const gLabel = window.PetProfile ? PetProfile.label(PetProfile.get(pet.id).gender) : '';
                 b.innerHTML = `<img src="/images/${pet.avatar}" alt="${escapeHtml(pet.name)}">
-                               <span class="pet-name">${escapeHtml(pet.name)}</span>`;
+                               <span class="pet-name">${escapeHtml(pet.name)}${gLabel ? ' · ' + escapeHtml(gLabel) : ''}</span>`;
                 b.addEventListener('click', () => selectPet(i));
                 stripEl.appendChild(b);
             });
@@ -760,6 +764,7 @@
                         chatHistory: history.slice(0, -1),   // 不含刚发的这条，后端会拼
                         model: prefs.model,
                         petId: pet.id,
+                        petGender: window.PetProfile ? PetProfile.promptValue(PetProfile.get(pet.id).gender) : null,
                     }),
                 });
                 const data = await resp.json();
@@ -895,6 +900,21 @@
                 toast('PDF 已导出', 'success');
             }).catch(() => toast('PDF 生成失败', 'error'));
         }
+
+        // 宠物资料入口（S1-09）：与宠物选择条性别标注联动
+        $('btn-pet-profile').addEventListener('click', () => {
+            if (!window.PetProfile) return;
+            const pet = currentPet();
+            PetProfile.openDialog({
+                petId: pet.id,
+                petName: pet.name,
+                onChange: () => renderStrip(),
+            });
+        });
+        // 其他标签页修改资料时同步刷新（S1-09）
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'petProfilesV1') renderStrip();
+        });
 
         // ---------- 输入框行为 ----------
         function autosize() {

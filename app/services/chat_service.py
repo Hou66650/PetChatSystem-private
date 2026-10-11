@@ -48,7 +48,12 @@ def handle_chat(data):
     model = data.get('model') or Config.GLM_MODELS[0]
     client = current_app.extensions['llm']
 
-    messages = [{'role': 'system', 'content': pet_registry.build_system_prompt(pet)}]
+    # 性别白名单（S1-09）：只有 male/female 进入 prompt，其余（含任意长字符串/对象）一律丢弃
+    gender = data.get('petGender')
+    if gender not in ('male', 'female'):
+        gender = None
+
+    messages = [{'role': 'system', 'content': pet_registry.build_system_prompt(pet, gender)}]
     messages += _sanitize_history(data.get('chatHistory'))
     messages.append({'role': 'user', 'content': user_message[:Config.MAX_MESSAGE_CHARS]})
 

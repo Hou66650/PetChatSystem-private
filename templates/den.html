@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="den-pets" id="den-pets"></div>
 
         <div class="intimacy-panel" id="intimacy-panel">
-            <h4 id="ip-name">小窝</h4>
+            <h4 id="ip-name"><span id="ip-name-text">小窝</span> <button type="button" id="btn-profile" style="font-size:12px;font-weight:500;color:#A89484;background:transparent;border:1px solid #D8C7B4;border-radius:8px;padding:2px 8px;cursor:pointer;vertical-align:middle;margin-left:4px;">资料</button></h4>
             <div id="ip-companion" style="font-size:12.5px;color:#8a7a6c;margin:2px 0 4px;">陪伴第 1 天</div>
             <div>亲密度 <span class="level" id="ip-level">初次见面</span> <span id="ip-num" class="text-sub" style="font-size:12px;">0/10</span></div>
             <div class="bar"><div id="ip-bar" style="width:0%"></div></div>
@@ -424,6 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/vendor/three.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/OrbitControls.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/GLTFLoader.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pet-profile.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/den_vision.js') }}"></script>
     <script>
     /* ============================================================
@@ -1057,7 +1058,8 @@ document.addEventListener('DOMContentLoaded', () => {
             renderPetChips();
             updateIntimacyUI();
             document.getElementById('chat-title').textContent = `和${spec.name}聊天`;
-            document.getElementById('ip-name').textContent = `${spec.name}的小窝`;
+            if (typeof updatePetTitles === 'function') updatePetTitles();   // 追加性别标注（S1-09）
+            document.getElementById('ip-name-text').textContent = `${spec.name}的小窝`;
             let gltf;
             try {
                 gltf = await loadGlb(spec.glb);
@@ -1483,7 +1485,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const resp = await fetch('/get_gpt_response', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text, chatHistory: denHistory.slice(-10), model: MODELS[0], petId: currentPetId }),
+                    body: JSON.stringify({
+                        message: text, chatHistory: denHistory.slice(-10), model: MODELS[0], petId: currentPetId,
+                        petGender: window.PetProfile ? PetProfile.promptValue(PetProfile.get(currentPetId).gender) : null,
+                    }),
                 });
                 const data = await resp.json();
                 if (data.reply) {
@@ -1751,6 +1756,23 @@ document.addEventListener('DOMContentLoaded', () => {
         let activeGame = null, gameTimerId = null, gameAnimId = null, gameSpawnId = null, gameSession = 0;
 
         document.getElementById('btn-games').addEventListener('click', () => { gamesMask.hidden = false; });
+        // 宠物资料弹窗（S1-09）：性别设定，保存后刷新聊天标题
+        document.getElementById('btn-profile').addEventListener('click', () => {
+            if (!window.PetProfile) return;
+            PetProfile.openDialog({
+                petId: currentPetId,
+                petName: SPECS[currentPetId].name,
+                onChange: () => updatePetTitles(),
+            });
+        });
+        function updatePetTitles() {
+            const spec = SPECS[currentPetId];
+            const g = window.PetProfile ? PetProfile.label(PetProfile.get(currentPetId).gender) : '';
+            document.getElementById('chat-title').textContent = `和${spec.name}聊天` + (g ? `（${g}）` : '');
+        }
+        window.addEventListener('storage', (e) => {   // 其他标签页改资料时同步（S1-09）
+            if (e.key === 'petProfilesV1') updatePetTitles();
+        });
         document.getElementById('games-close').addEventListener('click', () => { gamesMask.hidden = true; });
         gamesMask.addEventListener('click', (e) => { if (e.target === gamesMask) gamesMask.hidden = true; });
         gamesMask.addEventListener('click', (e) => {
