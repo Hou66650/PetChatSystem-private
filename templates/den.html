@@ -169,9 +169,21 @@
         .vision-status b { color: var(--c-text); font-weight: 700; }
         .vision-privacy { font-size: 10px; color: var(--c-text-sub); opacity: .8; padding: 0 2px 2px; }
         #vision-hand { position: absolute; left: 0; top: 0; z-index: 22; pointer-events: none;
-            opacity: 0; will-change: transform; line-height: 1;
+            opacity: 0; will-change: transform; line-height: 0;
             filter: drop-shadow(0 4px 8px rgba(74,59,50,.25)); }
-        #vision-hand.reaching { filter: drop-shadow(0 6px 10px rgba(232,131,60,.45)); }
+        #vision-hand svg { display: block; transform: translate(-50%, -50%); }
+        #vision-hand.reaching { filter: drop-shadow(0 6px 12px rgba(232,131,60,.55)); }
+        #vision-hand.pinching svg { transform: translate(-50%, -50%) scale(.82); }
+        /* 捏合点十字准星：始终显示系统判定的精确操作坐标 */
+        #vision-pinch { position: absolute; left: 0; top: 0; z-index: 23; pointer-events: none;
+            width: 44px; height: 44px; opacity: 0; will-change: transform; }
+        #vision-pinch .ring { position: absolute; inset: 0; border-radius: 50%;
+            border: 2.5px solid rgba(255,158,88,.55); transition: border-color .12s, transform .12s; }
+        #vision-pinch .dot { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px;
+            border-radius: 50%; background: rgba(255,158,88,.75); transform: translate(-50%,-50%); }
+        #vision-pinch.pinching .ring { border-color: #FF9E58; transform: scale(1.18);
+            box-shadow: 0 0 14px rgba(255,158,88,.5); }
+        #vision-pinch.pinching .dot { background: #FF7A2E; }
 
         /* ===== 游戏中心 ===== */
         .game-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
@@ -460,7 +472,20 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="vision-status" id="vision-status">启动中…</div>
             <div class="vision-privacy">🔒 画面仅本地处理，不会上传</div>
         </div>
-        <div id="vision-hand" aria-hidden="true"></div>
+        <div id="vision-hand" aria-hidden="true">
+            <!-- 几何手掌剪影（不依赖 emoji 字体）：掌 + 四指 + 拇指 -->
+            <svg viewBox="0 0 64 64" width="72" height="72">
+                <g fill="rgba(232,131,74,.88)" stroke="#8A4B22" stroke-width="2.5" stroke-linejoin="round">
+                    <ellipse cx="31" cy="43" rx="15.5" ry="14"/>
+                    <rect x="14.5" y="19" width="8" height="22" rx="4"/>
+                    <rect x="25.5" y="12" width="8" height="27" rx="4"/>
+                    <rect x="36.5" y="14" width="8" height="24" rx="4"/>
+                    <rect x="47" y="21" width="7" height="18" rx="3.5"/>
+                    <ellipse cx="13.5" cy="39" rx="6.5" ry="8.5" transform="rotate(-35 13.5 39)"/>
+                </g>
+            </svg>
+        </div>
+        <div id="vision-pinch" aria-hidden="true"><div class="ring"></div><div class="dot"></div></div>
         <!-- S1-11：手势食物托盘（视觉互动开启时显示；鼠标点它也直接喂食） -->
         <div id="vision-food-tray" class="vision-food-tray" hidden>
             <button type="button" data-hand-food="bone" aria-label="用手拿骨头，或点击直接喂食">骨头</button>
@@ -1652,13 +1677,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return null;
         }
-        function petGrabZoneHit(x, y) {   // 宠物可抓取区：头/身投影附近（画布局部）
+        function petGrabZoneHit(x, y) {   // 宠物可抓取区：头为中心的紧凑区域（画布局部）——过大误拎
             if (!petModel) return false;
             const hp = headScreenPos();
             const ph = petModel.userData.height || 1;
-            const r = Math.max(120, canvas.clientHeight * ph * 0.65);
-            const dy = Math.min(canvas.clientHeight * ph * 0.45, y < hp.y ? hp.y - y : 0);   // 身体向下延伸
-            return Math.hypot(x - hp.x, (y - hp.y) + dy * 0) < r || (x > hp.x - r && x < hp.x + r && y > hp.y && y < hp.y + r);
+            const r = Math.max(90, canvas.clientHeight * ph * 0.24);
+            const bodyH = canvas.clientHeight * ph * 0.42;
+            return Math.hypot(x - hp.x, y - hp.y) < r ||          // 头部圆域
+                (Math.abs(x - hp.x) < r * 0.8 && y > hp.y && y < hp.y + bodyH);   // 躯干竖带
         }
         function gesturePagePos(x, y) {   // 画布局部 → 页面
             const c = canvas.getBoundingClientRect();
@@ -2518,9 +2544,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const vHandEl = document.getElementById('vision-hand');
         const vBox = document.getElementById('vision-box');
         let vStatusCache = '';
+        let lastHandMirror = { present: false };   // 页面级手状态镜像（真实检测与调试注入共用）
         function visionRenderStatus() {
+            const hs = lastHandMirror.present ? lastHandMirror : null;
+            const handTxt = !hs ? '🖐 等待伸手'
+                : hs.quality === false ? '🖐 手离镜头近一点'
+                : hs.pinching ? '🤏 捏合中'
+                : '🖐 手已识别';
             const txt = (gazeNow ? '对视中' : '看向别处') + '|' +
-                (handTouch ? '🖐 抚摸中' : (dv && dv.handState.present ? '🖐 手已识别' : '🖐 等待伸手'));
+                (handTouch ? '🖐 抚摸中' : handTxt);
             if (txt === vStatusCache) return;
             vStatusCache = txt;
             if (vStatus) vStatus.innerHTML = txt.split('|').map(s => s.includes('中') ? `<b>${s}</b>` : s).join('<br>');
@@ -2545,18 +2577,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         function handleVisionHand(h) {
+            const pinchEl = document.getElementById('vision-pinch');
+            lastHandMirror = h;   // 状态栏镜像：真实检测与调试注入一致
             if (h.present) {
+                // 虚拟手掌：跟随掌心，尺寸随手的远近缩放（palm 越大=离镜头越近）
                 const size = 34 + Math.min(h.palm, 0.55) * 95;
-                vHandEl.style.opacity = h.reaching ? '0.95' : '0.35';
-                vHandEl.style.fontSize = (h.reaching ? size : size * 0.7) + 'px';
+                vHandEl.style.opacity = h.reaching ? '0.95' : '0.4';
+                vHandEl.style.width = vHandEl.style.height = size + 'px';
+                vHandEl.querySelector('svg').setAttribute('width', size);
+                vHandEl.querySelector('svg').setAttribute('height', size);
                 vHandEl.classList.toggle('reaching', !!h.reaching);
-                vHandEl.style.transform = `translate(${h.sx - size / 2}px, ${h.sy - size / 2}px) rotate(${h.reaching ? -14 : 0}deg)`;
+                vHandEl.classList.toggle('pinching', !!h.pinching);
+                vHandEl.style.transform = `translate(${h.sx - 0}px, ${h.sy - 0}px)`;
+                // 捏合点十字准星：让用户看到系统判定的精确操作坐标
+                const px = h.pinchX != null ? h.pinchX : h.sx;
+                const py = h.pinchY != null ? h.pinchY : h.sy;
+                pinchEl.style.opacity = h.quality === false ? '0.35' : '0.9';
+                pinchEl.classList.toggle('pinching', !!h.pinching);
+                pinchEl.style.transform = `translate(${px - 22}px, ${py - 22}px)`;
                 // 手势喂食跟随与拿取确认（S1-11）
                 updateGestureAction(h);
                 // 托盘悬停高亮（只做反馈不触发拿取）
                 if (trayEl && !trayEl.hidden && !gestureAction) {
-                    const px = h.pinchX != null ? h.pinchX : h.sx;
-                    const py = h.pinchY != null ? h.pinchY : h.sy;
                     const hitT = hitTray(px, py);
                     trayEl.querySelectorAll('[data-hand-food]').forEach((b) => {
                         b.classList.toggle('hover', !!hitT && b.dataset.handFood === hitT.kind);
@@ -2564,6 +2606,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 vHandEl.style.opacity = '0';
+                pinchEl.style.opacity = '0';
                 // 手部识别丢失：取消进行中的手势动作（不能误判为嘴边松手）
                 if (gestureAction || gesturePending.active) cancelGestureAction('hand-lost');
             }

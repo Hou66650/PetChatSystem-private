@@ -12,7 +12,24 @@ const HAND_MODEL = WASM_PATH + '/hand_landmarker.task';
 const DETECT_MS = 100;          // 检测频率（10fps 足够，省 CPU）
 const GAZE_HOLD_FRAMES = 12;    // 连续注视 ~1.2s 才算"对视"（防误触）
 const GAZE_LOST_FRAMES = 8;     // 丢失 ~0.8s 结束对视
-const HAND_REACH = 0.24;        // 掌距（腕→中指根）超过即视为"伸手靠近"
+const HAND_REACH = 0.16;        // 掌距（腕→中指根）超过即视为"伸手靠近"（离摄像头近）
+const PINCH_ON = 0.42;          // 捏合：拇指食指尖距 / 掌长 < 0.42（按手尺寸归一化，与离镜头远近无关）
+const PINCH_OFF = 0.62;         // 松开：比值 > 0.62 才释放（滞后防抖）
+const PALM_MIN = 0.06;          // 手掌过小（太远/未完全入镜）时忽略手势，防噪声误判
+
+/* 纯计算：21 个关键点 → 手势指标。归一化到"掌长"（腕0→中指根9），
+   使捏合/伸手判定与手离摄像头的距离无关 —— 这是误判率的核心修复。 */
+function handMetrics(lms) {
+    const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    const palm = d(lms[0], lms[9]) || 1e-4;                    // 掌长 = 距离尺度
+    const pinchDist = d(lms[4], lms[8]);                        // 拇指尖-食指尖
+    const pinchRatio = pinchDist / palm;                        // 无量纲：≈0.1-0.3 捏合 / ≈1.0-1.6 张开
+    const span = Math.max(
+        d(lms[0], lms[4]), d(lms[0], lms[8]), d(lms[0], lms[12]),
+        d(lms[0], lms[16]), d(lms[0], lms[20]),
+    );
+    return { palm, pinchDist, pinchRatio, span };
+}
 
 class DenVision {
     constructor() {
@@ -225,19 +242,19 @@ class DenVision {
         const lms = res.landmarks && res.landmarks[0];
         if (lms && lms.length >= 21) {
             const wrist = lms[0], mcp = lms[9];
-            const palm = Math.hypot(mcp.x - wrist.x, mcp.y - wrist.y);
+            const m = handMetrics(lms);
+            const palm = m.palm;
+            // 掌长太小 = 手太远/不完整：不判手势（防噪声），但保留虚拟手位置反馈
+            const quality = palm >= PALM_MIN;
             const reaching = palm > HAND_REACH;
-            // 捏合检测：拇指尖(4)-食指尖(8)距离很小 = 捏手势
-            // 滞后阈值：捏合 <0.055 触发，松开 >0.10 才释放（防抖动）
-            const thumbTip = lms[4], indexTip = lms[8];
-            const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
-            let pinching;
-            if (this._pinching) {
-                pinching = pinchDist < 0.10;   // 已捏住：距离够大才算松开
-            } else {
-                pinching = pinchDist < 0.055;  // 未捏住：距离够小才触发
+            // 捏合：按掌长归一化后滞后判定（张开≈1.0-1.6，捏合≈0.1-0.3）
+            let pinching = false;
+            if (quality) {
+                if (this._pinching) pinching = m.pinchRatio < PINCH_OFF;
+                else pinching = m.pinchRatio < PINCH_ON;
             }
             // 捏合点 = 拇指尖与食指尖中点（拿食物用精确坐标；x 镜像与掌心一致）
+            const thumbTip = lms[4], indexTip = lms[8];
             const pinchX = (1 - (thumbTip.x + indexTip.x) / 2) * this.canvasSize.w;
             const pinchY = ((thumbTip.y + indexTip.y) / 2) * this.canvasSize.h;
             // 捏合状态变化时通知（附捏合点；保留 sx/sy 兼容旧调用方）
@@ -250,12 +267,12 @@ class DenVision {
                 });
             }
 
-            // 打响指检测：拇指尖(4)-中指尖(12)距离从很小→骤增（弹开动作）
+            // 打响指检测：拇指尖(4)-中指尖(12)距离从很小→骤增（弹开动作，同样按掌长归一化）
             const midTip = lms[12];
-            const snapDist = Math.hypot(thumbTip.x - midTip.x, thumbTip.y - midTip.y);
-            if (this._prevSnapDist !== undefined) {
-                const snapSpeed = snapDist - this._prevSnapDist;
-                if (this._prevSnapDist < 0.06 && snapSpeed > 0.05) {
+            const snapDist = Math.hypot(lms[4].x - midTip.x, lms[4].y - midTip.y) / palm;
+            if (this._prevSnapRatio !== undefined) {
+                const snapSpeed = snapDist - this._prevSnapRatio;
+                if (this._prevSnapRatio < 0.30 && snapSpeed > 0.22) {
                     const now = performance.now();
                     if (now - (this._lastSnapAt || 0) > 800) {
                         this._lastSnapAt = now;
@@ -263,12 +280,16 @@ class DenVision {
                     }
                 }
             }
-            this._prevSnapDist = snapDist;
+            this._prevSnapRatio = snapDist;
             // 归一化坐标 → 画布坐标（x 镜像，符合照镜子直觉）
             const sx = (1 - mcp.x) * this.canvasSize.w;
             const sy = mcp.y * this.canvasSize.h;
             const was = this.handState;
-            this.handState = { present: true, reaching, sx, sy, palm, pinching, pinchX, pinchY, pinchDist };
+            this.handState = {
+                present: true, reaching, sx, sy, palm, pinching,
+                pinchX, pinchY, pinchDist: m.pinchDist, pinchRatio: m.pinchRatio,
+                quality,
+            };
             if (was.present !== true || was.reaching !== reaching) this.onHand(this.handState);
         } else {
             // 手消失时释放捏合（无坐标：调用方只能按"取消"处理，不能当成功）
@@ -307,3 +328,4 @@ class DenVision {
 }
 
 window.DenVision = DenVision;
+DenVision.metrics = handMetrics;   // 调试/测试：21 关键点 → 归一化手势指标
