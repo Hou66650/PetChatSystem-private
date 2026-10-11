@@ -479,31 +479,38 @@
                     }
                     stringLight.name = '__stringLights';
                     g.add(stringLight);
-                    const warm = new THREE.PointLight(0xFFD9A0, 0.55, 6);
+                    const warm = new THREE.PointLight(0xFFD9A0, 0.85, 8);
                     warm.position.set(0, 2.2, -1.6);
                     warm.name = '__themeLight';
                     g.add(warm);
+                    const warm2 = new THREE.PointLight(0xFFE8C0, 0.5, 4);
+                    warm2.position.set(0.5, 1.5, 0.5);
+                    warm2.name = '__themeLight2';
+                    g.add(warm2);
                 },
             },
             camp: {     // 星空营地：篝火 + 帐篷 + 栅栏 + 星月氛围
                 rug: 0xC8B890,
-                ground: { grass: true, day: 0xC8C4A8, dusk: 0xA8A08C, night: 0x68686A },
+                ground: { grass: false, day: 0x5A5A6E, dusk: 0x4E4E5A, night: 0x3A3A48 },
                 env: { ch: '✨', n: 18, rise: true, tiny: true },
                 build(g) {
                     const fire = new THREE.Group();
                     const log = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 8), M(0x7A5238));
                     log.rotation.z = Math.PI / 2; log.position.y = 0.06; fire.add(log);
                     const log2 = log.clone(); log2.rotation.y = Math.PI / 2; fire.add(log2);
-                    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 8),
-                        new THREE.MeshBasicMaterial({ color: 0xFF9A3C }));
-                    flame.position.y = 0.42; flame.name = '__flame'; fire.add(flame);
-                    const flameIn = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.34, 8),
-                        new THREE.MeshBasicMaterial({ color: 0xFFD070 }));
-                    flameIn.position.y = 0.36; fire.add(flameIn);
+                    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.65, 8),
+                        new THREE.MeshBasicMaterial({ color: 0xFF8A20, transparent: true, opacity: 0.9 }));
+                    flame.position.y = 0.48; flame.name = '__flame'; fire.add(flame);
+                    const flameIn = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.42, 8),
+                        new THREE.MeshBasicMaterial({ color: 0xFFE080 }));
+                    flameIn.position.y = 0.4; fire.add(flameIn);
+                    const flameCore = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.25, 6),
+                        new THREE.MeshBasicMaterial({ color: 0xFFFFC0 }));
+                    flameCore.position.y = 0.32; fire.add(flameCore);
                     fire.position.set(1.7, 0, 0.9);
                     fire.traverse(o => { o.castShadow = true; });
                     g.add(fire);
-                    const fireLight = new THREE.PointLight(0xFFAA50, 1.4, 6);
+                    const fireLight = new THREE.PointLight(0xFF9030, 1.6, 7);
                     fireLight.position.set(1.7, 0.9, 0.9);
                     fireLight.name = '__fireLight';
                     g.add(fireLight);
