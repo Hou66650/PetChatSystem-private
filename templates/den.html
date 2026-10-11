@@ -53,6 +53,10 @@
             display: flex; gap: 8px; z-index: 10; flex-wrap: wrap; justify-content: center;
             max-width: 96vw;
         }
+        
+        .btn-icon { width: 20px; height: 20px; display: inline-block; vertical-align: -4px; margin-right: 6px; flex-shrink: 0; }
+        .game-icon .btn-icon { width: 36px; height: 36px; }
+        .action-btn { display: inline-flex; align-items: center; gap: 0; }
         .action-btn {
             display: inline-flex; align-items: center; gap: 6px;
             height: 38px; padding: 0 16px; border-radius: 999px; border: none;
@@ -250,7 +254,36 @@
             #vision-hand { font-size: 34px !important; }
         }
     </style>
-</head>
+
+<script>
+const ICONS = {
+    pet:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11c0-1.5 1-3 3-3s3 1.5 3 3v5c0 2-1.5 4-3.5 4S6 18 6 16v-5z" fill="rgba(255,158,88,.15)"/><ellipse cx="5" cy="8" rx="1.5" ry="2" transform="rotate(-20 5 8)"/><ellipse cx="12" cy="5" rx="1.5" ry="2"/><ellipse cx="19" cy="8" rx="1.5" ry="2" transform="rotate(20 19 8)"/></svg>',
+    bone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8L16 16" /><path d="M8 8a2 2 0 1 0-4 0 2 2 0 0 0 4 0zM16 16a2 2 0 1 0 4 0 2 2 0 0 0-4 0z" fill="rgba(255,158,88,.2)"/><path d="M6 5a2 2 0 1 1 4 0v3H7a2 2 0 0 1-1-3zM18 19a2 2 0 1 1-4 0v-3h3a2 2 0 0 1 1 3z" fill="rgba(255,158,88,.2)"/></svg>',
+    fish:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-5 9-5 9 5 9 5-3 5-9 5-9-5-9-5z" fill="rgba(100,181,246,.15)"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/><path d="M11 7l-2-4M11 17l-2 4" stroke-width="1.5"/></svg>',
+    cookie:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" fill="rgba(255,204,128,.2)"/><circle cx="9" cy="9" r="1.2" fill="currentColor" stroke="none"/><circle cx="14" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="10" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg>',
+    dress:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l3 8-3 2-3-2z" fill="rgba(255,107,158,.2)"/><path d="M7 13c0 0 2 3 5 6 3-3 5-6 5-6"/><circle cx="12" cy="2.5" r="1.5" fill="#FFD700" stroke="none"/></svg>',
+    photo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="3" fill="rgba(255,158,88,.1)"/><path d="M8 7l1.5-3h5L16 7"/><circle cx="12" cy="13" r="3.5" fill="rgba(255,255,255,.5)"/></svg>',
+    eye:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" fill="rgba(100,181,246,.1)"/><circle cx="12" cy="12" r="3" fill="rgba(100,181,246,.3)"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>',
+    voice:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>',
+    heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21C7 16.5 3 13 3 8.8 3 6 5 4 7.5 4c1.8 0 3.4 1 4.5 2.6C13.1 5 14.7 4 16.5 4 19 4 21 6 21 8.8c0 4.2-4 7.7-9 12.2z" fill="rgba(244,143,177,.2)"/></svg>',
+    breath:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6M12 15v6" stroke-dasharray="2 2"/><path d="M4 12c0-2 2-4 4-4s4 2 4 4-2 4-4 4-4-2-4-4z" fill="rgba(165,214,167,.2)"/><path d="M12 12c0-2 2-4 4-4s4 2 4 4-2 4-4 4-4-2-4-4z" fill="rgba(165,214,167,.15)"/></svg>',
+    gamepad:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="11" rx="5" fill="rgba(156,39,176,.1)"/><path d="M7 11v4M5 13h4"/><circle cx="16" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="18.5" cy="14.5" r="1" fill="currentColor" stroke="none"/><path d="M8 8l1-3h6l1 3"/></svg>',
+    chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V5z" fill="rgba(255,158,88,.1)"/><path d="M8 9h8M8 12h5" stroke-width="1.5"/></svg>',
+    music:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l10-2v12" fill="rgba(255,158,88,.1)"/><circle cx="7" cy="18" r="2.5" fill="rgba(255,158,88,.3)"/><circle cx="17" cy="16" r="2.5" fill="rgba(255,158,88,.3)"/></svg>',
+    balloon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="8" rx="6" ry="7" fill="rgba(255,213,79,.2)"/><path d="M12 15v3M12 18c0 1-1 2-2 3"/><path d="M10 5c1-1 3-1.5 4-1" stroke-width="1.2"/></svg>',
+    bubble:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8" fill="rgba(100,181,246,.15)"/><circle cx="9" cy="9" r="2" fill="rgba(255,255,255,.6)" stroke="none"/><circle cx="18" cy="5" r="2" stroke-width="1.5"/><circle cx="5" cy="18" r="1.5" stroke-width="1.5"/></svg>',
+    mask:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c0-1 1-2 2-2h5v14c0 2-1.5 3-3.5 3S4 20 4 18V6z" fill="rgba(255,158,88,.1)"/><path d="M13 4h5c1 0 2 1 2 2v12c0 2-1.5 3-3.5 3s-3.5-1-3.5-3V4z" fill="rgba(186,104,200,.1)"/><circle cx="7" cy="9" r="1" fill="currentColor" stroke="none"/><circle cx="10" cy="12" r="1" fill="currentColor" stroke="none"/><path d="M6 15c1 1 2.5 1.5 3.5 1" stroke-width="1.5"/><circle cx="16" cy="9" r="1" fill="currentColor" stroke="none"/></svg>',
+};
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-icon]').forEach(el => {
+        const svg = ICONS[el.dataset.icon];
+        if (!svg) return;
+        const old = el.querySelector('svg.btn-icon');
+        if (old) old.remove();
+        el.insertAdjacentHTML('afterbegin', svg.replace('<svg', '<svg class="btn-icon"'));
+    });
+});
+</script></head>
 <body class="theme">
     {% include '_navbar.html' %}
     <div id="den-wrap">
@@ -268,19 +301,19 @@
         <div class="bubble-tip" id="bubble"></div>
 
         <div class="action-bar">
-            <button class="action-btn" id="btn-pet">🤚 摸摸</button>
-            <button class="action-btn" id="btn-feed-bone">🦴 骨头</button>
-            <button class="action-btn" id="btn-feed-fish">🐟 小鱼干</button>
-            <button class="action-btn" id="btn-feed-cookie">🍪 饼干</button>
-            <button class="action-btn" id="btn-dress">🎩 换装</button>
-            <button class="action-btn" id="btn-photo">📸 拍照</button>
-            <button class="action-btn" id="btn-vision">👁 眼神互动</button>
-            <button class="action-btn" id="btn-tts">🔊 语音</button>
-            <button class="action-btn" id="btn-mood">💗 心情</button>
-            <button class="action-btn" id="btn-breath">🫁 呼吸</button>
-            <button class="action-btn" id="btn-games">🎮 游戏中心</button>
-            <button class="action-btn" id="btn-chat">💬 聊天</button>
-            <button class="action-btn" id="btn-music">🎵 音乐</button>
+            <button class="action-btn" id="btn-pet" data-icon="pet">摸摸</button>
+            <button class="action-btn" id="btn-feed-bone" data-icon="bone">骨头</button>
+            <button class="action-btn" id="btn-feed-fish" data-icon="fish">小鱼干</button>
+            <button class="action-btn" id="btn-feed-cookie" data-icon="cookie">饼干</button>
+            <button class="action-btn" id="btn-dress" data-icon="dress">换装</button>
+            <button class="action-btn" id="btn-photo" data-icon="photo">拍照</button>
+            <button class="action-btn" id="btn-vision" data-icon="eye">眼神互动</button>
+            <button class="action-btn" id="btn-tts" data-icon="voice">语音</button>
+            <button class="action-btn" id="btn-mood" data-icon="heart">心情</button>
+            <button class="action-btn" id="btn-breath" data-icon="breath">呼吸</button>
+            <button class="action-btn" id="btn-games" data-icon="gamepad">游戏中心</button>
+            <button class="action-btn" id="btn-chat" data-icon="chat">聊天</button>
+            <button class="action-btn" id="btn-music" data-icon="music">音乐</button>
         </div>
 
         <div class="den-chat hidden" id="den-chat">
@@ -294,7 +327,7 @@
                 <button type="button" data-say="我最近好焦虑，心里静不下来">好焦虑 😰</button>
                 <button type="button" data-say="压力好大，感觉快撑不住了">压力好大 😮‍💨</button>
                 <button type="button" data-say="最近总是睡不着，心里乱乱的">睡不着 🌙</button>
-                <button type="button" data-say="没什么特别的事，就想和你聊聊">就想聊聊 💬</button>
+                <button type="button" data-say="没什么特别的事，就想和你聊聊">就想聊聊 </button>
             </div>
             <form id="chat-form">
                 <input id="chat-input" placeholder="和它说点什么…" autocomplete="off" maxlength="200">
@@ -335,21 +368,18 @@
         <!-- ===== 心理学游戏中心 ===== -->
 <div class="mood-mask" id="games-mask" hidden>
     <div class="mood-card" style="width:min(94vw,440px)">
-        <h3>🎮 心理小游戏</h3>
+        <h3>心理小游戏</h3>
         <div class="sub">和它一起玩，心情会变好</div>
         <div class="game-grid">
-            <button class="game-card" data-game="balloon">
-                <span class="game-icon">🎈</span>
+            <button class="game-card" data-game="balloon" data-icon="balloon"><span class="game-icon" data-icon="balloon"></span>
                 <span class="game-name">情绪气球</span>
                 <span class="game-desc">戳破气球认识情绪</span>
             </button>
-            <button class="game-card" data-game="worry">
-                <span class="game-icon">🫧</span>
+            <button class="game-card" data-game="worry" data-icon="bubble"><span class="game-icon" data-icon="bubble"></span>
                 <span class="game-name">烦恼泡泡</span>
                 <span class="game-desc">写下烦恼然后放飞它</span>
             </button>
-            <button class="game-card" data-game="empathy">
-                <span class="game-icon">🎭</span>
+            <button class="game-card" data-game="empathy" data-icon="mask"><span class="game-icon" data-icon="mask"></span>
                 <span class="game-name">宠物猜心</span>
                 <span class="game-desc">猜猜它现在什么心情</span>
             </button>
@@ -378,7 +408,7 @@
             <div class="vision-status" id="vision-status">启动中…</div>
             <div class="vision-privacy">🔒 画面仅本地处理，不会上传</div>
         </div>
-        <div id="vision-hand" aria-hidden="true">🤚</div>
+        <div id="vision-hand" aria-hidden="true"></div>
     </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
@@ -970,7 +1000,7 @@
             tex.needsUpdate = true;
             return tex;
         }
-        const TEX = { heart: emojiTexture('💗'), star: emojiTexture('✨'), zzz: emojiTexture('💤'), bone: emojiTexture('🦴'), fish: emojiTexture('🐟'), cookie: emojiTexture('🍪') };
+        const TEX = { heart: emojiTexture(''), star: emojiTexture('✨'), zzz: emojiTexture('💤'), bone: emojiTexture(''), fish: emojiTexture(''), cookie: emojiTexture('') };
         function burst(ch, n, pos) {
             for (let i = 0; i < n; i++) {
                 const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX[ch], transparent: true }));
@@ -1077,7 +1107,7 @@
             a.download = `我的${SPECS[currentPetId].name}-${new Date().toISOString().slice(0, 10)}.png`;
             a.href = canvas.toDataURL('image/png');
             a.click();
-            toast('照片已保存 📸', 'success');
+            toast('照片已保存 ', 'success');
             burst('star', 4);
         }
 
@@ -1157,7 +1187,7 @@
         document.getElementById('btn-tts').addEventListener('click', function () {
             ttsOn = !ttsOn;
             if (!ttsOn && window.speechSynthesis) speechSynthesis.cancel();
-            this.textContent = ttsOn ? '🔊 语音' : '🔇 语音';
+            this.textContent = ttsOn ? '语音' : '语音';
             toast(ttsOn ? '宠物开口说话啦' : '宠物语音已静音', 'info');
         });
 
@@ -1283,14 +1313,14 @@
                 unlockAudio();
                 bgm.volume = 0.35;   // 确保音量非零
                 bgm.play().then(() => {
-                    musicOn = true; this.textContent = '🔇 静音';
+                    musicOn = true; this.textContent = '静音';
                     if (bgm.volume === 0) { bgm.volume = 0.35; }
                 }).catch((e) => {
-                    musicOn = false; this.textContent = '🎵 音乐';
+                    musicOn = false; this.textContent = '音乐';
                     toast('播放被浏览器拦截，请先点击页面任意位置再试', 'info');
                 });
             } else {
-                bgm.pause(); musicOn = false; this.textContent = '🎵 音乐';
+                bgm.pause(); musicOn = false; this.textContent = '音乐';
             }
         });
 
@@ -1398,7 +1428,7 @@
             if (visionOn) {   // 练习期间收起视觉互动，保持沉浸（抚摸动画会打断呼吸同步）
                 stopVision();
                 const vb = document.getElementById('btn-vision');
-                if (vb) vb.textContent = '👁 眼神互动';
+                if (vb) vb.textContent = '眼神互动';
             }
             breathMask.hidden = false;
             // 舒缓呼吸坐姿（不借用 sleep 状态——那会侧躺）：独立状态播 idle 慢放
@@ -1746,7 +1776,7 @@
         const vBox = document.getElementById('vision-box');
         let vStatusCache = '';
         function visionRenderStatus() {
-            const txt = (gazeNow ? '👁 对视中' : '👁 看向别处') + '|' +
+            const txt = (gazeNow ? '对视中' : '看向别处') + '|' +
                 (handTouch ? '🖐 抚摸中' : (dv && dv.handState.present ? '🖐 手已识别' : '🖐 等待伸手'));
             if (txt === vStatusCache) return;
             vStatusCache = txt;
@@ -1761,9 +1791,9 @@
             vHandEl.style.opacity = '0';
         }
         document.getElementById('btn-vision').addEventListener('click', async function () {
-            if (visionOn) { stopVision(); this.textContent = '👁 眼神互动'; return; }
+            if (visionOn) { stopVision(); this.textContent = '眼神互动'; return; }
             if (!window.DenVision) { toast('视觉模块加载失败，请刷新页面', 'error'); return; }
-            this.disabled = true; this.textContent = '⏳ 开启中…';
+            this.disabled = true; this.textContent = '开启中…';
             dv = dv || new window.DenVision();
             window.__denVision = dv;   // 调试/验收钩子
             // 第三个参数 = 主画布：虚拟手与触摸判定的坐标换算基准（勿传预览小窗）
@@ -1842,15 +1872,15 @@
                     if (kind === 'runtime') {
                         stopVision();
                         const b = document.getElementById('btn-vision');
-                        if (b) b.textContent = '👁 眼神互动';
+                        if (b) b.textContent = '眼神互动';
                     }
                 },
             }, canvas);
             this.disabled = false;
-            if (!ok) { this.textContent = '👁 眼神互动'; dv = null; window.__denVision = null; return; }
-            if (breathActive) { dv.stop(); dv = null; window.__denVision = null; this.textContent = '👁 眼神互动'; toast('先专注呼吸，练完再开启眼神互动吧', 'info'); return; }
+            if (!ok) { this.textContent = '眼神互动'; dv = null; window.__denVision = null; return; }
+            if (breathActive) { dv.stop(); dv = null; window.__denVision = null; this.textContent = '眼神互动'; toast('先专注呼吸，练完再开启眼神互动吧', 'info'); return; }
             visionOn = true;
-            this.textContent = '👁 关闭视觉';
+            this.textContent = '关闭视觉';
             vBox.classList.add('ready');
             visionRenderStatus();
             // 低频节拍：对视/抚摸的亲密度累计与粒子节流
@@ -1885,7 +1915,7 @@
                 if (visionOn) {
                     stopVision();
                     const b = document.getElementById('btn-vision');
-                    if (b) b.textContent = '👁 眼神互动';
+                    if (b) b.textContent = '眼神互动';
                 }
             }
         });
