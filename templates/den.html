@@ -555,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sakura: {   // 樱花庭院：樱花树 + 石灯笼 + 飘落花瓣
                 rug: 0xF7C8D0,
                 ground: { grass: true, day: 0xE0E4D0, dusk: 0xC8B8A8, night: 0x8A8A96 },
-                env: { ch: '🌸', n: 16, rise: false },
+                env: { kind: 'petal', n: 16, rise: false },
                 build(g) {
                     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.14, 1.5, 8), M(0x8A6248));
                     trunk.position.set(-2.3, 0.75, -1.5); trunk.castShadow = true; g.add(trunk);
@@ -582,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
             snow: {     // 静静雪原：雪堆 + 松树 + 落雪
                 rug: 0xE8F0F8,
                 ground: { grass: false, day: 0xFFFFFF, dusk: 0xD8E0EA, night: 0x9AA6B8 },
-                env: { ch: '❄️', n: 22, rise: false },
+                env: { kind: 'snow', n: 22, rise: false },
                 build(g) {
                     [[-2.0, -1.2, 0.55], [1.9, -0.9, 0.4], [1.2, -1.9, 0.62], [-1.1, -2.1, 0.34]].forEach(([x, z, r]) => {
                         const s = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), M(0xFAFCFF));
@@ -606,7 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
             room: {     // 温馨小窝：木地板 + 纸箱 + 毛线球 + 串灯
                 rug: 0xF5C9A0,
                 ground: { grass: false, day: 0xC8A070, dusk: 0xB89060, night: 0x7A6E62 },
-                env: { ch: '🫧', n: 10, rise: true, tiny: true },
+                env: { kind: 'bubble', n: 10, rise: true, tiny: true },
                 build(g) {
                     const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.9), M(0xC89858));
                     box.position.set(-2.1, 0.35, -1.3); box.rotation.y = 0.4; box.castShadow = true; box.receiveShadow = true; g.add(box);
@@ -665,7 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
             camp: {     // 星空营地：篝火 + 帐篷 + 栅栏 + 星月氛围
                 rug: 0xC8B890,
                 ground: { grass: false, day: 0x5A5A6E, dusk: 0x4E4E5A, night: 0x3A3A48 },
-                env: { ch: '✨', n: 18, rise: true, tiny: true },
+                env: { kind: 'spark', n: 18, rise: true, tiny: true },
                 build(g) {
                     const fire = new THREE.Group();
                     const log = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 8), M(0x7A5238));
@@ -768,8 +768,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             envSprites.forEach((s) => { scene.remove(s); s.material.dispose(); });
             envSprites = [];
-            if (!envTexCache[t.env.ch]) envTexCache[t.env.ch] = emojiTexture(t.env.ch);
-            const tex = envTexCache[t.env.ch];
+            if (!envTexCache[t.env.kind]) envTexCache[t.env.kind] = shapeTexture(t.env.kind);
+            const tex = envTexCache[t.env.kind];
             for (let i = 0; i < t.env.n; i++) {
                 const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.75 }));
                 const sz = t.env.tiny ? 0.1 + Math.random() * 0.08 : 0.16 + Math.random() * 0.12;
@@ -1101,20 +1101,98 @@ document.addEventListener('DOMContentLoaded', () => {
             spawnBusy = false;
         }
 
-        // ---------- 粒子（emoji 贴图 sprite，本地 canvas 生成） ----------
+        // ---------- 粒子（canvas 路径绘制贴图，不依赖 emoji 字体——字体渲染在不同环境会变黑块/残片） ----------
         const particles = [];
-        function emojiTexture(ch) {
+        function shapeTexture(kind) {
             const c = document.createElement('canvas');
             c.width = c.height = 64;
             const ctx = c.getContext('2d');
-            ctx.font = '48px serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(ch, 32, 36);
+            ctx.lineCap = 'round';
+            const P = (fill, path) => { ctx.beginPath(); path(); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+            switch (kind) {
+                case 'petal':   // 樱花：五瓣 + 深粉花心
+                    for (let i = 0; i < 5; i++) {
+                        const a = i * Math.PI * 2 / 5 - Math.PI / 2;
+                        ctx.save(); ctx.translate(32 + Math.cos(a) * 14, 32 + Math.sin(a) * 14); ctx.rotate(a);
+                        P('#FFB7CE', () => ctx.ellipse(0, 0, 11, 7.5, 0, 0, Math.PI * 2));
+                        ctx.restore();
+                    }
+                    P('#E86A8A', () => ctx.arc(32, 32, 5, 0, Math.PI * 2));
+                    break;
+                case 'snow':    // 雪花：六臂 + 端部分叉
+                    ctx.strokeStyle = '#DCEBFF'; ctx.lineWidth = 3;
+                    for (let i = 0; i < 6; i++) {
+                        const a = i * Math.PI / 3;
+                        const dx = Math.cos(a) * 20, dy = Math.sin(a) * 20;
+                        ctx.beginPath(); ctx.moveTo(32, 32); ctx.lineTo(32 + dx, 32 + dy); ctx.stroke();
+                        for (const s of [-0.5, 0.5]) {
+                            const bx = 32 + dx * 0.68, by = 32 + dy * 0.68;
+                            ctx.beginPath(); ctx.moveTo(bx, by);
+                            ctx.lineTo(bx + Math.cos(a + s) * 8, by + Math.sin(a + s) * 8); ctx.stroke();
+                        }
+                    }
+                    ctx.fillStyle = '#F4FAFF'; ctx.beginPath(); ctx.arc(32, 32, 3.5, 0, Math.PI * 2); ctx.fill();
+                    break;
+                case 'bubble':  // 泡泡：淡蓝圆环 + 高光弧
+                    ctx.strokeStyle = '#A8CFF5'; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.arc(32, 32, 20, 0, Math.PI * 2); ctx.stroke();
+                    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.arc(32, 32, 13, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke();
+                    break;
+                case 'spark': { // 星光：金色四芒星 + 柔光
+                    const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 28);
+                    g.addColorStop(0, 'rgba(255,220,130,.95)'); g.addColorStop(1, 'rgba(255,220,130,0)');
+                    ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+                    P('#FFE9A8', () => {
+                        ctx.moveTo(32, 6); ctx.quadraticCurveTo(35, 29, 58, 32); ctx.quadraticCurveTo(35, 35, 32, 58);
+                        ctx.quadraticCurveTo(29, 35, 6, 32); ctx.quadraticCurveTo(29, 29, 32, 6);
+                    });
+                    break;
+                }
+                case 'heart':  // 爱心
+                    P('#FF6B81', () => {
+                        ctx.moveTo(32, 54);
+                        ctx.bezierCurveTo(6, 36, 10, 12, 26, 16); ctx.bezierCurveTo(31, 18, 32, 23, 32, 25);
+                        ctx.bezierCurveTo(32, 23, 33, 18, 38, 16); ctx.bezierCurveTo(54, 12, 58, 36, 32, 54);
+                    });
+                    break;
+                case 'star': { // 五角星
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        const a = -Math.PI / 2 + i * Math.PI * 2 / 5;
+                        const a2 = a + Math.PI / 5;
+                        ctx.lineTo(32 + Math.cos(a) * 24, 32 + Math.sin(a) * 24);
+                        ctx.lineTo(32 + Math.cos(a2) * 10, 32 + Math.sin(a2) * 10);
+                    }
+                    ctx.closePath(); ctx.fillStyle = '#FFD54F'; ctx.fill();
+                    ctx.strokeStyle = '#F5A623'; ctx.lineWidth = 2; ctx.stroke();
+                    break;
+                }
+                case 'zzz':    // 睡觉 Z（ASCII 字形不依赖 emoji 字体）
+                    ctx.fillStyle = '#7E9BD6'; ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center';
+                    ctx.fillText('Z', 20, 26); ctx.font = 'bold 18px sans-serif'; ctx.fillText('Z', 40, 46);
+                    break;
+                case 'bone':   // 骨头：两端球 + 中间杆
+                    ctx.fillStyle = '#F5E7C8';
+                    [[16, 24], [16, 40], [48, 24], [48, 40]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill(); });
+                    ctx.fillRect(16, 26, 32, 12);
+                    break;
+                case 'fish':   // 小鱼干：橙身 + 三角尾 + 眼点
+                    P('#FFA65C', () => ctx.ellipse(28, 32, 16, 10, 0, 0, Math.PI * 2));
+                    P('#F08A3C', () => { ctx.moveTo(42, 32); ctx.lineTo(56, 22); ctx.lineTo(56, 42); });
+                    ctx.fillStyle = '#3A2A1A'; ctx.beginPath(); ctx.arc(20, 30, 2.2, 0, Math.PI * 2); ctx.fill();
+                    break;
+                case 'cookie': // 饼干：棕圆 + 巧克力豆
+                    P('#E0B878', () => ctx.arc(32, 32, 20, 0, Math.PI * 2));
+                    ctx.fillStyle = '#8A5A2B';
+                    [[24, 26], [40, 28], [30, 40], [41, 39], [25, 36]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); });
+                    break;
+            }
             const tex = new THREE.CanvasTexture(c);
             tex.needsUpdate = true;
             return tex;
         }
-        const TEX = { heart: emojiTexture(''), star: emojiTexture('✨'), zzz: emojiTexture('💤'), bone: emojiTexture(''), fish: emojiTexture(''), cookie: emojiTexture('') };
+        const TEX = { heart: shapeTexture('heart'), star: shapeTexture('star'), zzz: shapeTexture('zzz'), bone: shapeTexture('bone'), fish: shapeTexture('fish'), cookie: shapeTexture('cookie') };
         function burst(ch, n, pos) {
             for (let i = 0; i < n; i++) {
                 const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX[ch], transparent: true }));
