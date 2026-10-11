@@ -412,6 +412,14 @@
             const d = new Date();
             return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         }
+        // 统一时间字段（S1-05）：ts 兼容旧展示，createdAt 供日记按本地日期分组
+        function messageTimeFields() {
+            const d = new Date();
+            return {
+                ts: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
+                createdAt: d.toISOString(),
+            };
+        }
         function currentPet() { return PETS[currentPetIndex] || PETS[0]; }
         // 旧格式历史条目没有 petId：按 sender 名字推断是哪只宠物
         function inferPetId(row) {
@@ -719,8 +727,7 @@
             autosize();
 
             const pet = currentPet();
-            const ts = nowTime();
-            const userRow = { role: 'user', sender: prefs.nickname || '我', message, petId: pet.id, ts };
+            const userRow = { role: 'user', sender: prefs.nickname || '我', message, petId: pet.id, ...messageTimeFields() };
             history.push(userRow);
             saveHistory();
             appendHtml(bubbleHtml(userRow));
@@ -747,7 +754,7 @@
                         sender: replyPet.name,
                         message: data.reply,
                         petId: replyPet.id,
-                        ts: nowTime(),
+                        ...messageTimeFields(),
                     };
                     history.push(replyRow);
                     saveHistory();

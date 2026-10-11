@@ -50,6 +50,38 @@
             background: rgba(255, 253, 248, .82);
             border-radius: 12px;
         }
+        /* 筛选工具栏（S1-05） */
+        .diary-toolbar {
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 18px;
+            font-size: 13px;
+        }
+        .diary-toolbar select,
+        .diary-toolbar input[type="search"] {
+            padding: 6px 10px;
+            border: 1px solid #d8cbb8;
+            border-radius: 8px;
+            background: rgba(255, 253, 248, .9);
+            color: var(--c-text);
+            font: inherit;
+            font-size: 13px;
+        }
+        .diary-toolbar input[type="search"] { min-width: 180px; }
+        .diary-toolbar .btn-link {
+            border: 0;
+            background: transparent;
+            color: var(--c-text-sub);
+            cursor: pointer;
+            font: inherit;
+            font-size: 13px;
+            text-decoration: underline;
+            padding: 4px;
+        }
+        .diary-count { color: var(--c-text-sub); margin-left: auto; }
         .diary-content {
             position: relative;
             font-size: 15px;
@@ -58,16 +90,41 @@
             max-width: 720px;
             margin: 0 auto;
         }
-        .diary-content .entry {
-            margin: 0 0 14px;
+        .diary-day { margin: 0 0 22px; }
+        .diary-day-title {
+            margin: 0 0 10px;
+            font-size: 15px;
+            color: #6b5a49;
+            border-bottom: 1px dashed #d8cbb8;
+            padding-bottom: 4px;
+            font-weight: 600;
         }
-        .diary-content .entry strong { color: #2f2620; }
+        .diary-entry {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin: 0 0 8px;
+        }
+        .diary-entry-main { flex: 1; min-width: 0; word-break: break-word; }
+        .diary-entry-main strong { color: #2f2620; }
+        .diary-del {
+            flex-shrink: 0;
+            border: 0;
+            background: transparent;
+            color: #b0a08c;
+            cursor: pointer;
+            font: inherit;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            min-height: 24px;
+        }
+        .diary-del:hover { color: var(--c-danger); background: rgba(180, 60, 60, .08); }
         .diary-empty {
             text-align: center;
             color: var(--c-text-sub);
             padding: 48px 16px;
         }
-        .diary-empty .btn { margin-top: 16px; }
     </style>
 </head>
 <body class="theme">
@@ -82,6 +139,27 @@
             </div>
         </div>
         <div class="paper">
+            <div class="diary-toolbar" role="group" aria-label="日记筛选">
+                <label for="f-pet">宠物</label>
+                <select id="f-pet">
+                    <option value="all">全部</option>
+                    <option value="1">球球（柴犬）</option>
+                    <option value="2">雪球（哈士奇）</option>
+                    <option value="3">团子（猫咪）</option>
+                    <option value="4">大壮（德牧）</option>
+                </select>
+                <label for="f-date">日期</label>
+                <select id="f-date">
+                    <option value="all">全部日期</option>
+                    <option value="7">最近 7 天</option>
+                    <option value="30">最近 30 天</option>
+                    <option value="legacy">历史未知日期</option>
+                </select>
+                <label for="f-kw">关键词</label>
+                <input type="search" id="f-kw" placeholder="搜索日记内容…" aria-label="关键词搜索">
+                <button type="button" class="btn-link" id="btn-reset-filters">重置筛选</button>
+                <span class="diary-count" id="diary-count" aria-live="polite"></span>
+            </div>
             <div id="diary-content" class="diary-content">正在加载日记内容…</div>
         </div>
     </div>
@@ -89,76 +167,15 @@
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/html2canvas.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/jspdf.umd.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/diary.js') }}"></script>
     <script>
-    // 日期标题
+    // 标题栏日期
     (function () {
-        const d = new Date();
-        const pad = n => String(n).padStart(2, '0');
+        var d = new Date();
+        var pad = function (n) { return String(n).padStart(2, '0'); };
         document.getElementById('diary-date').textContent =
-            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+            d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
     })();
-
-    // 加载日记（localStorage 与聊天页同源：chatHistory）
-    async function loadDiary() {
-        const el = document.getElementById('diary-content');
-        let chatHistory = [];
-        try {
-            chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
-        } catch (e) { chatHistory = []; }
-
-        if (!chatHistory.length) {
-            el.innerHTML = '';
-            const empty = document.createElement('div');
-            empty.className = 'diary-empty';
-            empty.innerHTML = `还没有聊天记录。<br>去和宠物聊两句，再回来翻开这页日记吧。
-                <div><button class="btn" onclick="location.href='/gpt'">开始聊天</button></div>`;
-            el.appendChild(empty);
-            return;
-        }
-        // 统一渲染：用户=「我」，宠物用其名；空消息过滤；条目等距
-        const entries = chatHistory
-            .filter(e => e && e.message && String(e.message).trim())
-            .map(e => {
-                const name = e.role === 'user'
-                    ? '我'
-                    : (e.sender || '宠物');
-                const div = document.createElement('p');
-                div.className = 'entry';
-                const strong = document.createElement('strong');
-                strong.textContent = name + (e.ts ? `（${e.ts}）` : '') + '：';
-                div.appendChild(strong);
-                div.appendChild(document.createTextNode(String(e.message).trim()));
-                return div;
-            });
-        el.innerHTML = '';
-        entries.forEach(d => el.appendChild(d));
-    }
-    loadDiary();
-
-    // 导出 PDF（复用聊天页导出逻辑，本地化依赖）
-    document.getElementById('btn-export-pdf').addEventListener('click', function () {
-        const paper = document.querySelector('.paper');
-        toast('正在生成 PDF…', 'info');
-        html2canvas(paper).then(canvas => {
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfW = pdf.internal.pageSize.getWidth();
-            const pdfH = pdf.internal.pageSize.getHeight();
-            const imgH = canvas.height * pdfW / canvas.width;
-            let y = 0;
-            while (y < canvas.height) {
-                const pageH = Math.min(canvas.height - y, pdfH * canvas.width / pdfW);
-                const pc = document.createElement('canvas');
-                pc.width = canvas.width; pc.height = pageH;
-                pc.getContext('2d').drawImage(canvas, 0, y, canvas.width, pageH, 0, 0, canvas.width, pageH);
-                pdf.addImage(pc.toDataURL('image/png'), 'PNG', 0, 0, pdfW, imgH);
-                y += pageH;
-                if (y < canvas.height) pdf.addPage();
-            }
-            pdf.save('my-diary.pdf');
-            toast('PDF 已导出', 'success');
-        }).catch(() => toast('PDF 生成失败', 'error'));
-    });
     </script>
 </body>
 </html>
