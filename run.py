@@ -18,4 +18,4 @@ if __name__ == '__main__':
             init_db()
         print(f'数据库初始化完成: {app.config["DATABASE_PATH"]}')
         sys.exit(0)
-    app.run(host='127.0.0.1', port=5001, debug=app.config['DEBUG'])
+    app.run(host='0.0.0.0', port=5001, debug=app.config['DEBUG'])

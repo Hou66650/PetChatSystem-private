@@ -8,7 +8,9 @@
     <style>
         html, body { height: 100%; }
         body.theme { padding-top: var(--nav-h); margin: 0; overflow: hidden; background: var(--c-bg); }
-        #den-wrap { position: fixed; inset: var(--nav-h) 0 0 0; }
+        /* z-index：fixed 元素自成层叠上下文，内部 z-250 的游戏层若不抬高整个 wrap，
+           会被根层级的 z-100 导航栏盖住 HUD（退出按钮点不到，反而点到导航链接） */
+        #den-wrap { position: fixed; inset: var(--nav-h) 0 0 0; z-index: 150; }
         #den-canvas { width: 100%; height: 100%; display: block; touch-action: none; }
 
         /* 顶部宠物切换 chips */
@@ -149,9 +151,12 @@
         .game-area { flex: 1; position: relative; overflow: hidden; }
         .game-result { position: absolute; inset: 0; display: flex; flex-direction: column;
             align-items: center; justify-content: center; background: rgba(255,253,248,.95); z-index: 10; }
+        .game-result[hidden] { display: none; }
         .game-result h2 { font-size: 28px; color: var(--c-text); margin: 0 0 8px; }
         .game-result .score { font-size: 48px; color: var(--c-primary); font-weight: 800; }
         .game-result .msg { font-size: 15px; color: var(--c-text-sub); margin: 8px 0 20px; }
+        .game-result .result-btns { display: flex; gap: 12px; }
+        .game-result .result-btns .btn-exit-game { background: #fff; border: 2px solid var(--c-line); color: var(--c-text-sub); }
         .game-result button { padding: 10px 32px; border: none; border-radius: 999px;
             background: var(--c-primary); color: var(--c-text); font-size: 16px; font-weight: 700;
             cursor: pointer; font-family: var(--font-body); }
@@ -180,8 +185,11 @@
         /* 猜心 */
         .empathy-stage { flex: 1; display: flex; flex-direction: column; align-items: center;
             justify-content: center; gap: 24px; }
-        .empathy-prompt { font-size: 24px; font-weight: 800; color: #BF360C; text-shadow: 0 1px 2px rgba(255,255,255,.5); }
-        .empathy-pet-hint { font-size: 60px; animation: empathyPulse 2s ease-in-out infinite; }
+        .empathy-prompt { font-size: 24px; font-weight: 800; color: #BF360C; text-shadow: 0 1px 2px rgba(255,255,255,.5); text-align: center; padding: 0 16px; }
+        .empathy-pet-hint { max-width: 78%; padding: 14px 22px; border-radius: 18px; background: rgba(255,255,255,.92);
+            border: 2px solid #FFAB40; font-size: 19px; font-weight: 700; color: #5D4037; text-align: center;
+            animation: empathyPulse 2s ease-in-out infinite; box-shadow: 0 4px 14px rgba(255,152,0,.18); }
+        .empathy-answer { font-size: 26px; font-weight: 800; color: #2E7D32; min-height: 34px; text-align: center; }
         @keyframes empathyPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
         .empathy-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 40px; width: 100%; max-width: 400px; }
         .empathy-btn { padding: 18px; border: 3px solid #FFAB40; border-radius: 16px; box-shadow: 0 3px 10px rgba(255,152,0,.2);
@@ -1513,7 +1521,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const gameScore = document.getElementById('game-score');
         const gameTimer = document.getElementById('game-timer');
         const gameResult = document.getElementById('game-result');
-        let activeGame = null, gameTimerId = null, gameAnimId = null;
+        let activeGame = null, gameTimerId = null, gameAnimId = null, gameSpawnId = null, gameSession = 0;
 
         document.getElementById('btn-games').addEventListener('click', () => { gamesMask.hidden = false; });
         document.getElementById('games-close').addEventListener('click', () => { gamesMask.hidden = true; });
@@ -1528,14 +1536,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function endGame() {
             if (gameTimerId) clearInterval(gameTimerId);
+            if (gameSpawnId) clearInterval(gameSpawnId);
             if (gameAnimId) cancelAnimationFrame(gameAnimId);
+            gameTimerId = gameSpawnId = gameAnimId = null;
             activeGame = null;
+            setAnim('idle', 0);   // 游戏中可能触发过睡觉/表演动画，退出时归位
             gameArea.innerHTML = '';
             gameResult.hidden = true;
             gameOverlay.hidden = true;
         }
         function showResult(score, msg, intimacy) {
-            gameResult.innerHTML = `<h2>🎉 完成！</h2><div class="score">${score}分</div><div class="msg">${msg}</div><button onclick="document.getElementById('game-quit').click()">再来一局</button>`;
+            gameResult.innerHTML = `<h2>🎉 完成！</h2><div class="score">${score}分</div><div class="msg">${msg}</div>
+                <div class="result-btns"><button class="btn-again">再来一局</button><button class="btn-exit-game">退出</button></div>`;
+            const g = activeGame;   // 捕获：再来一局要重开同一款
+            gameResult.querySelector('.btn-again').addEventListener('click', () => startGame(g));
+            gameResult.querySelector('.btn-exit-game').addEventListener('click', endGame);
             gameResult.hidden = false;
             if (intimacy > 0) { addIntimacy(intimacy); toast(`亲密度 +${intimacy} 💛`, 'success'); }
             burst('star', 6);
@@ -1605,11 +1620,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 float();
             }
             const spawnId = setInterval(() => { if (activeGame === 'balloon') spawnBalloon(); }, 900);
+            gameSpawnId = spawnId;
             gameTimerId = setInterval(() => {
                 timeLeft--;
                 gameTimer.textContent = `⏱ ${timeLeft}s`;
                 if (timeLeft <= 0) {
                     clearInterval(gameTimerId); clearInterval(spawnId);
+                    gameTimerId = gameSpawnId = null;
+                    gameArea.querySelectorAll('.balloon').forEach(el => el.remove());   // 清场：结算面板下不再残留可点气球
                     const msg = score >= 100 ? '太棒了！你认识好多情绪！' : score >= 50 ? '不错的情绪识别力！' : '再试试，认识更多情绪吧！';
                     showResult(score, msg, Math.min(3, Math.floor(score / 40)));
                 }
@@ -1620,6 +1638,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // ===== 游戏二：烦恼泡泡 =====
         function startWorryGame() {
             activeGame = 'worry';
+            const sess = ++gameSession;
             gameTitle.textContent = '🫧 烦恼泡泡';
             gameOverlay.hidden = false;
             let released = 0;
@@ -1652,13 +1671,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 bubble.style.top = (15 + Math.random() * 50) + '%';
                 bubble.textContent = text.length > 20 ? text.slice(0, 20) + '…' : text;
                 bubble.addEventListener('click', () => {
-                    if (bubble.classList.contains('bubble-popped')) return;
+                    if (bubble.classList.contains('bubble-popped') || !gameResult.hidden) return;
                     bubble.classList.add('bubble-popped');
                     released++;
                     gameScore.textContent = `已放飞: ${released} 个烦恼`;
                     burst('heart', 3);
                     setTimeout(() => {
                         bubble.remove();
+                        if (sess !== gameSession) return;   // 已开新局/退出：旧闭包不再生效
+                        if (gameResult.hidden === false) return;   // 已结算，不再重复触发
                         if (released >= 3) {
                             showResult(released * 20, `放飞了 ${released} 个烦恼，心里是不是轻松了一点？`, Math.min(3, released));
                         } else {
@@ -1678,15 +1699,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // ===== 游戏三：宠物猜心 =====
+        // 线索句刻意不含情绪词本身，让孩子从"行为线索"猜心情（心理理论训练）
         const EMPATHY_EMOTIONS = [
-            { name: '开心', emoji: '😄', keys: ['开心', '高兴', '好玩', '汪汪', '哈哈', '球'] },
-            { name: '难过', emoji: '😢', keys: ['难过', '伤心', '哭', '失落', '委屈'] },
-            { name: '生气', emoji: '😠', keys: ['生气', '愤怒', '气死', '哼'] },
-            { name: '害怕', emoji: '😨', keys: ['害怕', '担心', '焦虑', '紧张'] },
-            { name: '困了', emoji: '😴', keys: ['困', '睡', '累', '打盹'] },
+            { name: '开心', emoji: '😄', hints: ['尾巴摇得停不下来，汪汪！', '最喜欢你陪我玩球啦！', '嘴角都翘起来啦，嘿嘿～'] },
+            { name: '难过', emoji: '😢', hints: ['呜…耳朵耷拉下来了…', '今天没什么精神，趴着不想动…', '眼睛湿湿的，想找个角落待着…'] },
+            { name: '生气', emoji: '😠', hints: ['哼！不理你了！', '气得直跺脚，背过身去！', '低吼了一声，毛都竖起来了！'] },
+            { name: '害怕', emoji: '😨', hints: ['那个声音好吓人…能躲你后面吗', '耳朵贴着脑袋，缩成一团…', '心怦怦跳，想找个地方藏起来…'] },
+            { name: '困了', emoji: '😴', hints: ['眼皮好重…哈欠…', '趴着打了个大大的哈欠…', '头一点一点的，快撑不住了…'] },
         ];
         function startEmpathyGame() {
             activeGame = 'empathy';
+            const sess = ++gameSession;
             gameTitle.textContent = '🎭 宠物猜心';
             gameOverlay.hidden = false;
             let round = 0, correct = 0, total = 5;
@@ -1697,6 +1720,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nextRound();
 
             function nextRound() {
+                if (sess !== gameSession) return;   // 已退出/已开新局
                 round++;
                 if (round > total) {
                     const msg = correct === total ? `满分！你太懂${SPECS[currentPetId].name}了！` :
@@ -1707,6 +1731,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameTimer.textContent = `第 ${round}/${total} 轮`;
                 // 随机选一个情绪
                 const answer = EMPATHY_EMOTIONS[Math.floor(Math.random() * EMPATHY_EMOTIONS.length)];
+                const hint = answer.hints[Math.floor(Math.random() * answer.hints.length)];
                 // 生成 4 个选项（包含正确答案）
                 const options = [answer];
                 const pool = EMPATHY_EMOTIONS.filter(e => e !== answer);
@@ -1717,23 +1742,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 gameArea.innerHTML = `<div class="empathy-stage">
                     <div class="empathy-prompt">${SPECS[currentPetId].name}正在表达一种心情，猜猜是什么？</div>
-                    <div class="empathy-pet-hint">${answer.emoji}</div>
+                    <div class="empathy-pet-hint">🐾「${hint}」</div>
+                    <div class="empathy-answer"></div>
                     <div class="empathy-options">
                         ${options.map(o => `<button class="empathy-btn" data-correct="${o === answer}">${o.name}</button>`).join('')}
                     </div>
                 </div>`;
-                // 宠物播放对应动画
-                if (answer.name === '开心') { setAnim('happy', 1500); }
-                else if (answer.name === '困了') { setAnim('sleep', 0); }
-                else { setAnim('talk', 1000); }
+                // 宠物播放对应动画（配合台词线索）
+                if (answer.name === '开心') { setAnim('happy', 2200); }
+                else if (answer.name === '困了') { setAnim('sleep', 2800); }
+                else { setAnim('talk', 1800); }
                 // 选项点击
+                let answered = false;
                 gameArea.querySelectorAll('.empathy-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
+                        if (answered || sess !== gameSession || !gameResult.hidden) return;
+                        answered = true;
                         const isCorrect = btn.dataset.correct === 'true';
                         if (isCorrect) { btn.classList.add('correct'); correct++; burst('star', 3); }
                         else { btn.classList.add('wrong'); gameArea.querySelectorAll('[data-correct=true]').forEach(b => b.classList.add('correct')); }
+                        gameArea.querySelector('.empathy-prompt').textContent = isCorrect ? '答对啦！' : '再观察一下～';
+                        gameArea.querySelector('.empathy-answer').textContent = `它刚才的心情是 ${answer.emoji} ${answer.name}`;
                         gameScore.textContent = `正确: ${correct}/${total}`;
-                        setTimeout(nextRound, isCorrect ? 800 : 1500);
+                        setTimeout(() => { if (sess === gameSession) nextRound(); }, isCorrect ? 1100 : 1800);
                     });
                 });
             }
