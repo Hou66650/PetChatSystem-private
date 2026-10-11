@@ -96,6 +96,7 @@
         .den-chat .m.pet { align-self: flex-start; background: #fff; box-shadow: var(--shadow); }
         .den-chat .m .who { font-size: 11px; color: var(--c-text-sub); margin-bottom: 2px; }
         .den-chat form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--c-line); }
+        .den-chat input::placeholder { color: var(--c-text-sub); opacity: 0.85; }
         .den-chat input {
             flex: 1; height: 36px; border: 1px solid var(--c-line); border-radius: 999px;
             padding: 0 14px; font-size: 13px; font-family: var(--font-body);
@@ -135,7 +136,9 @@
         .mood-opt { flex: 1; border: 2px solid var(--c-line); background: #fff; border-radius: 12px;
             padding: 8px 2px 6px; text-align: center; cursor: pointer; transition: .15s; }
         .mood-opt .e { font-size: 24px; display: block; }
-        .mood-opt .t { font-size: 11px; color: var(--c-text-sub); }
+        .mood-opt .t { font-size: 11px; color: var(--c-text-sub); margin-top: 2px; }
+        .mood-opt.sel .t { color: var(--c-text); font-weight: 700; }
+        .mood-opt.sel { transform: translateY(-2px) scale(1.05); }
         .mood-opt:hover { transform: translateY(-2px); }
         .mood-opt.sel { border-color: var(--c-primary); background: #FFF3E4; }
         .mood-note { width: 100%; border: 1px solid var(--c-line); border-radius: 10px; padding: 8px 12px;
@@ -161,7 +164,7 @@
         .breath-round { margin-top: 8px; font-size: 12px; color: rgba(255,255,255,.85); }
         .breath-close { position: absolute; top: 18px; right: 22px; color: #fff; font-size: 13px;
             background: rgba(255,255,255,.18); border: none; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
-        .chat-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px 0; }
+        .chat-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 10px 4px; margin-top: 4px; border-top: 1px solid var(--c-line); }
         .chat-chips button { border: 1px solid var(--c-line); background: #FFF6EC; color: var(--c-text-sub);
             border-radius: 999px; font-size: 11px; padding: 4px 10px; cursor: pointer; font-family: var(--font-body); }
         .chat-chips button:hover { border-color: var(--c-primary); color: var(--c-text); }
@@ -435,6 +438,30 @@
                     box.position.set(-2.1, 0.35, -1.3); box.rotation.y = 0.4; box.castShadow = true; box.receiveShadow = true; g.add(box);
                     const box2 = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.45, 0.55), M(0xD8A868));
                     box2.position.set(-2.05, 0.92, -1.25); box2.rotation.y = -0.2; box2.castShadow = true; g.add(box2);
+                    // 猫爬架（柱子+平台）
+                    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.4, 10), M(0xB89878));
+                    post.position.set(2.3, 0.7, -1.3); post.castShadow = true; g.add(post);
+                    const platform = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.06, 14), M(0xE8C8A0));
+                    platform.position.set(2.3, 1.42, -1.3); platform.castShadow = true; g.add(platform);
+                    const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.7, 8), M(0xB89878));
+                    post2.position.set(2.3, 1.78, -1.3); g.add(post2);
+                    const platform2 = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.05, 12), M(0xE8C8A0));
+                    platform2.position.set(2.3, 2.15, -1.3); g.add(platform2);
+                    // 窗框（背景墙面装饰）
+                    const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.0, 0.8), M(0xA08860));
+                    winFrame.position.set(-3.0, 1.8, -0.5); g.add(winFrame);
+                    const winGlass = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.85, 0.65),
+                        new THREE.MeshBasicMaterial({ color: 0xB8D8F0, transparent: true, opacity: 0.4 }));
+                    winGlass.position.set(-2.99, 1.8, -0.5); g.add(winGlass);
+                    const winBar = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.85, 0.03), M(0xA08860));
+                    winBar.position.set(-2.98, 1.8, -0.5); g.add(winBar);
+                    const winBar2 = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.03, 0.65), M(0xA08860));
+                    winBar2.position.set(-2.98, 1.8, -0.5); g.add(winBar2);
+                    // 挂画
+                    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5, 0.4), M(0xC8A870));
+                    frame.position.set(-2.8, 1.9, 1.2); g.add(frame);
+                    const art = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.4, 0.3), M(0xF0E0C8));
+                    art.position.set(-2.79, 1.9, 1.2); g.add(art);
                     [[1.9, -1.1, 0xF2A0B5], [2.35, -0.7, 0x9AC8E8]].forEach(([x, z, c]) => {
                         const ball = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 12), M(c));
                         ball.position.set(x, 0.2, z); ball.castShadow = true; g.add(ball);
@@ -457,10 +484,10 @@
                     g.add(warm);
                 },
             },
-            camp: {     // 星空营地：篝火 + 帐篷 + 栅栏
-                rug: 0xD8C8A8,
-                ground: { grass: true, day: 0xDCD8C0, dusk: 0xC0B49C, night: 0x86847E },
-                env: { ch: '✨', n: 12, rise: true, tiny: true },
+            camp: {     // 星空营地：篝火 + 帐篷 + 栅栏 + 星月氛围
+                rug: 0xC8B890,
+                ground: { grass: true, day: 0xC8C4A8, dusk: 0xA8A08C, night: 0x68686A },
+                env: { ch: '✨', n: 18, rise: true, tiny: true },
                 build(g) {
                     const fire = new THREE.Group();
                     const log = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 8), M(0x7A5238));
@@ -475,10 +502,16 @@
                     fire.position.set(1.7, 0, 0.9);
                     fire.traverse(o => { o.castShadow = true; });
                     g.add(fire);
-                    const fireLight = new THREE.PointLight(0xFFAA50, 1.0, 5);
-                    fireLight.position.set(1.7, 0.8, 0.9);
+                    const fireLight = new THREE.PointLight(0xFFAA50, 1.4, 6);
+                    fireLight.position.set(1.7, 0.9, 0.9);
                     fireLight.name = '__fireLight';
                     g.add(fireLight);
+                    // 火星粒子（微小上浮）
+                    const spark = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5),
+                        new THREE.MeshBasicMaterial({ color: 0xFFD070 }));
+                    spark.position.set(1.7, 0.7, 0.9);
+                    spark.name = '__spark';
+                    g.add(spark);
                     const tent = new THREE.Group();
                     const t1 = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.15, 4), M(0xE8DCC0));
                     t1.position.y = 0.58; t1.rotation.y = Math.PI / 4; t1.castShadow = true; tent.add(t1);
@@ -486,6 +519,22 @@
                     door.position.set(0.18, 0.3, 0.42); door.rotation.y = Math.PI / 4; tent.add(door);
                     tent.position.set(-2.2, 0, -1.2);
                     g.add(tent);
+                    // 月亮（远景，始终可见，营造夜晚氛围）
+                    const moon = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 14),
+                        new THREE.MeshBasicMaterial({ color: 0xFFF8E0 }));
+                    moon.position.set(2.8, 3.8, -5.5);
+                    g.add(moon);
+                    const moonGlow = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 14),
+                        new THREE.MeshBasicMaterial({ color: 0xFFFCF0, transparent: true, opacity: 0.2 }));
+                    moonGlow.position.copy(moon.position);
+                    g.add(moonGlow);
+                    // 石头路（篝火到帐篷）
+                    for (let i = 0; i < 4; i++) {
+                        const stone = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), M(0x9A9690));
+                        stone.scale.y = 0.5;
+                        stone.position.set(-0.3 - i * 0.45, 0.03, 0.3 + i * 0.15);
+                        g.add(stone);
+                    }
                     for (let i = 0; i < 4; i++) {
                         const post = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.55, 0.09), M(0x9A7A58));
                         post.position.set(-0.6 + i * 0.75, 0.27, -2.3); post.castShadow = true; g.add(post);
@@ -601,14 +650,20 @@
             let bow = reuse('__den_bow');
             if (!hatGroup) {
                 const M = (c) => new THREE.MeshLambertMaterial({ color: c });
-                const hat = new THREE.Mesh(new THREE.ConeGeometry(0.2 * k, 0.36 * k, 16), M(0xFF7BA9));
-                hat.position.set(0, 0.2 * k, 0);
-                const brim = new THREE.Mesh(new THREE.TorusGeometry(0.21 * k, 0.035 * k, 8, 20), M(0xFFFFFF));
-                brim.position.set(0, 0.03 * k, 0); brim.rotation.x = Math.PI / 2;
+                // 派对帽：大锥体（亮粉）+ 宽帽沿（白色）+ 顶球（金色）——一眼可辨
+                const hat = new THREE.Mesh(new THREE.ConeGeometry(0.24 * k, 0.48 * k, 20), M(0xFF6B9E));
+                hat.position.set(0, 0.24 * k, 0);
+                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * k, 0.32 * k, 0.04 * k, 20), M(0xFFFFFF));
+                brim.position.set(0, 0.02 * k, 0);
+                const pom = new THREE.Mesh(new THREE.SphereGeometry(0.06 * k, 10, 8), M(0xFFD700));
+                pom.position.set(0, 0.5 * k, 0);
+                const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.14 * k, 0.02 * k, 8, 20), M(0xFFFFFF));
+                stripe.position.set(0, 0.28 * k, 0); stripe.rotation.x = Math.PI / 2;
                 hatGroup = new THREE.Group(); hatGroup.add(hat); hatGroup.add(brim);
+                hatGroup.add(pom); hatGroup.add(stripe);
                 hatGroup.name = '__den_hat';
-                hatGroup.rotation.z = 0.14;
-                if (headBone) { hatGroup.position.set(0, 0.1 * k, 0.05 * k); headBone.add(hatGroup); }
+                hatGroup.rotation.z = 0.12;
+                if (headBone) { hatGroup.position.set(0, 0.12 * k, 0.04 * k); headBone.add(hatGroup); }
                 else { hatGroup.position.set(0, 0.92, 0.16); model.add(hatGroup); }
             }
             if (!scarf) {
@@ -777,10 +832,10 @@
             for (let i = 0; i < n; i++) {
                 const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX[ch], transparent: true }));
                 sp.scale.setScalar(0.22 + Math.random() * 0.14);
-                sp.position.copy(pos || petHeadPos()).add(new THREE.Vector3((Math.random() - .5) * .3, 0, (Math.random() - .5) * .3));
+                sp.position.copy(pos || petHeadPos()).add(new THREE.Vector3((Math.random() - .5) * .6, Math.random() * .2, (Math.random() - .5) * .6));
                 sp.userData = {
-                    v: new THREE.Vector3((Math.random() - .5) * 0.8, 1.2 + Math.random() * 0.8, (Math.random() - .5) * 0.8),
-                    life: 1.3,
+                    v: new THREE.Vector3((Math.random() - .5) * 1.4, 0.6 + Math.random() * 1.0, (Math.random() - .5) * 1.4),
+                    life: 1.6 + Math.random() * 0.5,
                 };
                 scene.add(sp);
                 particles.push(sp);
