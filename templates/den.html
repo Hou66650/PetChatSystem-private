@@ -124,6 +124,76 @@
             filter: drop-shadow(0 4px 8px rgba(74,59,50,.25)); }
         #vision-hand.reaching { filter: drop-shadow(0 6px 10px rgba(232,131,60,.45)); }
 
+        /* ===== 游戏中心 ===== */
+        .game-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .game-card { border: 2px solid var(--c-line); background: #FFF9F0; border-radius: 14px;
+            padding: 14px 8px; text-align: center; cursor: pointer; transition: .15s; font-family: var(--font-body); }
+        .game-card:hover { transform: translateY(-3px); border-color: var(--c-primary); box-shadow: 0 6px 16px rgba(255,158,88,.2); }
+        .game-card .game-icon { font-size: 32px; display: block; margin-bottom: 6px; }
+        .game-card .game-name { font-size: 14px; font-weight: 700; color: var(--c-text); display: block; }
+        .game-card .game-desc { font-size: 11px; color: var(--c-text-sub); margin-top: 2px; display: block; }
+        .game-overlay { position: fixed; inset: 0; z-index: 250; background: linear-gradient(135deg, #FFF5E8, #FFE8D0);
+            display: flex; flex-direction: column; }
+        .game-overlay[hidden] { display: none; }
+        .game-hud { display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+            background: rgba(255,255,255,.9); border-bottom: 2px solid var(--c-line); }
+        .game-title { font-size: 18px; font-weight: 700; color: var(--c-text); }
+        .game-score { font-size: 15px; color: var(--c-primary); font-weight: 700; }
+        .game-timer { font-size: 15px; color: var(--c-text-sub); }
+        .game-quit { margin-left: auto; width: 32px; height: 32px; border: none; border-radius: 50%;
+            background: var(--c-danger-bg); color: var(--c-danger); font-size: 16px; cursor: pointer; }
+        .game-area { flex: 1; position: relative; overflow: hidden; }
+        .game-result { position: absolute; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; background: rgba(255,253,248,.95); z-index: 10; }
+        .game-result h2 { font-size: 28px; color: var(--c-text); margin: 0 0 8px; }
+        .game-result .score { font-size: 48px; color: var(--c-primary); font-weight: 800; }
+        .game-result .msg { font-size: 15px; color: var(--c-text-sub); margin: 8px 0 20px; }
+        .game-result button { padding: 10px 32px; border: none; border-radius: 999px;
+            background: var(--c-primary); color: var(--c-text); font-size: 16px; font-weight: 700;
+            cursor: pointer; font-family: var(--font-body); }
+        /* 气球 */
+        .balloon { position: absolute; width: 60px; height: 72px; cursor: pointer; user-select: none;
+            display: flex; align-items: center; justify-content: center; font-size: 28px;
+            border-radius: 50% 50% 50% 50% / 45% 45% 55% 55%;
+            transition: transform .1s; z-index: 5; }
+        .balloon:active { transform: scale(.85); }
+        .balloon .balloon-string { position: absolute; bottom: -18px; width: 2px; height: 18px;
+            background: rgba(74,59,50,.2); }
+        .balloon-popped { animation: pop .3s forwards; }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); opacity: .6; } 100% { transform: scale(0); opacity: 0; } }
+        /* 泡泡 */
+        .worry-bubble { position: absolute; border-radius: 50%; cursor: pointer;
+            background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.9), rgba(200,220,255,.4), rgba(160,190,240,.3));
+            border: 2px solid rgba(140,170,220,.4); display: flex; align-items: center; justify-content: center;
+            text-align: center; font-size: 13px; color: var(--c-text); padding: 12px; word-break: break-all;
+            box-shadow: inset -4px -4px 12px rgba(100,140,200,.1), 0 4px 16px rgba(100,140,200,.15);
+            transition: transform .15s; animation: bubbleFloat 3s ease-in-out infinite; }
+        .worry-bubble:hover { transform: scale(1.06); }
+        @keyframes bubbleFloat { 0%,100% { margin-top: 0; } 50% { margin-top: -10px; } }
+        .bubble-popped { animation: bubblePop .4s forwards; }
+        @keyframes bubblePop { 0% { transform: scale(1); } 40% { transform: scale(1.5); opacity: .4; } 100% { transform: scale(0); opacity: 0; } }
+        /* 猜心 */
+        .empathy-stage { flex: 1; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 24px; }
+        .empathy-prompt { font-size: 22px; font-weight: 700; color: var(--c-text); }
+        .empathy-pet-hint { font-size: 60px; animation: empathyPulse 2s ease-in-out infinite; }
+        @keyframes empathyPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        .empathy-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 40px; width: 100%; max-width: 400px; }
+        .empathy-btn { padding: 16px; border: 2px solid var(--c-line); border-radius: 14px;
+            background: #fff; font-size: 17px; font-weight: 600; color: var(--c-text);
+            cursor: pointer; transition: .15s; font-family: var(--font-body); }
+        .empathy-btn:hover { border-color: var(--c-primary); background: #FFF3E4; }
+        .empathy-btn.correct { border-color: #4CAF50; background: #E8F5E9; }
+        .empathy-btn.wrong { border-color: #F44336; background: #FFEBEE; }
+        /* 烦恼输入 */
+        .worry-input-area { padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+        .worry-input-area textarea { width: 90%; max-width: 420px; height: 80px; border: 2px solid var(--c-line);
+            border-radius: 12px; padding: 12px; font-size: 15px; font-family: var(--font-body); resize: none; }
+        .worry-input-area textarea:focus { outline: none; border-color: var(--c-primary); }
+        .worry-launch-btn { padding: 10px 28px; border: none; border-radius: 999px;
+            background: var(--c-primary); color: var(--c-text); font-size: 15px; font-weight: 700; cursor: pointer; }
+        @media (max-width: 767px) { .game-grid { grid-template-columns: 1fr; } .empathy-options { grid-template-columns: 1fr 1fr; } }
+
         /* ---------- 心理治愈：心情打卡 / 呼吸练习 / 倾诉 chips ---------- */
         .mood-mask, .breath-mask { position: fixed; inset: 0; z-index: 200; display: flex;
             align-items: center; justify-content: center; }
@@ -207,6 +277,7 @@
             <button class="action-btn" id="btn-tts">🔊 语音</button>
             <button class="action-btn" id="btn-mood">💗 心情</button>
             <button class="action-btn" id="btn-breath">🫁 呼吸</button>
+            <button class="action-btn" id="btn-games">🎮 游戏中心</button>
             <button class="action-btn" id="btn-chat">💬 聊天</button>
             <button class="action-btn" id="btn-music">🎵 音乐</button>
         </div>
@@ -260,7 +331,47 @@
             <div class="breath-round" id="breath-round"></div>
         </div>
 
-        <!-- 视觉互动：本地 WASM 推理，摄像头画面不上传 -->
+        <!-- ===== 心理学游戏中心 ===== -->
+<div class="mood-mask" id="games-mask" hidden>
+    <div class="mood-card" style="width:min(94vw,440px)">
+        <h3>🎮 心理小游戏</h3>
+        <div class="sub">和它一起玩，心情会变好</div>
+        <div class="game-grid">
+            <button class="game-card" data-game="balloon">
+                <span class="game-icon">🎈</span>
+                <span class="game-name">情绪气球</span>
+                <span class="game-desc">戳破气球认识情绪</span>
+            </button>
+            <button class="game-card" data-game="worry">
+                <span class="game-icon">🫧</span>
+                <span class="game-name">烦恼泡泡</span>
+                <span class="game-desc">写下烦恼然后放飞它</span>
+            </button>
+            <button class="game-card" data-game="empathy">
+                <span class="game-icon">🎭</span>
+                <span class="game-name">宠物猜心</span>
+                <span class="game-desc">猜猜它现在什么心情</span>
+            </button>
+        </div>
+        <div class="btn-row" style="margin-top:14px">
+            <button class="mood-cancel" id="games-close">返回</button>
+        </div>
+    </div>
+</div>
+
+<!-- 游戏画布 overlay -->
+<div class="game-overlay" id="game-overlay" hidden>
+    <div class="game-hud">
+        <span id="game-title" class="game-title"></span>
+        <span id="game-score" class="game-score"></span>
+        <span id="game-timer" class="game-timer"></span>
+        <button class="game-quit" id="game-quit">✕</button>
+    </div>
+    <div id="game-area" class="game-area"></div>
+    <div id="game-result" class="game-result" hidden></div>
+</div>
+
+<!-- 视觉互动：本地 WASM 推理，摄像头画面不上传 -->
         <div class="vision-box hidden" id="vision-box">
             <video id="vision-cam" autoplay playsinline muted></video>
             <div class="vision-status" id="vision-status">启动中…</div>
@@ -1361,6 +1472,240 @@
                 autoBlinkAt = now + 2500 + Math.random() * 4000;
                 petBlink();
             }
+        }
+
+        // ---------- 心理学游戏中心 ----------
+        const gamesMask = document.getElementById('games-mask');
+        const gameOverlay = document.getElementById('game-overlay');
+        const gameArea = document.getElementById('game-area');
+        const gameTitle = document.getElementById('game-title');
+        const gameScore = document.getElementById('game-score');
+        const gameTimer = document.getElementById('game-timer');
+        const gameResult = document.getElementById('game-result');
+        let activeGame = null, gameTimerId = null, gameAnimId = null;
+
+        document.getElementById('btn-games').addEventListener('click', () => { gamesMask.hidden = false; });
+        document.getElementById('games-close').addEventListener('click', () => { gamesMask.hidden = true; });
+        gamesMask.addEventListener('click', (e) => { if (e.target === gamesMask) gamesMask.hidden = true; });
+        gamesMask.addEventListener('click', (e) => {
+            const card = e.target.closest('.game-card');
+            if (!card) return;
+            gamesMask.hidden = true;
+            startGame(card.dataset.game);
+        });
+        document.getElementById('game-quit').addEventListener('click', endGame);
+
+        function endGame() {
+            if (gameTimerId) clearInterval(gameTimerId);
+            if (gameAnimId) cancelAnimationFrame(gameAnimId);
+            activeGame = null;
+            gameArea.innerHTML = '';
+            gameResult.hidden = true;
+            gameOverlay.hidden = true;
+        }
+        function showResult(score, msg, intimacy) {
+            gameResult.innerHTML = `<h2>🎉 完成！</h2><div class="score">${score}分</div><div class="msg">${msg}</div><button onclick="document.getElementById('game-quit').click()">再来一局</button>`;
+            gameResult.hidden = false;
+            if (intimacy > 0) { addIntimacy(intimacy); toast(`亲密度 +${intimacy} 💛`, 'success'); }
+            burst('star', 6);
+        }
+
+        // ===== 游戏一：情绪气球 =====
+        const EMOTIONS = [
+            { emoji: '😊', name: '开心', color: '#FFE082' },
+            { emoji: '😢', name: '难过', color: '#90CAF9' },
+            { emoji: '😡', name: '生气', color: '#EF9A9A' },
+            { emoji: '😰', name: '焦虑', color: '#CE93D8' },
+            { emoji: '😌', name: '平静', color: '#A5D6A7' },
+            { emoji: '🥰', name: '幸福', color: '#F48FB1' },
+            { emoji: '😴', name: '疲惫', color: '#B0BEC5' },
+            { emoji: '🤗', name: '感恩', color: '#FFCC80' },
+        ];
+        function startBalloonGame() {
+            activeGame = 'balloon';
+            gameTitle.textContent = '🎈 情绪气球';
+            gameOverlay.hidden = false;
+            let score = 0, combo = 0, timeLeft = 30;
+            gameScore.textContent = `得分: 0`;
+            gameTimer.textContent = `⏱ ${timeLeft}s`;
+            gameArea.style.background = 'linear-gradient(180deg, #E3F2FD, #BBDEFB)';
+            gameResult.hidden = true;
+
+            function spawnBalloon() {
+                if (activeGame !== 'balloon') return;
+                const e = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
+                const b = document.createElement('div');
+                b.className = 'balloon';
+                b.style.background = `radial-gradient(circle at 35% 30%, ${e.color}, ${e.color}CC)`;
+                b.style.left = (5 + Math.random() * 85) + '%';
+                b.style.bottom = '-80px';
+                b.style.fontSize = '28px';
+                b.innerHTML = `${e.emoji}<div class="balloon-string"></div>`;
+                b.title = e.name;
+                const speed = 0.4 + Math.random() * 0.6;
+                const sway = Math.random() * 2 * Math.PI;
+                let y = -80;
+                function float() {
+                    if (activeGame !== 'balloon' || !b.isConnected) return;
+                    y += speed;
+                    sway += 0.02;
+                    b.style.bottom = y + 'px';
+                    b.style.left = (parseFloat(b.style.left) + Math.sin(sway) * 0.15) + '%';
+                    if (y > gameArea.clientHeight + 20) { b.remove(); combo = 0; return; }
+                    gameAnimId = requestAnimationFrame(float);
+                }
+                b.addEventListener('click', () => {
+                    if (b.classList.contains('balloon-popped')) return;
+                    b.classList.add('balloon-popped');
+                    combo++;
+                    const pts = 10 + (combo >= 3 ? combo * 2 : 0);
+                    score += pts;
+                    gameScore.textContent = `得分: ${score}${combo >= 3 ? ' 🔥x' + combo : ''}`;
+                    setTimeout(() => b.remove(), 300);
+                });
+                gameArea.appendChild(b);
+                float();
+            }
+            const spawnId = setInterval(() => { if (activeGame === 'balloon') spawnBalloon(); }, 900);
+            gameTimerId = setInterval(() => {
+                timeLeft--;
+                gameTimer.textContent = `⏱ ${timeLeft}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(gameTimerId); clearInterval(spawnId);
+                    const msg = score >= 100 ? '太棒了！你认识好多情绪！' : score >= 50 ? '不错的情绪识别力！' : '再试试，认识更多情绪吧！';
+                    showResult(score, msg, Math.min(3, Math.floor(score / 40)));
+                }
+            }, 1000);
+            spawnBalloon();
+        }
+
+        // ===== 游戏二：烦恼泡泡 =====
+        function startWorryGame() {
+            activeGame = 'worry';
+            gameTitle.textContent = '🫧 烦恼泡泡';
+            gameOverlay.hidden = false;
+            let released = 0;
+            gameScore.textContent = `已放飞: 0 个烦恼`;
+            gameTimer.textContent = '';
+            gameArea.style.background = 'linear-gradient(180deg, #E8EAF6, #C5CAE9)';
+            gameResult.hidden = true;
+            gameArea.innerHTML = `<div class="worry-input-area">
+                <h3 style="margin:0;color:var(--c-text)">写下你的烦恼</h3>
+                <p style="font-size:13px;color:var(--c-text-sub);margin:4px 0 0">它会变成一个泡泡，戳破它就放下了</p>
+                <textarea id="worry-text" placeholder="最近让你烦心的事..." maxlength="50"></textarea>
+                <button class="worry-launch-btn" id="worry-launch">变成泡泡 🫧</button>
+            </div>`;
+            document.getElementById('worry-launch').addEventListener('click', () => {
+                const text = document.getElementById('worry-text').value.trim();
+                if (!text) { toast('先写点什么吧', 'info'); return; }
+                document.getElementById('worry-text').value = '';
+                // 收起输入区（如果是第一个）
+                const inputArea = gameArea.querySelector('.worry-input-area');
+                if (inputArea) inputArea.style.display = 'none';
+                createWorryBubble(text);
+            });
+            function createWorryBubble(text) {
+                const size = Math.max(100, Math.min(200, text.length * 5 + 80));
+                const bubble = document.createElement('div');
+                bubble.className = 'worry-bubble';
+                bubble.style.width = size + 'px';
+                bubble.style.height = size + 'px';
+                bubble.style.left = (10 + Math.random() * 60) + '%';
+                bubble.style.top = (15 + Math.random() * 50) + '%';
+                bubble.textContent = text.length > 20 ? text.slice(0, 20) + '…' : text;
+                bubble.addEventListener('click', () => {
+                    if (bubble.classList.contains('bubble-popped')) return;
+                    bubble.classList.add('bubble-popped');
+                    released++;
+                    gameScore.textContent = `已放飞: ${released} 个烦恼`;
+                    burst('heart', 3);
+                    setTimeout(() => {
+                        bubble.remove();
+                        if (released >= 3) {
+                            showResult(released * 20, `放飞了 ${released} 个烦恼，心里是不是轻松了一点？`, Math.min(3, released));
+                        } else {
+                            // 重新显示输入
+                            const ia = gameArea.querySelector('.worry-input-area');
+                            if (ia) ia.style.display = 'flex';
+                        }
+                    }, 400);
+                });
+                gameArea.appendChild(bubble);
+            }
+            // 提示文字
+            const tip = document.createElement('div');
+            tip.style.cssText = 'position:absolute;bottom:20px;left:0;right:0;text-align:center;font-size:13px;color:var(--c-text-sub)';
+            tip.textContent = '💡 心理学 tip：把烦恼写下来再「放下」，是认知行为疗法中的外化技巧';
+            gameArea.appendChild(tip);
+        }
+
+        // ===== 游戏三：宠物猜心 =====
+        const EMPATHY_EMOTIONS = [
+            { name: '开心', emoji: '😄', keys: ['开心', '高兴', '好玩', '汪汪', '哈哈', '球'] },
+            { name: '难过', emoji: '😢', keys: ['难过', '伤心', '哭', '失落', '委屈'] },
+            { name: '生气', emoji: '😠', keys: ['生气', '愤怒', '气死', '哼'] },
+            { name: '害怕', emoji: '😨', keys: ['害怕', '担心', '焦虑', '紧张'] },
+            { name: '困了', emoji: '😴', keys: ['困', '睡', '累', '打盹'] },
+        ];
+        function startEmpathyGame() {
+            activeGame = 'empathy';
+            gameTitle.textContent = '🎭 宠物猜心';
+            gameOverlay.hidden = false;
+            let round = 0, correct = 0, total = 5;
+            gameScore.textContent = `正确: 0/${total}`;
+            gameTimer.textContent = `第 ${round + 1} 轮`;
+            gameArea.style.background = 'linear-gradient(180deg, #FFF3E0, #FFE0B2)';
+            gameResult.hidden = true;
+            nextRound();
+
+            function nextRound() {
+                round++;
+                if (round > total) {
+                    const msg = correct === total ? `满分！你太懂${SPECS[currentPetId].name}了！` :
+                        correct >= 3 ? `不错的默契！你们越来越亲近了` : `多陪陪它，会更懂它的心情哦`;
+                    showResult(correct * 20, msg, Math.min(3, correct));
+                    return;
+                }
+                gameTimer.textContent = `第 ${round}/${total} 轮`;
+                // 随机选一个情绪
+                const answer = EMPATHY_EMOTIONS[Math.floor(Math.random() * EMPATHY_EMOTIONS.length)];
+                // 生成 4 个选项（包含正确答案）
+                const options = [answer];
+                const pool = EMPATHY_EMOTIONS.filter(e => e !== answer);
+                while (options.length < 4 && pool.length) {
+                    options.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+                }
+                options.sort(() => Math.random() - 0.5);
+
+                gameArea.innerHTML = `<div class="empathy-stage">
+                    <div class="empathy-prompt">${SPECS[currentPetId].name}正在表达一种心情，猜猜是什么？</div>
+                    <div class="empathy-pet-hint">${answer.emoji}</div>
+                    <div class="empathy-options">
+                        ${options.map(o => `<button class="empathy-btn" data-correct="${o === answer}">${o.name}</button>`).join('')}
+                    </div>
+                </div>`;
+                // 宠物播放对应动画
+                if (answer.name === '开心') { setAnim('happy', 1500); }
+                else if (answer.name === '困了') { setAnim('sleep', 0); }
+                else { setAnim('talk', 1000); }
+                // 选项点击
+                gameArea.querySelectorAll('.empathy-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const isCorrect = btn.dataset.correct === 'true';
+                        if (isCorrect) { btn.classList.add('correct'); correct++; burst('star', 3); }
+                        else { btn.classList.add('wrong'); gameArea.querySelectorAll('[data-correct=true]').forEach(b => b.classList.add('correct')); }
+                        gameScore.textContent = `正确: ${correct}/${total}`;
+                        setTimeout(nextRound, isCorrect ? 800 : 1500);
+                    });
+                });
+            }
+        }
+
+        function startGame(name) {
+            endGame();
+            if (name === 'balloon') startBalloonGame();
+            else if (name === 'worry') startWorryGame();
+            else if (name === 'empathy') startEmpathyGame();
         }
 
         // ---------- 视觉互动（眼神对视 + 伸手抚摸；本地 WASM 推理，画面不上传） ----------
