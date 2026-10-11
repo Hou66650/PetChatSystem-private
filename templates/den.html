@@ -666,17 +666,17 @@
             if (!hatGroup) {
                 const M = (c) => new THREE.MeshLambertMaterial({ color: c });
                 // 派对帽：大锥体（亮粉）+ 宽帽沿（白色）+ 顶球（金色）——一眼可辨
-                const hat = new THREE.Mesh(new THREE.ConeGeometry(0.24 * k, 0.48 * k, 20),
+                const hat = new THREE.Mesh(new THREE.ConeGeometry(0.10 * spec.h, 0.20 * spec.h, 20),
                     new THREE.MeshBasicMaterial({ color: 0xFF6B9E }));
-                hat.position.set(0, 0.24 * k, 0);
-                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * k, 0.32 * k, 0.04 * k, 20),
+                hat.position.set(0, 0.10 * spec.h, 0);
+                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * spec.h, 0.14 * spec.h, 0.02 * spec.h, 20),
                     new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
-                brim.position.set(0, 0.02 * k, 0);
-                const pom = new THREE.Mesh(new THREE.SphereGeometry(0.06 * k, 10, 8),
+                brim.position.set(0, 0.01 * spec.h, 0);
+                const pom = new THREE.Mesh(new THREE.SphereGeometry(0.025 * spec.h, 10, 8),
                     new THREE.MeshBasicMaterial({ color: 0xFFD700 }));
-                pom.position.set(0, 0.5 * k, 0);
-                const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.14 * k, 0.02 * k, 8, 20), M(0xFFFFFF));
-                stripe.position.set(0, 0.28 * k, 0); stripe.rotation.x = Math.PI / 2;
+                pom.position.set(0, 0.21 * spec.h, 0);
+                const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.06 * spec.h, 0.01 * spec.h, 8, 20), M(0xFFFFFF));
+                stripe.position.set(0, 0.12 * spec.h, 0); stripe.rotation.x = Math.PI / 2;
                 hatGroup = new THREE.Group(); hatGroup.add(hat); hatGroup.add(brim);
                 hatGroup.add(pom); hatGroup.add(stripe);
                 hatGroup.name = '__den_hat';
@@ -696,13 +696,13 @@
                 bow = new THREE.Group();
                 const M2 = (c) => new THREE.MeshLambertMaterial({ color: c });
                 [-1, 1].forEach((side) => {
-                    const wing = new THREE.Mesh(new THREE.ConeGeometry(0.15 * k, 0.3 * k, 10), M2(0xFF9E58));
+                    const wing = new THREE.Mesh(new THREE.ConeGeometry(0.06 * spec.h, 0.13 * spec.h, 10), M2(0xFF9E58));
                     wing.rotation.z = Math.PI / 2 * side;
                     wing.position.x = 0.16 * k * side;
                     wing.scale.set(1, 1, 0.7);
                     bow.add(wing);
                 });
-                const knot = new THREE.Mesh(new THREE.SphereGeometry(0.075 * k, 10, 8), M2(0xE8833C));
+                const knot = new THREE.Mesh(new THREE.SphereGeometry(0.03 * spec.h, 10, 8), M2(0xE8833C));
                 bow.add(knot);
                 bow.name = '__den_bow';
                 bow.rotation.y = 0.45; bow.scale.setScalar(1.2);
@@ -799,10 +799,6 @@
             model.traverse((o) => {
                 if (o.isMesh) {
                     o.castShadow = true; o.frustumCulled = false;
-                    // 猫咪加暖色 tint（模型贴图偏灰，染成橘猫）
-                    if (id === 3 && o.material && o.material.color) {
-                        o.material.color.setHex(0xFFC080);
-                    }
                 }
             });
 
