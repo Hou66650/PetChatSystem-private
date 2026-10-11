@@ -113,7 +113,8 @@
         /* ---------- 视觉互动（本地推理，画面不上传） ---------- */
         .vision-box { position: absolute; right: 12px; bottom: 76px; width: 138px; z-index: 25;
             background: rgba(255,255,255,.92); border: 1px solid var(--c-line); border-radius: 14px;
-            padding: 6px; box-shadow: 0 6px 18px rgba(74,59,50,.14); }
+            padding: 6px; box-shadow: 0 6px 18px rgba(74,59,50,.14); display: none; }
+        .vision-box.ready { display: block; }
         .vision-box video { width: 100%; border-radius: 9px; transform: scaleX(-1); background: #2f2620; display: block; }
         .vision-status { font-size: 11px; line-height: 1.5; color: var(--c-text-sub); padding: 4px 2px 1px; }
         .vision-status b { color: var(--c-text); font-weight: 700; }
@@ -519,13 +520,13 @@
                     door.position.set(0.18, 0.3, 0.42); door.rotation.y = Math.PI / 4; tent.add(door);
                     tent.position.set(-2.2, 0, -1.2);
                     g.add(tent);
-                    // 月亮（远景，始终可见，营造夜晚氛围）
-                    const moon = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 14),
-                        new THREE.MeshBasicMaterial({ color: 0xFFF8E0 }));
-                    moon.position.set(2.8, 3.8, -5.5);
+                    // 月亮（中景，不受雾影响，营造夜晚氛围）
+                    const moon = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 14),
+                        new THREE.MeshBasicMaterial({ color: 0xFFF8E0, fog: false }));
+                    moon.position.set(3.2, 3.2, -4.0);
                     g.add(moon);
-                    const moonGlow = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 14),
-                        new THREE.MeshBasicMaterial({ color: 0xFFFCF0, transparent: true, opacity: 0.2 }));
+                    const moonGlow = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 14),
+                        new THREE.MeshBasicMaterial({ color: 0xFFF8E0, transparent: true, opacity: 0.25, fog: false }));
                     moonGlow.position.copy(moon.position);
                     g.add(moonGlow);
                     // 石头路（篝火到帐篷）
@@ -571,6 +572,13 @@
             themeFlame = decorGroup.getObjectByName('__flame') || null;
             rug.material.color.setHex(t.rug);
             applyTimeOfDay();
+            // 营地主题强制黄昏偏暗天空（配合月亮+篝火营造夜晚氛围）
+            if (name === 'camp') {
+                scene.background = new THREE.Color(0x2A3A5C);   // 深蓝夜空
+                scene.fog = new THREE.Fog(0x2A3A5C, 8, 20);
+                hemi.intensity = 0.35;
+                sun.intensity = 0.25;
+            }
             envSprites.forEach((s) => { scene.remove(s); s.material.dispose(); });
             envSprites = [];
             if (!envTexCache[t.env.ch]) envTexCache[t.env.ch] = emojiTexture(t.env.ch);
@@ -651,11 +659,14 @@
             if (!hatGroup) {
                 const M = (c) => new THREE.MeshLambertMaterial({ color: c });
                 // 派对帽：大锥体（亮粉）+ 宽帽沿（白色）+ 顶球（金色）——一眼可辨
-                const hat = new THREE.Mesh(new THREE.ConeGeometry(0.24 * k, 0.48 * k, 20), M(0xFF6B9E));
+                const hat = new THREE.Mesh(new THREE.ConeGeometry(0.24 * k, 0.48 * k, 20),
+                    new THREE.MeshBasicMaterial({ color: 0xFF6B9E }));
                 hat.position.set(0, 0.24 * k, 0);
-                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * k, 0.32 * k, 0.04 * k, 20), M(0xFFFFFF));
+                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * k, 0.32 * k, 0.04 * k, 20),
+                    new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
                 brim.position.set(0, 0.02 * k, 0);
-                const pom = new THREE.Mesh(new THREE.SphereGeometry(0.06 * k, 10, 8), M(0xFFD700));
+                const pom = new THREE.Mesh(new THREE.SphereGeometry(0.06 * k, 10, 8),
+                    new THREE.MeshBasicMaterial({ color: 0xFFD700 }));
                 pom.position.set(0, 0.5 * k, 0);
                 const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.14 * k, 0.02 * k, 8, 20), M(0xFFFFFF));
                 stripe.position.set(0, 0.28 * k, 0); stripe.rotation.x = Math.PI / 2;
@@ -832,7 +843,8 @@
             for (let i = 0; i < n; i++) {
                 const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX[ch], transparent: true }));
                 sp.scale.setScalar(0.22 + Math.random() * 0.14);
-                sp.position.copy(pos || petHeadPos()).add(new THREE.Vector3((Math.random() - .5) * .6, Math.random() * .2, (Math.random() - .5) * .6));
+                const spread = ch === 'heart' ? 0.8 : 0.6;   // 爱心需要更大出生半径
+                sp.position.copy(pos || petHeadPos()).add(new THREE.Vector3((Math.random() - .5) * spread, 0.15 + Math.random() * .25, (Math.random() - .5) * spread));
                 sp.userData = {
                     v: new THREE.Vector3((Math.random() - .5) * 1.4, 0.6 + Math.random() * 1.0, (Math.random() - .5) * 1.4),
                     life: 1.6 + Math.random() * 0.5,
@@ -1372,7 +1384,7 @@
             if (dv) dv.stop();
             if (grabbed) { grabbed = false; dropping = true; }   // 停视觉时松手
             visionOn = false; gazeNow = false; handTouch = false; gazeSec = 0; handSec = 0;
-            vBox.classList.add('hidden');
+            vBox.classList.remove('ready');
             vHandEl.style.opacity = '0';
         }
         document.getElementById('btn-vision').addEventListener('click', async function () {
@@ -1466,7 +1478,7 @@
             if (breathActive) { dv.stop(); dv = null; window.__denVision = null; this.textContent = '👁 眼神互动'; toast('先专注呼吸，练完再开启眼神互动吧', 'info'); return; }
             visionOn = true;
             this.textContent = '👁 关闭视觉';
-            vBox.classList.remove('hidden');
+            vBox.classList.add('ready');
             visionRenderStatus();
             // 低频节拍：对视/抚摸的亲密度累计与粒子节流
             visionTick = setInterval(() => {
