@@ -302,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="intimacy-panel" id="intimacy-panel">
             <h4 id="ip-name"><span id="ip-name-text">小窝</span> <button type="button" id="btn-profile" style="font-size:12px;font-weight:500;color:#A89484;background:transparent;border:1px solid #D8C7B4;border-radius:8px;padding:2px 8px;cursor:pointer;vertical-align:middle;margin-left:4px;">资料</button></h4>
             <div id="ip-companion" style="font-size:12.5px;color:#8a7a6c;margin:2px 0 4px;">陪伴第 1 天</div>
-            <div>亲密度 <span class="level" id="ip-level">初次见面</span> <span id="ip-num" class="text-sub" style="font-size:12px;">0/10</span></div>
+            <div>亲密度 <span class="level" id="ip-level">初次见面</span> <span id="ip-num" class="text-sub" style="font-size:12px;">0/10</span> <button type="button" id="btn-rules" style="font-size:12px;color:#A89484;background:transparent;border:0;text-decoration:underline;cursor:pointer;padding:0 2px;">规则</button></div>
             <div class="bar"><div id="ip-bar" style="width:0%"></div></div>
             <div class="hint" id="ip-hint">摸摸它、喂它好吃的、陪它聊天都能提升亲密度</div>
         </div>
@@ -1261,22 +1261,51 @@ document.addEventListener('DOMContentLoaded', () => {
             scene.add(sp);
         }
 
-        // ---------- 亲密度 ----------
-        function addIntimacy(n, reason) {
+        // ---------- 亲密度（S1-10：统一规则 + 每宠独立每日次数） ----------
+        // dailyCap = 每日可获奖励的次数（不是积分上限）；动画照播，满额只是不加分
+        const INTIMACY_RULES = {
+            pet:  { label: '摸摸', points: 1, dailyCap: 5 },
+            feed: { label: '喂食', points: 2, dailyCap: 5 },
+            chat: { label: '聊天', points: 3, dailyCap: 3 },
+            game: { label: '完成小游戏', points: 1, dailyCap: 3 },
+            gaze: { label: '持续对视', points: 1, dailyCap: 5 },
+            hand: { label: '手势抚摸', points: 1, dailyCap: 10 },
+        };
+        function ensurePetDaily(ps) {
+            const today = localDateKey(new Date());
+            if (!ps.daily || ps.daily.date !== today) {
+                ps.daily = { date: today, pet: 0, feed: 0, chat: 0, game: 0, gaze: 0, hand: 0 };
+            }
+            return ps.daily;
+        }
+        // 唯一加分入口：所有互动来源都必须走这里（游戏原结算分作为 override 传入，单次上限 3）
+        function rewardIntimacy(kind, overridePoints) {
+            const rule = INTIMACY_RULES[kind];
+            if (!rule) return { gained: 0, reason: 'unknown-rule' };
             const ps = petState();
-            const before = levelOf(ps.intimacy);
-            ps.intimacy = Math.min(ps.intimacy + n, 200);
+            const daily = ensurePetDaily(ps);
+            const before = ps.intimacy;
+            if ((daily[kind] || 0) >= rule.dailyCap) {
+                return { gained: 0, reason: 'daily-cap', rule };
+            }
+            const points = Number.isFinite(overridePoints) ? overridePoints : rule.points;
+            daily[kind] = (daily[kind] || 0) + 1;
+            ps.intimacy = Math.min(200, before + points);
             saveState();
             updateIntimacyUI();
-            const after = levelOf(ps.intimacy);
-            if (after !== before) {
-                toast(`${SPECS[currentPetId].name} 的亲密度升级啦：${after[1]}！🎉`, 'success', 4000);
+            const lvBefore = levelOf(before), lvAfter = levelOf(ps.intimacy);
+            if (lvAfter !== lvBefore) {
+                toast(`${SPECS[currentPetId].name} 的亲密度升级啦：${lvAfter[1]}！🎉`, 'success', 4000);
                 burst('star', 8);
                 setAnim('happy', 1800);
-            } else if (reason) {
-                toast(reason, 'success');
+            } else if (ps.intimacy >= 200) {
+                toast('你们已经是最默契的伙伴啦！', 'success');
+            } else {
+                toast(`亲密度 +${ps.intimacy - before} 💛`, 'success');
             }
+            return { gained: ps.intimacy - before, reason: 'ok', rule };
         }
+        function addIntimacy() { /* S1-10 起废弃：统一走 rewardIntimacy(kind)。保留空函数避免外部引用报错 */ }
         function levelOf(v) {
             let cur = LEVELS[0];
             for (const l of LEVELS) if (v >= l[0]) cur = l;
@@ -1295,6 +1324,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? `${Math.min(100, (ps.intimacy - lv[0]) / (next[0] - lv[0]) * 100)}%` : '100%';
         }
 
+        // 规则面板（S1-10）：展示当前宠物今日各互动次数与升级进度
+        function openIntimacyRules() {
+            document.getElementById('rules-mask')?.remove();
+            const ps = petState();
+            const daily = ensurePetDaily(ps);
+            const mask = document.createElement('div');
+            mask.id = 'rules-mask';
+            mask.className = 'mood-mask';
+            mask.setAttribute('role', 'dialog');
+            mask.setAttribute('aria-modal', 'true');
+            const rows = Object.entries(INTIMACY_RULES).map(([k, r]) =>
+                `<tr><td style="padding:4px 10px 4px 0;">${r.label}</td><td style="padding:4px 10px;text-align:center;">+${r.points}</td><td style="padding:4px 0;text-align:right;">${daily[k] || 0}/${r.dailyCap}</td></tr>`).join('');
+            const lv = levelOf(ps.intimacy);
+            const next = LEVELS[LEVELS.indexOf(lv) + 1];
+            mask.innerHTML = `
+                <div class="mood-card" style="width:min(94vw,340px)">
+                    <h3>今天的亲密互动 · ${SPECS[currentPetId].name}</h3>
+                    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:10px 0;">${rows}</table>
+                    <div class="sub" style="margin:8px 0 0">${next
+                        ? `距离「${next[1]}」还差 ${Math.max(0, next[0] - ps.intimacy)} 点`
+                        : '已达最高等级，感谢陪伴 ❤️'}</div>
+                    <div class="sub" style="margin:6px 0 0;font-size:12px;">每日次数在本地时间 00:00 重置</div>
+                    <div class="btn-row" style="margin-top:14px"><button class="mood-ok" id="rules-close">知道啦</button></div>
+                </div>`;
+            document.body.appendChild(mask);
+            mask.hidden = false;
+            mask.addEventListener('click', (e) => { if (e.target === mask) mask.remove(); });
+            document.getElementById('rules-close').addEventListener('click', () => mask.remove());
+            document.addEventListener('keydown', function esc(e) {
+                if (e.key === 'Escape') { mask.remove(); document.removeEventListener('keydown', esc); }
+            });
+        }
+
         // ---------- 交互 ----------
         const PET_LINES = {
             pet: ['{name}舒服地眯起了眼睛~', '{name}的尾巴摇成了螺旋桨！', '{name}轻轻蹭了蹭你的手', '呼噜呼噜…{name}很享受'],
@@ -1305,7 +1367,8 @@ document.addEventListener('DOMContentLoaded', () => {
         function doPetting() {
             setAnim('petting', 1600);
             burst('heart', 5);
-            addIntimacy(1);
+            const r = rewardIntimacy('pet');
+            if (r.reason === 'daily-cap') toast('今天已经摸得很满足啦，互动仍然可以继续～', 'info');
             showBubble(pick(PET_LINES.pet), 1800);
         }
         function doFeed(kind) {
@@ -1314,7 +1377,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 setAnim('eat', 1500);
                 burst(kind === 'fish' ? 'fish' : 'star', 3);
-                addIntimacy(2);
+                const r = rewardIntimacy('feed');
+                if (r.reason === 'daily-cap') toast('今天已经喂得很满足啦，互动仍然可以继续～', 'info');
                 showBubble(pick(PET_LINES.feed), 1800);
             }, 550);
         }
@@ -1501,7 +1565,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 情绪联动：根据回复关键词触发动画与粒子
                     if (/汪汪|哈哈|嘿嘿|开心|高兴|好玩|！！|球/.test(data.reply)) { setAnim('happy', 1600); burst('star', 4); }
                     else if (/喜欢|爱|抱抱|摸摸|亲亲|想你/.test(data.reply)) { setAnim('petting', 1500); burst('heart', 5); }
-                    addIntimacy(3);
+                    const rc = rewardIntimacy('chat');
+                    if (rc.reason === 'daily-cap') showBubble('今天聊得够多啦，明天再继续～', 1800);
                 } else {
                     appendMsg('pet', '（耳朵耷拉…好像没听清，再试一次？）');
                 }
@@ -1755,6 +1820,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const gameResult = document.getElementById('game-result');
         let activeGame = null, gameTimerId = null, gameAnimId = null, gameSpawnId = null, gameSession = 0;
 
+        document.getElementById('btn-rules').addEventListener('click', openIntimacyRules);
         document.getElementById('btn-games').addEventListener('click', () => { gamesMask.hidden = false; });
         // 宠物资料弹窗（S1-09）：性别设定，保存后刷新聊天标题
         document.getElementById('btn-profile').addEventListener('click', () => {
@@ -1801,7 +1867,10 @@ document.addEventListener('DOMContentLoaded', () => {
             gameResult.querySelector('.btn-again').addEventListener('click', () => startGame(g));
             gameResult.querySelector('.btn-exit-game').addEventListener('click', endGame);
             gameResult.hidden = false;
-            if (intimacy > 0) { addIntimacy(intimacy); toast(`亲密度 +${intimacy} 💛`, 'success'); }
+            if (intimacy > 0) {
+                const r = rewardIntimacy('game', Math.min(3, intimacy));   // 游戏结算分走统一入口，单次上限 3
+                if (r.reason === 'daily-cap') toast('今天已经玩得很尽兴啦～', 'info');
+            }
             burst('star', 6);
         }
 
@@ -2031,22 +2100,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let gazeNow = false, gazeSec = 0, lastGazeHeart = 0;
         let grabbed = false, dropping = false, grabHomeY = 0.02, bounceBack = 0;
         let handTouch = false, handSec = 0, lastHandHeart = 0, lastHandBubble = 0;
-        const GAZE_DAILY_CAP = 5, HAND_DAILY_CAP = 10;
-        // 日上限计数挂在 state.daily 上（与 saveState 同一份数据，避免互相覆盖）；按本地时区日期切片
-        function localDateStr() {
-            const d = new Date();
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        }
-        function dailyLeft(kind, cap) {
-            const today = localDateStr();
-            if (!state.daily || state.daily.date !== today) { state.daily = { date: today, gaze: 0, hand: 0 }; }
-            return Math.max(0, cap - (state.daily[kind] || 0));
-        }
-        function dailyAdd(kind) {
-            dailyLeft(kind, 999);   // 确保结构已初始化
-            state.daily[kind] = (state.daily[kind] || 0) + 1;
-            saveState();
-        }
+        // （S1-10）旧的共享 state.daily 计数已废弃：每日次数挂在每只宠物 petState().daily，
+        // 根级 state.daily 若存在于旧数据中则原样保留、不再读取。
         function headScreenPos() {
             const v = petHeadPos().clone().project(camera);
             return { x: (v.x * 0.5 + 0.5) * canvas.clientWidth, y: (-v.y * 0.5 + 0.5) * canvas.clientHeight };
@@ -2107,7 +2162,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         grabbed = false;
                         dropping = true;   // tick 里重力下落
                         showBubble(`吓死我了…不要突然放手啦！`, 2200);
-                        if (dailyLeft('hand', HAND_DAILY_CAP) > 0) { dailyAdd('hand'); addIntimacy(1); }
+                        const r = rewardIntimacy('hand');
+                        if (r.reason === 'daily-cap') showBubble('今天已经抱了很久啦～', 1600);
                     }
                 },
                 onGaze(on) {
@@ -2171,7 +2227,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (now - lastGazeHeart > 4200) { lastGazeHeart = now; burst('heart', 1, petHeadPos().add(new THREE.Vector3(0, 0.25, 0))); }
                     if (gazeSec >= 20) {
                         gazeSec = 0;
-                        if (dailyLeft('gaze', GAZE_DAILY_CAP) > 0) { dailyAdd('gaze'); addIntimacy(1); showBubble('对视让感情更深了 +1', 1600); }
+                        const r = rewardIntimacy('gaze');
+                        if (r.reason === 'ok') showBubble('对视让感情更深了 +1', 1600);
                         else showBubble('今天的眼神互动已经够多啦～', 1600);
                     }
                 } else gazeSec = 0;
@@ -2182,7 +2239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (now - lastHandBubble > 7000) { lastHandBubble = now; showBubble(`${SPECS[currentPetId].name}轻轻蹭着你的手…`, 1800); }
                     if (handSec >= 2.5) {
                         handSec = 0;
-                        if (dailyLeft('hand', HAND_DAILY_CAP) > 0) { dailyAdd('hand'); addIntimacy(1); }
+                        rewardIntimacy('hand');   // 满额时静默：抚摸动画照播
                     }
                 } else handSec = 0;
             }, 500);
