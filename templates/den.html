@@ -1050,6 +1050,60 @@ document.addEventListener('DOMContentLoaded', () => {
             if (state === 'sleep') { anim.sleptAt = performance.now(); playSleep(); }
             else playAction(state, 1);
         }
+        // ---------- 流畅动画链（趣味手势回应用）：逐步 crossFade 连播 ----------
+        let chainTimer = null;
+        function playChain(steps) {
+            clearTimeout(chainTimer);
+            let i = 0;
+            const next = () => {
+                if (i >= steps.length) { setAnim('idle', 0); return; }
+                const st = steps[i][0], dur = steps[i][1];
+                setAnim(st, dur);
+                chainTimer = setTimeout(next, dur);
+            };
+            next();
+        }
+
+        // ---------- 趣味手势 → 宠物镜像回应（作揖回拜/比心/挥手/点赞） ----------
+        // 链式编排复用已有动作键（全宠物都有映射）；petting=低头鞠躬、blinkL/R=歪头、happy=跳跃
+        const GESTURE_REACT = {
+            pray: {
+                label: '🤝 作揖', lines: ['{name}拱起前爪回了一个揖！新的一年请多关照～🧧', '{name}深深鞠了一躬：恭喜恭喜！万事如意！'],
+                chain: [['happy', 600], ['petting', 900], ['petting', 850], ['happy', 1200]],
+                fx: () => { burst('star', 10); setTimeout(() => burst('heart', 4), 500); },
+            },
+            heart: {
+                label: '♡ 比心', lines: ['{name}眯起眼睛回比了一个心：收到啦，我也爱你 ♡', '心心相印！{name}开心得原地转圈 ♡'],
+                chain: [['petting', 700], ['happy', 1500]],
+                fx: () => {
+                    for (let i = 0; i < 8; i++) setTimeout(() => burst('heart', 1,
+                        petHeadPos().add(new THREE.Vector3((Math.random() - .5) * 0.9, Math.random() * 0.5, (Math.random() - .5) * 0.6))), i * 110);
+                },
+            },
+            wave: {
+                label: '👋 挥手', lines: ['{name}用力摇着爪子回应你：嗨嗨~你来啦！', '{name}歪着脑袋挥挥爪：好久不见呀！'],
+                chain: [['happy', 550], ['blinkL', 380], ['blinkR', 380], ['blinkL', 360], ['happy', 900]],
+                fx: () => burst('star', 5),
+            },
+            thumb: {
+                label: '👍 点赞', lines: ['{name}挺起胸脯：我们是最棒的搭档！', '{name}骄傲地扬起下巴：哇！满分好评！'],
+                chain: [['happy', 650], ['talk', 900], ['happy', 1000]],
+                fx: () => burst('star', 6),
+            },
+        };
+        let gestureFlash = null;   // {label, until} 状态栏短暂显示
+        function handlePetGesture(name) {
+            const g = GESTURE_REACT[name];
+            if (!g || !petModel) return;
+            if (grabbed || dropping || gestureAction || foodDrag || !gameOverlay.hidden) return;   // 互动中不打架
+            const line = pick(g.lines);
+            playChain(g.chain);
+            showBubble(line, 2400);
+            g.fx();
+            gestureFlash = { label: g.label, until: performance.now() + 2200 };
+            visionRenderStatus();
+            speak(line);   // 语音回应（ttsOn/交互检测在 speak 内部处理）
+        }
 
         let spawnBusy = false;   // 首载窗口并发守卫
 
@@ -1812,6 +1866,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hand(state) { handleVisionHand(state); },
             grab(pinching, pos, reason) { handleVisionGrab(pinching, pos, reason); },
             arm(on) { window.__gestureTestArmed = !!on; },   // 测试专用：允许无摄像头走仲裁链
+            gesture(name) { handlePetGesture(name); },          // 注入手势事件 → 真实回应链
             snapshot() { return { gestureAction, foodDrag: !!foodDrag, grabbed }; },
         };
         function doDress() {
@@ -2551,8 +2606,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 : hs.quality === false ? '🖐 手离镜头近一点'
                 : hs.pinching ? '🤏 捏合中'
                 : '🖐 手已识别';
+            const flash = gestureFlash && performance.now() < gestureFlash.until ? '|✨ ' + gestureFlash.label : '';
             const txt = (gazeNow ? '对视中' : '看向别处') + '|' +
-                (handTouch ? '🖐 抚摸中' : handTxt);
+                (handTouch ? '🖐 抚摸中' : handTxt) + flash;
             if (txt === vStatusCache) return;
             vStatusCache = txt;
             if (vStatus) vStatus.innerHTML = txt.split('|').map(s => s.includes('中') ? `<b>${s}</b>` : s).join('<br>');
@@ -2653,6 +2709,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 },
                 onGrab: handleVisionGrab,
+                onGesture(g) { handlePetGesture(g); },
                 onGaze(on) {
                     gazeNow = on;
                     if (on) {

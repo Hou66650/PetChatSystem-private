@@ -31,6 +31,118 @@ function handMetrics(lms) {
     return { palm, pinchDist, pinchRatio, span };
 }
 
+/* ============ 趣味手势检测（双手手势 + 动态手势）============
+   update(landmarksArray, now) → 触发的手势名数组：
+   - pray  双手合十作揖（掌心相对靠近 + 指尖朝上，保持 ~0.8s）
+   - heart 双手比心（两食指尖 + 两拇指尖相触成心形，保持 ~0.6s）
+   - wave  单手张开左右挥动（掌心 x 往复 ≥2 次换向）
+   - thumb 竖大拇指（拇指伸展朝上 + 四指收拢，保持 ~0.6s）
+   全部按"掌长"归一化，与离镜头远近无关；twoHandEngaged 供外部抑制单手捏合。 */
+class HandGestures {
+    constructor() {
+        this.hold = {};        // 手势保持起始时间
+        this.cool = {};        // 手势冷却截止
+        this.waveHist = [];    // 挥手轨迹 {t, x}
+        this.twoHandEngaged = false;
+    }
+    static palmC(l) {
+        return {
+            x: (l[0].x + l[5].x + l[9].x + l[13].x + l[17].x) / 5,
+            y: (l[0].y + l[5].y + l[9].y + l[13].y + l[17].y) / 5,
+        };
+    }
+    static palmR(l) {
+        const c = HandGestures.palmC(l);
+        return Math.hypot(l[9].x - c.x, l[9].y - c.y) || 1e-4;
+    }
+    static dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+    // 指尖比近端指节离腕更远 = 该指伸展
+    static ext(l, tip, pip) {
+        const w = l[0];
+        return HandGestures.dist(l[tip], w) > HandGestures.dist(l[pip], w) * 1.08;
+    }
+    // 食~小指伸展计数
+    static openness(l) {
+        let n = 0;
+        [[8, 6], [12, 10], [16, 14], [20, 18]].forEach((p) => { if (HandGestures.ext(l, p[0], p[1])) n++; });
+        return n;
+    }
+    _trackHold(name, cond, now, needMs, coolMs) {
+        if (this.cool[name] && now < this.cool[name]) return false;
+        if (cond) {
+            if (!this.hold[name]) this.hold[name] = now;
+            if (now - this.hold[name] >= needMs) {
+                this.hold[name] = 0;
+                this.cool[name] = now + coolMs;
+                return true;
+            }
+        } else this.hold[name] = 0;
+        return false;
+    }
+    update(hands, now) {
+        const fired = [];
+        const H = HandGestures;
+        if (hands.length >= 2) {
+            const A = hands[0], B = hands[1];
+            const ca = H.palmC(A), cb = H.palmC(B);
+            const r = (H.palmR(A) + H.palmR(B)) / 2;
+            const dPalm = H.dist(ca, cb);
+            const dThumb = H.dist(A[4], B[4]);
+            const dIndex = H.dist(A[8], B[8]);
+            const tipsUp = A[8].y < ca.y - 0.15 * r && B[8].y < cb.y - 0.15 * r;
+            const openEnough = H.openness(A) >= 2 && H.openness(B) >= 2;
+            // 比心（更特异，先判）：两食指尖相触 + 两拇指尖相触，触点位于掌心上方
+            const heart = dIndex < 0.42 * r && dThumb < 0.42 * r && dPalm < 1.7 * r &&
+                (A[8].y + B[8].y) / 2 < Math.min(ca.y, cb.y) - 0.05 * r;
+            // 作揖：掌心相对靠近 + 拇指/食指彼此接近 + 指尖朝上（非比心形态）
+            const pray = !heart && dPalm < 1.2 * r && dThumb < 1.0 * r && dIndex < 1.4 * r &&
+                tipsUp && openEnough;
+            this.twoHandEngaged = pray || heart || !!this.hold.pray || !!this.hold.heart;
+            this.waveHist.length = 0;   // 双手时不判挥手
+            this.hold.thumb = 0;
+            if (this._trackHold('heart', heart, now, 600, 4000)) fired.push('heart');
+            if (this._trackHold('pray', pray, now, 800, 4000)) fired.push('pray');
+        } else if (hands.length === 1) {
+            this.twoHandEngaged = false;
+            this.hold.pray = this.hold.heart = 0;
+            const l = hands[0];
+            const c = H.palmC(l), r = H.palmR(l);
+            const open = H.openness(l) >= 4;
+            // 大拇指：拇指尖明显高于掌心 + 拇指伸展 + 其余四指收拢（指尖都贴近掌心）
+            const folded = H.openness(l) === 0 &&
+                [8, 12, 16, 20].every((t) => H.dist(l[t], c) < 1.35 * r);
+            const thumbUp = folded && l[4].y < c.y - 0.8 * r &&
+                H.dist(l[4], l[0]) > H.dist(l[2], l[0]) * 1.15;
+            if (this._trackHold('thumb', thumbUp, now, 600, 4000)) fired.push('thumb');
+            // 挥手：手掌张开 + 掌心 x 在 ~1.6s 内往复换向 ≥2 次且有幅度
+            if (open) {
+                this.waveHist.push({ t: now, x: c.x });
+                while (this.waveHist.length && now - this.waveHist[0].t > 1600) this.waveHist.shift();
+                if (this.waveHist.length >= 6) {
+                    let reversals = 0, lastDx = 0, path = 0;
+                    for (let i = 1; i < this.waveHist.length; i++) {
+                        const dx = this.waveHist[i].x - this.waveHist[i - 1].x;
+                        path += Math.abs(dx);
+                        if (lastDx !== 0 && Math.sign(dx) !== Math.sign(lastDx) &&
+                            Math.abs(dx) > 0.0015 && Math.abs(lastDx) > 0.0015) reversals++;
+                        if (Math.abs(dx) > 0.0015) lastDx = dx;
+                    }
+                    if (reversals >= 2 && path > 0.12 && (!this.cool.wave || now >= this.cool.wave)) {
+                        this.cool.wave = now + 4000;
+                        this.waveHist.length = 0;
+                        fired.push('wave');
+                    }
+                }
+            } else this.waveHist.length = 0;
+        } else {
+            this.twoHandEngaged = false;
+            this.hold = {};
+            this.waveHist.length = 0;
+        }
+        return fired;
+    }
+}
+
 class DenVision {
     constructor() {
         this.running = false;
@@ -48,7 +160,9 @@ class DenVision {
         this._errStreak = 0;
         this.onGaze = () => {};
         this.onHand = () => {};
+        this.onGesture = () => {};
         this.onError = () => {};
+        this.gestures = new HandGestures();
         this._smooth = { x: 0, y: 0, px: 0, py: 0, ok: false };   // 虚拟手 + 捏合点平滑位置
         this._raf = null;
     }
@@ -60,6 +174,7 @@ class DenVision {
         this.onGaze = callbacks.onGaze || this.onGaze;
         this.onHand = callbacks.onHand || this.onHand;
         this.onGrab = callbacks.onGrab || this.onGrab;
+        this.onGesture = callbacks.onGesture || this.onGesture;
         this.onError = callbacks.onError || this.onError;
         try {
             // 1) 摄像头（前置，低分辨率即可）
@@ -92,7 +207,7 @@ class DenVision {
                 });
                 this.hand = await HandLandmarker.createFromOptions(fileset, {
                     baseOptions: { modelAssetPath: HAND_MODEL, delegate },
-                    runningMode: 'VIDEO', numHands: 1,
+                    runningMode: 'VIDEO', numHands: 2,
                 });
             } catch (e) {
                 // 个别机器 GPU 委托不兼容 → CPU 重试
@@ -102,7 +217,7 @@ class DenVision {
                 });
                 this.hand = await HandLandmarker.createFromOptions(fileset, {
                     baseOptions: { modelAssetPath: HAND_MODEL, delegate: 'CPU' },
-                    runningMode: 'VIDEO', numHands: 1,
+                    runningMode: 'VIDEO', numHands: 2,
                 });
             }
         } catch (e) {
@@ -239,7 +354,12 @@ class DenVision {
     _detectHand(ts) {
         this._syncCanvasSize();
         const res = this.hand.detectForVideo(this.video, ts);
-        const lms = res.landmarks && res.landmarks[0];
+        const allHands = (res.landmarks || []).filter((l) => l && l.length >= 21);
+        // 趣味手势（作揖/比心/挥手/点赞）：事件驱动，内部带保持时长与冷却
+        try {
+            this.gestures.update(allHands, ts).forEach((g) => this.onGesture && this.onGesture(g));
+        } catch (e) { /* 手势失败不影响基础视觉 */ }
+        const lms = allHands[0];
         if (lms && lms.length >= 21) {
             const wrist = lms[0], mcp = lms[9];
             const m = handMetrics(lms);
@@ -249,7 +369,7 @@ class DenVision {
             const reaching = palm > HAND_REACH;
             // 捏合：按掌长归一化后滞后判定（张开≈1.0-1.6，捏合≈0.1-0.3）
             let pinching = false;
-            if (quality) {
+            if (quality && !this.gestures.twoHandEngaged) {
                 if (this._pinching) pinching = m.pinchRatio < PINCH_OFF;
                 else pinching = m.pinchRatio < PINCH_ON;
             }
@@ -328,4 +448,5 @@ class DenVision {
 }
 
 window.DenVision = DenVision;
-DenVision.metrics = handMetrics;   // 调试/测试：21 关键点 → 归一化手势指标
+DenVision.metrics = handMetrics;         // 调试/测试：21 关键点 → 归一化手势指标
+DenVision.HandGestures = HandGestures;  // 调试/测试：趣味手势检测器（纯逻辑可注入）
