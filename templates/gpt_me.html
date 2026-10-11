@@ -320,6 +320,7 @@
     <script src="{{ url_for('static', filename='js/vendor/marked.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/html2canvas.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/jspdf.umd.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/share-card.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
     /* ===== 聊天页逻辑（规范：docs/UI重构设计文档.md 三.1） ===== */
@@ -585,6 +586,22 @@
             return ok;
         }
         async function shareMessage(row) {
+            // S1-08：先出可预览的图片卡片弹窗，降级链在弹窗内（分享图片→保存→复制文字）
+            if (window.MPCShareCard) {
+                const rowPetId = inferPetId(row);
+                const pet = PETS.find(p => p.id === rowPetId);
+                MPCShareCard.open({
+                    message: String(row.message || ''),
+                    senderName: String(row.sender || (pet ? pet.name : '') || '宠物'),
+                    avatarUrl: petDisplayAvatar(rowPetId),
+                    copyText: async () => {
+                        const ok = await _copyText(row.message);
+                        toast(ok ? '已复制消息' : '复制失败，请手动选择文字', ok ? 'success' : 'error');
+                    },
+                });
+                return;
+            }
+            // 分享卡片脚本不可用时：沿用文本分享/复制降级
             const text = String(row.message || '');
             if (navigator.share) {
                 try {
