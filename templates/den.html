@@ -118,9 +118,43 @@
 
         /* ---------- 视觉互动（本地推理，画面不上传） ---------- */
         .vision-box { position: absolute; right: 12px; bottom: 76px; width: 138px; z-index: 25;
-            background: rgba(255,255,255,.92); border: 1px solid var(--c-line); border-radius: 14px;
-            padding: 6px; box-shadow: 0 6px 18px rgba(74,59,50,.14); display: none; }
+            visibility: visible; display: none; border: 2px solid var(--c-line);
+            background: rgba(255,255,255,.92); border-radius: 14px;
+            padding: 6px; box-shadow: 0 6px 18px rgba(74,59,50,.14); }
         .vision-box.ready { display: block; }
+        /* S1-11：拖拽食物 ghost / 嘴部光圈 / 手势食物托盘 */
+        .food-drag-ghost {
+            position: fixed; left: 0; top: 0; z-index: 1000;
+            width: 54px; height: 54px;
+            pointer-events: none;
+            transform: translate(-50%, -50%) scale(1.08);
+            filter: drop-shadow(0 8px 12px rgba(0,0,0,.22));
+            will-change: transform, left, top;
+            display: none;
+        }
+        .food-drag-ghost.near { transform: translate(-50%, -50%) scale(1.2); }
+        .food-drag-ghost.settle { transform: translate(-50%, -50%) scale(.75); opacity: .9; }
+        .feed-target-ring {
+            position: absolute; z-index: 24; border-radius: 50%;
+            border: 3px dashed rgba(255, 158, 88, .85);
+            box-shadow: 0 0 24px rgba(255, 158, 88, .45), inset 0 0 18px rgba(255, 158, 88, .25);
+            background: radial-gradient(circle, rgba(255, 224, 178, .18), transparent 70%);
+            pointer-events: none; opacity: 0; transition: opacity .12s ease;
+        }
+        .vision-food-tray {
+            position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%);
+            z-index: 26; display: flex; gap: 12px; padding: 8px 12px;
+            background: rgba(255, 253, 248, .88); border: 2px solid var(--c-line);
+            border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.14);
+        }
+        .vision-food-tray[hidden] { display: none; }
+        .vision-food-tray button {
+            width: 64px; height: 64px; border: 2px solid var(--c-line); border-radius: 12px;
+            background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font: inherit; font-size: 12px; color: var(--c-text-sub); flex-direction: column; gap: 2px;
+        }
+        .vision-food-tray button:hover, .vision-food-tray button.hover { border-color: var(--c-primary); box-shadow: 0 0 14px rgba(255,158,88,.5); }
+        .vision-food-tray button img { width: 34px; height: 34px; }
         .vision-box video { width: 100%; border-radius: 9px; transform: scaleX(-1); background: #2f2620; display: block; }
         .vision-status { font-size: 11px; line-height: 1.5; color: var(--c-text-sub); padding: 4px 2px 1px; }
         .vision-status b { color: var(--c-text); font-weight: 700; }
@@ -418,6 +452,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="vision-privacy">🔒 画面仅本地处理，不会上传</div>
         </div>
         <div id="vision-hand" aria-hidden="true"></div>
+        <!-- S1-11：手势食物托盘（视觉互动开启时显示；鼠标点它也直接喂食） -->
+        <div id="vision-food-tray" class="vision-food-tray" hidden>
+            <button type="button" data-hand-food="bone" aria-label="用手拿骨头，或点击直接喂食">骨头</button>
+            <button type="button" data-hand-food="fish" aria-label="用手拿小鱼干，或点击直接喂食">小鱼干</button>
+            <button type="button" data-hand-food="cookie" aria-label="用手拿饼干，或点击直接喂食">饼干</button>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
@@ -1050,6 +1090,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
             spawnBusy = true;
             if (petModel) scene.remove(petModel);
+            cancelPointerDrag();       // S1-11：切宠清理拖拽与手势（目标宠不能误加分）
+            cancelGestureAction('pet-switch');
             currentPetId = id;
             if (typeof denHistory !== 'undefined') denHistory = [];   // 聊天记忆逐宠隔离
             const spec = SPECS[id];
@@ -1371,17 +1413,352 @@ document.addEventListener('DOMContentLoaded', () => {
             if (r.reason === 'daily-cap') toast('今天已经摸得很满足啦，互动仍然可以继续～', 'info');
             showBubble(pick(PET_LINES.pet), 1800);
         }
-        function doFeed(kind) {
-            const map = { bone: 'bone', fish: 'fish', cookie: 'cookie' };
-            flyFood(map[kind]);
+        function doFeed(kind) { completeFeeding(kind); }   // 点击/键盘路径：飞食物动画 + 统一结算
+
+        // ---------- S1-11：拖拽喂食（Pointer Events）+ 摄像头手势喂食 + 动作仲裁 ----------
+        let foodDrag = null;          // 指针拖拽：{pointerId, kind, startX, startY, dragging, ghostEl, suppressClick}
+        let gestureAction = null;     // 手势所有权：null | {type:'food',kind,startedAt,lastX,lastY,token,completed} | {type:'pet',startedAt}
+        let feedingLock = false;      // 结算瞬间锁新手势（~400ms）
+        let feedFailHinted = false;   // 失败提示只出一次
+        const gesturePending = { active: false, kind: null, frames: 0, x: 0, y: 0 };   // 食物拿取防误触确认窗
+        function interactionBusy() {
+            return Boolean(foodDrag || gestureAction || grabbed || dropping || feedingLock);
+        }
+
+        // 坐标：世界 → 页面（Pointer Events 用）/ 画布局部（手势用，与 DenVision 输出同空间）
+        function worldToClient(pos) {
+            const p = pos.clone().project(camera);
+            const rect = canvas.getBoundingClientRect();
+            return { x: rect.left + (p.x * 0.5 + 0.5) * rect.width, y: rect.top + (-p.y * 0.5 + 0.5) * rect.height };
+        }
+        function petMouthClientPos() {   // 页面坐标
+            const head = petHeadPos();
+            head.y -= Math.max(0.04, (petModel?.userData?.height || 1) * 0.06);
+            return worldToClient(head);
+        }
+        function petMouthCanvasPos() {   // 画布局部坐标（手势判定空间）
+            const head = petHeadPos();
+            head.y -= Math.max(0.04, (petModel?.userData?.height || 1) * 0.06);
+            const p = head.clone().project(camera);
+            return { x: (p.x * 0.5 + 0.5) * canvas.clientWidth, y: (-p.y * 0.5 + 0.5) * canvas.clientHeight };
+        }
+        function mouthHitRadius() {
+            const coarse = matchMedia('(pointer: coarse)').matches;
+            return coarse ? 105 : 78;   // 手机命中区更大
+        }
+        function gestureMouthRadius() {
+            return Math.min(125, Math.max(80, Math.min(canvas.clientWidth, canvas.clientHeight) * 0.12));
+        }
+        function mouthHitAvailable() {
+            // 模型未加载/被拎起/全屏游戏/嘴部投影出画布 → 禁用命中
+            if (!petModel || grabbed || dropping || !gameOverlay.hidden) return false;
+            const m = petMouthCanvasPos();
+            return m.x > 0 && m.y > 0 && m.x < canvas.clientWidth && m.y < canvas.clientHeight;
+        }
+
+        // 食物图标 dataURL（复用 shapeTexture 的画布；emoji 字体在不同环境会渲染成黑块，不使用）
+        const foodIconCache = {};
+        function foodIconUrl(kind) {
+            if (foodIconCache[kind]) return foodIconCache[kind];
+            const tex = TEX[kind];
+            if (tex && tex.image && tex.image.toDataURL) foodIconCache[kind] = tex.image.toDataURL('image/png');
+            return foodIconCache[kind] || '';
+        }
+        const FEED_ARIA = document.createElement('div');   // 喂食结果播报（无障碍）
+        FEED_ARIA.setAttribute('aria-live', 'polite');
+        FEED_ARIA.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);';
+        document.body.appendChild(FEED_ARIA);
+
+        // ghost 单例（指针拖拽与手势共用；绝不每次 move 建节点）
+        let ghostEl = null;
+        function ghostShow(kind, pageX, pageY) {
+            if (!ghostEl) {
+                ghostEl = document.createElement('div');
+                ghostEl.className = 'food-drag-ghost';
+                ghostEl.setAttribute('aria-hidden', 'true');
+                document.body.appendChild(ghostEl);
+            }
+            const url = foodIconUrl(kind);
+            ghostEl.style.background = url ? `center / contain no-repeat url("${url}")` : 'var(--c-primary)';
+            ghostEl.style.display = 'block';
+            ghostEl.classList.remove('near', 'settle');
+            ghostMove(pageX, pageY);
+            return ghostEl;
+        }
+        function ghostMove(pageX, pageY) {
+            if (ghostEl) { ghostEl.style.left = pageX + 'px'; ghostEl.style.top = pageY + 'px'; }
+        }
+        function ghostNear(on) {
+            if (ghostEl) ghostEl.classList.toggle('near', on && !matchMedia('(prefers-reduced-motion: reduce)').matches);
+        }
+        function ghostSnapThen(x, y, ms, done) {   // 吸附（成功）
+            if (!ghostEl) { done && done(); return; }
+            ghostEl.classList.add('settle');
+            if (matchMedia('(prefers-reduced-motion: reduce)').matches) { ghostEl.style.display = 'none'; done && done(); return; }
+            ghostEl.style.transition = `left ${ms}ms ease-in, top ${ms}ms ease-in`;
+            ghostMove(x, y);
+            setTimeout(() => { ghostEl.style.display = 'none'; ghostEl.style.transition = ''; done && done(); }, ms);
+        }
+        function ghostBounceTo(x, y, done) {   // 回弹（失败）
+            if (!ghostEl) { done && done(); return; }
+            if (matchMedia('(prefers-reduced-motion: reduce)').matches) { ghostEl.style.display = 'none'; done && done(); return; }
+            ghostEl.style.transition = 'left 180ms ease-out, top 180ms ease-out';
+            ghostMove(x, y);
+            setTimeout(() => { ghostEl.style.display = 'none'; ghostEl.style.transition = ''; done && done(); }, 190);
+        }
+        function ghostHide() { if (ghostEl) ghostEl.style.display = 'none'; }
+
+        // 嘴部目标光圈（画布局部坐标，挂在 den-wrap 内）
+        const denWrap = document.getElementById('den-wrap');
+        let feedRing = null;
+        function feedRingShow(on) {
+            if (!on) { if (feedRing) feedRing.style.opacity = '0'; return; }
+            if (!feedRing) {
+                feedRing = document.createElement('div');
+                feedRing.className = 'feed-target-ring';
+                denWrap.appendChild(feedRing);
+            }
+            const m = petMouthCanvasPos();
+            const r = Math.min(mouthHitRadius(), gestureMouthRadius());
+            feedRing.style.left = (m.x - r) + 'px';
+            feedRing.style.top = (m.y - r) + 'px';
+            feedRing.style.width = feedRing.style.height = (r * 2) + 'px';
+            feedRing.style.opacity = '1';
+        }
+        function buzz() { if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e) {} } }
+
+        // 统一喂食结算（S1-11）：fromDrag 时不重复飞世界食物
+        function completeFeeding(kind, options = {}) {
+            if (!options.fromDrag) flyFood(kind);
             setTimeout(() => {
                 setAnim('eat', 1500);
                 burst(kind === 'fish' ? 'fish' : 'star', 3);
                 const r = rewardIntimacy('feed');
                 if (r.reason === 'daily-cap') toast('今天已经喂得很满足啦，互动仍然可以继续～', 'info');
                 showBubble(pick(PET_LINES.feed), 1800);
-            }, 550);
+                FEED_ARIA.textContent = `${SPECS[currentPetId].name}吃掉了${({ bone: '骨头', fish: '小鱼干', cookie: '饼干' })[kind] || '食物'}`;
+            }, options.fromDrag ? 60 : 550);
+            feedingLock = true;
+            setTimeout(() => { feedingLock = false; }, 400);
         }
+
+        // ---------- 指针拖拽（鼠标/触屏统一 Pointer Events） ----------
+        const feedButtons = ['bone', 'fish', 'cookie'].map(k => document.getElementById(`btn-feed-${k}`));
+        feedButtons.forEach((btn) => {
+            const kind = btn.id.replace('btn-feed-', '');
+            btn.style.touchAction = 'none';   // 拖食物时不让页面滚动/缩放
+            btn.addEventListener('pointerdown', (e) => {
+                if (foodDrag || gestureAction || grabbed) return;   // 与手势互斥
+                foodDrag = { pointerId: e.pointerId, kind, startX: e.clientX, startY: e.clientY, dragging: false, ghostEl: null, suppressClick: false };
+                try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+            });
+            btn.addEventListener('pointermove', (e) => {
+                if (!foodDrag || foodDrag.pointerId !== e.pointerId || foodDrag.completed) return;
+                if (!foodDrag.dragging) {
+                    if (Math.hypot(e.clientX - foodDrag.startX, e.clientY - foodDrag.startY) < 8) return;
+                    foodDrag.dragging = true;
+                    foodDrag.suppressClick = true;
+                    ghostShow(kind, e.clientX, e.clientY);
+                }
+                ghostMove(e.clientX, e.clientY);
+                if (mouthHitAvailable()) {
+                    const m = petMouthClientPos();
+                    const near = Math.hypot(e.clientX - m.x, e.clientY - m.y) <= mouthHitRadius();
+                    if (near !== foodDrag.wasNear) { foodDrag.wasNear = near; ghostNear(near); feedRingShow(near); buzz(); }
+                }
+            });
+            const finish = (e, cancelled) => {
+                if (!foodDrag || foodDrag.pointerId !== e.pointerId) return;
+                const drag = foodDrag;
+                foodDrag = null;
+                feedRingShow(false);
+                if (!drag.dragging) return;              // 未成拖拽 → 让 click 正常触发直接喂食
+                // 已成拖拽：吞掉紧随的 click，避免双喂
+                const btn2 = btn;
+                const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+                btn2.addEventListener('click', swallow, { capture: true, once: true });
+                setTimeout(() => btn2.removeEventListener('click', swallow, { capture: true }), 350);
+                if (cancelled || !mouthHitAvailable()) { ghostHide(); return; }
+                const m = petMouthClientPos();
+                const hit = !cancelled && Math.hypot(e.clientX - m.x, e.clientY - m.y) <= mouthHitRadius();
+                if (hit) {
+                    ghostSnapThen(m.x, m.y, 160);
+                    completeFeeding(drag.kind, { fromDrag: true });
+                } else {
+                    const r = btn2.getBoundingClientRect();
+                    ghostBounceTo(r.left + r.width / 2, r.top + r.height / 2);
+                    if (!feedFailHinted) { feedFailHinted = true; toast('拖到嘴边再松手哦', 'info'); }
+                }
+            };
+            btn.addEventListener('pointerup', (e) => finish(e, false));
+            btn.addEventListener('pointercancel', (e) => finish(e, true));
+        });
+        function cancelPointerDrag() {
+            if (!foodDrag) return;
+            foodDrag = null;
+            feedRingShow(false);
+            ghostHide();
+        }
+
+        // ---------- 摄像头手势：托盘 / 仲裁 / 跟随 / 结算 ----------
+        const trayEl = document.getElementById('vision-food-tray');
+        let trayRects = [];   // 画布局部坐标命中矩形（含 18px 外扩）
+        function refreshTrayRects() {
+            trayRects = [];
+            if (!trayEl || trayEl.hidden) return;
+            const c = canvas.getBoundingClientRect();
+            [...trayEl.querySelectorAll('[data-hand-food]')].forEach((b) => {
+                const r = b.getBoundingClientRect();
+                trayRects.push({
+                    kind: b.dataset.handFood,
+                    left: r.left - c.left - 18, top: r.top - c.top - 18,
+                    right: r.right - c.left + 18, bottom: r.bottom - c.top + 18,
+                    cx: r.left - c.left + r.width / 2, cy: r.top - c.top + r.height / 2,
+                });
+            });
+        }
+        function hitTray(x, y) {   // x,y 为画布局部
+            for (const t of trayRects) {
+                if (x >= t.left && x <= t.right && y >= t.top && y <= t.bottom) return t;
+            }
+            return null;
+        }
+        function petGrabZoneHit(x, y) {   // 宠物可抓取区：头/身投影附近（画布局部）
+            if (!petModel) return false;
+            const hp = headScreenPos();
+            const ph = petModel.userData.height || 1;
+            const r = Math.max(120, canvas.clientHeight * ph * 0.65);
+            const dy = Math.min(canvas.clientHeight * ph * 0.45, y < hp.y ? hp.y - y : 0);   // 身体向下延伸
+            return Math.hypot(x - hp.x, (y - hp.y) + dy * 0) < r || (x > hp.x - r && x < hp.x + r && y > hp.y && y < hp.y + r);
+        }
+        function gesturePagePos(x, y) {   // 画布局部 → 页面
+            const c = canvas.getBoundingClientRect();
+            return { x: c.left + x, y: c.top + y };
+        }
+
+        function beginGestureAction(pos) {
+            if (interactionBusy() || !(visionOn || window.__gestureTestArmed) || document.hidden) return;
+            const x = pos.pinchX != null ? pos.pinchX : pos.sx;
+            const y = pos.pinchY != null ? pos.pinchY : pos.sy;
+            const tray = hitTray(x, y);
+            if (tray) {
+                // 防误触确认窗：连续 2 帧 / ~120ms 仍在食物上才真正取得所有权
+                gesturePending.active = true;
+                gesturePending.kind = tray.kind;
+                gesturePending.frames = 0;
+                gesturePending.x = x; gesturePending.y = y;
+                return;
+            }
+            if (petGrabZoneHit(x, y)) {
+                gestureAction = { type: 'pet', startedAt: performance.now() };
+                if (petModel) {
+                    grabbed = true;
+                    grabHomeY = petModel.position.y;
+                    playAction('happy', 1.4);
+                    showBubble(`${SPECS[currentPetId].name}被拎起来了！放开我啦～`, 1800);
+                    burst('star', 3);
+                }
+                return;
+            }
+            // 空白处：本次捏合不执行任何动作
+        }
+        function confirmGesturePending(x, y) {   // onHand 每帧调用：稳定 2 帧后取得 food 所有权
+            if (!gesturePending.active) return;
+            const t = hitTray(x, y);
+            if (!t || t.kind !== gesturePending.kind) { gesturePending.active = false; return; }
+            gesturePending.frames += 1;
+            if (gesturePending.frames >= 2) {
+                gesturePending.active = false;
+                gestureAction = {
+                    type: 'food', kind: gesturePending.kind,
+                    startedAt: performance.now(),
+                    lastX: x, lastY: y,
+                    token: (crypto.randomUUID ? crypto.randomUUID() : 'tok-' + Math.random()),
+                    completed: false,
+                };
+                const p = gesturePagePos(x, y);
+                ghostShow(gestureAction.kind, p.x, p.y);
+                buzz();
+            }
+        }
+        function updateGestureAction(h) {
+            if (gesturePending.active && h.present) {
+                confirmGesturePending(h.pinchX != null ? h.pinchX : h.sx, h.pinchY != null ? h.pinchY : h.sy);
+            }
+            if (!gestureAction || gestureAction.type !== 'food') return;
+            const x = h.pinchX != null ? h.pinchX : h.sx;
+            const y = h.pinchY != null ? h.pinchY : h.sy;
+            gestureAction.lastX = x; gestureAction.lastY = y;
+            const p = gesturePagePos(x, y);
+            ghostMove(p.x, p.y);
+            const canHit = mouthHitAvailable();
+            const m = petMouthCanvasPos();
+            const near = canHit && Math.hypot(x - m.x, y - m.y) <= gestureMouthRadius();
+            if (near !== gestureAction.wasNear) {
+                gestureAction.wasNear = near;
+                ghostNear(near);
+                feedRingShow(near);
+                buzz();
+            }
+        }
+        function endGestureAction(pos, reason) {
+            if (gesturePending.active) { gesturePending.active = false; return; }   // 还没取得所有权：无事发生
+            if (!gestureAction) return;
+            const act = gestureAction;
+            gestureAction = null;
+            feedRingShow(false);
+            if (act.type === 'pet') {
+                grabbed = false;
+                dropping = true;
+                showBubble(`吓死我了…不要突然放手啦！`, 2200);
+                const r = rewardIntimacy('hand');
+                if (r.reason === 'daily-cap') showBubble('今天已经抱了很久啦～', 1600);
+                return;
+            }
+            // food：
+            if (reason !== 'release' || act.completed) { ghostHide(); return; }   // 丢失/停止 → 取消不误喂
+            const dur = performance.now() - act.startedAt;
+            const lastX = act.lastX, lastY = act.lastY;
+            const ok = dur >= 150 && mouthHitAvailable() &&
+                Math.hypot(lastX - petMouthCanvasPos().x, lastY - petMouthCanvasPos().y) <= gestureMouthRadius();
+            if (ok) {
+                act.completed = true;   // 幂等锁
+                const m = petMouthClientPos();
+                ghostSnapThen(m.x, m.y, 120);
+                completeFeeding(act.kind, { fromDrag: true });
+            } else {
+                const tray = trayRects.find(t => t.kind === act.kind);
+                const p = tray ? gesturePagePos(tray.cx, tray.cy) : { x: lastX, y: lastY };
+                ghostBounceTo(p.x, p.y);
+                if (!feedFailHinted) { feedFailHinted = true; toast('拿到嘴边再松手哦', 'info'); }
+            }
+        }
+        function cancelGestureAction(reason) {
+            if (!gestureAction && !gesturePending.active) return;
+            gesturePending.active = false;
+            const act = gestureAction;
+            gestureAction = null;
+            feedRingShow(false);
+            ghostHide();
+            if (act && act.type === 'pet') {   // 拎着宠物被取消：安全放回
+                grabbed = false;
+                dropping = true;
+            }
+        }
+        // 托盘按钮点击 = 直接喂食（与所有路径共用结算）
+        trayEl.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-hand-food]');
+            if (b) completeFeeding(b.dataset.handFood);
+        });
+
+        // 调试钩子（S1-11）：注入 onHand/onGrab 事件走真实仲裁与结算，不绕过逻辑；
+        // 无摄像头环境（HTTP/VPN）也能用它验证手势矩阵
+        window.__denGestureDebug = {
+            hand(state) { handleVisionHand(state); },
+            grab(pinching, pos, reason) { handleVisionGrab(pinching, pos, reason); },
+            arm(on) { window.__gestureTestArmed = !!on; },   // 测试专用：允许无摄像头走仲裁链
+            snapshot() { return { gestureAction, foodDrag: !!foodDrag, grabbed }; },
+        };
         function doDress() {
             const ps = petState();
             ps.accessory = ((ps.accessory || 0) + 1) % 4; // 0无 1帽 2围巾 3蝴蝶结
@@ -2090,6 +2467,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function startGame(name) {
             endGame();
+            cancelPointerDrag();      // S1-11：进游戏前清拖拽/手势，不遗留 ghost
+            cancelGestureAction('game-open');
             if (name === 'balloon') startBalloonGame();
             else if (name === 'worry') startWorryGame();
             else if (name === 'empathy') startEmpathyGame();
@@ -2121,9 +2500,59 @@ document.addEventListener('DOMContentLoaded', () => {
             if (visionTick) { clearInterval(visionTick); visionTick = null; }
             if (dv) dv.stop();
             if (grabbed) { grabbed = false; dropping = true; }   // 停视觉时松手
+            cancelGestureAction('vision-stop');   // S1-11：进行中的手势喂食一并取消
+            cancelPointerDrag();
             visionOn = false; gazeNow = false; handTouch = false; gazeSec = 0; handSec = 0;
+            trayEl.hidden = true; refreshTrayRects();
             vBox.classList.remove('ready');
             vHandEl.style.opacity = '0';
+        }
+        // 视觉回调（顶层定义：真实摄像头与 __denGestureDebug 注入共用同一条仲裁链路）
+        function handleVisionGrab(pinching, pos, reason) {
+            if (pinching && pos) {
+                beginGestureAction(pos);
+            } else {
+                endGestureAction(pos, reason === 'lost' || reason === 'stop' ? 'cancel' : 'release');
+            }
+        }
+        function handleVisionHand(h) {
+            if (h.present) {
+                const size = 34 + Math.min(h.palm, 0.55) * 95;
+                vHandEl.style.opacity = h.reaching ? '0.95' : '0.35';
+                vHandEl.style.fontSize = (h.reaching ? size : size * 0.7) + 'px';
+                vHandEl.classList.toggle('reaching', !!h.reaching);
+                vHandEl.style.transform = `translate(${h.sx - size / 2}px, ${h.sy - size / 2}px) rotate(${h.reaching ? -14 : 0}deg)`;
+                // 手势喂食跟随与拿取确认（S1-11）
+                updateGestureAction(h);
+                // 托盘悬停高亮（只做反馈不触发拿取）
+                if (trayEl && !trayEl.hidden && !gestureAction) {
+                    const px = h.pinchX != null ? h.pinchX : h.sx;
+                    const py = h.pinchY != null ? h.pinchY : h.sy;
+                    const hitT = hitTray(px, py);
+                    trayEl.querySelectorAll('[data-hand-food]').forEach((b) => {
+                        b.classList.toggle('hover', !!hitT && b.dataset.handFood === hitT.kind);
+                    });
+                }
+            } else {
+                vHandEl.style.opacity = '0';
+                // 手部识别丢失：取消进行中的手势动作（不能误判为嘴边松手）
+                if (gestureAction || gesturePending.active) cancelGestureAction('hand-lost');
+            }
+            // 触摸判定：伸手 且 虚拟手落在宠物头部附近；手持食物时暂停抚摸累计（S1-11）
+            let nowTouch = false;
+            if (h.present && h.reaching && petModel && !grabbed &&
+                !(gestureAction && gestureAction.type === 'food')) {
+                const hp = headScreenPos();
+                nowTouch = Math.hypot(h.sx - hp.x, h.sy - hp.y) < 110;
+            }
+            if (nowTouch !== handTouch) {
+                handTouch = nowTouch;
+                if (nowTouch) {
+                    handSec = 0; lastHandBubble = performance.now();
+                    showBubble(`${SPECS[currentPetId].name}享受你的抚摸～`, 2200);
+                }
+            }
+            visionRenderStatus();
         }
         document.getElementById('btn-vision').addEventListener('click', async function () {
             if (visionOn) { stopVision(); this.textContent = '眼神互动'; return; }
@@ -2147,25 +2576,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         petModel.scale.setScalar(petModel.scale.x * 0.82);
                     }
                 },
-                onGrab(pinching, pos) {
-                    if (pinching && pos) {
-                        // 捏住：缩小悬挂在手位置，挣扎动画
-                        if (!grabbed && petModel) {
-                            grabbed = true;
-                            grabHomeY = petModel.position.y;
-                            playAction('happy', 1.4);   // 快速挣扎（跳跃动画加速）
-                            showBubble(`${SPECS[currentPetId].name}被拎起来了！放开我啦～`, 1800);
-                            burst('star', 3);
-                        }
-                    } else if (grabbed) {
-                        // 松手：掉落回地面
-                        grabbed = false;
-                        dropping = true;   // tick 里重力下落
-                        showBubble(`吓死我了…不要突然放手啦！`, 2200);
-                        const r = rewardIntimacy('hand');
-                        if (r.reason === 'daily-cap') showBubble('今天已经抱了很久啦～', 1600);
-                    }
-                },
+                onGrab: handleVisionGrab,
                 onGaze(on) {
                     gazeNow = on;
                     if (on) {
@@ -2175,31 +2586,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     visionRenderStatus();
                 },
-                onHand(h) {
-                    if (h.present) {
-                        const size = 34 + Math.min(h.palm, 0.55) * 95;
-                        vHandEl.style.opacity = h.reaching ? '0.95' : '0.35';
-                        vHandEl.style.fontSize = (h.reaching ? size : size * 0.7) + 'px';
-                        vHandEl.classList.toggle('reaching', !!h.reaching);
-                        vHandEl.style.transform = `translate(${h.sx - size / 2}px, ${h.sy - size / 2}px) rotate(${h.reaching ? -14 : 0}deg)`;
-                    } else {
-                        vHandEl.style.opacity = '0';
-                    }
-                    // 触摸判定：伸手 且 虚拟手落在宠物头部附近（捏住时不算抚摸）
-                    let nowTouch = false;
-                    if (h.present && h.reaching && petModel && !grabbed) {
-                        const hp = headScreenPos();
-                        nowTouch = Math.hypot(h.sx - hp.x, h.sy - hp.y) < 110;
-                    }
-                    if (nowTouch !== handTouch) {
-                        handTouch = nowTouch;
-                        if (nowTouch) {
-                            handSec = 0; lastHandBubble = performance.now();
-                            showBubble(`${SPECS[currentPetId].name}享受你的抚摸～`, 2200);
-                        }
-                    }
-                    visionRenderStatus();
-                },
+                onHand: handleVisionHand,
                 onError(kind) {
                     toast(kind === 'camera' ? '无法访问摄像头：请在浏览器地址栏允许摄像头权限'
                         : kind === 'runtime' ? '视觉推理异常，已自动停止'
@@ -2218,6 +2605,17 @@ document.addEventListener('DOMContentLoaded', () => {
             visionOn = true;
             this.textContent = '关闭视觉';
             vBox.classList.add('ready');
+            // S1-11：视觉开启 → 显示手势食物托盘并缓存命中矩形
+            trayEl.hidden = false;
+            [...trayEl.querySelectorAll('[data-hand-food]')].forEach((b) => {
+                if (!b.querySelector('img')) {
+                    const img = document.createElement('img');
+                    img.alt = '';
+                    img.src = foodIconUrl(b.dataset.handFood) || '';
+                    b.prepend(img);
+                }
+            });
+            requestAnimationFrame(() => refreshTrayRects());   // 布局稳定后量矩形
             visionRenderStatus();
             // 低频节拍：对视/抚摸的亲密度累计与粒子节流
             visionTick = setInterval(() => {
@@ -2249,6 +2647,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 if (window.speechSynthesis) speechSynthesis.cancel();   // 切页停止朗读
+                cancelPointerDrag();          // S1-11：页面隐藏取消进行中的喂食操作
+                cancelGestureAction('page-hidden');
                 if (visionOn) {
                     stopVision();
                     const b = document.getElementById('btn-vision');
@@ -2270,8 +2670,8 @@ document.addEventListener('DOMContentLoaded', () => {
             autoBlinkTick(now);
 
             if (petModel) {
-                // 保底：被捏住但视觉互动已停（切页/关闭/异常）→ 强制释放掉落
-                if (grabbed && (!dv || !dv.running)) {
+                // 保底：被捏住但视觉互动已停（切页/关闭/异常）→ 强制释放掉落（测试臂除外：无摄像头验证拎宠链路）
+                if (grabbed && (!dv || !dv.running) && !window.__gestureTestArmed) {
                     grabbed = false;
                     dropping = true;
                 }
@@ -2412,8 +2812,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 camera.updateProjectionMatrix();
             }
         }
+        // S1-11/S1-12：旋转/缩放窗口 → 取消进行中的喂食操作并重算托盘命中矩形
+        function onViewportChange() {
+            cancelPointerDrag();
+            cancelGestureAction('viewport-change');
+            refreshTrayRects();
+            resize();
+        }
         canvas.clientWidth; // init
-        window.addEventListener('resize', resize);
+        window.addEventListener('resize', onViewportChange);
+        window.addEventListener('orientationchange', onViewportChange);
 
         // ---------- 启动 ----------
         applyTimeOfDay();

@@ -32,7 +32,7 @@ class DenVision {
         this.onGaze = () => {};
         this.onHand = () => {};
         this.onError = () => {};
-        this._smooth = { x: 0, y: 0, ok: false };   // 虚拟手平滑位置
+        this._smooth = { x: 0, y: 0, px: 0, py: 0, ok: false };   // 虚拟手 + 捏合点平滑位置
         this._raf = null;
     }
 
@@ -118,6 +118,8 @@ class DenVision {
         this._errStreak = 0;
         this.handState = { present: false, reaching: false, sx: 0, sy: 0, palm: 0 };
         this._smooth.ok = false;
+        // 停止时显式通知：捏合释放 + 对视结束 + 手消失（页面据此取消手势喂食等清理）
+        if (this._pinching) { this._pinching = false; this.onGrab && this.onGrab(false, null, 'stop'); }
         this.onGaze(false);
         this.onHand(this.handState);
     }
@@ -235,10 +237,17 @@ class DenVision {
             } else {
                 pinching = pinchDist < 0.055;  // 未捏住：距离够小才触发
             }
-            // 捏合状态变化时通知
+            // 捏合点 = 拇指尖与食指尖中点（拿食物用精确坐标；x 镜像与掌心一致）
+            const pinchX = (1 - (thumbTip.x + indexTip.x) / 2) * this.canvasSize.w;
+            const pinchY = ((thumbTip.y + indexTip.y) / 2) * this.canvasSize.h;
+            // 捏合状态变化时通知（附捏合点；保留 sx/sy 兼容旧调用方）
             if (pinching !== this._pinching) {
                 this._pinching = pinching;
-                this.onGrab && this.onGrab(pinching, { sx: (1 - mcp.x) * this.canvasSize.w, sy: mcp.y * this.canvasSize.h, palm });
+                this.onGrab && this.onGrab(pinching, {
+                    sx: (1 - mcp.x) * this.canvasSize.w,
+                    sy: mcp.y * this.canvasSize.h,
+                    pinchX, pinchY, palm,
+                });
             }
 
             // 打响指检测：拇指尖(4)-中指尖(12)距离从很小→骤增（弹开动作）
@@ -259,13 +268,13 @@ class DenVision {
             const sx = (1 - mcp.x) * this.canvasSize.w;
             const sy = mcp.y * this.canvasSize.h;
             const was = this.handState;
-            this.handState = { present: true, reaching, sx, sy, palm, pinching };
+            this.handState = { present: true, reaching, sx, sy, palm, pinching, pinchX, pinchY, pinchDist };
             if (was.present !== true || was.reaching !== reaching) this.onHand(this.handState);
         } else {
-            // 手消失时释放捏合
+            // 手消失时释放捏合（无坐标：调用方只能按"取消"处理，不能当成功）
             if (this._pinching) {
                 this._pinching = false;
-                this.onGrab && this.onGrab(false, null);
+                this.onGrab && this.onGrab(false, null, 'lost');
             }
             if (this.handState.present) {
                 this.handState = { present: false, reaching: false, sx: 0, sy: 0, palm: 0 };
@@ -274,16 +283,24 @@ class DenVision {
         }
     }
 
-    /* ---------- 虚拟手平滑跟随（60fps 插值，检测帧间也不卡顿） ---------- */
+    /* ---------- 虚拟手平滑跟随（60fps 插值，检测帧间也不卡顿；捏合点同步平滑） ---------- */
     _followLoop() {
         if (!this.running) return;
         this._raf = requestAnimationFrame(() => this._followLoop());
         const h = this.handState;
         if (!h.present) { this._smooth.ok = false; return; }
-        if (!this._smooth.ok) { this._smooth.x = h.sx; this._smooth.y = h.sy; this._smooth.ok = true; }
+        if (!this._smooth.ok) {
+            this._smooth.x = h.sx; this._smooth.y = h.sy;
+            this._smooth.px = h.pinchX || h.sx; this._smooth.py = h.pinchY || h.sy;
+            this._smooth.ok = true;
+        }
         this._smooth.x += (h.sx - this._smooth.x) * 0.25;
         this._smooth.y += (h.sy - this._smooth.y) * 0.25;
-        this.onHand({ ...h, sx: this._smooth.x, sy: this._smooth.y, smooth: true });
+        // 捏合点独立平滑（系数略高：拿食物要跟手但不过冲）
+        this._smooth.px += ((h.pinchX || h.sx) - this._smooth.px) * 0.30;
+        this._smooth.py += ((h.pinchY || h.sy) - this._smooth.py) * 0.30;
+        this.onHand({ ...h, sx: this._smooth.x, sy: this._smooth.y,
+                      pinchX: this._smooth.px, pinchY: this._smooth.py, smooth: true });
     }
 
     get gaze() { return this.gazeContact; }
