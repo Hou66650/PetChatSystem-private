@@ -1574,7 +1574,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 b.innerHTML = `${e.emoji}<span style="font-size:12px;font-weight:700;color:#333;margin-top:2px">${e.name}</span><div class="balloon-string"></div>`;
                 b.title = e.name;
                 const speed = 0.4 + Math.random() * 0.6;
-                const sway = Math.random() * 2 * Math.PI;
+                let sway = Math.random() * 2 * Math.PI;
                 let y = -80;
                 function float() {
                     if (activeGame !== 'balloon' || !b.isConnected) return;
