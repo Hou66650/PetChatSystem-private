@@ -1043,7 +1043,14 @@ document.addEventListener('DOMContentLoaded', () => {
             a.play();
             activeAction = a;
         }
+        window.__denAnimDebug = () => ({
+            state: anim.state, untilLeft: Math.max(0, Math.round((anim.until || 0) - performance.now())),
+            active: activeAction ? activeAction.getClip().name : null,
+            performing: performing ? performing() : false,
+        });
         function setAnim(state, dur) {
+            if (window.__animLog) window.__animLog.push([Math.round(performance.now()), state, dur,
+                String(new Error().stack || '').split('\n')[2].trim().slice(0, 90)]);
             anim.state = state;
             anim.until = performance.now() + dur;
             anim.lastInteract = performance.now();
@@ -1061,6 +1068,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const next = () => {
                 if (i >= steps.length) { setAnim('idle', 0); return; }
                 const st = steps[i][0], dur = steps[i][1];
+                i += 1;
                 setAnim(st, dur);
                 chainTimer = setTimeout(next, dur);
             };
@@ -1102,7 +1110,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (grabbed || dropping || gestureAction || foodDrag || !gameOverlay.hidden) return;   // 互动中不打架
             const line = pick(g.lines);
             playChain(g.chain);
-            showBubble(line, 2400);
+            showBubble(line, 2400, true);   // silent：气泡自带speak会开talk嘴型吞掉表演链，语音由下一行统一出
             g.fx();
             gestureFlash = { label: g.label, until: performance.now() + 2200 };
             visionRenderStatus();
@@ -2867,7 +2875,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // 状态到期回落 + 长时间无互动入睡（动画切换交给 setAnim）
-                if (anim.until && now > anim.until) { setAnim('idle', 0); anim.until = 0; }
+                // 表演链期间不回落：链子自己按时序推进，tick 抢回落会造成一步闪帧
+                if (anim.until && now > anim.until && !performing()) { setAnim('idle', 0); anim.until = 0; }
                 else if (anim.state === 'idle' && now - anim.lastInteract > 45000) {
                     anim.state = 'sleep'; anim.sleptAt = now; playSleep();   // 不经 setAnim（它会刷新互动时间）
                 } else if (anim.state === 'sleep' && anim.lastInteract > (anim.sleptAt || 0)) {

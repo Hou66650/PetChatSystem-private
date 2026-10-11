@@ -371,8 +371,10 @@ class DenVision {
             const quality = palm >= PALM_MIN;
             const reaching = palm > HAND_REACH;
             // 捏合：按掌长归一化后滞后判定（张开≈1.0-1.6，捏合≈0.1-0.3）
+            // 真捏合必然食指伸展（指尖越过指节伸向拇指）：点赞/握拳等食指蜷曲形态永不判捏合
+            const indexExt = HandGestures.ext(lms, 8, 6);
             let pinching = false;
-            if (quality && !this.gestures.twoHandEngaged) {
+            if (quality && indexExt && !this.gestures.twoHandEngaged) {
                 if (this._pinching) pinching = m.pinchRatio < PINCH_OFF;
                 else pinching = m.pinchRatio < PINCH_ON;
             }
