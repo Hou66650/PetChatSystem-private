@@ -681,16 +681,16 @@
                 hatGroup.add(pom); hatGroup.add(stripe);
                 hatGroup.name = '__den_hat';
                 hatGroup.rotation.z = 0.12;
-                hatGroup.position.set(0, spec.h * 0.88, 0.12);
-                model.add(hatGroup);
+                hatGroup.position.set(0, spec.h * 0.82, 0.1);
+                petModel.add(hatGroup);
             }
             if (!scarf) {
                 scarf = new THREE.Mesh(new THREE.TorusGeometry(0.34 * k, 0.075 * k, 10, 24),
                     new THREE.MeshLambertMaterial({ color: 0xE5735B }));
                 scarf.name = '__den_scarf';
                 scarf.rotation.x = 0.35;
-                scarf.position.set(0, spec.h * 0.55, 0.28);
-                model.add(scarf);
+                scarf.position.set(0, spec.h * 0.5, 0.22);
+                petModel.add(scarf);
             }
             if (!bow) {
                 bow = new THREE.Group();
@@ -706,8 +706,8 @@
                 bow.add(knot);
                 bow.name = '__den_bow';
                 bow.rotation.y = 0.45; bow.scale.setScalar(1.2);
-                bow.position.set(spec.h * 0.22, spec.h * 0.78, 0.15);
-                model.add(bow);
+                bow.position.set(spec.h * 0.2, spec.h * 0.72, 0.12);
+                petModel.add(bow);
             }
             hatGroup.visible = false; scarf.visible = false; bow.visible = false;
             petModel.userData.accessories = [hatGroup, scarf, bow];
