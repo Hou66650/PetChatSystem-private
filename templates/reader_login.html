@@ -11,8 +11,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            /* 保留原鲸鱼插画背景，降饱和（设计文档 二.8） */
-            background: var(--c-bg) url("{{ url_for('static', filename='images/c.jpg') }}") center / cover no-repeat;
+            background: var(--c-bg) var(--auth-bg-url, url("{{ url_for('static', filename='images/c.jpg') }}")) center / cover no-repeat;
         }
         body.theme::before {
             content: '';
@@ -65,5 +64,6 @@
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth-background.js') }}"></script>
 </body>
 </html>

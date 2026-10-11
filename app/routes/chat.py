@@ -151,12 +151,21 @@ def remark():
 
 @bp.route('/api/tts', methods=['POST'])
 def tts():
-    """GLM-TTS 真人级语音合成：POST {text, voice?} → audio/wav 二进制"""
+    """GLM-TTS 语音合成：POST {text, petId} → audio/wav 二进制。
+
+    音色由服务端按 petId 从配置白名单选择（S1-04）；
+    客户端传入的 voice 字段被忽略，避免无效值打到上游。
+    """
     data = request.get_json(silent=True) or {}
-    text = (data.get('text') or '').strip()[:500]
-    voice = data.get('voice', 'tongtong')
+    text = str(data.get('text') or '').strip()[:500]
     if not text:
         return jsonify({'error': 'empty text'}), 400
+    try:
+        pet_id = int(data.get('petId', 1))
+    except (TypeError, ValueError):
+        pet_id = 1
+    voice = (current_app.config.get('PET_TTS_VOICES') or {}).get(pet_id) \
+        or current_app.config.get('PET_TTS_DEFAULT_VOICE', 'tongtong')
     try:
         import requests as _req
         session = _req.Session()

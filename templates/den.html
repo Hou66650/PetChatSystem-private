@@ -1334,10 +1334,17 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('focus', () => { userInteracted = true; }, { passive: true });
         // 温柔模式参数（TTS 尽量柔和）
         const TTS_GENTLE = { rate: 0.88, pitch: 0.95 };
-        // GLM 后端 TTS（真人级）：fire-and-forget，失败降级浏览器语音
+        // 浏览器语音降级时的四宠差异化 rate/pitch（S1-04；仅降级体验，非正式音色差异）
+        const PET_SPEECH_STYLE = {
+            1: { rate: 1.00, pitch: 1.08 },
+            2: { rate: 0.94, pitch: 0.92 },
+            3: { rate: 0.96, pitch: 1.20 },
+            4: { rate: 0.88, pitch: 0.82 },
+        };
+        // GLM 后端 TTS（真人级，音色由服务端按 petId 选择）：fire-and-forget，失败降级浏览器语音
         const ttsAudioCache = {};
         function glmTTS(text) {
-            const key = text.slice(0, 50);
+            const key = `${currentPetId}:${text.slice(0, 50)}`;   // 缓存键含宠物 ID：切宠不复用上一只的音频
             if (ttsAudioCache[key]) {
                 const audio = new Audio(ttsAudioCache[key]);
                 audio.volume = 0.85;
@@ -1347,7 +1354,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fetch('/api/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text }),
+                body: JSON.stringify({ text: text, petId: currentPetId }),
             }).then((r) => {
                 if (!r.ok) throw new Error('tts ' + r.status);
                 return r.blob();
@@ -1362,14 +1369,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 browserSpeak(text);
             });
         }
-        // 浏览器 SpeechSynthesis 降级
+        // 浏览器 SpeechSynthesis 降级（按宠物微调 rate/pitch）
         function browserSpeak(text) {
             if (!window.speechSynthesis) return;
             try {
+                const st = PET_SPEECH_STYLE[currentPetId] || TTS_GENTLE;
                 const u = new SpeechSynthesisUtterance(text);
                 u.lang = 'zh-CN';
-                u.rate = TTS_GENTLE.rate;
-                u.pitch = TTS_GENTLE.pitch;
+                u.rate = st.rate;
+                u.pitch = st.pitch;
                 if (zhVoice) u.voice = zhVoice;
                 speechSynthesis.cancel();
                 speechSynthesis.speak(u);

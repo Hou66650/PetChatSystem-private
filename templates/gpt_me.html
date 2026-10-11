@@ -152,6 +152,40 @@
         .msg-bubble pre { background: #F6EFE7; padding: 8px; border-radius: 8px; overflow-x: auto; }
         .msg-time { font-size: 12px; color: var(--c-text-sub); margin-top: 2px; font-weight: 500; }
         .msg-row.user .msg-time { text-align: right; }
+        /* 消息快捷操作（S1-03）：桌面 hover 显示，触屏常显 */
+        .msg-actions {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+            opacity: 0;
+            transform: translateY(-2px);
+            transition: opacity .15s ease, transform .15s ease;
+        }
+        .msg-row.user .msg-actions { justify-content: flex-end; }
+        .msg-row:hover .msg-actions,
+        .msg-row:focus-within .msg-actions {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .msg-action {
+            min-height: 28px;
+            padding: 3px 8px;
+            border: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--c-text-sub);
+            cursor: pointer;
+            font: inherit;
+            font-size: 12px;
+        }
+        .msg-action:hover {
+            background: rgba(74, 59, 50, .08);
+            color: var(--c-text);
+        }
+        .msg-action:disabled { opacity: .55; cursor: default; }
+        @media (max-width: 767px), (hover: none) {
+            .msg-actions { opacity: 1; transform: none; }
+        }
         .msg-error .msg-bubble { background: var(--c-danger-bg); color: var(--c-danger); font-size: 14px; }
         .msg-error .retry-btn {
             margin-top: 6px; height: 28px; padding: 0 12px; font-size: 12px;
@@ -169,6 +203,9 @@
         .typing-dots i:nth-child(2) { animation-delay: .15s; }
         .typing-dots i:nth-child(3) { animation-delay: .3s; }
         @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+        @media (prefers-reduced-motion: reduce) {
+            .typing-dots i { animation: none; }
+        }
 
         /* 输入区 */
         .chat-input-bar {
@@ -306,6 +343,13 @@
             3: '喵~我是团子，一只傲娇又黏人的小猫咪。呼噜呼噜…你想陪我玩吗？',
             4: '汪！我是大壮，你最忠诚的德牧伙伴！有什么想说的都可以告诉我！',
         };
+        // 情绪化等待文案：按宠物人格轮换（1.8s 一换，禁用技术词，不承诺疗效）
+        const TYPING_LINES = {
+            1: ['正在摇摇尾巴…', '正在认真听你说…', '正在用爪爪想办法…'],
+            2: ['正在歪头思考…', '正在小声嗷呜…', '正在兴奋地转圈…'],
+            3: ['正在轻轻踩奶…', '正在眯着眼想你…', '正在呼噜呼噜思考…'],
+            4: ['正在认真守护你…', '正在竖起耳朵倾听…', '正在想怎么陪你…'],
+        };
 
         // ---------- DOM ----------
         const $ = (id) => document.getElementById(id);
@@ -322,6 +366,7 @@
         let customAvatarUrl = null;
         let sending = false;
         let retryMessage = null;
+        let typingTimer = null;
         let prefs = { nickname: '', petNickname: '', model: MODELS[0] };
         let storageOK = true;
 
@@ -383,6 +428,18 @@
         }
 
         // ---------- 消息渲染 ----------
+        // 本地消息注册表（S1-03）：DOM 只带 data-message-id，正文存 Map，避免把消息拼进 HTML 属性
+        const messageRegistry = new Map();
+        let messageSeq = 0;
+        function ensureMessageId(row) {
+            if (!row.localId) {
+                messageSeq += 1;
+                row.localId = `msg-${Date.now()}-${messageSeq}`;
+            }
+            messageRegistry.set(row.localId, row);
+            return row.localId;
+        }
+
         function bubbleHtml(row) {
             // row: {role:'user'|'assistant', sender, message, petId, ts}
             const isUser = row.role === 'user';
@@ -401,12 +458,21 @@
                 : petDisplayAvatar(rowPetId);
             const avatarHtml = avatarSrc ? `<img class="avatar" src="${avatarSrc}" alt="">` : '';
             const meta = [sender, row.ts ? escapeHtml(row.ts) : null].filter(Boolean).join(' · ');
+            // 快捷操作栏：正常消息（用户/宠物回复）才有；朗读仅宠物回复
+            const localId = ensureMessageId(row);
+            const actionsHtml = `
+                <div class="msg-actions" data-message-id="${localId}">
+                    <button type="button" class="msg-action" data-action="copy" aria-label="复制消息">复制</button>
+                    ${isUser ? '' : '<button type="button" class="msg-action" data-action="speak" aria-label="朗读消息">朗读</button>'}
+                    <button type="button" class="msg-action" data-action="share" aria-label="分享消息">分享</button>
+                </div>`;
             return `
               <div class="msg-row ${isUser ? 'user' : 'pet'}">
                 ${isUser ? '' : avatarHtml}
                 <div class="msg-bubble-wrap">
                     <div class="msg-bubble">${content}</div>
                     <div class="msg-time">${meta}</div>
+                    ${actionsHtml}
                 </div>
                 ${isUser ? avatarHtml : ''}
               </div>`;
@@ -421,19 +487,35 @@
             appendHtml(`<div class="msg-divider">—— 现在和 ${escapeHtml(petName)} 聊天 ——</div>`);
         }
 
-        function showTyping() {
-            const pet = currentPet();
+        function typingText(pet, index) {
+            const lines = TYPING_LINES[pet.id] || ['正在认真听你说…'];
+            const line = lines[index % lines.length];
+            return `${prefs.petNickname || pet.name}${line}`;
+        }
+
+        function showTyping(pet) {
+            // 必须传入发起请求时的宠物快照：等待期间切宠物不能让文案串角色
             hideTyping();
+            let index = 0;
             appendHtml(`
               <div class="msg-row pet" id="typing-row">
                 <img class="avatar" src="${petDisplayAvatar(pet.id)}" alt="">
                 <div class="typing-row">
                   <span class="typing-dots"><i></i><i></i><i></i></span>
-                  ${escapeHtml(prefs.petNickname || pet.name)}正在输入…
+                  <span id="typing-text">${escapeHtml(typingText(pet, index))}</span>
                 </div>
               </div>`);
+            typingTimer = window.setInterval(() => {
+                index += 1;
+                const el = $('typing-text');
+                if (el) el.textContent = typingText(pet, index);
+            }, 1800);
         }
         function hideTyping() {
+            if (typingTimer !== null) {
+                window.clearInterval(typingTimer);
+                typingTimer = null;
+            }
             const el = $('typing-row');
             if (el) el.remove();
         }
@@ -453,6 +535,128 @@
                 if (retryMessage) { const m = retryMessage; retryMessage = null; doSend(m); }
             });
         }
+
+        // ---------- 消息快捷操作（S1-03） ----------
+        // 音频生命周期：同屏只允许一条在播
+        let activeAudio = null;
+        let activeAudioUrl = null;
+        let activeSpeakButton = null;
+        function stopSpeaking() {
+            if (activeAudio) { try { activeAudio.pause(); } catch (e) {} activeAudio = null; }
+            if (activeAudioUrl) { URL.revokeObjectURL(activeAudioUrl); activeAudioUrl = null; }
+            if (activeSpeakButton) {
+                activeSpeakButton.disabled = false;
+                activeSpeakButton.textContent = '朗读';
+                activeSpeakButton = null;
+            }
+            if (window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) {} }
+        }
+
+        function _copyText(text) {
+            // 纯文本复制：优先 Clipboard API，失败降级隐藏 textarea；返回是否成功
+            const fallback = () => {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+                document.body.appendChild(ta);
+                ta.focus(); ta.select();
+                let ok = false;
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                ta.remove();
+                return ok;
+            };
+            if (navigator.clipboard && window.isSecureContext) {
+                return navigator.clipboard.writeText(text).then(() => true).catch(() => fallback());
+            }
+            return Promise.resolve(fallback());
+        }
+        async function copyMessage(text) {
+            const ok = await _copyText(text);
+            toast(ok ? '已复制消息' : '复制失败，请手动选择文字', ok ? 'success' : 'error');
+            return ok;
+        }
+        async function shareMessage(row) {
+            const text = String(row.message || '');
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: `来自${row.sender || '宠物'}的陪伴`, text });
+                    return;
+                } catch (e) {
+                    if (e && e.name === 'AbortError') return;   // 用户主动取消：不算错误
+                    // 其他异常继续走复制降级
+                }
+            }
+            const ok = await _copyText(text);
+            toast(ok ? '已复制，可粘贴分享' : '复制失败，请手动选择文字', ok ? 'info' : 'error');
+        }
+        // TTS 轻量清理：去掉 Markdown 符号（不动原始消息）
+        function ttsCleanText(md) {
+            return String(md || '')
+                .replace(/```[\s\S]*?```/g, ' ')                    // 代码块不朗读
+                .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')            // 链接只读文字
+                .replace(/[*_`#>~|]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 500);
+        }
+        function browserFallbackSpeak(text) {
+            if (!window.speechSynthesis) { toast('朗读暂不可用', 'error'); return; }
+            try {
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = 'zh-CN';
+                speechSynthesis.cancel();
+                speechSynthesis.speak(u);
+                toast('已切换为浏览器语音朗读', 'info');
+            } catch (e) {}
+        }
+        async function speakMessage(row, button) {
+            if (activeSpeakButton === button) { stopSpeaking(); return; }   // 播放中再点同一按钮 = 停止
+            stopSpeaking();
+            const text = ttsCleanText(row.message);
+            if (!text) { toast('这条消息没有可朗读的文字', 'info'); return; }
+            button.disabled = true;
+            button.textContent = '生成中…';
+            try {
+                const resp = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text,
+                        petId: inferPetId(row) || currentPet().id,
+                    }),
+                });
+                if (!resp.ok) throw new Error('tts ' + resp.status);
+                const blob = await resp.blob();
+                activeAudioUrl = URL.createObjectURL(blob);
+                activeAudio = new Audio(activeAudioUrl);
+                activeSpeakButton = button;
+                button.disabled = false;
+                button.textContent = '停止';
+                activeAudio.onended = stopSpeaking;
+                activeAudio.onerror = () => { stopSpeaking(); toast('朗读失败', 'error'); };
+                await activeAudio.play();
+            } catch (e) {
+                button.disabled = false;
+                button.textContent = '朗读';
+                browserFallbackSpeak(text);
+            }
+        }
+        // 事件委托：整个消息区只挂一个监听器
+        messagesEl.addEventListener('click', async (event) => {
+            const button = event.target.closest('.msg-action');
+            if (!button || !messagesEl.contains(button)) return;
+            const actions = button.closest('.msg-actions');
+            const row = actions && messageRegistry.get(actions.dataset.messageId);
+            if (!row) {
+                toast('这条消息暂时无法操作', 'error');
+                return;
+            }
+            const action = button.dataset.action;
+            if (action === 'copy') await copyMessage(row.message);
+            else if (action === 'share') await shareMessage(row);
+            else if (action === 'speak') await speakMessage(row, button);
+        });
 
         // ---------- 宠物选择条 ----------
         function renderStrip() {
@@ -520,7 +724,7 @@
             history.push(userRow);
             saveHistory();
             appendHtml(bubbleHtml(userRow));
-            showTyping();
+            showTyping(pet);
             setSending(true);
 
             try {
@@ -631,6 +835,9 @@
                 history = [];
                 lsRemove(HISTORY_KEY);
                 messagesEl.innerHTML = '';
+                messageRegistry.clear();   // 已删消息不能再被快捷操作引用
+                messageSeq = 0;
+                stopSpeaking();
                 showGreeting();
                 toast('聊天记录已清空', 'success');
             }
@@ -706,11 +913,14 @@
             if (rows.length === 0) {
                 showGreeting();
             } else {
+                // 旧记录缺 localId：渲染时统一补齐，全部渲染完只保存一次（不逐条写 localStorage）
+                const needsSave = rows.some(r => r && r.message && (r.role === 'user' || r.role === 'assistant') && !r.localId);
                 rows.forEach(r => {
                     if (r && r.message && (r.role === 'user' || r.role === 'assistant')) {
                         appendHtml(bubbleHtml(r));
                     }
                 });
+                if (needsSave) saveHistory();
             }
             inputEl.focus();
         }

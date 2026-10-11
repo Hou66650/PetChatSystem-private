@@ -78,3 +78,15 @@ class Config:
     HISTORY_LIMIT = _int('HISTORY_LIMIT', 20)          # 送入 LLM 的最大历史条数
     MAX_MESSAGE_CHARS = _int('MAX_MESSAGE_CHARS', 2000)
     MAX_AVATAR_BYTES = _int('MAX_AVATAR_BYTES', 8 * 1024 * 1024)  # 头像上传上限 8MB
+
+    # --- 宠物 TTS 音色（S1-04）--------------------------------------
+    # 音色 ID 属于服务端供应商配置，只允许环境变量白名单，前端不传 voice。
+    # 以下默认值已于 2026-10-11 用真实接口实测通过（同一句文本均返回 200 + wav）：
+    #   tongtong 彤彤·女声明亮   jam 男声爽朗   xiaochen 女声俏皮   chuichui 锤锤·男声沉稳
+    PET_TTS_VOICES = {
+        1: os.getenv('PET_TTS_VOICE_1', 'tongtong'),    # 柴犬：元气明亮
+        2: os.getenv('PET_TTS_VOICE_2', 'jam'),         # 哈士奇：爽朗略低沉
+        3: os.getenv('PET_TTS_VOICE_3', 'xiaochen'),    # 猫咪：轻柔俏皮
+        4: os.getenv('PET_TTS_VOICE_4', 'chuichui'),    # 德牧：稳定可靠
+    }
+    PET_TTS_DEFAULT_VOICE = 'tongtong'

@@ -11,7 +11,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--c-bg) url("{{ url_for('static', filename='images/c.jpg') }}") center / cover no-repeat;
+            background: var(--c-bg) var(--auth-bg-url, url("{{ url_for('static', filename='images/c.jpg') }}")) center / cover no-repeat;
         }
         body.theme::before {
             content: '';
@@ -34,7 +34,14 @@
             margin: 0 0 24px;
             font-family: var(--font-round);
             text-align: center;
-            font-size: 22px;
+            font-size: clamp(17px, 4.6vw, 22px);   // 长标题在 375px 不溢出卡片
+        }
+        .reg-subtitle {
+            margin: -14px 0 20px;
+            color: var(--c-text-sub);
+            font-size: 13px;
+            line-height: 1.6;
+            text-align: center;
         }
         .form-tip { font-size: 13px; color: var(--c-danger); min-height: 20px; margin: 4px 0 8px; text-align: center; }
         .login-links { display: flex; justify-content: space-between; margin-top: 16px; font-size: 14px; }
@@ -43,7 +50,8 @@
 <body class="theme">
     {% include '_navbar.html' %}
     <div class="reg-card">
-        <h2>🐾 加入我们</h2>
+        <h2>🐾 领养你的第一位宠物伙伴</h2>
+        <p class="reg-subtitle">创建账号，让一只有性格、有记忆的小伙伴开始陪伴你。</p>
         <form method="post" action="" id="reg-form" novalidate>
             <div class="form-tip">{{ error or '' }}</div>
             <div class="field">
@@ -68,6 +76,7 @@
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth-background.js') }}"></script>
     <script>
     // 前端即时校验 + 注册成功 toast（规范：设计文档 三.3）
     document.getElementById('reg-form').addEventListener('submit', function (e) {
