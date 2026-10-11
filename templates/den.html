@@ -480,6 +480,8 @@ document.addEventListener('DOMContentLoaded', () => {
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;   // 电影级色调映射，高光有层次不发死白
+        renderer.toneMappingExposure = 1.12;
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
@@ -494,16 +496,20 @@ document.addEventListener('DOMContentLoaded', () => {
         controls.maxDistance = 9;
         controls.maxPolarAngle = Math.PI / 2.05;
 
-        // 光照
-        const hemi = new THREE.HemisphereLight(0xfff4e0, 0xcbb59a, 0.85);
+        // 光照：三点卡通布光（主光/环境/轮廓光），Toon 材质下轮廓光会在剪影上切出干净的亮边
+        const hemi = new THREE.HemisphereLight(0xfff4e0, 0xcbb59a, 0.5);
         scene.add(hemi);
-        const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+        const sun = new THREE.DirectionalLight(0xfff6e8, 1.05);
         sun.position.set(3, 6, 4);
         sun.castShadow = true;
-        sun.shadow.mapSize.set(1024, 1024);
-        sun.shadow.camera.left = -5; sun.shadow.camera.right = 5;
-        sun.shadow.camera.top = 5; sun.shadow.camera.bottom = -5;
+        sun.shadow.mapSize.set(2048, 2048);
+        sun.shadow.camera.left = -4; sun.shadow.camera.right = 4;
+        sun.shadow.camera.top = 4; sun.shadow.camera.bottom = -4;
+        sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
         scene.add(sun);
+        const rim = new THREE.DirectionalLight(0xbfd8ff, 0.55);
+        rim.position.set(-4, 5, -3.5);   // 背侧上方，制造剪影亮边
+        scene.add(rim);
 
         // 地面与小窝布景（草地纹理地面 + 地毯 + 灌木）
         const grassTex = new THREE.TextureLoader().load('/static/images/grasslight-big.jpg');
@@ -522,6 +528,23 @@ document.addEventListener('DOMContentLoaded', () => {
         rug.position.y = 0.01;
         rug.receiveShadow = true;
         scene.add(rug);
+        // 接地接触阴影（径向渐变假 AO，宠物被提起时淡出缩小）
+        const contactShadow = new THREE.Mesh(
+            new THREE.CircleGeometry(0.5, 32),
+            new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.34, depthWrite: false }));
+        contactShadow.material.map = (() => {
+            const c = document.createElement('canvas'); c.width = c.height = 128;
+            const ctx = c.getContext('2d');
+            const g = ctx.createRadialGradient(64, 64, 6, 64, 64, 62);
+            g.addColorStop(0, 'rgba(30,20,12,0.85)'); g.addColorStop(0.55, 'rgba(30,20,12,0.35)'); g.addColorStop(1, 'rgba(30,20,12,0)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
+            const t = new THREE.CanvasTexture(c); t.needsUpdate = true; return t;
+        })();
+        contactShadow.rotation.x = -Math.PI / 2;
+        contactShadow.position.y = 0.012;
+        contactShadow.renderOrder = 2;
+        contactShadow.visible = false;
+        scene.add(contactShadow);
         // ---------- 每宠专属场景主题（装饰/地面/环境粒子） ----------
         const decorGroup = new THREE.Group();
         scene.add(decorGroup);
@@ -909,6 +932,85 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let spawnBusy = false;   // 首载窗口并发守卫
+
+        // ---------- 卡通渲染升级：Toon 三阶渐变 + 描边 + 绒毛外壳（零外部资源） ----------
+        // Toon 三阶渐变贴图（暗部偏冷紫/中间调/亮部偏暖），NearestFilter 保证色阶干净不插值
+        const TOON_GRADIENT = (() => {
+            //            暗阶(冷)      中阶       亮阶(暖)
+            const data = new Uint8Array([
+                110, 104, 142, 255,
+                198, 190, 184, 255,
+                255, 250, 243, 255
+            ]);
+            const t = new THREE.DataTexture(data, 3, 1, THREE.RGBAFormat);
+            t.minFilter = THREE.NearestFilter; t.magFilter = THREE.NearestFilter;
+            t.generateMipmaps = false; t.needsUpdate = true;
+            return t;
+        })();
+        const OUTLINE_THICK = 0.030;
+
+        // 蒙皮壳专用顶点注入：沿法线膨胀。用原生 normal 属性（任何材质的顶点前缀都有声明，
+        // 不依赖 beginnormal/skinnormal 的条件编译守卫），在 project_vertex 前位移——
+        // 此时 transformed 已经过蒙皮变换，位移会跟着骨骼走。
+        // onBeforeCompile 改常量必须给 customProgramCacheKey，否则同材质类型的 program 会被复用、常量被忽略
+        function skinnedInflate(mat, key, offset) {
+            mat.onBeforeCompile = (shader) => {
+                shader.vertexShader = shader.vertexShader.replace(
+                    '#include <project_vertex>',
+                    `transformed += normal * ${offset.toFixed(6)};\n#include <project_vertex>`
+                );
+            };
+            mat.customProgramCacheKey = () => key;
+            return mat;
+        }
+        // 与原几何共享 attribute 的壳几何（零拷贝），不带 groups 时绘制整个索引区间
+        function shellGeometry(src) {
+            const g = new THREE.BufferGeometry();
+            for (const name of Object.keys(src.attributes)) g.setAttribute(name, src.attributes[name]);
+            g.setIndex(src.index);
+            return g;
+        }
+        function applyToonLook(model) {
+            // 先收集再处理：边遍历边 addChild 会让 traverse 迭代中的数组无限增长（栈溢出）
+            const targets = [];
+            model.traverse((o) => {
+                if (o.isSkinnedMesh && !o.userData.__denToonDone && !o.userData.__denFx) targets.push(o);
+            });
+            targets.forEach((o) => {
+                o.userData.__denToonDone = true;
+                const mats = Array.isArray(o.material) ? o.material : [o.material];
+                // 1) 材质卡通化：眼睛/瞳孔走 Phong 留高光点，其余走 Toon 三阶
+                const converted = mats.map((m) => {
+                    if (!m || m.isMeshToonMaterial || m.isMeshPhongMaterial) return m;
+                    if (/eye|pupil/i.test(m.name || '')) {
+                        return new THREE.MeshPhongMaterial({
+                            color: (m.color || new THREE.Color(0xffffff)).clone(),
+                            shininess: 60, specular: new THREE.Color(0x777777), name: m.name
+                        });
+                    }
+                    const t = new THREE.MeshToonMaterial({
+                        color: (m.color || new THREE.Color(0xffffff)).clone(),
+                        map: m.map || null, gradientMap: TOON_GRADIENT,
+                        transparent: m.transparent, opacity: m.opacity,
+                        alphaTest: m.alphaTest || 0, side: m.side, name: m.name
+                    });
+                    t.vertexColors = !!m.vertexColors;
+                    return t;
+                });
+                o.material = Array.isArray(o.material) ? converted : converted[0];
+                // 2) 描边壳（BackSide 反面外壳法，蒙皮后沿法线外扩）
+                const outlineMat = skinnedInflate(new THREE.MeshBasicMaterial({
+                    color: 0x241610, side: THREE.BackSide
+                }), 'denOutline', OUTLINE_THICK);
+                const outline = new THREE.SkinnedMesh(shellGeometry(o.geometry), outlineMat);
+                outline.skeleton = o.skeleton;
+                outline.bindMatrix.copy(o.bindMatrix); outline.bindMatrixInverse.copy(o.bindMatrixInverse);
+                outline.userData.__denFx = true; outline.frustumCulled = false;
+                outline.castShadow = false; outline.receiveShadow = false;
+                o.add(outline);
+            });
+        }
+
         async function spawnPet(id, fromRollback = false) {
             if (!SPECS[id]) { toast('这只宠物还不认识我们哦', 'error'); return; }
             if (id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
@@ -948,6 +1050,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const o = model.getObjectByName(n);
                 if (o && o.parent) { detached.push([o, o.parent]); o.parent.remove(o); }
             });
+            // 描边壳也要摘下再量（沿法线膨胀会虚增包围盒，缓存模型二次加载时累积缩水）
+            const fxShells = [];
+            model.traverse((o) => { if (o.userData && o.userData.__denFx) fxShells.push(o); });
+            fxShells.forEach((o) => { if (o.parent) { detached.push([o, o.parent]); o.parent.remove(o); } });
             const box = new THREE.Box3().setFromObject(model);
             const origH = Math.max(0.01, box.max.y - box.min.y);
             model.scale.setScalar(spec.h / origH);
@@ -960,7 +1066,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     o.castShadow = true; o.frustumCulled = false;
                 }
             });
-
+            try { applyToonLook(model); } catch (e) { console.warn('卡通渲染壳层跳过：', e); }   // 壳层失败不阻断宠物出场
             mixer = new THREE.AnimationMixer(model);
             actions = {}; activeAction = null;
             for (const [key, wanted] of Object.entries(spec.anims)) {
@@ -2039,6 +2145,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     accs[0].position.set(pp.x, pp.y + ph * 0.95, pp.z + 0.3);
                     accs[1].position.set(pp.x, pp.y + ph * 0.5, pp.z + 0.25);
                     accs[2].position.set(pp.x + ph * 0.18, pp.y + ph * 0.72, pp.z + 0.12);
+                }
+                // 接触阴影：贴地跟随，被提起时淡出缩小
+                contactShadow.visible = true;
+                {
+                    const pp = petModel.position;
+                    const lift = Math.max(0, pp.y);
+                    const fade = Math.max(0, 1 - lift / 0.7);
+                    contactShadow.position.set(pp.x, 0.012, pp.z);
+                    contactShadow.material.opacity = 0.34 * fade;
+                    const s = 0.9 + 0.25 * fade;
+                    contactShadow.scale.set(s, s, 1);
                 }
 
                 // 睡觉 Zzz
