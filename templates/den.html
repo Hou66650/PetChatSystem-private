@@ -510,7 +510,7 @@
                     fire.position.set(1.7, 0, 0.9);
                     fire.traverse(o => { o.castShadow = true; });
                     g.add(fire);
-                    const fireLight = new THREE.PointLight(0xFF9030, 1.6, 7);
+                    const fireLight = new THREE.PointLight(0xFF9030, 1.5, 4.5);
                     fireLight.position.set(1.7, 0.9, 0.9);
                     fireLight.name = '__fireLight';
                     g.add(fireLight);
@@ -657,7 +657,7 @@
 
         // 配饰（帽子/围巾/蝴蝶结）：优先挂头/颈骨骼（跟随动画），无骨骼则按体高近似
         // 幂等：gltfCache 会复用同一 scene，二次 spawn 同一宠物时按名字找回已挂配饰，避免重复叠加
-        function buildAccessories(model, headBone, neckBone, origH) {
+        function buildAccessories(model, headBone, neckBone, origH, spec) {
             const k = origH;
             const reuse = (name) => model.getObjectByName(name) || null;
             let hatGroup = reuse('__den_hat');
@@ -681,16 +681,16 @@
                 hatGroup.add(pom); hatGroup.add(stripe);
                 hatGroup.name = '__den_hat';
                 hatGroup.rotation.z = 0.12;
-                if (headBone) { hatGroup.position.set(0, 0.12 * k, 0.04 * k); headBone.add(hatGroup); }
-                else { hatGroup.position.set(0, 0.92, 0.16); model.add(hatGroup); }
+                hatGroup.position.set(0, spec.h * 0.88, 0.12);
+                model.add(hatGroup);
             }
             if (!scarf) {
                 scarf = new THREE.Mesh(new THREE.TorusGeometry(0.34 * k, 0.075 * k, 10, 24),
                     new THREE.MeshLambertMaterial({ color: 0xE5735B }));
                 scarf.name = '__den_scarf';
                 scarf.rotation.x = 0.35;
-                if (neckBone) { scarf.position.set(0, 0.02 * k, 0.04 * k); neckBone.add(scarf); }
-                else { scarf.position.set(0, 0.6, 0.34); model.add(scarf); }
+                scarf.position.set(0, spec.h * 0.55, 0.28);
+                model.add(scarf);
             }
             if (!bow) {
                 bow = new THREE.Group();
@@ -706,8 +706,8 @@
                 bow.add(knot);
                 bow.name = '__den_bow';
                 bow.rotation.y = 0.45; bow.scale.setScalar(1.2);
-                if (headBone) { bow.position.set(0.28 * k, 0.0, 0.12 * k); headBone.add(bow); }
-                else { bow.position.set(0.28, 0.78, 0.22); model.add(bow); }
+                bow.position.set(spec.h * 0.22, spec.h * 0.78, 0.15);
+                model.add(bow);
             }
             hatGroup.visible = false; scarf.visible = false; bow.visible = false;
             petModel.userData.accessories = [hatGroup, scarf, bow];
@@ -796,7 +796,15 @@
             const box2 = new THREE.Box3().setFromObject(model);
             model.position.set(-(box2.min.x + box2.max.x) / 2, -box2.min.y, -(box2.min.z + box2.max.z) / 2);
             detached.forEach(([o, parentBone]) => parentBone.add(o));   // 配饰挂回原骨骼
-            model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+            model.traverse((o) => {
+                if (o.isMesh) {
+                    o.castShadow = true; o.frustumCulled = false;
+                    // 猫咪加暖色 tint（模型贴图偏灰，染成橘猫）
+                    if (id === 3 && o.material && o.material.color) {
+                        o.material.color.setHex(0xFFC080);
+                    }
+                }
+            });
 
             mixer = new THREE.AnimationMixer(model);
             actions = {}; activeAction = null;
@@ -819,7 +827,7 @@
             g.rotation.y = 0.35;                 // 朝向镜头略侧，展示立体感
             petModel = g;
             petModel.userData = { height: spec.h, headBone, origH, animations: gltf.animations.map(a => clipShort(a.name)) };
-            buildAccessories(model, headBone, neckBone, origH);
+            buildAccessories(model, headBone, neckBone, origH, spec);
             scene.add(petModel);
             // 配饰恢复
             const acc = petState().accessory || 0;
