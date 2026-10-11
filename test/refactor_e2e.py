@@ -6,7 +6,8 @@ import sys
 
 import requests
 
-BASE = 'http://127.0.0.1:5001'
+import os
+BASE = os.environ.get('MPC_E2E_BASE', 'http://127.0.0.1:5001')   # 本机VPN/TUN劫持回环大传输时可用局域网IP
 s = requests.Session()
 # 本机回环 + 长耗时 LLM 请求下 keep-alive 复用会被中间层干扰，改为每请求独立连接
 s.headers.update({'Connection': 'close'})

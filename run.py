@@ -18,4 +18,5 @@ if __name__ == '__main__':
             init_db()
         print(f'数据库初始化完成: {app.config["DATABASE_PATH"]}')
         sys.exit(0)
-    app.run(host='0.0.0.0', port=5001, debug=app.config['DEBUG'])
+    # threaded：局域网多人同时访问（含大模型文件下载）不互相顶断连接
+    app.run(host='0.0.0.0', port=5001, debug=app.config['DEBUG'], threaded=True)
