@@ -947,17 +947,18 @@ document.addEventListener('DOMContentLoaded', () => {
             t.generateMipmaps = false; t.needsUpdate = true;
             return t;
         })();
-        const OUTLINE_THICK = 0.030;
+        const OUTLINE_RATIO = 0.010;   // 描边厚度 = 宠物身高×1%（各模型原始尺寸差异达3倍+，固定模型空间厚度会让小原始模型描边爆粗）
 
-        // 蒙皮壳专用顶点注入：沿法线膨胀。用原生 normal 属性（任何材质的顶点前缀都有声明，
-        // 不依赖 beginnormal/skinnormal 的条件编译守卫），在 project_vertex 前位移——
-        // 此时 transformed 已经过蒙皮变换，位移会跟着骨骼走。
+        // 蒙皮壳专用顶点注入：沿“经过骨骼蒙皮后的物体空间法线”膨胀。
+        // 必须紧跟 skinning_vertex：直接使用原始 normal 会让描边与动画后的肢体方向脱节，
+        // 形成环状爆面/碎片；材质也必须显式开启 skinning，否则壳会停在绑定姿态。
         // onBeforeCompile 改常量必须给 customProgramCacheKey，否则同材质类型的 program 会被复用、常量被忽略
         function skinnedInflate(mat, key, offset) {
+            mat.skinning = true;
             mat.onBeforeCompile = (shader) => {
                 shader.vertexShader = shader.vertexShader.replace(
-                    '#include <project_vertex>',
-                    `transformed += normal * ${offset.toFixed(6)};\n#include <project_vertex>`
+                    '#include <skinning_vertex>',
+                    `#include <skinning_vertex>\ntransformed += objectNormal * ${offset.toFixed(6)};`
                 );
             };
             mat.customProgramCacheKey = () => key;
@@ -970,7 +971,7 @@ document.addEventListener('DOMContentLoaded', () => {
             g.setIndex(src.index);
             return g;
         }
-        function applyToonLook(model) {
+        function applyToonLook(model, origH) {
             // 先收集再处理：边遍历边 addChild 会让 traverse 迭代中的数组无限增长（栈溢出）
             const targets = [];
             model.traverse((o) => {
@@ -998,16 +999,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     return t;
                 });
                 o.material = Array.isArray(o.material) ? converted : converted[0];
-                // 2) 描边壳（BackSide 反面外壳法，蒙皮后沿法线外扩）
+                // 2) 描边壳（BackSide 反面外壳法，蒙皮后沿法线外扩；厚度按原始身高比例，缩放后各宠一致）
+                const outlineThick = OUTLINE_RATIO * origH;
                 const outlineMat = skinnedInflate(new THREE.MeshBasicMaterial({
                     color: 0x241610, side: THREE.BackSide
-                }), 'denOutline', OUTLINE_THICK);
+                }), 'denOutline' + outlineThick.toFixed(4), outlineThick);
                 const outline = new THREE.SkinnedMesh(shellGeometry(o.geometry), outlineMat);
-                outline.skeleton = o.skeleton;
-                outline.bindMatrix.copy(o.bindMatrix); outline.bindMatrixInverse.copy(o.bindMatrixInverse);
+                outline.bind(o.skeleton, o.bindMatrix);
+                // 壳与原网格必须是同级节点。挂到原 SkinnedMesh 下面会把原网格的局部变换
+                // 再应用一次，不同 GLB 层级下会直接表现为描边爆面。
+                outline.position.copy(o.position);
+                outline.quaternion.copy(o.quaternion);
+                outline.scale.copy(o.scale);
                 outline.userData.__denFx = true; outline.frustumCulled = false;
                 outline.castShadow = false; outline.receiveShadow = false;
-                o.add(outline);
+                o.parent.add(outline);
             });
         }
 
@@ -1066,7 +1072,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     o.castShadow = true; o.frustumCulled = false;
                 }
             });
-            try { applyToonLook(model); } catch (e) { console.warn('卡通渲染壳层跳过：', e); }   // 壳层失败不阻断宠物出场
+            try { applyToonLook(model, origH); } catch (e) { console.warn('卡通渲染壳层跳过：', e); }   // 壳层失败不阻断宠物出场
             mixer = new THREE.AnimationMixer(model);
             actions = {}; activeAction = null;
             for (const [key, wanted] of Object.entries(spec.anims)) {
