@@ -688,7 +688,7 @@
                 hatGroup.add(pom); hatGroup.add(stripe);
                 hatGroup.name = '__den_hat';
                 hatGroup.rotation.z = 0.12;
-                hatGroup.position.set(0, spec.h * 0.82, 0.1);
+                hatGroup.position.set(0, spec.h * 0.98, 0.3);
                 petModel.add(hatGroup);
             }
             if (!scarf) {
@@ -1614,6 +1614,16 @@
                 }
                 if (mixer) mixer.update(dt);
                 const st = anim.state;
+
+                // 配饰跟随宠物位置（挂 scene 根，每帧同步坐标）
+                const accs = petModel.userData.accessories;
+                if (accs) {
+                    const pp = petModel.position;
+                    const ph = petModel.userData.height || 1;
+                    accs[0].position.set(pp.x, pp.y + ph * 0.88, pp.z + 0.15);
+                    accs[1].position.set(pp.x, pp.y + ph * 0.5, pp.z + 0.25);
+                    accs[2].position.set(pp.x + ph * 0.18, pp.y + ph * 0.72, pp.z + 0.12);
+                }
 
                 // 睡觉 Zzz
                 if (st === 'sleep' && Math.random() < 0.006) burst('zzz', 1, petHeadPos().add(new THREE.Vector3(0.25, 0.15, 0)));
