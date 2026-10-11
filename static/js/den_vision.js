@@ -82,20 +82,23 @@ class HandGestures {
     update(hands, now) {
         const fired = [];
         const H = HandGestures;
+        // 尺度统一用「掌长」= 腕(0)→中指根(9)，比掌心半径大 ~4 倍，
+        // 真手几何下的合理阈值：并掌掌心距≈1掌长、折叠指尖距掌心≈0.5掌长
+        const PL = (l) => H.dist(l[0], l[9]) || 1e-4;
         if (hands.length >= 2) {
             const A = hands[0], B = hands[1];
             const ca = H.palmC(A), cb = H.palmC(B);
-            const r = (H.palmR(A) + H.palmR(B)) / 2;
+            const pl = (PL(A) + PL(B)) / 2;
             const dPalm = H.dist(ca, cb);
             const dThumb = H.dist(A[4], B[4]);
             const dIndex = H.dist(A[8], B[8]);
-            const tipsUp = A[8].y < ca.y - 0.15 * r && B[8].y < cb.y - 0.15 * r;
+            const tipsUp = A[8].y < ca.y - 0.3 * pl && B[8].y < cb.y - 0.3 * pl;
             const openEnough = H.openness(A) >= 2 && H.openness(B) >= 2;
             // 比心（更特异，先判）：两食指尖相触 + 两拇指尖相触，触点位于掌心上方
-            const heart = dIndex < 0.42 * r && dThumb < 0.42 * r && dPalm < 1.7 * r &&
-                (A[8].y + B[8].y) / 2 < Math.min(ca.y, cb.y) - 0.05 * r;
-            // 作揖：掌心相对靠近 + 拇指/食指彼此接近 + 指尖朝上（非比心形态）
-            const pray = !heart && dPalm < 1.2 * r && dThumb < 1.0 * r && dIndex < 1.4 * r &&
+            const heart = dIndex < 0.32 * pl && dThumb < 0.38 * pl && dPalm < 2.6 * pl &&
+                (A[8].y + B[8].y) / 2 < Math.min(ca.y, cb.y) - 0.05 * pl;
+            // 作揖：两掌并拢（掌心距≈1掌长）+ 拇指/食指彼此接近 + 指尖朝上（非比心形态）
+            const pray = !heart && dPalm < 1.35 * pl && dThumb < 0.85 * pl && dIndex < 0.65 * pl &&
                 tipsUp && openEnough;
             this.twoHandEngaged = pray || heart || !!this.hold.pray || !!this.hold.heart;
             this.waveHist.length = 0;   // 双手时不判挥手
@@ -106,13 +109,13 @@ class HandGestures {
             this.twoHandEngaged = false;
             this.hold.pray = this.hold.heart = 0;
             const l = hands[0];
-            const c = H.palmC(l), r = H.palmR(l);
+            const c = H.palmC(l), pl = PL(l);
             const open = H.openness(l) >= 4;
-            // 大拇指：拇指尖明显高于掌心 + 拇指伸展 + 其余四指收拢（指尖都贴近掌心）
+            // 大拇指：四指收拢（指尖距掌心 < 1 掌长）+ 拇指尖高于掌心 0.4 掌长 + 拇指伸展到位
             const folded = H.openness(l) === 0 &&
-                [8, 12, 16, 20].every((t) => H.dist(l[t], c) < 1.35 * r);
-            const thumbUp = folded && l[4].y < c.y - 0.8 * r &&
-                H.dist(l[4], l[0]) > H.dist(l[2], l[0]) * 1.15;
+                [8, 12, 16, 20].every((t) => H.dist(l[t], c) < 1.0 * pl);
+            const thumbUp = folded && l[4].y < c.y - 0.4 * pl &&
+                H.dist(l[4], l[0]) > pl * 1.05;
             if (this._trackHold('thumb', thumbUp, now, 600, 4000)) fired.push('thumb');
             // 挥手：手掌张开 + 掌心 x 在 ~1.6s 内往复换向 ≥2 次且有幅度
             if (open) {

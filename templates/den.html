@@ -1051,9 +1051,12 @@ document.addEventListener('DOMContentLoaded', () => {
             else playAction(state, 1);
         }
         // ---------- 流畅动画链（趣味手势回应用）：逐步 crossFade 连播 ----------
+        // performingUntil：表演期间锁定——抚摸累计/对视/响指等自动动画不得抢占链子
         let chainTimer = null;
+        let performingUntil = 0;
         function playChain(steps) {
             clearTimeout(chainTimer);
+            performingUntil = performance.now() + steps.reduce((a, b) => a + b[1], 0) + 150;
             let i = 0;
             const next = () => {
                 if (i >= steps.length) { setAnim('idle', 0); return; }
@@ -1063,13 +1066,14 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             next();
         }
+        const performing = () => performance.now() < performingUntil;
 
         // ---------- 趣味手势 → 宠物镜像回应（作揖回拜/比心/挥手/点赞） ----------
         // 链式编排复用已有动作键（全宠物都有映射）；petting=低头鞠躬、blinkL/R=歪头、happy=跳跃
         const GESTURE_REACT = {
             pray: {
                 label: '🤝 作揖', lines: ['{name}拱起前爪回了一个揖！新的一年请多关照～🧧', '{name}深深鞠了一躬：恭喜恭喜！万事如意！'],
-                chain: [['happy', 600], ['petting', 900], ['petting', 850], ['happy', 1200]],
+                chain: [['happy', 550], ['petting', 850], ['happy', 450], ['petting', 800], ['happy', 1100]],
                 fx: () => { burst('star', 10); setTimeout(() => burst('heart', 4), 500); },
             },
             heart: {
@@ -1102,7 +1106,7 @@ document.addEventListener('DOMContentLoaded', () => {
             g.fx();
             gestureFlash = { label: g.label, until: performance.now() + 2200 };
             visionRenderStatus();
-            speak(line);   // 语音回应（ttsOn/交互检测在 speak 内部处理）
+            speak(line, { talk: false });   // 语音回应但不动嘴型动画——表演链优先（ttsOn 在 speak 内处理）
         }
 
         let spawnBusy = false;   // 首载窗口并发守卫
@@ -2698,8 +2702,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     petBlink();   // 用户眨眼 → 宠物同步眨
                 },
                 onSnap() {
-                    // 打响指 → 宠物被惊到：跳起 + 星星 + 气泡 + 短暂缩一下
-                    if (!petModel || grabbed) return;
+                    // 打响指 → 宠物被惊到：跳起 + 星星 + 气泡 + 短暂缩一下（表演中不打扰）
+                    if (!petModel || grabbed || performing()) return;
                     setAnim('happy', 900);
                     burst('star', 5);
                     showBubble(`${SPECS[currentPetId].name}被吓了一跳！什么声音？！`, 2000);
@@ -2714,8 +2718,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     gazeNow = on;
                     if (on) {
                         gazeSec = 0;
-                        showBubble(`${SPECS[currentPetId].name}也正在看着你呢～`, 2200);
-                        setAnim('happy', 900);
+                        if (!performing()) {
+                            showBubble(`${SPECS[currentPetId].name}也正在看着你呢～`, 2200);
+                            setAnim('happy', 900);
+                        }
                     }
                     visionRenderStatus();
                 },
@@ -2765,7 +2771,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else gazeSec = 0;
                 if (handTouch) {
                     handSec += 0.5;
-                    setAnim('petting', 600);
+                    if (!performing()) setAnim('petting', 600);
                     if (now - lastHandHeart > 1000) { lastHandHeart = now; burst('heart', 1, petHeadPos().add(new THREE.Vector3(0, 0.2, 0))); }
                     if (now - lastHandBubble > 7000) { lastHandBubble = now; showBubble(`${SPECS[currentPetId].name}轻轻蹭着你的手…`, 1800); }
                     if (handSec >= 2.5) {
