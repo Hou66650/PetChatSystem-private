@@ -1,0 +1,25 @@
+body {
+    perspective: 1000px;
+    background: url('sakura1.jpg') no-repeat center center fixed;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+}
+
+.cherry-blossoms {
+    width: 10px;
+    height: 10px;
+    position: absolute;
+    background: #FFB7C5;
+    animation: fall infinite linear 5s;
+}
+
+@keyframes fall {
+    from {
+        transform: rotateZ(0deg) rotateY(0deg) translateZ(0);
+    }
+    to {
+        transform: rotateZ(360deg) rotateY(720deg) translateZ(-1000px);
+    }
+}

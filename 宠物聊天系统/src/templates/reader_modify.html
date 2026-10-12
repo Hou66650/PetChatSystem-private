@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人信息修改</title>
+    <style>
+        /* 全局样式 */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        /* 导航栏样式 */
+        .nav-links {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(26, 26, 46, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 16px;
+            margin: 0 15px;
+            padding: 10px 20px;
+            border-radius: 50px;
+            background-color: #8A2BE2;
+            transition: background-color 0.3s, transform 0.3s, box-shadow 0.3s;
+        }
+
+        .nav-links a:hover {
+            background-color: #6A5ACD;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px #6A5ACD;
+        }
+
+        /* 表单容器样式 */
+        .form-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            width: 400px;
+            text-align: center;
+            animation: fade-in 1s ease;
+        }
+
+        .form-container h2 {
+            color: #8A2BE2;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        .form-container dl {
+            margin: 0;
+            padding: 0;
+            text-align: left;
+        }
+
+        .form-container dt {
+            font-size: 16px;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+
+        .form-container dd {
+            margin: 0 0 15px 0;
+        }
+
+        .form-container input[type="text"],
+        .form-container input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+
+        .form-container .actions input[type="submit"] {
+            padding: 10px 20px;
+            background-color: #8A2BE2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s;
+        }
+
+        .form-container .actions input[type="submit"]:hover {
+            background-color: #6A5ACD;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px #6A5ACD;
+        }
+
+        .error {
+            color: #FF6A6A;
+            background-color: rgba(255, 106, 106, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        /* 动态效果 */
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-links">
+        <a href="{{ url_for('reader') }}">返回</a>
+    </div>
+    <div class="form-container">
+        <h2>个人信息修改</h2>
+        {% if error %}
+        <div class="error">
+            <strong>Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+        <form action="" method="post">
+            <dl>
+                <dt>用户名:</dt>
+                <dd><input type="text" name="username" size="30" value="{{ user.user_name }}"></dd>
+                <dt>请输入新密码(不输入就是不修改):</dt>
+                <dd><input type="password" name="password" size="30"></dd>
+                <dt>标签:</dt>
+                <dd><input type="text" name="college" size="30" value="{{ user.college }}"></dd>
+                <dt>学号:</dt>
+                <dd><input type="text" name="number" size="30" value="{{ user.num }}"></dd>
+                <dt>邮箱:</dt>
+                <dd><input type="text" name="email" size="30" value="{{ user.email }}"></dd>
+            </dl>
+            <div class="actions">
+                <input type="submit" value="确定">
+            </div>
+        </form>
+    </div>
+</body>
+</html>

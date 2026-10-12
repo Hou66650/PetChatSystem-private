@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日记本</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: url('images/study-room.jpg') no-repeat center center fixed;
+            background-size: cover;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive;
+        }
+
+        .diary-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        .paper {
+            width: 90%; /* 增加宽度 */
+            max-width: 1000px; /* 增加最大宽度 */
+            height: 95%; /* 增加高度 */
+            max-height: 800px; /* 增加最大高度 */
+            background: url('images/paper.png') no-repeat center center;
+            background-size: contain; /* 调整背景图片大小以适应容器 */
+            padding: 30px; /* 增加内边距，让内容更舒适 */
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); /* 增加阴影效果 */
+            overflow-y: auto; /* 保留滚动条 */
+            border-radius: 15px; /* 增加圆角 */
+        }
+
+        .diary-content {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            color: #333;
+            white-space: pre-wrap;
+            padding: 0 260px; /* 增加左右内边距 */
+            margin-left: 80px;
+        }
+
+        .back-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            background-color: #6c757d;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background-color: #495057;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="diary-container">
+        <div class="paper">
+            <div id="diary-content" class="diary-content">
+                正在加载日记内容，请稍候...
+            </div>
+        </div>
+        <button class="back-button" onclick="goBack()">返回</button>
+    </div>
+
+    <script>
+        function goBack() {
+            window.location.href = "/gpt"; // 返回入口页面
+        }
+
+        // 加载日记内容
+        async function loadDiary() {
+            try {
+                const response = await fetch('/get-diary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chatHistory: JSON.parse(localStorage.getItem('chatHistory')) || []
+                    }),
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    const diaryContent = document.getElementById('diary-content');
+                    diaryContent.textContent = data.text;
+                } else {
+                    alert('加载日记失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('加载日记失败:', error);
+                alert('加载日记失败，请检查网络连接！');
+            }
+        }
+
+        loadDiary();
+    </script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宠物反馈页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            background-image:url("css/c.jpg") ;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .feedback-container {
+            width: 80%;
+            max-width: 1200px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .pet-card {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .pet-card img {
+            width: 100%;
+            max-width: 200px;
+            height: auto;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .pet-card h3 {
+            margin: 10px 0;
+            font-size: 1.5rem;
+            color: #333;
+        }
+
+        .rating {
+            margin: 10px 0;
+        }
+
+        .rating input {
+            display: none;
+        }
+
+        .rating label {
+            font-size: 1.5rem;
+            color: #ccc;
+            cursor: pointer;
+        }
+
+        .rating input:checked ~ label,
+        .rating input:hover ~ label {
+            color: gold;
+        }
+
+        .feedback-text {
+            width: 100%;
+            height: 50px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 5px;
+            font-size: 1rem;
+            resize: none;
+        }
+
+        .submit-button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: #fff;
+            background-color: #6c757d;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .submit-button:hover {
+            background-color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="feedback-container">
+        <!-- 宠物卡片 1 -->
+        <div class="pet-card">
+            <img src="images/f.png" alt="宠物1">
+            <h3>柯基</h3>
+            <div class="rating">
+                <input type="radio" id="pet1-star5" name="pet1-rating" value="5">
+                <label for="pet1-star5">★</label>
+                <input type="radio" id="pet1-star4" name="pet1-rating" value="4">
+                <label for="pet1-star4">★</label>
+                <input type="radio" id="pet1-star3" name="pet1-rating" value="3">
+                <label for="pet1-star3">★</label>
+                <input type="radio" id="pet1-star2" name="pet1-rating" value="2">
+                <label for="pet1-star2">★</label>
+                <input type="radio" id="pet1-star1" name="pet1-rating" value="1">
+                <label for="pet1-star1">★</label>
+            </div>
+            <textarea class="feedback-text" id="pet1-feedback" placeholder="写下你的评价..."></textarea>
+        </div>
+
+        <!-- 宠物卡片 2 -->
+        <div class="pet-card">
+            <img src="images/b.png" alt="宠物2">
+            <h3>狗狗</h3>
+            <div class="rating">
+                <input type="radio" id="pet2-star5" name="pet2-rating" value="5">
+                <label for="pet2-star5">★</label>
+                <input type="radio" id="pet2-star4" name="pet2-rating" value="4">
+                <label for="pet2-star4">★</label>
+                <input type="radio" id="pet2-star3" name="pet2-rating" value="3">
+                <label for="pet2-star3">★</label>
+                <input type="radio" id="pet2-star2" name="pet2-rating" value="2">
+                <label for="pet2-star2">★</label>
+                <input type="radio" id="pet2-star1" name="pet2-rating" value="1">
+                <label for="pet2-star1">★</label>
+            </div>
+            <textarea class="feedback-text" id="pet2-feedback" placeholder="写下你的评价..."></textarea>
+        </div>
+
+        <!-- 宠物卡片 3 -->
+        <div class="pet-card">
+            <img src="images/c.png" alt="宠物3">
+            <h3>猫猫</h3>
+            <div class="rating">
+                <input type="radio" id="pet3-star5" name="pet3-rating" value="5">
+                <label for="pet3-star5">★</label>
+                <input type="radio" id="pet3-star4" name="pet3-rating" value="4">
+                <label for="pet3-star4">★</label>
+                <input type="radio" id="pet3-star3" name="pet3-rating" value="3">
+                <label for="pet3-star3">★</label>
+                <input type="radio" id="pet3-star2" name="pet3-rating" value="2">
+                <label for="pet3-star2">★</label>
+                <input type="radio" id="pet3-star1" name="pet3-rating" value="1">
+                <label for="pet3-star1">★</label>
+            </div>
+            <textarea class="feedback-text" id="pet3-feedback" placeholder="写下你的评价..."></textarea>
+        </div>
+
+        <!-- 宠物卡片 4 -->
+        <div class="pet-card">
+            <img src="images/d.png" alt="宠物4">
+            <h3>萨摩耶</h3>
+            <div class="rating">
+                <input type="radio" id="pet4-star5" name="pet4-rating" value="5">
+                <label for="pet4-star5">★</label>
+                <input type="radio" id="pet4-star4" name="pet4-rating" value="4">
+                <label for="pet4-star4">★</label>
+                <input type="radio" id="pet4-star3" name="pet4-rating" value="3">
+                <label for="pet4-star3">★</label>
+                <input type="radio" id="pet4-star2" name="pet4-rating" value="2">
+                <label for="pet4-star2">★</label>
+                <input type="radio" id="pet4-star1" name="pet4-rating" value="1">
+                <label for="pet4-star1">★</label>
+            </div>
+            <textarea class="feedback-text" id="pet4-feedback" placeholder="写下你的评价..."></textarea>
+        </div>
+    </div>
+
+    <button class="submit-button" onclick="submitFeedback()">提交反馈</button>
+
+    <script>
+        function submitFeedback() {
+            const feedback = [];
+
+            for (let i = 1; i <= 4; i++) {
+                const rating = document.querySelector(`input[name="pet${i}-rating"]:checked`);
+                const text = document.getElementById(`pet${i}-feedback`).value.trim() || "棒";
+
+                feedback.push({
+                    pet: `宠物 ${i}`,
+                    rating: rating ? rating.value : "未评分",
+                    comment: text
+                });
+            }
+
+            console.log("用户反馈:", feedback);
+            alert("感谢您的反馈！");
+        }
+    </script>
+</body>
+</html>

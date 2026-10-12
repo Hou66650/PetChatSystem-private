@@ -1,0 +1,65 @@
+/* 评论列表容器 */
+.review-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* 单条评论项 */
+.review-item {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 评论头部 */
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+/* 评论者名称 */
+.reviewer-name {
+    font-size: 16px;
+    color: #333;
+}
+
+/* 评分 */
+.review-rating {
+    font-size: 16px;
+    color: #333;
+}
+
+/* 星星评分 */
+.stars {
+    color: #ffcc00; /* 星星颜色 */
+    font-size: 18px;
+}
+
+/* 评论内容 */
+.recommendation {
+    margin-top: 10px;
+}
+
+/* 评论内容标签 */
+.review-content-label {
+    font-size: 16px;
+    color: #333;
+}
+
+/* 评论文本 */
+.review-text {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    color: #555;
+    white-space: pre-wrap; /* 保留换行符 */
+    background-color: #f1f1f1;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}

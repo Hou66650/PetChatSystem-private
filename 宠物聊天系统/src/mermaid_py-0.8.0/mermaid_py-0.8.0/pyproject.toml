@@ -1,0 +1,47 @@
+[tool.poetry]
+name = "mermaid-py"
+version = "0.8.0"
+description = "Python Interface for the Popular mermaid-js Library, Simplified for Diagram Creation."
+authors = ["ouhammmourachid <rachidouhammou21@gmail.com>"]
+readme = "README.md"
+packages = [{include = "mermaid"}]
+exclude = ["mermaid/tests/*.py"]
+repository = "https://github.com/ouhammmourachid/mermaid-py"
+license = "MIT"
+homepage = "https://mermaidpy.vercel.app"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+requests = "^2.31.0"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.4.2,<9.0.0"
+pre-commit = ">=3.5,<5.0"
+pytest-cov = ">=4.1,<7.0"
+coverage = "^7.6.1"
+codecov = "^2.1.13"
+ruff = ">=0.5.6,<0.12.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[bumpver]
+current_version = "0.8.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+
+[bumpver.file_patterns]
+"pyproject.toml" = [
+    'version = "{version}"$'
+]
+"mermaid/__init__.py" = [
+    '^__version__: str = "{version}"$',
+]
+
+# codespell configuration
+[tool.codespell]
+skip = 'docs/*.json,docs/*.yaml,*.lock'
+count = true
+quiet-level = 3
