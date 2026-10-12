@@ -61,6 +61,7 @@
             -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent);
         }
         .action-bar::-webkit-scrollbar { display: none; }
+        .action-bar .action-btn { white-space: nowrap; flex: none; }   /* 修复：眼神互动/游戏中心等长按钮被压窄换行、竖排溢出胶囊 */
         @media (max-width: 767px) {
             .action-btn { height: 44px; padding: 0 14px; }   /* 触控 ≥44px */
         }
@@ -2660,9 +2661,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 : hs.quality === false ? '🖐 手离镜头近一点'
                 : hs.pinching ? '🤏 捏合中'
                 : '🖐 手已识别';
+            const ratioTxt = hs && hs.present && hs.quality !== false && !hs.pinching && hs.pinchRatio != null
+                ? '|🤏 ' + hs.pinchRatio.toFixed(1) : '';
             const flash = gestureFlash && performance.now() < gestureFlash.until ? '|✨ ' + gestureFlash.label : '';
             const txt = (gazeNow ? '对视中' : '看向别处') + '|' +
-                (handTouch ? '🖐 抚摸中' : handTxt) + flash;
+                (handTouch ? '🖐 抚摸中' : handTxt) + ratioTxt + flash;
             if (txt === vStatusCache) return;
             vStatusCache = txt;
             if (vStatus) vStatus.innerHTML = txt.split('|').map(s => s.includes('中') ? `<b>${s}</b>` : s).join('<br>');
