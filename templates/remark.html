@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style4.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <title>评价 · {{ book['book_name'] }} · MPC 宠物聊天</title>
+    <style>
+        body {
+            font-family: var(--font-body);
+            margin: 0;
+            padding: 0;
+            padding-top: var(--nav-h);
+            background-color: var(--c-bg) !important;
+            color: var(--c-text);
+        }
+        .main { background: var(--c-card); border-radius: var(--radius-card); box-shadow: var(--shadow); padding: 24px; }
+        .main h2, .main h3 { font-family: var(--font-round); }
+        .submit-banner {
+            display: {% if submitted %}block{% else %}none{% endif %};
+            text-align: center; margin-bottom: 16px;
+            padding: 10px; border-radius: var(--radius-input);
+            background: rgba(91,185,140,.12); color: var(--c-success); font-weight: 600;
+        }
+        .reviews-empty { text-align: center; color: var(--c-text-sub); font-size: 13px; padding: 8px 0; }
+        .review-form input, .review-form select, .review-form textarea {
+            border: 1px solid var(--c-line); border-radius: var(--radius-input);
+            padding: 8px 12px; font-family: var(--font-body); font-size: 14px;
+        }
+        .review-form button {
+            background: var(--c-primary); color: var(--c-text); border: none; cursor: pointer;
+            padding: 10px 28px; border-radius: 999px; font-size: 15px; font-weight: 600;
+        }
+        .review-form button:hover { background: var(--c-primary-deep); color: #2F231B; }
+        .footer { display: none; }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+        }
+        header {
+            background: #50b3a2;
+            color: white;
+            padding-top: 30px;
+            min-height: 70px;
+            border-bottom: #e8491d 3px solid;
+        }
+        header a {
+            color: #ffffff;
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 16px;
+            padding: 16px 30px;
+            display: inline-block;
+        }
+        header ul {
+            overflow: hidden;
+        }
+        header ul li {
+            display: inline-block;
+        }
+        header ul li a {
+            color: #ffffff;
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 16px;
+            padding: 16px 30px;
+            display: inline-block;
+        }
+        header ul li a:hover {
+            background-color: #e8491d;
+        }
+        .main {
+            padding: 20px;
+            background-color: #ffffff;
+            margin-top: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .footer {
+            background: #333;
+            color: #fff;
+            text-align: center;
+            padding: 1px 0;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+        .review-form {
+            margin-top: 20px;
+        }
+        .review-form label {
+            display: block;
+            margin-top: 10px;
+        }
+        .review-form textarea {
+            width: 100%;
+            resize: vertical;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+/* 旧青绿按钮规则已删除，统一走 theme 规范（见文件头部 .review-form button） */
+
+
+
+    </style>
+</head>
+{% include '_navbar.html' %}
+    <div class="container">
+        <div class="main">
+            <div class="submit-banner">🎉 评价提交成功！</div>
+            <h2 id="book_name">{{ book_name }} <span style="color:var(--c-primary);">·</span> 评价</h2>
+            {% if pet %}
+            <div style="text-align:center; margin: 16px 0;">
+                <img src="{{ url_for('main.serve_images', filename=pet.avatar) }}" alt="{{ pet.name }}"
+                     style="width: 180px; height: 180px; border-radius: 50%; object-fit: cover;">
+                <h3 style="margin: 10px 0 4px;">{{ pet.name }}</h3>
+            </div>
+            <h3>宠物简介:</h3>
+            <p>{{ pet.description }}</p>
+            {% else %}
+            <p><strong>作者:</strong> {{ book['author'] }}</p>
+            <p><strong>ISBN:</strong> {{ book['book_id'] }}</p>
+            <p><strong>出版社:</strong> {{ book['publish_com'] }}</p>
+            <p><strong>出版日期:</strong> {{ book['publish_date'] }}</p>
+            {% if book['summary'] %}
+            <h3>内容简介:</h3>
+            <p>{{ book['summary'] }}</p>
+            {% endif %}
+            {% if book['author_jj'] %}
+            <h3>作者简介:</h3>
+            <p>{{ book['author_jj'] }}</p>
+            {% endif %}
+            {% endif %}
+            {% if avg_rating %}
+            <h3>
+                <span style="color:#F5A623; letter-spacing:2px;">{% for i in range(avg_rating|int) %}★{% endfor %}{% for i in range(5 - (avg_rating|int)) %}☆{% endfor %}</span>
+                &nbsp;{{ avg_rating }}/5 · {{ review_count }} 条评价
+            </h3>
+            {% else %}
+            <h3>暂无评分，来抢沙发吧</h3>
+            {% endif %}
+            <h3>{{ '大家' if pet else '读者' }}评论:</h3>
+            <blockquote>
+                {% if reviews %}
+        <ul class="review-list">
+    {% for review in reviews %}
+        {# 开始 if 语句 #}
+        {% if book['book_id'] == review['book_id'] %}
+            <li class="review-item">
+                <div class="review-header">
+                    <strong class="reviewer-name">{{ review['name'] }}</strong><br>
+                    <strong class="review-rating">评分:</strong>
+                    <span class="stars">
+                        {# 开始 for 语句 #}
+                        {% for star in range(review['rating']|int) %}
+                            ★
+                        {% endfor %} {# 结束 for 语句 #}
+                    </span>
+                </div>
+                <div class="recommendation">
+                    <strong class="review-content-label">评论内容:</strong>
+                    <pre class="review-text">{{ review['review_text'] }}</pre>
+                </div>
+            </li>
+        {% endif %} {# 结束 if 语句 #}
+    {% endfor %}
+        {% else %}
+        <div class="reviews-empty">还没有人评价，来做第一个吧 🐾</div>
+        {% endif %}
+</ul>
+
+            </blockquote>
+            <h3>相关推荐:</h3>
+            <ul>
+                {% for p in pets_in_recommend %}
+                <li style="display:inline-block; margin: 0 8px 8px 0;">
+                    <a href="/remark?book_name={{ p }}" class="tag" style="text-decoration:none;">{{ p }} →</a>
+                </li>
+                {% else %}
+                <li>暂无</li>
+                {% endfor %}
+            </ul>
+            <div class="review-form">
+                <h3>留下你的评价</h3>
+                <form action="/remark" method="post">
+                    <input type="hidden" name="book_name" value="{{ book_name }}">
+                    <label for="name">姓名:</label>
+                    <input type="text" id="name" name="name" required>
+
+                    <label>评分:</label>
+                    <div class="stars" role="radiogroup" aria-label="评分" style="display:inline-flex; flex-direction:row-reverse; gap:2px; vertical-align:middle;">
+                        {% for i in range(5, 0, -1) %}
+                        <input type="radio" id="star{{ i }}" name="rating" value="{{ i }}" required
+                               style="position:absolute; opacity:0; width:0; height:0;">
+                        <label for="star{{ i }}" aria-label="{{ i }} 星"
+                               style="font-size:26px; color:#E5D9CE; cursor:pointer; padding:0 2px;"
+                               onmouseover="this.style.color='#F5A623'"
+                               onmouseout="if(!document.getElementById('star{{ i }}').checked) this.style.color='#E5D9CE'"
+                               onclick="this.style.color='#F5A623';">★</label>
+                        {% endfor %}
+                    </div>
+
+                    <label for="review">评价内容:</label>
+                    <textarea id="review" name="review" required></textarea>
+
+                    <button type="submit">提交评价</button>
+
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="footer">
+        <p style="font-size: 8px">版权所有 &copy; 2024 图书评价网站</p>
+    </div>
+{% include '_footer.html' %}
+</body>
+{#<script>#}
+{#        document.getElementById('reviewForm').addEventListener('submit', function(event) {#}
+{#            event.preventDefault(); // 阻止表单默认提交行为#}
+{##}
+{#            const form = event.target;#}
+{#            const formData = new FormData(form);#}
+{##}
+{#            // 使用 Fetch API 提交表单数据#}
+{#            fetch(form.action, {#}
+{#                method: form.method,#}
+{#                body: formData#}
+{#            })#}
+{#            .then(response => {#}
+{#                if (response.ok) {#}
+{#                    alert('提交成功'); // 弹出提交成功的消息#}
+{#                    form.reset(); // 重置表单#}
+{#                } else {#}
+{#                    alert('提交失败，请稍后重试'); // 弹出提交失败的消息#}
+{#                }#}
+{#            })#}
+{#            .catch(error => {#}
+{#                alert('网络错误，请稍后重试'); // 弹出网络错误的消息#}
+{#            });#}
+{#        });#}
+{#</script>#}
+</html>

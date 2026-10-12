@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>宠物反馈 · MPC 宠物聊天</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <style>
+        body.theme { padding-top: var(--nav-h); }
+        .feedback-wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
+        .feedback-hero { text-align: center; margin-bottom: 24px; }
+        .feedback-hero h2 { margin: 0 0 6px; font-family: var(--font-round); font-size: 24px; }
+        .feedback-hero p { margin: 0; color: var(--c-text-sub); font-size: 13px; }
+
+        .nickname-row { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+        .nickname-row label { font-size: 14px; color: var(--c-text-sub); white-space: nowrap; }
+        .nickname-row .input { max-width: 240px; }
+
+        .pet-rating-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .pet-rating-card { display: flex; gap: 16px; align-items: flex-start; }
+        .pet-rating-card img {
+            width: 64px; height: 64px; flex: none;
+            border-radius: 50%; object-fit: cover;
+            border: 3px solid #fff; box-shadow: var(--shadow);
+        }
+        .pet-rating-card h4 { margin: 0 0 2px; font-size: 16px; min-height: 24px; display: flex; align-items: center; flex-wrap: wrap; }
+        .pet-rating-card .avg { font-size: 13px; color: var(--c-text-sub); margin-bottom: 6px; }
+        .pet-rating-card .avg b { color: var(--c-primary-deep); }
+
+        .stars { display: inline-flex; flex-direction: row-reverse; gap: 2px; }
+        .stars input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .stars label {
+            font-size: 28px; color: var(--c-line); cursor: pointer;
+            padding: 0 2px; transition: color .1s ease, transform .1s ease;
+        }
+        .stars label:hover, .stars label:hover ~ label,
+        .stars input:checked ~ label { color: #F5A623; }
+        .stars input:focus-visible + label { outline: 2px solid var(--c-primary); border-radius: 4px; }
+
+        .pet-rating-card textarea {
+            width: 100%; margin-top: 8px;
+            min-height: 56px; max-height: 120px;
+            padding: 8px 12px;
+            border: 1px solid var(--c-line);
+            border-radius: var(--radius-input);
+            font-family: var(--font-body); font-size: 14px;
+            color: var(--c-text); resize: vertical;
+        }
+        .pet-rating-card textarea:focus {
+            outline: none; border-color: var(--c-primary);
+            box-shadow: 0 0 0 3px rgba(255, 158, 88, .2);
+        }
+        .view-all { font-size: 13px; margin-left: 8px; }
+
+        @media (max-width: 767px) { .pet-rating-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body class="theme">
+    {% include '_navbar.html' %}
+    <div class="feedback-wrap">
+        <div class="feedback-hero">
+            <h2>给宠物们打打分 ⭐</h2>
+            <p>你的反馈会直接进入它的评价墙</p>
+        </div>
+
+        <div class="nickname-row">
+            <label for="nick">你的昵称</label>
+            <input class="input" id="nick" maxlength="20" value="{{ user_name }}" placeholder="游客">
+        </div>
+
+        <div class="pet-rating-grid" id="grid">
+            {% for pet in pets %}
+            <div class="card pet-rating-card" data-pet-name="{{ pet.name }}">
+                <img src="/images/{{ pet.avatar }}" alt="{{ pet.name }}">
+                <div style="flex:1;">
+                    <h4>{{ pet.name }}
+                        {% if pet.avg_rating %}<span class="avg">★ <b>{{ pet.avg_rating }}</b>（{{ pet.review_count }} 条）</span>
+                        {% endif %}
+                        <a class="view-all" href="/remark?book_name={{ pet.name }}">查看全部评价 →</a>
+                    </h4>
+                    <div class="stars" role="radiogroup" aria-label="{{ pet.name }}评分">
+                        {% for i in range(5, 0, -1) %}
+                        <input type="radio" id="pet{{ pet.id }}-star{{ i }}" name="pet{{ pet.id }}-rating" value="{{ i }}">
+                        <label for="pet{{ pet.id }}-star{{ i }}" aria-label="{{ i }} 星">★</label>
+                        {% endfor %}
+                    </div>
+                    <textarea maxlength="200" id="pet{{ pet.id }}-feedback" placeholder="写下你的评价（选填，200 字内）…"></textarea>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="text-center mb-16">
+            <button class="btn" id="submit-feedback" style="min-width: 200px;">提交反馈</button>
+        </div>
+    </div>
+    {% include '_footer.html' %}
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+    /* 提交反馈：收集所有已评分/已留言的宠物，逐只 POST /remark（规范：设计文档 三.5） */
+    document.getElementById('submit-feedback').addEventListener('click', async function () {
+        const btn = this;
+        const nick = (document.getElementById('nick').value || '').trim() || '游客';
+        const cards = document.querySelectorAll('.pet-rating-card');
+        const payloads = [];
+        cards.forEach(card => {
+            const name = card.dataset.petName;
+            const ratingInput = card.querySelector('.stars input:checked');
+            const text = card.querySelector('textarea').value.trim();
+            if (ratingInput || text) {
+                payloads.push({
+                    book_name: name,
+                    name: nick,
+                    rating: ratingInput ? ratingInput.value : 5,
+                    review: text || '（未留言）',
+                });
+            }
+        });
+        if (payloads.length === 0) {
+            toast('请先给至少一只宠物评分', 'error');
+            return;
+        }
+        btn.disabled = true;
+        btn.classList.add('loading');
+        btn.innerHTML = '<span class="spinner"></span>提交中';
+        try {
+            for (const p of payloads) {
+                const body = new URLSearchParams(p);
+                const resp = await fetch('/remark', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: body.toString(),
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            }
+            toast('反馈已提交，谢谢！', 'success');
+            cards.forEach(card => {
+                card.querySelector('.stars input:checked') && (card.querySelector('.stars input:checked').checked = false);
+                card.querySelector('textarea').value = '';
+            });
+        } catch (e) {
+            toast('提交失败，请稍后重试', 'error', 5000);
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            btn.textContent = '提交反馈';
+        }
+    });
+    /* 星级键盘支持：radio 本身支持方向键，补充分组焦点 */
+    document.querySelectorAll('.stars').forEach(g => g.setAttribute('tabindex', '0'));
+    </script>
+</body>
+</html>

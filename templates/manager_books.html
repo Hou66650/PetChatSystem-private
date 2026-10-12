@@ -1,0 +1,73 @@
+{% extends 'layout.html' %}
+
+{% block title %} 图书管理 {% endblock %}
+
+{% block link %}
+    <a href="{{ url_for('manager.manager') }}">返回</a> |
+    <a href="{{ url_for('manager.manager_books_add') }}">添加</a> |
+    <a href="{{ url_for('manager.manager_books_delete') }}">删除</a>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style3.css') }}">
+{% endblock %}
+
+{% block body %}
+    <div class="search">
+        <div class="search_border">
+            <input class="search_input" id="searchInput" type="text" placeholder="输入你想查看的书籍或者ISBN号。。。" required>
+        </div>
+        <div class="search_btn">
+            <button class="search_button" type="button" onclick="searchBook()">搜索</button>
+        </div>
+    </div>
+
+    <h2>图书管理</h2>
+    <table width="600" border="1" align="center">
+        <tr>
+            <th align="center">ISBN</th>
+            <th align="center">书名</th>
+            <th align="center">作者</th>
+            <th align="center">出版商</th>
+            <th align="center">出版时间</th>
+            <th align="center">查看信息</th>
+        </tr>
+        {% for book in books %}
+            <tr>
+                <th align="center">{{ book.book_id }}</th>
+                <th align="center">{{ book.book_name }}</th>
+                <th align="center">{{ book.author }}</th>
+                <th align="center">{{ book.publish_com }}</th>
+                <th align="center">{{ book.publish_date }}</th>
+                <th align="center">
+                    <a href="{{ url_for('manager.manager_book', id=book.book_id) }}">点击进入</a>
+                </th>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}
+
+{% block script %}
+{#    <script>#}
+        function searchBook() {
+            // 获取搜索框的值
+            var searchValue = document.getElementById("searchInput").value;
+
+            // 获取所有图书项
+            var books = document.querySelectorAll("table tr");
+
+            // 遍历图书项（跳过表头）
+            for (var i = 1; i < books.length; i++) {
+                var book = books[i];
+                var bookName = book.children[1].innerText; // 获取书名
+                var bookId = book.children[0].innerText;   // 获取ISBN
+
+                // 如果搜索值与书名或ISBN匹配，跳转到对应的图书详情页
+                if (searchValue === bookName || searchValue === bookId) {
+                    window.location.href = "{{ url_for('manager.manager_book', id='') }}" + bookId;
+                    return; // 匹配成功后退出函数
+                }
+            }
+
+            // 如果没有匹配的图书
+            alert("搜索值与任何图书信息不匹配！");
+        }
+{#    </script>#}
+{% endblock %}

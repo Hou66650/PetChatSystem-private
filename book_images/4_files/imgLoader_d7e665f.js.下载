@@ -1,0 +1,65 @@
+define('searchresult:widget/ui/imgloader/imgLoader', function(require, exports, module) {
+
+  var $ = require('common:widget/ui/base/base');
+  var imgLoader = {
+  
+      /**
+       * 获取图片信息
+       * @param {object} img
+       * @returns
+       */
+      getImgInfo: function (img) {
+          return {
+              url: img.src,
+              width: img.width,
+              height: img.height
+          };
+      },
+  
+      /**
+       * 加载图片
+       * @param {string} url
+       * @returns
+       */
+      load: function (url) {
+          var pro = new $.Deferred();
+          var img = new Image();
+          var loader = this;
+          var startTime;
+          img.onload = function () {
+              var imgInfo = loader.getImgInfo(img);
+              imgInfo.loadTime = new Date().getTime() - startTime;
+              pro.resolve(imgInfo);
+          };
+          img.onerror = function () {
+              pro.reject();
+          };
+          startTime = new Date().getTime();
+          img.src = url;
+          return pro.always(function () {
+              img.onload = img.onerror = null;
+              img = null;
+          });
+      },
+  
+      /**
+       * 对比图片的宽高和期望的宽高
+       */
+      compareImgSize: function (imgInfo, expectSize, range = 100) {
+          return this._checkSize(imgInfo.width, expectSize.width, range)
+          && this._checkSize(imgInfo.height, expectSize.height, range);
+      },
+  
+      _checkSize: function (sizeValue, expectSizeValue, range) {
+          // IE在某些情况下，读取到的大图高宽都是0，这种情况，不应该统计为禁止引用@20120626
+          if (sizeValue <= 0 || expectSizeValue <= 0) {
+              return true;
+          }
+          range = range || 0;
+          return (Math.abs(sizeValue - expectSizeValue) <= range);
+      }
+  };
+  
+  return imgLoader;
+
+});

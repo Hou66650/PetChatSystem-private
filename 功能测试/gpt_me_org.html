@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <title>GPT Chat</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            /*background-image: url('images/sakura1.jpg'); !* 替换为你的樱花背景图片路径 *!*/
+            /*background-size: cover; !* 使背景图片覆盖整个页面 *!*/
+            /*background-position: center; !* 将背景图片居中 *!*/
+            /*background-repeat: no-repeat; !* 防止背景图片重复 *!*/
+        }
+         .avatar-img {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            vertical-align: middle; /* 垂直居中对齐 */
+        }
+
+        .chat-container {
+            width: 80%;
+            max-width: 1000px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .chat-header {
+            background-color: #FF69B4;
+            color: white;
+            padding: 10px;
+            text-align: center;
+        }
+        .chat-body {
+            padding: 10px;
+            height: 500px;
+            overflow-y: scroll;
+        }
+        .chat-footer_{
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            padding: 10px;
+            background-color: #f4f4f4;
+
+
+        }
+        .another-component{
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            padding: 10px;
+            background-color: #f4f4f4;
+        }
+        .chat-footer {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            padding: 10px;
+            background-color: #f4f4f4;
+        }
+        .message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        .submit-button {
+            padding: 10px 20px;
+            background-color: #FF69B4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .user-name-input{
+            flex:1;
+            padding:10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        .user-name-btn{
+            padding: 10px 20px;
+            background-color: #FF69B4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .assistant-name-input{
+            flex:1;
+            padding:10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        .model-select {
+            margin-right: 10px;
+        }
+        .timer{
+             font-family: 'Comic Sans MS', cursive, sans-serif; /* 使用 Comic Sans MS 字体 */
+            font-size: 12px; /* 字体大小 */
+            color: #FF69B4; /* 粉色 */
+            font-weight: bold; /* 加粗 */
+            padding: 2px 4px; /* 内边距 */
+            border-radius: 4px; /* 圆角 */
+            background-color: #FFFACD; /* 浅黄色背景 */
+            display: inline-block; /* 使其成为内联块元素 */
+        }
+        .clear-memory-btn{
+            padding: 10px 20px;
+            background-color: #FF69B4;
+            margin-right:200px;
+            margin-left:200px;
+            color: white;
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+        .chat-message p {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+    </style>
+
+</head>
+
+<body>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="js/script.js"></script>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>GPT Chat</h1>
+        </div>
+        <div class="chat-body" id="chat-body">
+            <!-- Messages will be displayed here -->
+        </div>
+        <div class="chat-footer_">
+            <div class="user-name">
+                <input type="text" class="user-name-input" id="user-name" placeholder="input your name what you want">
+                <button class="user-name-btn" id="user-btn">sure</button>
+            </div>
+            <div class="assistant-name">
+                <input type="text" class="assistant-name-input" id="assistant-name" placeholder="rename your assistant">
+                <button class="user-name-btn" id="assistant-btn">sure</button>
+
+            </div>
+        </div>
+        <div class="another-component">
+            <div class="clear-memory">
+                <button class="clear-memory-btn" id="clear-mer-btn">Clear Memory</button>
+            </div>
+
+        </div>
+        <div class="chat-footer">
+            <select class="model-select" id="model-pattern">
+                <option value="gemini-exp-1114">gemini-exp-1114</option>
+                <option value="gpt-4o">gpt-4o</option>
+                <option value="gpt-4o-mini">gpt-4o-mini</option>
+                <option value="gpt-4-gizmo-*">gpt-4-gizmo-*</option>
+                <!-- Add more models as needed -->
+            </select>
+            <input type="text" class="message-input" id="user-message" placeholder="Type your message here">
+            <button class="submit-button" id="submit-message">Send</button>
+        </div>
+    </div>
+
+
+    <script>
+    // 获取当前时间并格式化
+    function getCurrentTime() {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2,'0')
+        return `${hours}:${minutes}:${seconds}`;
+    }
+
+    // 在 DOM 加载完成后执行
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const timeDisplay = document.getElementById('timer');
+        const chatBody = document.getElementById('chat-body');
+        const userMessageInput = document.getElementById('user-message');
+        const modelPatternInput = document.getElementById('model-pattern');
+        const userNameInput = document.getElementById('user-name');
+        const assistantNameInput = document.getElementById('assistant-name');
+
+        // 定义更新当前时间的函数
+        function updateCurrentTime() {
+            if (timeDisplay) {
+                timeDisplay.textContent = getCurrentTime();
+            }
+        }
+
+        // 更新时间每分钟
+        setInterval(updateCurrentTime, 200000);
+        updateCurrentTime();
+
+        // 处理发送消息按钮的点击事件
+        document.getElementById('submit-message').addEventListener('click', function() {
+            const userMessage = userMessageInput.value;
+            const modelPattern = modelPatternInput.value;
+            const userName = userNameInput.value;
+            const assistantName = assistantNameInput.value;
+
+            if (!userMessage) {
+                alert('Please enter a message.');
+                return;
+            }
+
+            // 获取已有的历史记录
+            let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+
+            // 将用户消息添加到历史记录
+            chatHistory.push({ sender: userName, message: userMessage });
+
+            // 附加用户消息到聊天区域
+            chatBody.innerHTML += `<div class="chat-message"><img src="images/sakura2.jpg" alt="Avatar" class="avatar-img"><p><strong>${userName}【<span class="timer">${getCurrentTime()}</span>】:</strong> ${userMessage}</p></div>`;
+
+            // 发送 AJAX 请求
+            fetch('/get_gpt_response', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: userMessage,
+                    chatHistory: chatHistory,
+                    model_pattern: modelPattern
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.reply) {
+                    // 将 AI 回复添加到历史记录
+                    chatHistory.push({ sender: assistantName, message: data.reply });
+
+                    // 保存更新的历史记录
+                    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+
+                    // 转换 Markdown 为 HTML
+                    const htmlResponse = marked.parse(data.reply);
+                    chatBody.innerHTML += `<div class="chat-message"><img src="images/demo.png" alt="Avater" class="avatar-img"><p><strong>${assistantName}【<span class="timer">${getCurrentTime()}</span>】:</strong> ${htmlResponse}</p>`;
+                } else if (data.error) {
+                    chatBody.innerHTML += `<p><strong>Error:</strong> ${data.error}</p>`;
+                }
+            })
+            .catch(error => {
+                chatBody.innerHTML += `<p><strong>Error:</strong> An error occurred while fetching the response.</p>`;
+            });
+
+            // 清空消息输入框
+            userMessageInput.value = '';
+        });
+
+        // 清除消息历史记录
+        document.getElementById('clear-mer-btn').addEventListener('click', function() {
+            localStorage.removeItem('chatHistory');
+        });
+        // 切换主题
+    });
+</script>
+</body>
+</html>

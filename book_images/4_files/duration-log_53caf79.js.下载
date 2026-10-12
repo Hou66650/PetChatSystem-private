@@ -1,0 +1,89 @@
+define('common:widget/ui/utils/duration-log', function(require, exports, module) {
+
+  /**
+   * @file 页面时长日志
+   * @author caigang@baidu.com
+   */
+  var $ = require('common:widget/ui/base/base');
+  
+  function DurationLogger(options) {
+      this.durationLogger = options.durationLogger;
+      if (!this.durationLogger) {
+          return;
+      }
+  
+      this.init();
+  }
+  
+  $.extend(DurationLogger.prototype, {
+  
+      /**
+       * 初始化
+       */
+      init: function () {
+          this.labels = [];
+          this.stopBind = this.stop.bind(this);
+          this.bindEvents();
+      },
+  
+      /**
+       * 取消事件监听
+       */
+      unBindEvents: function () {
+          window.removeEventListener('beforeunload', this.stopBind);
+      },
+  
+      /**
+       * 注册事件监听
+       */
+      bindEvents: function () {
+          window.addEventListener('beforeunload', this.stopBind);
+      },
+  
+      /**
+       * 开始计时
+       * @param {string} label 时长打点的名称
+       * @param {Object} params 时长打点自定义参数
+       * @param {Object} options 打点配置
+       * @param {Object} [options] 打点设置，覆盖全局设置
+       * @param {boolean} [options.ifHeartbeatTime] 是否通过心跳打点
+       * @param {boolean} [options.useSendBeacon] 是否使用 SendBeacon API
+       * @param {number} [options.duration] 心跳打点的间隔，单位 s
+       */
+      start: function (label, params, options) {
+          this.labels.push(label);
+          label = label || 'default';
+          params = params || {};
+          options = options || {};
+          this.durationLogger.startTimingLog(label, params, options);
+      },
+  
+      /**
+       * 暂停计时
+       * @param {string} 时长打点的名称
+       */
+      pause: function (label) {
+          this.durationLogger.pauseTimingLog(label);
+      },
+  
+      /**
+       * 结束计时
+       * @param {string} 时长打点的名称
+       */
+      stop: function () {
+          var labels = this.labels || [];
+  
+          if (!labels.length) {
+              return;
+          }
+  
+          // 停止所有时长打点的计时
+          labels.forEach(label => {
+              this.durationLogger.stopTimingLog(label);
+          });
+      }
+  });
+  
+  return DurationLogger;
+
+});

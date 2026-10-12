@@ -1,0 +1,56 @@
+define('common:widget/ui/ai/survey/components/questionTextInput', function(require, exports, module) {
+
+  var san = require('common:widget/ui/ai/san');
+  
+  return san.defineComponent({
+      template: ''
+          + ' <div class="question-text-input">'
+          + '     <textarea'
+          + '         class="survey-scrollbar"'
+          + '         type="text"'
+          + '         placeholder="{{questionData.promptInput || placeholder}}"'
+          + '         value="{=text=}"'
+          + '         maxlength="{{limit}}"'
+          + '         on-keyup="handleKeyUp($event)"'
+          + '     />'
+          + '     <div class="question-text-footer">'
+          + '         <div'
+          + '             class="question-text-word-count"'
+          + '         >'
+          + '             <span'
+          + '                 class="{{wordCount >= limit ? \'text-error\' : \'\'}}"'
+          + '             >{{wordCount}}</span>'
+          + '             <span>/{{limit}}</span>'
+          + '         </div>'
+          + '         <div class="question-text-clear" on-click="clear">清空</div>'
+          + '     </div>'
+          + ' </div>',
+      computed: {
+          wordCount() {
+              return this.data.get('text').length;
+          }
+      },
+      initData: function () {
+          return {
+              text: '',
+              limit: 200,
+              placeholder: '请输入您的建议'
+          };
+      },
+  
+      created: function () {
+          this.watch('text', function (value) {
+              this.dispatch('SURVEY:updateAnswer', { ans: value });
+          });
+      },
+  
+      clear: function () {
+          this.data.set('text', '');
+      },
+  
+      handleKeyUp: function (e) {
+          e.stopPropagation();
+      }
+  });
+
+});

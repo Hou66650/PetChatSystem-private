@@ -1,0 +1,113 @@
+define('common:widget/ui/utils/img-white-screen-checker', function(require, exports, module) {
+
+  /**
+   * @file 图片白屏检测
+   * @author caigang@baidu.com
+   */
+  var $ = require('common:widget/ui/base/base');
+  var spy = require('common:widget/ui/utils/spy');
+  
+  var img = null;
+  
+  function getImg() {
+      return img || new Image();
+  }
+  
+  /**
+   * 完整的图片白屏检验
+   * @param src 图片地址
+   */
+  function imgWhiteCheck(src) {
+      var promise = new $.Deferred();
+      var img = getImg();
+      try {
+          // img.crossOrigin = 'Anonymous';
+          img.onload = function () {
+              var width = img.width;
+              var height = img.height;
+  
+              // 白屏判定
+              if (!width || !height || width < 8 || height < 8) {
+                  promise.resolve({
+                      isWhiteScreen: true,
+                      reason: 'width or height is less than 8px, width:' + width + ', height: ' + height,
+                  });
+                  return;
+              }
+  
+              promise.resolve({
+                  isWhiteScreen: false
+              });
+          };
+          img.onerror = function (error) {
+              promise.resolve({
+                  isWhiteScreen: true,
+                  reason: 'image load onerror: ' + JSON.stringify(error)
+              });
+          };
+          img.src = src;
+      }
+      catch (e) {
+          promise.resolve({
+              isWhiteScreen: false
+          });
+      }
+  
+      return promise.always(function () {
+          img.onload = img.onerror = null;
+          img = null;
+      });
+  }
+  
+  function validateImageSrc(url) {
+      try {
+          var pattern = /\.baidu\.com$/i;
+          var standardUrl = new URL(url);
+          var host = standardUrl && standardUrl.host;
+          return pattern.test(host);
+      }
+      catch (e) {
+          return false;
+      }
+  }
+  
+  function check(src, platform = 'pc') {
+  
+      // 只校验百度域
+      if (!validateImageSrc(src)) {
+          return;
+      }
+  
+      imgWhiteCheck(src)
+          .then(function (res) {
+              var isWhiteScreen = res.isWhiteScreen;
+  
+              // 图片白屏上报
+              if (isWhiteScreen) {
+  
+                  var reason = res.reason;
+                  spy.sendExcept(
+                      // info
+                      {
+                          msg: ['img:', src.slice(0, 50), 'seems to be a white screen image'].join(' '),
+                          src: src,
+                          reason: reason,
+                          pageUrl: window.location.href
+                      },
+                      // dim
+                      {
+                          platform: platform
+                      },
+                      'pc_img_whitescreen'
+                  );
+              }
+          });
+  }
+  
+  module.exports = {
+      check: check,
+      imgWhiteCheck: imgWhiteCheck
+  };
+  
+
+});

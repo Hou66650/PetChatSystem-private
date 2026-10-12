@@ -1,0 +1,134 @@
+define('common:widget/ui/utils/spy', function(require, exports, module) {
+
+  /**
+   * @file spy 日志相关方法
+   * @author caigang@baidu.com
+   */
+  var PID = '8_18';
+  var spy = {};
+  var storage = require('common:widget/ui/utils/storage');
+  var ls = storage.getStorage('localStorage');
+  var defaultSample = 0.05;
+  
+  function skipUnnecessaryCall() {
+      return !Boolean(window.SpyClient);
+  }
+  
+  function withSkipCheck(fn) {
+      return function () {
+          if (!shouldReport()) {
+              return;
+          }
+          return fn.apply(this, arguments);
+      };
+  }
+  
+  /**
+   * 是否允许上报
+   * @returns {boolean} 当前的 spy 日志是否符合上报条件
+   */
+  function shouldReport() {
+  
+      // 保留线下调试开关
+      // 线下调试方法：localStorage.setItem('search_pic_pc_image_spy_debug_switch', 1);
+      var isDebug = ls.getItem('image_spy_debug_switch');
+  
+      // debug 模式 || (非线下环境 && 不跳过)
+      return +isDebug === 1 || (!isDevEnvironment() && !skipUnnecessaryCall());
+  }
+  
+  /**
+   * 过滤线下环境报错
+   * @returns {boolean} 是否需要过滤
+   */
+  function isDevEnvironment() {
+      var pageUrl = window.location.href;
+  
+      // 必须是 m.baidu.com 或者 image.baidu.com
+      var reg = /^https?:\/\/(m|image).baidu.com/;
+  
+      // 是否过滤
+      return !reg.test(pageUrl);
+  }
+  
+  /**
+   * 初始化 spy 日志
+   */
+  var initSpy = withSkipCheck(function () {
+      if (spy && spy.option && spy.option.pid) {
+          return spy;
+      };
+  
+      spy = new window.SpyClient({
+          pid: PID,
+          sample: defaultSample
+      });
+  
+      return spy;
+  });
+  
+  /**
+   * 发送性能日志
+   * @param {Object} info 性能数据
+   * @param {Object} dim 维度
+   * @param {string} group 日志分组
+   */
+  var sendPerf = withSkipCheck(function (info, dim, group = 'pc_request_perf', sample = defaultSample) {
+      var spy = initSpy();
+      spy.sendPerf({
+          info: info,
+          dim: dim,
+          group: group,
+          sample: sample
+      });
+  });
+  
+  /**
+   * 发送异常日志
+   * @param {Object} info 异常数据
+   * @param {Object} dim 维度
+   * @param {string} group 日志分组
+   */
+  var sendExcept = withSkipCheck(function (info, dim, group = 'pc_request_except') {
+      var spy = initSpy();
+      spy.sendExcept({
+          info: info,
+          dim: dim,
+          group: group
+      });
+  });
+  
+  /**
+   * 发送计数日志
+   * @param {Object} info 计数数据
+   * @param {string} group 日志分组
+   */
+  var sendCount = withSkipCheck(function (info, dim, group = 'pc_request_count') {
+      var spy = initSpy();
+      spy.sendCount({
+          info: info,
+          dim: dim,
+          group: group
+      });
+  });
+  
+  var initListen = withSkipCheck(function () {
+      sendCount(
+          {
+              count: 1
+          },
+          {},
+          'pc_pv_count'
+      );
+  });
+  
+  module.exports = {
+      spy: spy,
+      initListen: initListen,
+      sendPerf: sendPerf,
+      sendExcept: sendExcept,
+      sendCount: sendCount,
+  };
+  
+
+});

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>关于我们 · MPC 宠物聊天</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <style>
+        .about-tabs {
+            display: flex;
+            gap: 8px;
+            margin: 16px 0 0;
+            overflow-x: auto;          /* 手机宽度横向滚动，不挤成两行 */
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 4px;
+        }
+        .about-tabs button {
+            flex-shrink: 0;
+            padding: 10px 22px;
+            border: 2px solid var(--c-line);
+            border-radius: 999px;
+            background: #fff;
+            color: var(--c-text-sub);
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .about-tabs button:hover { border-color: var(--c-primary); color: var(--c-text); }
+        /* 选中不能只靠颜色：加重边框 + 深色文字 + 实底 */
+        .about-tabs button[aria-selected="true"] {
+            border-color: var(--c-primary);
+            background: var(--c-primary);
+            color: #5A3A1E;
+        }
+        .about-tabs button:focus-visible {
+            outline: 3px solid #8B6A4F;
+            outline-offset: 2px;
+        }
+        .about-panel h3 { font-family: var(--font-round); margin: 18px 0 6px; font-size: 17px; }
+        .about-panel p, .about-panel li { font-size: 14px; line-height: 1.8; color: var(--c-text); }
+        .about-panel ul { margin: 4px 0; padding-left: 22px; }
+        .about-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    </style>
+</head>
+<body class="theme">
+    {% include '_navbar.html' %}
+    <div class="page-wrap" style="max-width: 760px;">
+        <div class="card" style="text-align: center; padding: 40px 28px 24px;">
+            <img src="{{ url_for('static', filename='images/dog1.png') }}" alt="MPC 宠物聊天"
+                 style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--c-primary);">
+            <h2 style="font-family: var(--font-round); margin: 16px 0 4px; font-size: 24px;">MPC 宠物聊天系统</h2>
+            <p style="margin: 0; color: #6F6055; font-weight: 600;">用陪伴传递温暖</p>
+
+            <div class="about-tabs" role="tablist" aria-label="关于 MPC">
+                <button type="button" role="tab" id="tab-intro" aria-selected="true" aria-controls="panel-intro" data-tab="intro">了解我们</button>
+                <button type="button" role="tab" id="tab-join" aria-selected="false" aria-controls="panel-join" data-tab="join" tabindex="-1">加入我们</button>
+                <button type="button" role="tab" id="tab-feedback" aria-selected="false" aria-controls="panel-feedback" data-tab="feedback" tabindex="-1">建议与反馈</button>
+            </div>
+        </div>
+
+        <div class="card mt-16 about-panel" role="tabpanel" id="panel-intro" aria-labelledby="tab-intro">
+            <h3>🐾 我们做什么</h3>
+            <p>MPC 宠物聊天是一款情绪陪伴产品：四只性格各异的虚拟宠物随时陪你聊天、听你倾诉。</p>
+            <ul>
+                <li><strong>球球（柴犬）</strong>——活泼元气，永远热情地回应你；</li>
+                <li><strong>雪球（哈士奇）</strong>——帅气直爽，陪你一起撒欢；</li>
+                <li><strong>团子（猫咪）</strong>——傲娇又黏人，嘴上嫌弃心里在乎；</li>
+                <li><strong>大壮（德牧）</strong>——沉稳可靠，安静守护你的每句话。</li>
+            </ul>
+            <h3>✨ 背后的技术</h3>
+            <p>宠物们的"灵魂"来自 GLM 大语言模型：每只宠物有自己的人设与说话方式，
+            还能把你的照片变成动漫风格的专属头像；3D 小窝里可以摸摸头、喂零食、玩心理小游戏。</p>
+            <h3>💛 我们的初心</h3>
+            <p>希望每一次"汪汪"和"喵呜"，都能让你在忙碌的一天里露出一点微笑。</p>
+            <p style="font-size: 13px; color: #8a7a6c; background: var(--c-bubble-user); padding: 10px 14px; border-radius: 10px;">
+                ⚠️ 平台服务不能替代专业的医疗诊断、治疗或危机干预。
+                如果你正处于困境，请及时寻求专业帮助。
+            </p>
+        </div>
+
+        <div class="card mt-16 about-panel" role="tabpanel" id="panel-join" aria-labelledby="tab-join" hidden>
+            <h3>🤝 三种参与方式</h3>
+            <ul>
+                <li><strong>体验官</strong>：试用产品、反馈真实体验，帮我们把陪伴做得更自然；</li>
+                <li><strong>内容共创</strong>：完善宠物人设、故事和陪伴文案，让角色更有温度；</li>
+                <li><strong>开发共创</strong>：前端、后端、3D、AI 应用方向都欢迎。</li>
+            </ul>
+            <div class="about-actions">
+                <a class="btn" href="/gpt">先体验一下</a>
+                <a class="btn-outline" href="/den">看看宠物小窝</a>
+            </div>
+        </div>
+
+        <div class="card mt-16 about-panel" role="tabpanel" id="panel-feedback" aria-labelledby="tab-feedback" hidden>
+            <h3>📝 建议与反馈</h3>
+            <p>你的每一条反馈都会让宠物更懂你。反馈时建议说明：<strong>使用的页面、复现步骤、期望结果</strong>，这样我们能更快定位。</p>
+            <div class="about-actions">
+                <a class="btn" href="/remark_pet">评价宠物体验</a>
+                <a class="btn-outline" href="/gpt">返回聊天继续体验</a>
+            </div>
+        </div>
+    </div>
+    {% include '_footer.html' %}
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+    // Tab 切换（S1-06）：hash 定位 + 键盘方向键/Home/End + ARIA 同步
+    (function () {
+        'use strict';
+        var tabs = Array.prototype.slice.call(document.querySelectorAll('.about-tabs [role="tab"]'));
+        var TAB_KEYS = tabs.map(function (t) { return t.dataset.tab; });
+
+        function activate(key, focus) {
+            tabs.forEach(function (t) {
+                var selected = t.dataset.tab === key;
+                t.setAttribute('aria-selected', selected ? 'true' : 'false');
+                t.tabIndex = selected ? 0 : -1;
+                var panel = document.getElementById('panel-' + t.dataset.tab);
+                if (panel) panel.hidden = !selected;
+                if (selected && focus) t.focus();
+            });
+            if (location.hash !== '#' + key) {
+                try { history.replaceState(null, '', '#' + key); } catch (e) {}
+            }
+        }
+        tabs.forEach(function (t) {
+            t.addEventListener('click', function () { activate(t.dataset.tab, false); });
+        });
+        document.querySelector('.about-tabs').addEventListener('keydown', function (e) {
+            var i = TAB_KEYS.indexOf(document.querySelector('[role="tab"][aria-selected="true"]').dataset.tab);
+            if (e.key === 'ArrowRight') { e.preventDefault(); activate(TAB_KEYS[(i + 1) % TAB_KEYS.length], true); }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); activate(TAB_KEYS[(i - 1 + TAB_KEYS.length) % TAB_KEYS.length], true); }
+            else if (e.key === 'Home') { e.preventDefault(); activate(TAB_KEYS[0], true); }
+            else if (e.key === 'End') { e.preventDefault(); activate(TAB_KEYS[TAB_KEYS.length - 1], true); }
+        });
+        // 初始：hash 对应 Tab（非法 hash 回到 intro）
+        var initial = location.hash.replace('#', '');
+        activate(TAB_KEYS.indexOf(initial) >= 0 ? initial : 'intro', false);
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+*.rar
+*.zip
+*.mp4
+venv/
+.idea/
+node_modules/
+
+# 密钥与运行时产物
+.env
+__pycache__/
+*.pyc
+uploads/

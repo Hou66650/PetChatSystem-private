@@ -1,0 +1,142 @@
+{#{% extends "layout.html" %}#}
+{% block title %}  {% endblock %}
+
+{% block link %}
+<div class="nav-links">
+    <a href="{{ url_for('main.index') }}">返回</a>
+</div>
+{% endblock %}
+
+{% block body %}
+<div class="login-container">
+    <h2>管理员登录</h2>
+    {% if error %}
+    <div class="error">
+        <strong>错误:</strong> {{ error }}
+    </div>
+    {% endif %}
+    <form action="" method="post">
+        <dl>
+            <dt>用户名:</dt>
+            <dd><input type="text" name="user_id" size="30" placeholder="输入用户名"></dd>
+            <dt>密码:</dt>
+            <dd><input type="password" name="password" size="30" placeholder="输入密码"></dd>
+        </dl>
+        <div class="actions">
+            <input type="submit" value="登录">
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    body {
+    font-family: 'San Francisco', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    /* 使用背景图 */
+    background-image: url('static/images/b.jpg');
+    background-size: cover; /* 让背景图覆盖整个页面 */
+    background-position: center; /* 让背景图居中显示 */
+    color: #1d1d1f;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+   /* 导航栏样式 */
+        .nav-links {
+            position: fixed; /* 固定在页面顶部 */
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.8); /* 导航栏背景颜色，使用半透明白色 */
+            padding: 10px 20px; /* 内边距 */
+            display: flex;
+            gap: 20px; /* 链接之间的间距 */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* 阴影效果 */
+        }
+
+        .nav-links a {
+            color: #1d1d1f;
+            text-decoration: none; /* 去除下划线 */
+            font-weight: bold; /* 字体加粗 */
+        }
+
+        .nav-links a:hover {
+            color: #8a2be2; /* 鼠标悬停时的颜色 */
+        }
+
+    .login-container {
+        background: #FFFFFF;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        width: 350px;
+        text-align: center;
+    }
+
+    .login-container h2 {
+        color: #8A2BE2;
+        font-size: 28px;
+        margin-bottom: 20px;
+    }
+
+    .login-container .error {
+        color: #FF4500;
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+
+    .login-container dl {
+        text-align: left;
+    }
+
+    .login-container dt {
+        font-size: 18px;
+        color: #8A2BE2;
+        margin-bottom: 5px;
+    }
+
+    .login-container dd {
+        margin-bottom: 15px;
+    }
+
+    .login-container input[type="text"],
+    .login-container input[type="password"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+    }
+
+    .login-container input[type="text"]:focus,
+    .login-container input[type="password"]:focus {
+        border-color: #8A2BE2;
+    }
+
+    .login-container .actions {
+        text-align: center;
+    }
+
+    .login-container input[type="submit"] {
+        background-color: #8A2BE2;
+        color: #FFFFFF;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s, transform 0.3s;
+    }
+
+    .login-container input[type="submit"]:hover {
+        background-color: #6A5ACD;
+        transform: scale(1.1);
+    }
+</style>
+{% endblock %}

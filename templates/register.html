@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>注册 · MPC 宠物聊天</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <style>
+        body.theme {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--c-bg) var(--auth-bg-url, url("{{ url_for('static', filename='images/c.jpg') }}")) center / cover no-repeat;
+        }
+        body.theme::before {
+            content: '';
+            position: fixed; inset: 0;
+            backdrop-filter: saturate(.65) brightness(1.05);
+            -webkit-backdrop-filter: saturate(.65) brightness(1.05);
+            background: rgba(255, 248, 240, .58);
+        }
+        .reg-card {
+            position: relative;
+            width: min(92vw, 360px);
+            background: var(--c-card);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-hover);
+            padding: 32px 28px;
+        }
+        .reg-card h2 {
+            margin: 0 0 24px;
+            font-family: var(--font-round);
+            text-align: center;
+            font-size: clamp(17px, 4.6vw, 22px);   // 长标题在 375px 不溢出卡片
+        }
+        .reg-subtitle {
+            margin: -14px 0 20px;
+            color: var(--c-text-sub);
+            font-size: 13px;
+            line-height: 1.6;
+            text-align: center;
+        }
+        .form-tip { font-size: 13px; color: var(--c-danger); min-height: 20px; margin: 4px 0 8px; text-align: center; }
+        .login-links { display: flex; justify-content: space-between; margin-top: 16px; font-size: 14px; }
+    </style>
+</head>
+<body class="theme">
+    {% include '_navbar.html' %}
+    <div class="reg-card">
+        <h2>🐾 领养你的第一位宠物伙伴</h2>
+        <p class="reg-subtitle">创建账号，让一只有性格、有记忆的小伙伴开始陪伴你。</p>
+        <form method="post" action="" id="reg-form" novalidate>
+            <div class="form-tip">{{ error or '' }}</div>
+            <div class="field">
+                <label for="username">昵称（2–20 个字符）</label>
+                <input class="input" type="text" id="username" name="username" size="30" maxlength="20" placeholder="给自己起个名字"
+                       value="{{ request.form.username }}" autocomplete="username" required>
+            </div>
+            <div class="field">
+                <label for="password">密码（至少 6 位）</label>
+                <input class="input" type="password" id="password" name="password" size="30" minlength="6" placeholder="至少 6 位" autocomplete="new-password" required>
+            </div>
+            <div class="field">
+                <label for="password2">确认密码</label>
+                <input class="input" type="password" id="password2" name="password2" size="30" minlength="6" placeholder="再输一次"
+                       autocomplete="new-password" required>
+            </div>
+            <button class="btn" type="submit" style="width: 100%;">注册</button>
+        </form>
+        <div class="login-links">
+            <a href="{{ url_for('main.index') }}">← 返回首页</a>
+            <a href="{{ url_for('auth.reader_login') }}">已有账号，去登录</a>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth-background.js') }}"></script>
+    <script>
+    // 前端即时校验 + 注册成功 toast（规范：设计文档 三.3）
+    document.getElementById('reg-form').addEventListener('submit', function (e) {
+        var u = document.getElementById('username').value.trim();
+        var p1 = document.getElementById('password').value;
+        var p2 = document.getElementById('password2').value;
+        function fail(msg) {
+            e.preventDefault();
+            var tip = document.querySelector('.form-tip');
+            tip.textContent = msg;
+            toast(msg, 'error');
+        }
+        if (u.length < 2) return fail('昵称至少 2 个字符');
+        if (!/^[\u4e00-\u9fa5A-Za-z0-9_]+$/.test(u)) return fail('昵称只能包含中文、英文、数字、下划线');
+        if (p1.length < 6) return fail('密码至少 6 位');
+        if (p1 !== p2) return fail('两次输入的密码不一致');
+        sessionStorage.setItem('reg_ok', '1');
+    });
+    if (sessionStorage.getItem('reg_ok') === '1') {
+        sessionStorage.removeItem('reg_ok');
+        toast('注册成功，请登录', 'success');
+    }
+    </script>
+</body>
+</html>

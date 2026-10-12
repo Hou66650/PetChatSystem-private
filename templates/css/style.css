@@ -1,0 +1,27 @@
+ body {
+            perspective: 1000px;
+            background: url('a.jpg') no-repeat center center fixed;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+
+       /*.cherry-blossoms {*/
+       /*     !* 缩小樱花元素的尺寸 *!*/
+       /*     width: 5px;*/
+       /*     height: 5px;*/
+       /*     position: absolute;*/
+       /*     background: #e65ace;*/
+       /*     animation: fall infinite linear 5s;*/
+       /* }*/
+
+       /* @keyframes fall {*/
+       /*     from {*/
+       /*         transform: rotateZ(0deg) rotateY(0deg) translateZ(0);*/
+       /*     }*/
+       /*     to {*/
+       /*         !* 缩小 translateZ 的移动距离 *!*/
+       /*         transform: rotateZ(360deg) rotateY(720deg) translateZ(-500px);*/
+       /*     }*/
+       /* }*/

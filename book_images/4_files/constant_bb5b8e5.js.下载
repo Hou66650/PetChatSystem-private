@@ -1,0 +1,1 @@
+define("common:widget/ui/ai/survey/constant",function(){var e={B:"b",C:"c",EDIT:"edit",GENERATE:"generate"};return e});

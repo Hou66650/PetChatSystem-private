@@ -1,0 +1,2992 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>宠物小窝 · MPC 宠物聊天</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <style>
+        html, body { height: 100%; }
+        body.theme { padding-top: var(--nav-h); margin: 0; overflow: hidden; background: var(--c-bg); }
+        /* z-index：fixed 元素自成层叠上下文，内部 z-250 的游戏层若不抬高整个 wrap，
+           会被根层级的 z-100 导航栏盖住 HUD（退出按钮点不到，反而点到导航链接） */
+        #den-wrap { position: fixed; inset: var(--nav-h) 0 0 0; z-index: 150; }
+        #den-canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+
+        /* 顶部宠物切换 chips */
+        .den-pets {
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px; z-index: 10;
+            background: var(--c-card); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            border-radius: 999px; padding: 6px 10px; box-shadow: var(--shadow);
+        }
+        .den-pet-chip {
+            display: flex; align-items: center; gap: 6px;
+            border: none; background: none; cursor: pointer;
+            padding: 4px 10px; border-radius: 999px; font-size: 13px;
+            color: var(--c-text-sub); font-family: var(--font-body);
+        }
+        .den-pet-chip img {
+            width: 30px; height: 30px; border-radius: 50%; object-fit: cover;
+            border: 2px solid transparent; transition: border-color .15s;
+        }
+        .den-pet-chip.selected { color: var(--c-primary-deep); font-weight: 700; }
+        .den-pet-chip.selected img { border-color: var(--c-primary); }
+
+        /* 亲密度面板（左上） */
+        .intimacy-panel {
+            position: absolute; top: 12px; left: 12px; z-index: 10;
+            background: var(--c-card); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            border-radius: var(--radius-card); box-shadow: var(--shadow);
+            padding: 12px 16px; min-width: 180px;
+        }
+        .intimacy-panel h4 { margin: 0 0 4px; font-size: 14px; }
+        .intimacy-panel .level { color: var(--c-primary-deep); font-weight: 700; font-size: 13px; }
+        .bar { height: 8px; background: var(--c-disabled-bg); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+        .bar > div {
+            height: 100%; background: linear-gradient(90deg, var(--c-primary), #F5A623);
+            border-radius: 999px; transition: width .5s ease;
+        }
+        .intimacy-panel .hint { font-size: 11px; color: var(--c-text-sub); margin-top: 6px; }
+
+        /* 动作按钮（底部中央） */
+        .action-bar {
+            position: absolute; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+            left: 50%; transform: translateX(-50%);
+            display: flex; gap: 8px; z-index: 10; flex-wrap: nowrap;
+            max-width: 96vw; overflow-x: auto; -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;   /* S1-12：单行横向滚动 + 两侧渐隐提示，滚动条隐藏 */
+            padding: 4px 10px;
+            mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent);
+            -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent);
+        }
+        .action-bar::-webkit-scrollbar { display: none; }
+        @media (max-width: 767px) {
+            .action-btn { height: 44px; padding: 0 14px; }   /* 触控 ≥44px */
+        }
+        
+        .btn-icon { width: 20px; height: 20px; display: inline-block; vertical-align: -4px; margin-right: 6px; flex-shrink: 0; }
+        .game-icon .btn-icon { width: 36px; height: 36px; }
+        .action-btn { display: inline-flex; align-items: center; gap: 0; color: #795548; }
+        .action-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            height: 38px; padding: 0 16px; border-radius: 999px; border: none;
+            background: var(--c-card); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            box-shadow: var(--shadow); cursor: pointer; font-size: 14px;
+            color: var(--c-text); font-family: var(--font-body);
+            transition: transform .12s, background .12s;
+        }
+        .action-btn:hover { transform: translateY(-2px); background: #fff; }
+        .action-btn:active { transform: translateY(0); }
+        .action-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+        /* 场景内气泡 */
+        .bubble-tip {
+            position: absolute; z-index: 9; pointer-events: none;
+            background: rgba(255,255,255,.95); color: var(--c-text);
+            border-radius: 12px; padding: 8px 14px; font-size: 14px;
+            box-shadow: var(--shadow); max-width: 260px;
+            opacity: 0; transform: translateY(6px); transition: opacity .25s, transform .25s;
+        }
+        .bubble-tip.show { opacity: 1; transform: translateY(0); }
+
+        /* 聊天抽屉（右侧） */
+        .den-chat {
+            position: absolute; top: 64px; right: 12px; bottom: 72px; z-index: 11;
+            width: min(340px, 88vw);
+            display: flex; flex-direction: column;
+            background: var(--c-card); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            border-radius: var(--radius-card); box-shadow: var(--shadow-hover);
+            overflow: hidden;
+            transition: transform .3s ease, opacity .3s ease;
+        }
+        .den-chat.hidden { transform: translateX(110%); opacity: 0; pointer-events: none; }
+        .den-chat header {
+            padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--c-line); font-size: 14px; font-weight: 700;
+        }
+        .den-chat .msgs { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .den-chat .m { max-width: 86%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
+        .den-chat .m.user { align-self: flex-end; background: var(--c-bubble-user); }
+        .den-chat .m.pet { align-self: flex-start; background: #fff; box-shadow: var(--shadow); }
+        .den-chat .m .who { font-size: 11px; color: var(--c-text-sub); margin-bottom: 2px; }
+        .den-chat form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--c-line); }
+        .den-chat input::placeholder { color: var(--c-text-sub); opacity: 0.85; }
+        .den-chat input {
+            flex: 1; height: 36px; border: 1px solid var(--c-line); border-radius: 999px;
+            padding: 0 14px; font-size: 13px; font-family: var(--font-body);
+        }
+        .den-chat input:focus { outline: none; border-color: var(--c-primary); }
+        .den-chat button {
+            height: 36px; padding: 0 16px; border: none; border-radius: 999px;
+            background: var(--c-primary); color: var(--c-text); font-weight: 700; cursor: pointer;
+        }
+        .den-chat button:disabled { background: var(--c-disabled-bg); color: var(--c-disabled-text); cursor: not-allowed; }
+
+        .toast-container { z-index: 300; }
+
+        /* ---------- 视觉互动（本地推理，画面不上传） ---------- */
+        .vision-box { position: absolute; right: 12px; bottom: 76px; width: 138px; z-index: 25;
+            visibility: visible; display: none; border: 2px solid var(--c-line);
+            background: rgba(255,255,255,.92); border-radius: 14px;
+            padding: 6px; box-shadow: 0 6px 18px rgba(74,59,50,.14); }
+        .vision-box.ready { display: block; }
+        /* S1-11：拖拽食物 ghost / 嘴部光圈 / 手势食物托盘 */
+        .food-drag-ghost {
+            position: fixed; left: 0; top: 0; z-index: 1000;
+            width: 54px; height: 54px;
+            pointer-events: none;
+            transform: translate(-50%, -50%) scale(1.08);
+            filter: drop-shadow(0 8px 12px rgba(0,0,0,.22));
+            will-change: transform, left, top;
+            display: none;
+        }
+        .food-drag-ghost.near { transform: translate(-50%, -50%) scale(1.2); }
+        .food-drag-ghost.settle { transform: translate(-50%, -50%) scale(.75); opacity: .9; }
+        .feed-target-ring {
+            position: absolute; z-index: 24; border-radius: 50%;
+            border: 3px dashed rgba(255, 158, 88, .85);
+            box-shadow: 0 0 24px rgba(255, 158, 88, .45), inset 0 0 18px rgba(255, 158, 88, .25);
+            background: radial-gradient(circle, rgba(255, 224, 178, .18), transparent 70%);
+            pointer-events: none; opacity: 0; transition: opacity .12s ease;
+        }
+        .vision-food-tray {
+            position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%);
+            z-index: 26; display: flex; gap: 12px; padding: 8px 12px;
+            background: rgba(255, 253, 248, .88); border: 2px solid var(--c-line);
+            border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.14);
+        }
+        .vision-food-tray[hidden] { display: none; }
+        .vision-food-tray button {
+            width: 64px; height: 64px; border: 2px solid var(--c-line); border-radius: 12px;
+            background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font: inherit; font-size: 12px; color: var(--c-text-sub); flex-direction: column; gap: 2px;
+        }
+        .vision-food-tray button:hover, .vision-food-tray button.hover { border-color: var(--c-primary); box-shadow: 0 0 14px rgba(255,158,88,.5); }
+        .vision-food-tray button img { width: 34px; height: 34px; }
+        .vision-box video { width: 100%; border-radius: 9px; transform: scaleX(-1); background: #2f2620; display: block; }
+        .vision-status { font-size: 11px; line-height: 1.5; color: var(--c-text-sub); padding: 4px 2px 1px; }
+        .vision-status b { color: var(--c-text); font-weight: 700; }
+        .vision-privacy { font-size: 10px; color: var(--c-text-sub); opacity: .8; padding: 0 2px 2px; }
+        #vision-hand { position: absolute; left: 0; top: 0; z-index: 22; pointer-events: none;
+            opacity: 0; will-change: transform; line-height: 0;
+            filter: drop-shadow(0 4px 8px rgba(74,59,50,.25)); }
+        #vision-hand svg { display: block; transform: translate(-50%, -50%); }
+        #vision-hand.reaching { filter: drop-shadow(0 6px 12px rgba(232,131,60,.55)); }
+        #vision-hand.pinching svg { transform: translate(-50%, -50%) scale(.82); }
+        /* 捏合点十字准星：始终显示系统判定的精确操作坐标 */
+        #vision-pinch { position: absolute; left: 0; top: 0; z-index: 23; pointer-events: none;
+            width: 44px; height: 44px; opacity: 0; will-change: transform; }
+        #vision-pinch .ring { position: absolute; inset: 0; border-radius: 50%;
+            border: 2.5px solid rgba(255,158,88,.55); transition: border-color .12s, transform .12s; }
+        #vision-pinch .dot { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px;
+            border-radius: 50%; background: rgba(255,158,88,.75); transform: translate(-50%,-50%); }
+        #vision-pinch.pinching .ring { border-color: #FF9E58; transform: scale(1.18);
+            box-shadow: 0 0 14px rgba(255,158,88,.5); }
+        #vision-pinch.pinching .dot { background: #FF7A2E; }
+
+        /* ===== 游戏中心 ===== */
+        .game-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .game-card { border: 2px solid var(--c-line); background: #FFF9F0; border-radius: 14px;
+            padding: 14px 8px; text-align: center; cursor: pointer; transition: .15s; font-family: var(--font-body); }
+        .game-card:hover { transform: translateY(-3px); border-color: var(--c-primary); box-shadow: 0 6px 16px rgba(255,158,88,.4); }
+        .game-card .game-icon { font-size: 32px; display: block; margin-bottom: 6px; }
+        .game-card .game-name { font-size: 14px; font-weight: 700; color: var(--c-text); display: block; }
+        .game-card .game-desc { font-size: 11px; color: var(--c-text-sub); margin-top: 2px; display: block; }
+        .game-overlay { position: fixed; inset: 0; z-index: 250; background: linear-gradient(135deg, #FFAB40 0%, #FF9800 50%, #F57C00 100%);
+            display: flex; flex-direction: column; }
+        .game-overlay[hidden] { display: none; }
+        .game-hud { display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+            background: rgba(255,255,255,.9); border-bottom: 2px solid var(--c-line); }
+        .game-title { font-size: 20px; font-weight: 800; color: #E65100; }
+        .game-score { font-size: 18px; color: #E65100; font-weight: 800; }
+        .game-timer { font-size: 18px; color: #795548; font-weight: 700; }
+        .game-quit { margin-left: auto; width: 32px; height: 32px; border: none; border-radius: 50%;
+            background: var(--c-danger-bg); color: var(--c-danger); font-size: 16px; cursor: pointer; }
+        .game-area { flex: 1; position: relative; overflow: hidden; }
+        .game-result { position: absolute; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; background: rgba(255,253,248,.95); z-index: 10; }
+        .game-result[hidden] { display: none; }
+        .game-result h2 { font-size: 28px; color: var(--c-text); margin: 0 0 8px; }
+        .game-result .score { font-size: 48px; color: var(--c-primary); font-weight: 800; }
+        .game-result .msg { font-size: 15px; color: var(--c-text-sub); margin: 8px 0 20px; }
+        .game-result .result-btns { display: flex; gap: 12px; }
+        .game-result .result-btns .btn-exit-game { background: #fff; border: 2px solid var(--c-line); color: var(--c-text-sub); }
+        .game-result button { padding: 10px 32px; border: none; border-radius: 999px;
+            background: var(--c-primary); color: var(--c-text); font-size: 16px; font-weight: 700;
+            cursor: pointer; font-family: var(--font-body); }
+        /* 气球 */
+        .balloon { position: absolute; width: 80px; height: 96px; cursor: pointer; user-select: none;
+            display: flex; align-items: center; justify-content: center; font-size: 34px;
+            border: 3px solid rgba(0,0,0,.15); box-shadow: 0 4px 12px rgba(0,0,0,.2);
+            border-radius: 50% 50% 50% 50% / 45% 45% 55% 55%;
+            transition: transform .1s; z-index: 5; }
+        .balloon:active { transform: scale(.85); }
+        .balloon .balloon-string { position: absolute; bottom: -18px; width: 2px; height: 18px;
+            background: rgba(74,59,50,.2); }
+        .balloon-popped { animation: pop .3s forwards; }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); opacity: .6; } 100% { transform: scale(0); opacity: 0; } }
+        /* 泡泡 */
+        .worry-bubble { position: absolute; border-radius: 50%; cursor: pointer;
+            background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.9), rgba(200,220,255,.4), rgba(160,190,240,.3));
+            border: 3px solid rgba(80,120,200,.5); display: flex; align-items: center; justify-content: center;
+            text-align: center; font-size: 15px; font-weight: 600; color: #1A237E; padding: 14px; word-break: break-all;
+            box-shadow: inset -4px -4px 12px rgba(100,140,200,.1), 0 4px 16px rgba(100,140,200,.15);
+            transition: transform .15s; animation: bubbleFloat 3s ease-in-out infinite; }
+        .worry-bubble:hover { transform: scale(1.06); }
+        @keyframes bubbleFloat { 0%,100% { margin-top: 0; } 50% { margin-top: -10px; } }
+        .bubble-popped { animation: bubblePop .4s forwards; }
+        @keyframes bubblePop { 0% { transform: scale(1); } 40% { transform: scale(1.5); opacity: .4; } 100% { transform: scale(0); opacity: 0; } }
+        /* 猜心 */
+        .empathy-stage { flex: 1; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 24px; }
+        .empathy-prompt { font-size: 24px; font-weight: 800; color: #BF360C; text-shadow: 0 1px 2px rgba(255,255,255,.5); text-align: center; padding: 0 16px; }
+        .empathy-pet-hint { max-width: 78%; padding: 14px 22px; border-radius: 18px; background: rgba(255,255,255,.92);
+            border: 2px solid #FFAB40; font-size: 19px; font-weight: 700; color: #5D4037; text-align: center;
+            animation: empathyPulse 2s ease-in-out infinite; box-shadow: 0 4px 14px rgba(255,152,0,.18); }
+        .empathy-answer { font-size: 26px; font-weight: 800; color: #2E7D32; min-height: 34px; text-align: center; }
+        @keyframes empathyPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        .empathy-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 40px; width: 100%; max-width: 400px; }
+        .empathy-btn { padding: 18px; border: 3px solid #FFAB40; border-radius: 16px; box-shadow: 0 3px 10px rgba(255,152,0,.2);
+            background: #FFF8E1; font-size: 18px; font-weight: 700; color: #E65100;
+            cursor: pointer; transition: .15s; font-family: var(--font-body); }
+        .empathy-btn:hover { border-color: var(--c-primary); background: #FFF3E4; }
+        .empathy-btn.correct { border-color: #4CAF50; background: #E8F5E9; }
+        .empathy-btn.wrong { border-color: #F44336; background: #FFEBEE; }
+        /* 烦恼输入 */
+        .worry-input-area { padding: 30px 20px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+        .worry-input-area textarea { width: 90%; max-width: 420px; height: 80px; border: 2px solid var(--c-line);
+            border-radius: 12px; padding: 12px; font-size: 15px; font-family: var(--font-body); resize: none; }
+        .worry-input-area textarea:focus { outline: none; border-color: var(--c-primary); }
+        .worry-launch-btn { padding: 10px 28px; border: none; border-radius: 999px;
+            background: var(--c-primary); color: var(--c-text); font-size: 15px; font-weight: 700; cursor: pointer; }
+        @media (max-width: 767px) { .game-grid { grid-template-columns: 1fr; } .empathy-options { grid-template-columns: 1fr 1fr; } }
+
+        /* ---------- 心理治愈：心情打卡 / 呼吸练习 / 倾诉 chips ---------- */
+        .mood-mask, .breath-mask { position: fixed; inset: 0; z-index: 200; display: flex;
+            align-items: center; justify-content: center; }
+        .mood-mask { background: rgba(74,59,50,.45); backdrop-filter: blur(2px); }
+        .mood-mask[hidden], .breath-mask[hidden] { display: none; }
+        .mood-card { width: min(92vw, 380px); background: #FFFDF8; border-radius: 18px; padding: 22px;
+            box-shadow: 0 14px 40px rgba(74,59,50,.25); }
+        .mood-card h3 { margin: 0 0 4px; font-size: 17px; color: var(--c-text); }
+        .mood-card .sub { font-size: 12px; color: var(--c-text-sub); margin-bottom: 14px; }
+        .mood-row { display: flex; gap: 8px; margin-bottom: 14px; }
+        .mood-opt { flex: 1; border: 2px solid var(--c-line); background: #fff; border-radius: 12px;
+            padding: 8px 2px 6px; text-align: center; cursor: pointer; transition: .15s; }
+        .mood-opt .e { font-size: 24px; display: block; }
+        .mood-opt .t { font-size: 13px; color: var(--c-text); margin-top: 3px; font-weight: 600; }
+        .mood-opt.sel .t { color: var(--c-text); font-weight: 700; }
+        .mood-opt.sel { transform: translateY(-2px) scale(1.05); }
+        .mood-opt:hover { transform: translateY(-2px); }
+        .mood-opt.sel { border-color: var(--c-primary); background: #FFF3E4; }
+        .mood-note { width: 100%; border: 1px solid var(--c-line); border-radius: 10px; padding: 8px 12px;
+            font-size: 13px; font-family: var(--font-body); margin-bottom: 12px; resize: none; }
+        .mood-note:focus { outline: none; border-color: var(--c-primary); }
+        .mood-week { display: flex; gap: 6px; margin-bottom: 14px; }
+        .mood-week .d { flex: 1; text-align: center; font-size: 10px; color: var(--c-text-sub); }
+        .mood-week .d b { display: block; font-size: 17px; font-weight: 400; }
+        .mood-card .btn-row { display: flex; gap: 10px; }
+        .mood-card .btn-row button { flex: 1; height: 38px; border: none; border-radius: 999px; cursor: pointer;
+            font-family: var(--font-body); font-weight: 700; }
+        .mood-ok { background: var(--c-primary); color: var(--c-text); }
+        .mood-cancel { background: transparent; color: var(--c-text-sub); border: 1px solid var(--c-line) !important; }
+        .streak-tip { text-align: center; font-size: 11px; color: var(--c-primary); margin-top: 10px; }
+        .breath-mask { background: radial-gradient(circle at 50% 45%, rgba(255,214,165,.42), rgba(74,59,50,.38));
+            flex-direction: column; cursor: pointer; }
+        .breath-circle { width: 150px; height: 150px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,.95), rgba(255,214,165,.85));
+            box-shadow: 0 0 60px rgba(255,200,140,.7); display: flex; align-items: center; justify-content: center;
+            transition: transform 3.8s cubic-bezier(.4,0,.6,1); font-size: 40px; }
+        .breath-text { margin-top: 26px; font-size: 19px; color: #fff; text-shadow: 0 2px 10px rgba(74,59,50,.5);
+            letter-spacing: 2px; }
+        .breath-round { margin-top: 8px; font-size: 12px; color: rgba(255,255,255,.85); }
+        .breath-close { position: absolute; top: 18px; right: 22px; color: #fff; font-size: 13px;
+            background: rgba(255,255,255,.18); border: none; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+        .chat-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 10px 4px; margin-top: 4px; border-top: 1px solid var(--c-line); }
+        .chat-chips button { border: 1px solid var(--c-line); background: #FFF6EC; color: var(--c-text-sub);
+            border-radius: 999px; font-size: 11px; padding: 4px 10px; cursor: pointer; font-family: var(--font-body); }
+        .chat-chips button:hover { border-color: var(--c-primary); color: var(--c-text); }
+
+        @media (max-width: 767px) {
+            .intimacy-panel { top: 66px; min-width: 150px; padding: 10px 12px; }
+            .den-pets { top: 64px; }
+            .den-chat { top: 120px; bottom: 116px; }
+            /* 视觉预览窗挪到左下，避开右侧聊天抽屉 */
+            .vision-box { left: 8px; right: auto; bottom: 76px; width: 108px; }
+            #vision-hand { font-size: 34px !important; }
+        }
+    </style>
+
+<script>
+const ICONS = {
+    pet:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="15" rx="5" ry="4.5" fill="rgba(255,158,88,.4)"/><ellipse cx="5.5" cy="9" rx="2" ry="2.5" fill="rgba(255,158,88,.4)"/><ellipse cx="12" cy="6.5" rx="2" ry="2.5" fill="rgba(255,158,88,.4)"/><ellipse cx="18.5" cy="9" rx="2" ry="2.5" fill="rgba(255,158,88,.4)"/></svg>',
+    bone:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8L16 16" /><path d="M8 8a2 2 0 1 0-4 0 2 2 0 0 0 4 0zM16 16a2 2 0 1 0 4 0 2 2 0 0 0-4 0z" fill="rgba(255,158,88,.4)"/><path d="M6 5a2 2 0 1 1 4 0v3H7a2 2 0 0 1-1-3zM18 19a2 2 0 1 1-4 0v-3h3a2 2 0 0 1 1 3z" fill="rgba(255,158,88,.4)"/></svg>',
+    fish:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-5 9-5 9 5 9 5-3 5-9 5-9-5-9-5z" fill="rgba(100,181,246,.4)"/><circle cx="16" cy="11" r="1" fill="#96705B" stroke="none"/><path d="M11 7l-2-4M11 17l-2 4" stroke-width="1.5"/></svg>',
+    cookie:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" fill="rgba(255,204,128,.4)"/><circle cx="9" cy="9" r="1.2" fill="#96705B" stroke="none"/><circle cx="14" cy="8" r="1" fill="#96705B" stroke="none"/><circle cx="10" cy="14" r="1.2" fill="#96705B" stroke="none"/><circle cx="15" cy="13" r="1" fill="#96705B" stroke="none"/><circle cx="12" cy="17" r="1" fill="#96705B" stroke="none"/></svg>',
+    dress:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l3 8-3 2-3-2z" fill="rgba(255,107,158,.4)"/><path d="M7 13c0 0 2 3 5 6 3-3 5-6 5-6"/><circle cx="12" cy="2.5" r="1.5" fill="#FFD700" stroke="none"/></svg>',
+    photo:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="3" fill="rgba(255,158,88,.35)"/><path d="M8 7l1.5-3h5L16 7"/><circle cx="12" cy="13" r="3.5" fill="rgba(255,255,255,.5)"/></svg>',
+    eye:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" fill="rgba(100,181,246,.35)"/><circle cx="12" cy="12" r="3" fill="rgba(100,181,246,.4)"/><circle cx="12" cy="12" r="1.2" fill="#96705B" stroke="none"/></svg>',
+    voice:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>',
+    heart:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21C7 16.5 3 13 3 8.8 3 6 5 4 7.5 4c1.8 0 3.4 1 4.5 2.6C13.1 5 14.7 4 16.5 4 19 4 21 6 21 8.8c0 4.2-4 7.7-9 12.2z" fill="rgba(244,143,177,.4)"/></svg>',
+    breath:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.5" fill="rgba(165,214,167,.4)" stroke="none"/><circle cx="12" cy="12" r="6" opacity=".35"/><circle cx="12" cy="12" r="9.5" opacity=".15"/></svg>',
+    gamepad:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="11" rx="5" fill="rgba(156,39,176,.3)"/><path d="M7 11v4M5 13h4"/><circle cx="16" cy="12" r="1" fill="#96705B" stroke="none"/><circle cx="18.5" cy="14.5" r="1" fill="#96705B" stroke="none"/><path d="M8 8l1-3h6l1 3"/></svg>',
+    chat:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V5z" fill="rgba(255,158,88,.35)"/><path d="M8 9h8M8 12h5" stroke-width="1.5"/></svg>',
+    music:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l10-2v12" fill="rgba(255,158,88,.35)"/><circle cx="7" cy="18" r="2.5" fill="rgba(255,158,88,.4)"/><circle cx="17" cy="16" r="2.5" fill="rgba(255,158,88,.4)"/></svg>',
+    balloon:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="8" rx="6" ry="7" fill="rgba(255,213,79,.4)"/><path d="M12 15v3M12 18c0 1-1 2-2 3"/><path d="M10 5c1-1 3-1.5 4-1" stroke-width="1.2"/></svg>',
+    bubble:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8" fill="rgba(100,181,246,.4)"/><circle cx="9" cy="9" r="2" fill="rgba(255,255,255,.6)" stroke="none"/><circle cx="18" cy="5" r="2" stroke-width="1.5"/><circle cx="5" cy="18" r="1.5" stroke-width="1.5"/></svg>',
+    mask:'<svg viewBox="0 0 24 24" fill="none" stroke="#96705B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c0-1 1-2 2-2h5v14c0 2-1.5 3-3.5 3S4 20 4 18V6z" fill="rgba(255,158,88,.35)"/><path d="M13 4h5c1 0 2 1 2 2v12c0 2-1.5 3-3.5 3s-3.5-1-3.5-3V4z" fill="rgba(186,104,200,.3)"/><circle cx="7" cy="9" r="1" fill="#96705B" stroke="none"/><circle cx="10" cy="12" r="1" fill="#96705B" stroke="none"/><path d="M6 15c1 1 2.5 1.5 3.5 1" stroke-width="1.5"/><circle cx="16" cy="9" r="1" fill="#96705B" stroke="none"/></svg>',
+};
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-icon]').forEach(el => {
+        const svg = ICONS[el.dataset.icon];
+        if (!svg) return;
+        const old = el.querySelector('svg.btn-icon');
+        if (old) old.remove();
+        el.insertAdjacentHTML('afterbegin', svg.replace('<svg', '<svg class="btn-icon"'));
+    });
+});
+</script></head>
+<body class="theme">
+    {% include '_navbar.html' %}
+    <div id="den-wrap">
+        <canvas id="den-canvas"></canvas>
+
+        <div class="den-pets" id="den-pets"></div>
+
+        <div class="intimacy-panel" id="intimacy-panel">
+            <h4 id="ip-name"><span id="ip-name-text">小窝</span> <button type="button" id="btn-profile" style="font-size:12px;font-weight:500;color:#A89484;background:transparent;border:1px solid #D8C7B4;border-radius:8px;padding:2px 8px;cursor:pointer;vertical-align:middle;margin-left:4px;">资料</button></h4>
+            <div id="ip-companion" style="font-size:12.5px;color:#8a7a6c;margin:2px 0 4px;">陪伴第 1 天</div>
+            <div>亲密度 <span class="level" id="ip-level">初次见面</span> <span id="ip-num" class="text-sub" style="font-size:12px;">0/10</span> <button type="button" id="btn-rules" style="font-size:12px;color:#A89484;background:transparent;border:0;text-decoration:underline;cursor:pointer;padding:0 2px;">规则</button></div>
+            <div class="bar"><div id="ip-bar" style="width:0%"></div></div>
+            <div class="hint" id="ip-hint">摸摸它、喂它好吃的、陪它聊天都能提升亲密度</div>
+        </div>
+
+        <div class="bubble-tip" id="bubble"></div>
+
+        <div class="action-bar">
+            <button class="action-btn" id="btn-pet" data-icon="pet">摸摸</button>
+            <button class="action-btn" id="btn-feed-bone" data-icon="bone">骨头</button>
+            <button class="action-btn" id="btn-feed-fish" data-icon="fish">小鱼干</button>
+            <button class="action-btn" id="btn-feed-cookie" data-icon="cookie">饼干</button>
+            <button class="action-btn" id="btn-dress" data-icon="dress">换装</button>
+            <button class="action-btn" id="btn-photo" data-icon="photo">拍照</button>
+            <button class="action-btn" id="btn-vision" data-icon="eye">眼神互动</button>
+            <button class="action-btn" id="btn-tts" data-icon="voice">语音</button>
+            <button class="action-btn" id="btn-mood" data-icon="heart">心情</button>
+            <button class="action-btn" id="btn-breath" data-icon="breath">呼吸</button>
+            <button class="action-btn" id="btn-games" data-icon="gamepad">游戏中心</button>
+            <button class="action-btn" id="btn-chat" data-icon="chat">聊天</button>
+            <button class="action-btn" id="btn-music" data-icon="music">音乐</button>
+        </div>
+
+        <div class="den-chat hidden" id="den-chat">
+            <header>
+                <span id="chat-title">和小家伙聊天</span>
+                <button class="icon-btn" id="btn-chat-close" aria-label="收起聊天" style="width:28px;height:28px;">✕</button>
+            </header>
+            <div class="msgs" id="chat-msgs"></div>
+            <div class="chat-chips" id="chat-chips">
+                <button type="button" data-say="我今天有点难过，你能陪陪我吗">有点难过 😢</button>
+                <button type="button" data-say="我最近好焦虑，心里静不下来">好焦虑 😰</button>
+                <button type="button" data-say="压力好大，感觉快撑不住了">压力好大 😮‍💨</button>
+                <button type="button" data-say="最近总是睡不着，心里乱乱的">睡不着 🌙</button>
+                <button type="button" data-say="没什么特别的事，就想和你聊聊">就想聊聊 </button>
+            </div>
+            <form id="chat-form">
+                <input id="chat-input" placeholder="和它说点什么…" autocomplete="off" maxlength="200">
+                <button type="submit" id="chat-send">发送</button>
+            </form>
+        </div>
+
+        <!-- 心理治愈：心情打卡 -->
+        <div class="mood-mask" id="mood-mask" hidden>
+            <div class="mood-card" role="dialog" aria-label="今日心情">
+                <h3>今天心情怎么样？</h3>
+                <div class="sub">告诉它，它会一直陪着你</div>
+                <div class="mood-row" id="mood-row">
+                    <div class="mood-opt" data-mood="happy" data-label="开心"><span class="e">😊</span><span class="t">开心</span></div>
+                    <div class="mood-opt" data-mood="calm" data-label="平静"><span class="e">🙂</span><span class="t">平静</span></div>
+                    <div class="mood-opt" data-mood="low" data-label="低落"><span class="e">😔</span><span class="t">低落</span></div>
+                    <div class="mood-opt" data-mood="anxious" data-label="焦虑"><span class="e">😰</span><span class="t">焦虑</span></div>
+                    <div class="mood-opt" data-mood="sad" data-label="难过"><span class="e">😢</span><span class="t">难过</span></div>
+                </div>
+                <textarea class="mood-note" id="mood-note" rows="2" maxlength="120" placeholder="想说点什么给它听？（选填）"></textarea>
+                <div class="mood-week" id="mood-week"></div>
+                <div class="btn-row">
+                    <button class="mood-cancel" id="mood-cancel">先不了</button>
+                    <button class="mood-ok" id="mood-ok">告诉它</button>
+                </div>
+                <div class="streak-tip" id="mood-streak"></div>
+            </div>
+        </div>
+
+        <!-- 心理治愈：呼吸练习 -->
+        <div class="breath-mask" id="breath-mask" hidden>
+            <button class="breath-close" id="breath-close">结束练习</button>
+            <div class="breath-circle" id="breath-circle">🐾</div>
+            <div class="breath-text" id="breath-text">准备好了就开始啦</div>
+            <div class="breath-round" id="breath-round"></div>
+        </div>
+
+        <!-- ===== 心理学游戏中心 ===== -->
+<div class="mood-mask" id="games-mask" hidden>
+    <div class="mood-card" style="width:min(94vw,440px)">
+        <h3>心理小游戏</h3>
+        <div class="sub">和它一起玩，心情会变好</div>
+        <div class="game-grid">
+            <button class="game-card" data-game="balloon" data-icon="balloon"><span class="game-icon" data-icon="balloon"></span>
+                <span class="game-name">情绪气球</span>
+                <span class="game-desc">戳破气球认识情绪</span>
+            </button>
+            <button class="game-card" data-game="worry" data-icon="bubble"><span class="game-icon" data-icon="bubble"></span>
+                <span class="game-name">烦恼泡泡</span>
+                <span class="game-desc">写下烦恼然后放飞它</span>
+            </button>
+            <button class="game-card" data-game="empathy" data-icon="mask"><span class="game-icon" data-icon="mask"></span>
+                <span class="game-name">宠物猜心</span>
+                <span class="game-desc">猜猜它现在什么心情</span>
+            </button>
+        </div>
+        <div class="btn-row" style="margin-top:14px">
+            <button class="mood-cancel" id="games-close">返回</button>
+        </div>
+    </div>
+</div>
+
+<!-- 游戏画布 overlay -->
+<div class="game-overlay" id="game-overlay" hidden>
+    <div class="game-hud">
+        <span id="game-title" class="game-title"></span>
+        <span id="game-score" class="game-score"></span>
+        <span id="game-timer" class="game-timer"></span>
+        <button class="game-quit" id="game-quit">✕</button>
+    </div>
+    <div id="game-area" class="game-area"></div>
+    <div id="game-result" class="game-result" hidden></div>
+</div>
+
+<!-- 视觉互动：本地 WASM 推理，摄像头画面不上传 -->
+        <div class="vision-box hidden" id="vision-box">
+            <video id="vision-cam" autoplay playsinline muted></video>
+            <div class="vision-status" id="vision-status">启动中…</div>
+            <div class="vision-privacy">🔒 画面仅本地处理，不会上传</div>
+        </div>
+        <div id="vision-hand" aria-hidden="true">
+            <!-- 几何手掌剪影（不依赖 emoji 字体）：掌 + 四指 + 拇指 -->
+            <svg viewBox="0 0 64 64" width="72" height="72">
+                <g fill="rgba(232,131,74,.88)" stroke="#8A4B22" stroke-width="2.5" stroke-linejoin="round">
+                    <ellipse cx="31" cy="43" rx="15.5" ry="14"/>
+                    <rect x="14.5" y="19" width="8" height="22" rx="4"/>
+                    <rect x="25.5" y="12" width="8" height="27" rx="4"/>
+                    <rect x="36.5" y="14" width="8" height="24" rx="4"/>
+                    <rect x="47" y="21" width="7" height="18" rx="3.5"/>
+                    <ellipse cx="13.5" cy="39" rx="6.5" ry="8.5" transform="rotate(-35 13.5 39)"/>
+                </g>
+            </svg>
+        </div>
+        <div id="vision-pinch" aria-hidden="true"><div class="ring"></div><div class="dot"></div></div>
+        <!-- S1-11：手势食物托盘（视觉互动开启时显示；鼠标点它也直接喂食） -->
+        <div id="vision-food-tray" class="vision-food-tray" hidden>
+            <button type="button" data-hand-food="bone" aria-label="用手拿骨头，或点击直接喂食">骨头</button>
+            <button type="button" data-hand-food="fish" aria-label="用手拿小鱼干，或点击直接喂食">小鱼干</button>
+            <button type="button" data-hand-food="cookie" aria-label="用手拿饼干，或点击直接喂食">饼干</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/vendor/three.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/vendor/OrbitControls.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/vendor/GLTFLoader.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pet-profile.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/den_vision.js') }}"></script>
+    <script>
+    /* ============================================================
+       3D 宠物小窝 —— Quaternius CC0 骨骼动画 GLB 模型 + 交互系统
+       （模型本地 static/models/，零外部请求；配饰/亲密度/视觉互动保留）
+       ============================================================ */
+    (function () {
+        'use strict';
+        if (!window.THREE) { toast('3D 引擎加载失败', 'error'); return; }
+
+        // ---------- 宠物规格（程序化建模参数） ----------
+        const PETS = {{ pets | tojson }};
+        const MODELS = {{ models | tojson }};
+        const SPECS = {
+            1: { name: '柴犬', glb: '/static/models/shiba.glb', h: 0.95,
+                 greet: '汪！欢迎来到我的小窝，摸摸我吧！',
+                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death', blinkL: 'Idle_HitReact_Left', blinkR: 'Idle_HitReact_Right' },
+                 theme: 'sakura', themeName: '樱花庭院' },
+            2: { name: '哈士奇', glb: '/static/models/husky.glb', h: 1.05,
+                 greet: '嗷呜~ 帅气的我在等你一起玩呢！',
+                 anims: { idle: 'Idle', happy: 'Gallop_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death', blinkL: 'Idle_HitReact_Left', blinkR: 'Idle_HitReact_Right' },
+                 theme: 'snow', themeName: '静静雪原' },
+            3: { name: '猫咪', glb: '/static/models/cat.glb', h: 0.72,
+                 greet: '喵~ 我的窝就是你的窝（才不让你走呢）。',
+                 anims: { idle: 'Idle', happy: 'Jump_Loop', eat: 'Idle_Eating', petting: 'Idle', talk: 'Idle', sleep: 'Death', blinkL: 'Idle_HitReact_Left', blinkR: 'Idle_HitReact_Right' },
+                 theme: 'room', themeName: '温馨小窝' },
+            4: { name: '德牧', glb: '/static/models/shepherd.glb', h: 1.08,
+                 greet: '汪！忠诚卫士报到，今天想玩点什么？',
+                 anims: { idle: 'Idle', happy: 'Run_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death', blinkL: 'Idle_HitReact_Left', blinkR: 'Idle_HitReact_Right' },
+                 theme: 'camp', themeName: '星空营地' },
+        };
+        const LEVELS = [
+            [0, '初次见面'], [10, '有点熟悉'], [30, '心情不错'],
+            [60, '好朋友'], [90, '挚爱伙伴'], [150, '灵魂挚友'],
+        ];
+
+        // ---------- 本地状态 ----------
+        const LS_KEY = 'denState';
+        function loadState() {
+            try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); }
+            catch (e) { return {}; }
+        }
+        function saveState() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
+        const state = loadState();
+        let currentPetId = Number(Object.keys(SPECS)[0]);
+        // 陪伴天数（S1-07）：每只宠物独立记录领养日；旧数据只补今天，不按亲密度倒推
+        function localDateKey(d) {
+            const p = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+        }
+        function dateKeyToUtcDay(key) {
+            const [y, m, d] = key.split('-').map(Number);
+            return Math.floor(Date.UTC(y, m - 1, d) / 86400000);   // 避开夏令时 23/25 小时坑
+        }
+        function companionDays(adoptedOn) {
+            const diff = dateKeyToUtcDay(localDateKey(new Date())) - dateKeyToUtcDay(adoptedOn);
+            return Number.isFinite(diff) ? Math.max(1, diff + 1) : 1;
+        }
+        function companionStage(days) {
+            if (days <= 7) return '初见期';
+            if (days <= 30) return '幼年期';
+            if (days <= 90) return '成长期';
+            return '默契伙伴';
+        }
+        function petState() {
+            if (!state[currentPetId]) {
+                state[currentPetId] = { intimacy: 0, accessory: 0, adoptedOn: localDateKey(new Date()) };
+                saveState();
+            } else if (!state[currentPetId].adoptedOn) {
+                state[currentPetId].adoptedOn = localDateKey(new Date());
+                saveState();
+            }
+            return state[currentPetId];
+        }
+
+        // ---------- 渲染基础 ----------
+        const canvas = document.getElementById('den-canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;   // 电影级色调映射，高光有层次不发死白
+        renderer.toneMappingExposure = 1.12;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+        camera.position.set(2.6, 2.2, 4.2);
+        camera.lookAt(0, 0.8, 0);
+
+        const controls = new THREE.OrbitControls(camera, canvas);
+        controls.target.set(0, 0.8, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 2.2;
+        controls.maxDistance = 9;
+        controls.maxPolarAngle = Math.PI / 2.05;
+
+        // 光照：三点卡通布光（主光/环境/轮廓光），Toon 材质下轮廓光会在剪影上切出干净的亮边
+        const hemi = new THREE.HemisphereLight(0xfff4e0, 0xcbb59a, 0.5);
+        scene.add(hemi);
+        const sun = new THREE.DirectionalLight(0xfff6e8, 1.05);
+        sun.position.set(3, 6, 4);
+        sun.castShadow = true;
+        sun.shadow.mapSize.set(2048, 2048);
+        sun.shadow.camera.left = -4; sun.shadow.camera.right = 4;
+        sun.shadow.camera.top = 4; sun.shadow.camera.bottom = -4;
+        sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+        scene.add(sun);
+        const rim = new THREE.DirectionalLight(0xbfd8ff, 0.55);
+        rim.position.set(-4, 5, -3.5);   // 背侧上方，制造剪影亮边
+        scene.add(rim);
+
+        // ---------- 能力检测（S1-12）：低性能降级 + ?quality=low/high 验收开关 ----------
+        const qParam = new URLSearchParams(location.search).get('quality');
+        const lowPower = qParam === 'low' ||
+            (qParam !== 'high' && ((navigator.deviceMemory && navigator.deviceMemory <= 4) ||
+                (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)));
+        const PARTICLE_SCALE = lowPower ? 0.6 : 1;   // 粒子约减 40%
+        if (lowPower) {
+            renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.25));
+            sun.shadow.mapSize.set(1024, 1024);   // 阴影贴图 2048→1024
+            if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+        }
+
+        // 摄像头能力：HTTP/VPN 非安全上下文无法 getUserMedia —— 按钮保留但友好降级
+        const cameraAvailable = Boolean(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+        // 网络波动提示（S1-12）：本地记录始终保留
+        window.addEventListener('offline', () => toast('网络断开，已保留本地记录', 'info'));
+        window.addEventListener('online', () => toast('网络已恢复，可以继续啦', 'success'));
+
+        // 地面与小窝布景（草地纹理地面 + 地毯 + 灌木）
+        const grassTex = new THREE.TextureLoader().load('/static/images/grasslight-big.jpg');
+        grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
+        grassTex.repeat.set(5, 5);
+        grassTex.encoding = THREE.sRGBEncoding;
+        const groundMat = new THREE.MeshLambertMaterial({ map: grassTex, color: 0xE8E0D0 });
+        const ground = new THREE.Mesh(new THREE.CircleGeometry(7, 48), groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+        const rug = new THREE.Mesh(
+            new THREE.CircleGeometry(1.7, 40),
+            new THREE.MeshLambertMaterial({ color: 0xFFD9B3 }));
+        rug.rotation.x = -Math.PI / 2;
+        rug.position.y = 0.01;
+        rug.receiveShadow = true;
+        scene.add(rug);
+        // 接地接触阴影（径向渐变假 AO，宠物被提起时淡出缩小）
+        const contactShadow = new THREE.Mesh(
+            new THREE.CircleGeometry(0.5, 32),
+            new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.34, depthWrite: false }));
+        contactShadow.material.map = (() => {
+            const c = document.createElement('canvas'); c.width = c.height = 128;
+            const ctx = c.getContext('2d');
+            const g = ctx.createRadialGradient(64, 64, 6, 64, 64, 62);
+            g.addColorStop(0, 'rgba(30,20,12,0.85)'); g.addColorStop(0.55, 'rgba(30,20,12,0.35)'); g.addColorStop(1, 'rgba(30,20,12,0)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
+            const t = new THREE.CanvasTexture(c); t.needsUpdate = true; return t;
+        })();
+        contactShadow.rotation.x = -Math.PI / 2;
+        contactShadow.position.y = 0.012;
+        contactShadow.renderOrder = 2;
+        contactShadow.visible = false;
+        scene.add(contactShadow);
+        // ---------- 每宠专属场景主题（装饰/地面/环境粒子） ----------
+        const decorGroup = new THREE.Group();
+        scene.add(decorGroup);
+        let currentTheme = null;
+        const M = (c) => new THREE.MeshLambertMaterial({ color: c });
+
+        const THEMES = {
+            sakura: {   // 樱花庭院：樱花树 + 石灯笼 + 飘落花瓣
+                rug: 0xF7C8D0,
+                ground: { grass: true, day: 0xE0E4D0, dusk: 0xC8B8A8, night: 0x8A8A96 },
+                env: { kind: 'petal', n: 16, rise: false },
+                build(g) {
+                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.14, 1.5, 8), M(0x8A6248));
+                    trunk.position.set(-2.3, 0.75, -1.5); trunk.castShadow = true; g.add(trunk);
+                    [[-2.3, 1.75, -1.5, 0.62], [-2.0, 1.5, -1.75, 0.42], [-2.62, 1.45, -1.35, 0.4], [-2.3, 1.95, -1.72, 0.34]].forEach(([x, y, z, r]) => {
+                        const c = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10), M(0xF8C8D8));
+                        c.position.set(x, y, z); c.castShadow = true; g.add(c);
+                    });
+                    const lantern = new THREE.Group();
+                    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.7, 8), M(0x9AA0A0));
+                    pole.position.y = 0.35; lantern.add(pole);
+                    const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.22, 6), M(0xD8D4C4));
+                    lamp.position.y = 0.78; lantern.add(lamp);
+                    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.16, 6), M(0x8A9090));
+                    cap.position.y = 0.96; lantern.add(cap);
+                    lantern.position.set(2.15, 0, -1.35);
+                    lantern.traverse(o => { o.castShadow = true; });
+                    g.add(lantern);
+                    const lampLight = new THREE.PointLight(0xFFE8C0, 0.5, 3.5);
+                    lampLight.position.set(2.15, 1.0, -1.35);
+                    lampLight.name = '__themeLight';
+                    g.add(lampLight);
+                },
+            },
+            snow: {     // 静静雪原：雪堆 + 松树 + 落雪
+                rug: 0xE8F0F8,
+                ground: { grass: false, day: 0xFFFFFF, dusk: 0xD8E0EA, night: 0x9AA6B8 },
+                env: { kind: 'snow', n: 22, rise: false },
+                build(g) {
+                    [[-2.0, -1.2, 0.55], [1.9, -0.9, 0.4], [1.2, -1.9, 0.62], [-1.1, -2.1, 0.34]].forEach(([x, z, r]) => {
+                        const s = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), M(0xFAFCFF));
+                        s.scale.y = 0.45; s.position.set(x, r * 0.28, z); s.castShadow = true; s.receiveShadow = true; g.add(s);
+                    });
+                    [[-2.5, -0.8, 1.15], [2.5, -1.5, 0.95]].forEach(([x, z, h]) => {
+                        const tree = new THREE.Group();
+                        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 0.4, 8), M(0x7A5A40));
+                        trunk.position.y = 0.2; tree.add(trunk);
+                        [[0.45, 0.75], [0.33, 1.25]].forEach(([r, y]) => {
+                            const cone = new THREE.Mesh(new THREE.ConeGeometry(r, 0.85, 10), M(0x4E7A58));
+                            cone.position.y = y; cone.castShadow = true; tree.add(cone);
+                        });
+                        tree.position.set(x, 0, z);
+                        g.add(tree);
+                        const snowCap = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 10), M(0xFAFCFF));
+                        snowCap.position.set(x, 1.55, z); g.add(snowCap);
+                    });
+                },
+            },
+            room: {     // 温馨小窝：木地板 + 纸箱 + 毛线球 + 串灯
+                rug: 0xF5C9A0,
+                ground: { grass: false, day: 0xC8A070, dusk: 0xB89060, night: 0x7A6E62 },
+                env: { kind: 'bubble', n: 10, rise: true, tiny: true },
+                build(g) {
+                    const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.9), M(0xC89858));
+                    box.position.set(-2.1, 0.35, -1.3); box.rotation.y = 0.4; box.castShadow = true; box.receiveShadow = true; g.add(box);
+                    const box2 = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.45, 0.55), M(0xD8A868));
+                    box2.position.set(-2.05, 0.92, -1.25); box2.rotation.y = -0.2; box2.castShadow = true; g.add(box2);
+                    // 猫爬架（柱子+平台）
+                    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.4, 10), M(0xB89878));
+                    post.position.set(2.3, 0.7, -1.3); post.castShadow = true; g.add(post);
+                    const platform = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.06, 14), M(0xE8C8A0));
+                    platform.position.set(2.3, 1.42, -1.3); platform.castShadow = true; g.add(platform);
+                    const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.7, 8), M(0xB89878));
+                    post2.position.set(2.3, 1.78, -1.3); g.add(post2);
+                    const platform2 = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.05, 12), M(0xE8C8A0));
+                    platform2.position.set(2.3, 2.15, -1.3); g.add(platform2);
+                    // 窗框（背景墙面装饰）
+                    const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.0, 0.8), M(0xA08860));
+                    winFrame.position.set(-3.0, 1.8, -0.5); g.add(winFrame);
+                    const winGlass = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.85, 0.65),
+                        new THREE.MeshBasicMaterial({ color: 0xB8D8F0, transparent: true, opacity: 0.4 }));
+                    winGlass.position.set(-2.99, 1.8, -0.5); g.add(winGlass);
+                    const winBar = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.85, 0.03), M(0xA08860));
+                    winBar.position.set(-2.98, 1.8, -0.5); g.add(winBar);
+                    const winBar2 = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.03, 0.65), M(0xA08860));
+                    winBar2.position.set(-2.98, 1.8, -0.5); g.add(winBar2);
+                    // 挂画
+                    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5, 0.4), M(0xC8A870));
+                    frame.position.set(-2.8, 1.9, 1.2); g.add(frame);
+                    const art = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.4, 0.3), M(0xF0E0C8));
+                    art.position.set(-2.79, 1.9, 1.2); g.add(art);
+                    [[1.9, -1.1, 0xF2A0B5], [2.35, -0.7, 0x9AC8E8]].forEach(([x, z, c]) => {
+                        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 12), M(c));
+                        ball.position.set(x, 0.2, z); ball.castShadow = true; g.add(ball);
+                    });
+                    const stringLight = new THREE.Group();
+                    for (let i = 0; i < 7; i++) {
+                        const t = i / 6;
+                        const x = -2.6 + t * 5.2;
+                        const y = 2.3 - Math.sin(t * Math.PI) * 0.55;
+                        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8),
+                            new THREE.MeshBasicMaterial({ color: 0xFFE0A8 }));
+                        bulb.position.set(x, y, -1.9 + Math.sin(t * Math.PI) * 0.4);
+                        stringLight.add(bulb);
+                    }
+                    stringLight.name = '__stringLights';
+                    g.add(stringLight);
+                    const warm = new THREE.PointLight(0xFFD9A0, 0.6, 7);
+                    warm.position.set(0, 2.2, -1.6);
+                    warm.name = '__themeLight';
+                    g.add(warm);
+                    const warm2 = new THREE.PointLight(0xFFE8C0, 0.35, 3);
+                    warm2.position.set(0.5, 1.5, 0.5);
+                    warm2.name = '__themeLight2';
+                    g.add(warm2);
+                },
+            },
+            camp: {     // 星空营地：篝火 + 帐篷 + 栅栏 + 星月氛围
+                rug: 0xC8B890,
+                ground: { grass: false, day: 0x5A5A6E, dusk: 0x4E4E5A, night: 0x3A3A48 },
+                env: { kind: 'spark', n: 18, rise: true, tiny: true },
+                build(g) {
+                    const fire = new THREE.Group();
+                    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 8), M(0x7A5238));
+                    log.rotation.z = Math.PI / 2; log.position.y = 0.06; fire.add(log);
+                    const log2 = log.clone(); log2.rotation.y = Math.PI / 2; fire.add(log2);
+                    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.65, 8),
+                        new THREE.MeshBasicMaterial({ color: 0xFF8A20, transparent: true, opacity: 0.9 }));
+                    flame.position.y = 0.48; flame.name = '__flame'; fire.add(flame);
+                    const flameIn = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.42, 8),
+                        new THREE.MeshBasicMaterial({ color: 0xFFE080 }));
+                    flameIn.position.y = 0.4; fire.add(flameIn);
+                    const flameCore = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.25, 6),
+                        new THREE.MeshBasicMaterial({ color: 0xFFFFC0 }));
+                    flameCore.position.y = 0.32; fire.add(flameCore);
+                    fire.position.set(1.7, 0, 0.9);
+                    fire.traverse(o => { o.castShadow = true; });
+                    g.add(fire);
+                    const fireLight = new THREE.PointLight(0xFF9030, 1.4, 3.5);
+                    fireLight.position.set(1.7, 0.9, 0.9);
+                    fireLight.name = '__fireLight';
+                    g.add(fireLight);
+                    // 火星粒子（微小上浮）
+                    const spark = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5),
+                        new THREE.MeshBasicMaterial({ color: 0xFFD070 }));
+                    spark.position.set(1.7, 0.7, 0.9);
+                    spark.name = '__spark';
+                    g.add(spark);
+                    const tent = new THREE.Group();
+                    const t1 = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.15, 4), M(0xE8DCC0));
+                    t1.position.y = 0.58; t1.rotation.y = Math.PI / 4; t1.castShadow = true; tent.add(t1);
+                    const door = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.6, 4), M(0x6A5646));
+                    door.position.set(0.18, 0.3, 0.42); door.rotation.y = Math.PI / 4; tent.add(door);
+                    tent.position.set(-2.2, 0, -1.2);
+                    g.add(tent);
+                    // 月亮（中景，不受雾影响，营造夜晚氛围）
+                    const moon = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 14),
+                        new THREE.MeshBasicMaterial({ color: 0xFFF8E0, fog: false }));
+                    moon.position.set(3.2, 3.2, -4.0);
+                    g.add(moon);
+                    const moonGlow = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 14),
+                        new THREE.MeshBasicMaterial({ color: 0xFFF8E0, transparent: true, opacity: 0.25, fog: false }));
+                    moonGlow.position.copy(moon.position);
+                    g.add(moonGlow);
+                    // 石头路（篝火到帐篷）
+                    for (let i = 0; i < 4; i++) {
+                        const stone = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), M(0x9A9690));
+                        stone.scale.y = 0.5;
+                        stone.position.set(-0.3 - i * 0.45, 0.03, 0.3 + i * 0.15);
+                        g.add(stone);
+                    }
+                    for (let i = 0; i < 4; i++) {
+                        const post = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.55, 0.09), M(0x9A7A58));
+                        post.position.set(-0.6 + i * 0.75, 0.27, -2.3); post.castShadow = true; g.add(post);
+                        if (i < 3) {
+                            const rail = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.07, 0.06), M(0xA88868));
+                            rail.position.set(-0.225 + i * 0.75, 0.4, -2.3); g.add(rail);
+                        }
+                    }
+                },
+            },
+        };
+
+        // 环境粒子（樱花/落雪/微尘/星光，主题切换时重建；纹理缓存复用避免重复创建）
+        let envSprites = [];
+        let themeFireLight = null, themeFlame = null;   // tick 用引用缓存，避免每帧 getObjectByName
+        const envTexCache = {};
+        function disposeObjectTree(root) {
+            root.traverse((o) => {
+                if (o.geometry) o.geometry.dispose();
+                if (o.material) {
+                    (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
+                }
+            });
+        }
+        function applyTheme(name) {
+            const t = THEMES[name];
+            if (!t) return;
+            currentTheme = name;
+            disposeObjectTree(decorGroup);   // 显式释放 GPU 资源，防止反复切宠累积
+            while (decorGroup.children.length) decorGroup.remove(decorGroup.children[0]);
+            themeFireLight = null; themeFlame = null;
+            t.build(decorGroup);
+            themeFireLight = decorGroup.getObjectByName('__fireLight') || null;
+            themeFlame = decorGroup.getObjectByName('__flame') || null;
+            rug.material.color.setHex(t.rug);
+            applyTimeOfDay();
+            // 营地主题强制黄昏偏暗天空（配合月亮+篝火营造夜晚氛围）
+            if (name === 'camp') {
+                scene.background = new THREE.Color(0x2A3A5C);   // 深蓝夜空
+                scene.fog = new THREE.Fog(0x2A3A5C, 8, 20);
+                hemi.intensity = 0.35;
+                sun.intensity = 0.25;
+
+            } else if (name === 'room') {
+                // 温馨小窝：暖黄偏暗（标准日光会把木地板曝白）
+                scene.background = new THREE.Color(0xF5E8D0);
+                scene.fog = new THREE.Fog(0xF5E8D0, 10, 22);
+                hemi.intensity = 0.45;
+                sun.intensity = 0.55;
+            }
+            envSprites.forEach((s) => { scene.remove(s); s.material.dispose(); });
+            envSprites = [];
+            if (!envTexCache[t.env.kind]) envTexCache[t.env.kind] = shapeTexture(t.env.kind);
+            const tex = envTexCache[t.env.kind];
+            for (let i = 0; i < t.env.n; i++) {
+                const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.75 }));
+                const sz = t.env.tiny ? 0.1 + Math.random() * 0.08 : 0.16 + Math.random() * 0.12;
+                sp.scale.setScalar(sz);
+                sp.position.set((Math.random() - 0.5) * 7, Math.random() * 3, (Math.random() - 0.5) * 7);
+                sp.userData = { v: (t.env.rise ? 0.1 : -0.12) - Math.random() * 0.1, sway: Math.random() * Math.PI * 2, rise: t.env.rise };
+                scene.add(sp);
+                envSprites.push(sp);
+            }
+        }
+
+        // 昼夜背景（?scene=night/morning/day/dusk 可强制指定，便于演示与验收）
+        function applyTimeOfDay() {
+            const q = new URLSearchParams(location.search).get('scene');
+            let h = new Date().getHours();
+            if (q === 'night') h = 22; else if (q === 'morning') h = 7;
+            else if (q === 'day') h = 12; else if (q === 'dusk') h = 18;
+            let sky, fog, sunI;
+            if (h >= 6 && h < 9) { sky = 0xFFE0C0; fog = 0xFFE0C0; sunI = 0.75; }        // 清晨
+            else if (h >= 9 && h < 17) { sky = 0xCDEBF7; fog = 0xCDEBF7; sunI = 0.95; }  // 白天
+            else if (h >= 17 && h < 20) { sky = 0xFFC9A3; fog = 0xFFC9A3; sunI = 0.6; }  // 黄昏
+            else { sky = 0x3E4A6B; fog = 0x3E4A6B; sunI = 0.35; }                        // 夜晚
+            scene.background = new THREE.Color(sky);
+            scene.fog = new THREE.Fog(fog, 9, 22);
+            sun.intensity = sunI;
+            hemi.intensity = 0.5 + sunI * 0.4;
+            // room 主题光照覆盖（持久化，不被周期刷新重置）
+            if (currentTheme === 'room') { hemi.intensity = 0.45; sun.intensity = 0.55; }
+            // 地面随昼夜明暗 + 主题配色（雪原/木地板为纯色，庭院/营地为草地贴图）
+            const gnd = (currentTheme && THEMES[currentTheme]) ? THEMES[currentTheme].ground : { grass: true, day: 0xe8e0d0, dusk: 0xc8c2b8, night: 0x8a8a96 };
+            groundMat.map = gnd.grass ? grassTex : null;
+            groundMat.needsUpdate = true;
+            groundMat.color.setHex(sunI < 0.5 ? (gnd.night || 0x8a8a96) : sunI < 0.8 ? (gnd.dusk || 0xc8c2b8) : (gnd.day || 0xe8e0d0));
+            // 夜晚/黄昏给宠物加一盏暖色"窝灯"，避免主体打光过平
+            if (sunI < 0.65) {
+                if (!window.__denLamp) {
+                    window.__denLamp = new THREE.PointLight(0xFFD9A0, 1.1, 8);
+                    window.__denLamp.position.set(-2.2, 1.8, 1.6);   // 左前暖光
+                    scene.add(window.__denLamp);
+                }
+                window.__denLamp.intensity = 1.2 - sunI;
+                // 右后冷色轮廓光：与暖灯形成冷暖对比，夜间立体感
+                if (!window.__denRim) {
+                    window.__denRim = new THREE.PointLight(0x6B7FBF, 0.6, 10);
+                    window.__denRim.position.set(2.6, 1.4, -2.2);
+                    scene.add(window.__denRim);
+                }
+                window.__denRim.intensity = 0.6;
+            } else if (window.__denLamp) {
+                window.__denLamp.intensity = 0;
+                if (window.__denRim) window.__denRim.intensity = 0;
+            }
+        }
+
+        // ---------- GLB 宠物（Quaternius CC0 动物包，本地 static/models，带骨骼动画） ----------
+        const gltfCache = {};
+        const gltfLoader = new THREE.GLTFLoader();
+        const clipShort = (n) => n.replace(/^.*\|/, '');
+        function loadGlb(url) {
+            if (!gltfCache[url]) {
+                gltfCache[url] = new Promise((resolve, reject) => {
+                    gltfLoader.load(url, resolve, undefined, reject);
+                });
+            }
+            return gltfCache[url];
+        }
+
+        // 配饰（帽子/围巾/蝴蝶结）：优先挂头/颈骨骼（跟随动画），无骨骼则按体高近似
+        // 幂等：gltfCache 会复用同一 scene，二次 spawn 同一宠物时按名字找回已挂配饰，避免重复叠加
+        function buildAccessories(model, headBone, neckBone, origH, spec) {
+            const k = origH;
+            const reuse = (name) => model.getObjectByName(name) || null;
+            let hatGroup = reuse('__den_hat');
+            let scarf = reuse('__den_scarf');
+            let bow = reuse('__den_bow');
+            if (!hatGroup) {
+                const M = (c) => new THREE.MeshLambertMaterial({ color: c });
+                // 派对帽：大锥体（亮粉）+ 宽帽沿（白色）+ 顶球（金色）——一眼可辨
+                const hat = new THREE.Mesh(new THREE.ConeGeometry(0.24 * spec.h, 0.48 * spec.h, 20),
+                    new THREE.MeshBasicMaterial({ color: 0xFF6B9E }));
+                hat.position.set(0, 0.24 * spec.h, 0);
+                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * spec.h, 0.34 * spec.h, 0.04 * spec.h, 20),
+                    new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
+                brim.position.set(0, 0.015 * spec.h, 0);
+                const pom = new THREE.Mesh(new THREE.SphereGeometry(0.06 * spec.h, 10, 8),
+                    new THREE.MeshBasicMaterial({ color: 0xFFD700 }));
+                pom.position.set(0, 0.49 * spec.h, 0);
+                const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.15 * spec.h, 0.02 * spec.h, 8, 20), M(0xFFFFFF));
+                stripe.position.set(0, 0.28 * spec.h, 0); stripe.rotation.x = Math.PI / 2;
+                hatGroup = new THREE.Group(); hatGroup.add(hat); hatGroup.add(brim);
+                hatGroup.add(pom); hatGroup.add(stripe);
+                hatGroup.name = '__den_hat';
+                hatGroup.rotation.z = 0.12;
+                hatGroup.position.set(0, spec.h * 0.98, 0.3);
+                petModel.add(hatGroup);
+            }
+            if (!scarf) {
+                scarf = new THREE.Mesh(new THREE.TorusGeometry(0.34 * k, 0.075 * k, 10, 24),
+                    new THREE.MeshLambertMaterial({ color: 0xE5735B }));
+                scarf.name = '__den_scarf';
+                scarf.rotation.x = 0.35;
+                scarf.position.set(0, spec.h * 0.5, 0.22);
+                petModel.add(scarf);
+            }
+            if (!bow) {
+                bow = new THREE.Group();
+                const M2 = (c) => new THREE.MeshLambertMaterial({ color: c });
+                [-1, 1].forEach((side) => {
+                    const wing = new THREE.Mesh(new THREE.ConeGeometry(0.06 * spec.h, 0.13 * spec.h, 10), M2(0xFF9E58));
+                    wing.rotation.z = Math.PI / 2 * side;
+                    wing.position.x = 0.16 * k * side;
+                    wing.scale.set(1, 1, 0.7);
+                    bow.add(wing);
+                });
+                const knot = new THREE.Mesh(new THREE.SphereGeometry(0.03 * spec.h, 10, 8), M2(0xE8833C));
+                bow.add(knot);
+                bow.name = '__den_bow';
+                bow.rotation.y = 0.45; bow.scale.setScalar(1.2);
+                bow.position.set(spec.h * 0.2, spec.h * 0.72, 0.12);
+                petModel.add(bow);
+            }
+            hatGroup.visible = false; scarf.visible = false; bow.visible = false;
+            petModel.userData.accessories = [hatGroup, scarf, bow];
+        }
+
+        // ---------- 动画状态机（GLB AnimationMixer 驱动） ----------
+        let petModel = null;
+        let mixer = null, actions = {}, activeAction = null;
+        const anim = { state: 'idle', until: 0, lastInteract: performance.now(), birth: 1, lie: 0 };
+        function playAction(key, timeScale) {
+            const a = actions[key];
+            if (!a) return;
+            a.timeScale = timeScale;
+            if (activeAction === a) return;
+            a.reset();
+            a.setLoop(THREE.LoopRepeat, Infinity);
+            a.clampWhenFinished = false;
+            if (activeAction) a.crossFadeFrom(activeAction, 0.25, false);
+            a.play();
+            activeAction = a;
+        }
+        // 睡觉：播「倒下」动画一次并定格在躺平末帧（Death 片段即躺倒姿势），之后由 tick 做极慢呼吸起伏
+        function playSleep() {
+            const a = actions.sleep;
+            if (!a) { playAction('idle', 0.4); return; }
+            a.reset();
+            a.setLoop(THREE.LoopOnce, 1);
+            a.clampWhenFinished = true;
+            a.timeScale = 0.85;            // 慢慢倒下（约2-3秒）
+            if (activeAction) a.crossFadeFrom(activeAction, 0.3, false);
+            a.play();
+            activeAction = a;
+        }
+        window.__denAnimDebug = () => ({
+            state: anim.state, untilLeft: Math.max(0, Math.round((anim.until || 0) - performance.now())),
+            active: activeAction ? activeAction.getClip().name : null,
+            performing: performing ? performing() : false,
+        });
+        function setAnim(state, dur) {
+            if (window.__animLog) window.__animLog.push([Math.round(performance.now()), state, dur,
+                String(new Error().stack || '').split('\n')[2].trim().slice(0, 90)]);
+            anim.state = state;
+            anim.until = performance.now() + dur;
+            anim.lastInteract = performance.now();
+            if (state === 'sleep') { anim.sleptAt = performance.now(); playSleep(); }
+            else playAction(state, 1);
+        }
+        // ---------- 流畅动画链（趣味手势回应用）：逐步 crossFade 连播 ----------
+        // performingUntil：表演期间锁定——抚摸累计/对视/响指等自动动画不得抢占链子
+        let chainTimer = null;
+        let performingUntil = 0;
+        function playChain(steps) {
+            clearTimeout(chainTimer);
+            performingUntil = performance.now() + steps.reduce((a, b) => a + b[1], 0) + 150;
+            let i = 0;
+            const next = () => {
+                if (i >= steps.length) { setAnim('idle', 0); return; }
+                const st = steps[i][0], dur = steps[i][1];
+                i += 1;
+                setAnim(st, dur);
+                chainTimer = setTimeout(next, dur);
+            };
+            next();
+        }
+        const performing = () => performance.now() < performingUntil;
+
+        // ---------- 趣味手势 → 宠物镜像回应（作揖回拜/比心/挥手/点赞） ----------
+        // 链式编排复用已有动作键（全宠物都有映射）；petting=低头鞠躬、blinkL/R=歪头、happy=跳跃
+        const GESTURE_REACT = {
+            pray: {
+                label: '🤝 作揖', lines: ['{name}拱起前爪回了一个揖！新的一年请多关照～🧧', '{name}深深鞠了一躬：恭喜恭喜！万事如意！'],
+                chain: [['happy', 550], ['petting', 850], ['happy', 450], ['petting', 800], ['happy', 1100]],
+                fx: () => { burst('star', 10); setTimeout(() => burst('heart', 4), 500); },
+            },
+            heart: {
+                label: '♡ 比心', lines: ['{name}眯起眼睛回比了一个心：收到啦，我也爱你 ♡', '心心相印！{name}开心得原地转圈 ♡'],
+                chain: [['petting', 700], ['happy', 1500]],
+                fx: () => {
+                    for (let i = 0; i < 8; i++) setTimeout(() => burst('heart', 1,
+                        petHeadPos().add(new THREE.Vector3((Math.random() - .5) * 0.9, Math.random() * 0.5, (Math.random() - .5) * 0.6))), i * 110);
+                },
+            },
+            wave: {
+                label: '👋 挥手', lines: ['{name}用力摇着爪子回应你：嗨嗨~你来啦！', '{name}歪着脑袋挥挥爪：好久不见呀！'],
+                chain: [['happy', 550], ['blinkL', 380], ['blinkR', 380], ['blinkL', 360], ['happy', 900]],
+                fx: () => burst('star', 5),
+            },
+            thumb: {
+                label: '👍 点赞', lines: ['{name}挺起胸脯：我们是最棒的搭档！', '{name}骄傲地扬起下巴：哇！满分好评！'],
+                chain: [['happy', 650], ['talk', 900], ['happy', 1000]],
+                fx: () => burst('star', 6),
+            },
+        };
+        let gestureFlash = null;   // {label, until} 状态栏短暂显示
+        function handlePetGesture(name) {
+            const g = GESTURE_REACT[name];
+            if (!g || !petModel) return;
+            if (grabbed || dropping || gestureAction || foodDrag || !gameOverlay.hidden) return;   // 互动中不打架
+            const line = pick(g.lines);
+            playChain(g.chain);
+            showBubble(line, 2400, true);   // silent：气泡自带speak会开talk嘴型吞掉表演链，语音由下一行统一出
+            g.fx();
+            gestureFlash = { label: g.label, until: performance.now() + 2200 };
+            visionRenderStatus();
+            speak(line, { talk: false });   // 语音回应但不动嘴型动画——表演链优先（ttsOn 在 speak 内处理）
+        }
+
+        let spawnBusy = false;   // 首载窗口并发守卫
+
+        // ---------- 卡通渲染升级：Toon 三阶渐变 + 描边 + 绒毛外壳（零外部资源） ----------
+        // Toon 三阶渐变贴图（暗部偏冷紫/中间调/亮部偏暖），NearestFilter 保证色阶干净不插值
+        const TOON_GRADIENT = (() => {
+            //            暗阶(冷)      中阶       亮阶(暖)
+            const data = new Uint8Array([
+                110, 104, 142, 255,
+                198, 190, 184, 255,
+                255, 250, 243, 255
+            ]);
+            const t = new THREE.DataTexture(data, 3, 1, THREE.RGBAFormat);
+            t.minFilter = THREE.NearestFilter; t.magFilter = THREE.NearestFilter;
+            t.generateMipmaps = false; t.needsUpdate = true;
+            return t;
+        })();
+        const OUTLINE_RATIO = 0.010;   // 描边厚度 = 宠物身高×1%（各模型原始尺寸差异达3倍+，固定模型空间厚度会让小原始模型描边爆粗）
+
+        // 蒙皮壳专用顶点注入：沿“经过骨骼蒙皮后的物体空间法线”膨胀。
+        // 必须紧跟 skinning_vertex：直接使用原始 normal 会让描边与动画后的肢体方向脱节，
+        // 形成环状爆面/碎片；材质也必须显式开启 skinning，否则壳会停在绑定姿态。
+        // onBeforeCompile 改常量必须给 customProgramCacheKey，否则同材质类型的 program 会被复用、常量被忽略
+        function skinnedInflate(mat, key, offset) {
+            mat.skinning = true;
+            mat.onBeforeCompile = (shader) => {
+                shader.vertexShader = shader.vertexShader.replace(
+                    '#include <skinning_vertex>',
+                    `#include <skinning_vertex>\ntransformed += objectNormal * ${offset.toFixed(6)};`
+                );
+            };
+            mat.customProgramCacheKey = () => key;
+            return mat;
+        }
+        // 与原几何共享 attribute 的壳几何（零拷贝），不带 groups 时绘制整个索引区间
+        function shellGeometry(src) {
+            const g = new THREE.BufferGeometry();
+            for (const name of Object.keys(src.attributes)) g.setAttribute(name, src.attributes[name]);
+            g.setIndex(src.index);
+            return g;
+        }
+        function applyToonLook(model, origH) {
+            // 先收集再处理：边遍历边 addChild 会让 traverse 迭代中的数组无限增长（栈溢出）
+            const targets = [];
+            model.traverse((o) => {
+                if (o.isSkinnedMesh && !o.userData.__denToonDone && !o.userData.__denFx) targets.push(o);
+            });
+            targets.forEach((o) => {
+                o.userData.__denToonDone = true;
+                const mats = Array.isArray(o.material) ? o.material : [o.material];
+                // 1) 材质卡通化：眼睛/瞳孔走 Phong 留高光点，其余走 Toon 三阶
+                const converted = mats.map((m) => {
+                    if (!m || m.isMeshToonMaterial || m.isMeshPhongMaterial) return m;
+                    if (/eye|pupil/i.test(m.name || '')) {
+                        return new THREE.MeshPhongMaterial({
+                            color: (m.color || new THREE.Color(0xffffff)).clone(),
+                            shininess: 60, specular: new THREE.Color(0x777777), name: m.name
+                        });
+                    }
+                    const t = new THREE.MeshToonMaterial({
+                        color: (m.color || new THREE.Color(0xffffff)).clone(),
+                        map: m.map || null, gradientMap: TOON_GRADIENT,
+                        transparent: m.transparent, opacity: m.opacity,
+                        alphaTest: m.alphaTest || 0, side: m.side, name: m.name
+                    });
+                    t.vertexColors = !!m.vertexColors;
+                    return t;
+                });
+                o.material = Array.isArray(o.material) ? converted : converted[0];
+                // 2) 描边壳（BackSide 反面外壳法，蒙皮后沿法线外扩；厚度按原始身高比例，缩放后各宠一致）
+                const outlineThick = OUTLINE_RATIO * origH;
+                const outlineMat = skinnedInflate(new THREE.MeshBasicMaterial({
+                    color: 0x241610, side: THREE.BackSide
+                }), 'denOutline' + outlineThick.toFixed(4), outlineThick);
+                const outline = new THREE.SkinnedMesh(shellGeometry(o.geometry), outlineMat);
+                outline.bind(o.skeleton, o.bindMatrix);
+                // 壳与原网格必须是同级节点。挂到原 SkinnedMesh 下面会把原网格的局部变换
+                // 再应用一次，不同 GLB 层级下会直接表现为描边爆面。
+                outline.position.copy(o.position);
+                outline.quaternion.copy(o.quaternion);
+                outline.scale.copy(o.scale);
+                outline.userData.__denFx = true; outline.frustumCulled = false;
+                outline.castShadow = false; outline.receiveShadow = false;
+                o.parent.add(outline);
+            });
+        }
+
+        async function spawnPet(id, fromRollback = false) {
+            if (!SPECS[id]) { toast('这只宠物还不认识我们哦', 'error'); return; }
+            if (id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
+            const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
+            spawnBusy = true;
+            if (petModel) scene.remove(petModel);
+            cancelPointerDrag();       // S1-11：切宠清理拖拽与手势（目标宠不能误加分）
+            cancelGestureAction('pet-switch');
+            currentPetId = id;
+            if (typeof denHistory !== 'undefined') denHistory = [];   // 聊天记忆逐宠隔离
+            const spec = SPECS[id];
+            applyTheme(spec.theme);   // 每宠专属场景（需在 spec 定义后）
+            // 先刷 UI（加载是异步的，界面不该等）
+            renderPetChips();
+            updateIntimacyUI();
+            document.getElementById('chat-title').textContent = `和${spec.name}聊天`;
+            if (typeof updatePetTitles === 'function') updatePetTitles();   // 追加性别标注（S1-09）
+            document.getElementById('ip-name-text').textContent = `${spec.name}的小窝`;
+            let gltf;
+            try {
+                gltf = await loadGlb(spec.glb);
+            } catch (e) {
+                if (currentPetId !== id) return;   // 已被接管：静默让位（busy 归接管方管理，不误报/不闪回）
+                toast('宠物模型加载失败，请刷新重试', 'error');
+                gltfCache[spec.glb] = null;     // 清失败缓存（rejected promise 不常驻，下次点击可重试）
+                spawnBusy = false;               // 先复位再回滚：子级调用时标志状态正确
+                if (prevId && !fromRollback) spawnPet(prevId, true);   // 回滚最多一跳：多资源损坏时不乒乓
+                return;
+            }
+            // 用户等加载期间可能已切换到别的宠物：直接让位，busy 交给接管的 spawn 管理（其退出路径自会复位）
+            if (currentPetId !== id) return;
+            const model = gltf.scene;
+            // 归一化：目标高度、落地、居中（scene 会被缓存复用，先复位上次变换避免二次缩放）
+            model.scale.setScalar(1);
+            model.position.set(0, 0, 0);
+            model.updateMatrixWorld(true);
+            // 摘下骨骼上的配饰再量包围盒（Box3 不看 visible，帽尖会让狗二次出现时缩水 1/4）
+            const detached = [];
+            ['__den_hat', '__den_scarf', '__den_bow'].forEach((n) => {
+                const o = model.getObjectByName(n);
+                if (o && o.parent) { detached.push([o, o.parent]); o.parent.remove(o); }
+            });
+            // 描边壳也要摘下再量（沿法线膨胀会虚增包围盒，缓存模型二次加载时累积缩水）
+            const fxShells = [];
+            model.traverse((o) => { if (o.userData && o.userData.__denFx) fxShells.push(o); });
+            fxShells.forEach((o) => { if (o.parent) { detached.push([o, o.parent]); o.parent.remove(o); } });
+            const box = new THREE.Box3().setFromObject(model);
+            const origH = Math.max(0.01, box.max.y - box.min.y);
+            model.scale.setScalar(spec.h / origH);
+            model.updateMatrixWorld(true);
+            const box2 = new THREE.Box3().setFromObject(model);
+            model.position.set(-(box2.min.x + box2.max.x) / 2, -box2.min.y, -(box2.min.z + box2.max.z) / 2);
+            detached.forEach(([o, parentBone]) => parentBone.add(o));   // 配饰挂回原骨骼
+            model.traverse((o) => {
+                if (o.isMesh) {
+                    o.castShadow = true; o.frustumCulled = false;
+                }
+            });
+            try { applyToonLook(model, origH); } catch (e) { console.warn('卡通渲染壳层跳过：', e); }   // 壳层失败不阻断宠物出场
+            mixer = new THREE.AnimationMixer(model);
+            actions = {}; activeAction = null;
+            for (const [key, wanted] of Object.entries(spec.anims)) {
+                const clip = gltf.animations.find((a) => clipShort(a.name) === wanted);
+                if (clip) actions[key] = mixer.clipAction(clip);
+            }
+            if (!actions.idle && gltf.animations[0]) actions.idle = mixer.clipAction(gltf.animations[0]);
+
+            let headBone = null, neckBone = null;
+            model.traverse((o) => {
+                if (o.isBone) {
+                    if (!headBone && /head/i.test(o.name)) headBone = o;
+                    if (!neckBone && /neck/i.test(o.name)) neckBone = o;
+                }
+            });
+
+            const g = new THREE.Group();
+            g.add(model);
+            g.rotation.y = 0.35;                 // 朝向镜头略侧，展示立体感
+            petModel = g;
+            petModel.userData = { height: spec.h, headBone, origH, animations: gltf.animations.map(a => clipShort(a.name)) };
+            buildAccessories(model, headBone, neckBone, origH, spec);
+            scene.add(petModel);
+            // 配饰恢复
+            const acc = petState().accessory || 0;
+            if (acc > 0 && petModel.userData.accessories[acc - 1]) petModel.userData.accessories[acc - 1].visible = true;
+            // 出生动画
+            g.scale.setScalar(0.01);
+            anim.birth = 0;
+            setAnim('idle', 0);
+            showBubble(spec.greet, 2600);
+            spawnBusy = false;
+        }
+
+        // ---------- 粒子（canvas 路径绘制贴图，不依赖 emoji 字体——字体渲染在不同环境会变黑块/残片） ----------
+        const particles = [];
+        function shapeTexture(kind) {
+            const c = document.createElement('canvas');
+            c.width = c.height = 64;
+            const ctx = c.getContext('2d');
+            ctx.lineCap = 'round';
+            const P = (fill, path) => { ctx.beginPath(); path(); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+            switch (kind) {
+                case 'petal':   // 樱花：五瓣 + 深粉花心
+                    for (let i = 0; i < 5; i++) {
+                        const a = i * Math.PI * 2 / 5 - Math.PI / 2;
+                        ctx.save(); ctx.translate(32 + Math.cos(a) * 14, 32 + Math.sin(a) * 14); ctx.rotate(a);
+                        P('#FFB7CE', () => ctx.ellipse(0, 0, 11, 7.5, 0, 0, Math.PI * 2));
+                        ctx.restore();
+                    }
+                    P('#E86A8A', () => ctx.arc(32, 32, 5, 0, Math.PI * 2));
+                    break;
+                case 'snow':    // 雪花：六臂 + 端部分叉
+                    ctx.strokeStyle = '#DCEBFF'; ctx.lineWidth = 3;
+                    for (let i = 0; i < 6; i++) {
+                        const a = i * Math.PI / 3;
+                        const dx = Math.cos(a) * 20, dy = Math.sin(a) * 20;
+                        ctx.beginPath(); ctx.moveTo(32, 32); ctx.lineTo(32 + dx, 32 + dy); ctx.stroke();
+                        for (const s of [-0.5, 0.5]) {
+                            const bx = 32 + dx * 0.68, by = 32 + dy * 0.68;
+                            ctx.beginPath(); ctx.moveTo(bx, by);
+                            ctx.lineTo(bx + Math.cos(a + s) * 8, by + Math.sin(a + s) * 8); ctx.stroke();
+                        }
+                    }
+                    ctx.fillStyle = '#F4FAFF'; ctx.beginPath(); ctx.arc(32, 32, 3.5, 0, Math.PI * 2); ctx.fill();
+                    break;
+                case 'bubble':  // 泡泡：淡蓝圆环 + 高光弧
+                    ctx.strokeStyle = '#A8CFF5'; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.arc(32, 32, 20, 0, Math.PI * 2); ctx.stroke();
+                    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.arc(32, 32, 13, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke();
+                    break;
+                case 'spark': { // 星光：金色四芒星 + 柔光
+                    const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 28);
+                    g.addColorStop(0, 'rgba(255,220,130,.95)'); g.addColorStop(1, 'rgba(255,220,130,0)');
+                    ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+                    P('#FFE9A8', () => {
+                        ctx.moveTo(32, 6); ctx.quadraticCurveTo(35, 29, 58, 32); ctx.quadraticCurveTo(35, 35, 32, 58);
+                        ctx.quadraticCurveTo(29, 35, 6, 32); ctx.quadraticCurveTo(29, 29, 32, 6);
+                    });
+                    break;
+                }
+                case 'heart':  // 爱心
+                    P('#FF6B81', () => {
+                        ctx.moveTo(32, 54);
+                        ctx.bezierCurveTo(6, 36, 10, 12, 26, 16); ctx.bezierCurveTo(31, 18, 32, 23, 32, 25);
+                        ctx.bezierCurveTo(32, 23, 33, 18, 38, 16); ctx.bezierCurveTo(54, 12, 58, 36, 32, 54);
+                    });
+                    break;
+                case 'star': { // 五角星
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        const a = -Math.PI / 2 + i * Math.PI * 2 / 5;
+                        const a2 = a + Math.PI / 5;
+                        ctx.lineTo(32 + Math.cos(a) * 24, 32 + Math.sin(a) * 24);
+                        ctx.lineTo(32 + Math.cos(a2) * 10, 32 + Math.sin(a2) * 10);
+                    }
+                    ctx.closePath(); ctx.fillStyle = '#FFD54F'; ctx.fill();
+                    ctx.strokeStyle = '#F5A623'; ctx.lineWidth = 2; ctx.stroke();
+                    break;
+                }
+                case 'zzz':    // 睡觉 Z（ASCII 字形不依赖 emoji 字体）
+                    ctx.fillStyle = '#7E9BD6'; ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center';
+                    ctx.fillText('Z', 20, 26); ctx.font = 'bold 18px sans-serif'; ctx.fillText('Z', 40, 46);
+                    break;
+                case 'bone':   // 骨头：两端球 + 中间杆
+                    ctx.fillStyle = '#F5E7C8';
+                    [[16, 24], [16, 40], [48, 24], [48, 40]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill(); });
+                    ctx.fillRect(16, 26, 32, 12);
+                    break;
+                case 'fish':   // 小鱼干：橙身 + 三角尾 + 眼点
+                    P('#FFA65C', () => ctx.ellipse(28, 32, 16, 10, 0, 0, Math.PI * 2));
+                    P('#F08A3C', () => { ctx.moveTo(42, 32); ctx.lineTo(56, 22); ctx.lineTo(56, 42); });
+                    ctx.fillStyle = '#3A2A1A'; ctx.beginPath(); ctx.arc(20, 30, 2.2, 0, Math.PI * 2); ctx.fill();
+                    break;
+                case 'cookie': // 饼干：棕圆 + 巧克力豆
+                    P('#E0B878', () => ctx.arc(32, 32, 20, 0, Math.PI * 2));
+                    ctx.fillStyle = '#8A5A2B';
+                    [[24, 26], [40, 28], [30, 40], [41, 39], [25, 36]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); });
+                    break;
+            }
+            const tex = new THREE.CanvasTexture(c);
+            tex.needsUpdate = true;
+            return tex;
+        }
+        const TEX = { heart: shapeTexture('heart'), star: shapeTexture('star'), zzz: shapeTexture('zzz'), bone: shapeTexture('bone'), fish: shapeTexture('fish'), cookie: shapeTexture('cookie') };
+        function burst(ch, n, pos) {
+            n = Math.max(1, Math.round(n * PARTICLE_SCALE));
+            for (let i = 0; i < n; i++) {
+                const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX[ch], transparent: true }));
+                sp.scale.setScalar(0.22 + Math.random() * 0.14);
+                const spread = ch === 'heart' ? 0.8 : 0.6;   // 爱心需要更大出生半径
+                sp.position.copy(pos || petHeadPos()).add(new THREE.Vector3((Math.random() - .5) * spread, 0.15 + Math.random() * .25, (Math.random() - .5) * spread));
+                sp.userData = {
+                    v: new THREE.Vector3((Math.random() - .5) * 1.4, 0.6 + Math.random() * 1.0, (Math.random() - .5) * 1.4),
+                    life: 1.6 + Math.random() * 0.5,
+                };
+                scene.add(sp);
+                particles.push(sp);
+            }
+        }
+        function petHeadPos() {
+            if (petModel && petModel.userData.headBone) {
+                return petModel.userData.headBone.getWorldPosition(new THREE.Vector3());
+            }
+            if (petModel) {
+                return new THREE.Vector3(petModel.position.x, (petModel.userData.height || 1) * 0.85, petModel.position.z);
+            }
+            return new THREE.Vector3(0, 1, 0);
+        }
+
+        // 食物飞行动画
+        let flyingFood = null;
+        function flyFood(ch) {
+            const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX[ch], transparent: true }));
+            sp.scale.setScalar(0.34);
+            sp.position.set(1.8, 0.6, 1.8);
+            flyingFood = { sprite: sp, t: 0, from: sp.position.clone(), to: petHeadPos() };
+            scene.add(sp);
+        }
+
+        // ---------- 亲密度（S1-10：统一规则 + 每宠独立每日次数） ----------
+        // dailyCap = 每日可获奖励的次数（不是积分上限）；动画照播，满额只是不加分
+        const INTIMACY_RULES = {
+            pet:  { label: '摸摸', points: 1, dailyCap: 5 },
+            feed: { label: '喂食', points: 2, dailyCap: 5 },
+            chat: { label: '聊天', points: 3, dailyCap: 3 },
+            game: { label: '完成小游戏', points: 1, dailyCap: 3 },
+            gaze: { label: '持续对视', points: 1, dailyCap: 5 },
+            hand: { label: '手势抚摸', points: 1, dailyCap: 10 },
+        };
+        function ensurePetDaily(ps) {
+            const today = localDateKey(new Date());
+            if (!ps.daily || ps.daily.date !== today) {
+                ps.daily = { date: today, pet: 0, feed: 0, chat: 0, game: 0, gaze: 0, hand: 0 };
+            }
+            return ps.daily;
+        }
+        // 唯一加分入口：所有互动来源都必须走这里（游戏原结算分作为 override 传入，单次上限 3）
+        function rewardIntimacy(kind, overridePoints) {
+            const rule = INTIMACY_RULES[kind];
+            if (!rule) return { gained: 0, reason: 'unknown-rule' };
+            const ps = petState();
+            const daily = ensurePetDaily(ps);
+            const before = ps.intimacy;
+            if ((daily[kind] || 0) >= rule.dailyCap) {
+                return { gained: 0, reason: 'daily-cap', rule };
+            }
+            const points = Number.isFinite(overridePoints) ? overridePoints : rule.points;
+            daily[kind] = (daily[kind] || 0) + 1;
+            ps.intimacy = Math.min(200, before + points);
+            saveState();
+            updateIntimacyUI();
+            const lvBefore = levelOf(before), lvAfter = levelOf(ps.intimacy);
+            if (lvAfter !== lvBefore) {
+                toast(`${SPECS[currentPetId].name} 的亲密度升级啦：${lvAfter[1]}！🎉`, 'success', 4000);
+                burst('star', 8);
+                setAnim('happy', 1800);
+            } else if (ps.intimacy >= 200) {
+                toast('你们已经是最默契的伙伴啦！', 'success');
+            } else {
+                toast(`亲密度 +${ps.intimacy - before} 💛`, 'success');
+            }
+            return { gained: ps.intimacy - before, reason: 'ok', rule };
+        }
+        function addIntimacy() { /* S1-10 起废弃：统一走 rewardIntimacy(kind)。保留空函数避免外部引用报错 */ }
+        function levelOf(v) {
+            let cur = LEVELS[0];
+            for (const l of LEVELS) if (v >= l[0]) cur = l;
+            return cur;
+        }
+        function updateIntimacyUI() {
+            const ps = petState();
+            const lv = levelOf(ps.intimacy);
+            const next = LEVELS[LEVELS.indexOf(lv) + 1];
+            // 陪伴天数（与"连续心情打卡"是两个概念，互不累计）
+            const days = companionDays(ps.adoptedOn);
+            document.getElementById('ip-companion').textContent = `陪伴第 ${days} 天 · ${companionStage(days)}`;
+            document.getElementById('ip-level').textContent = lv[1];
+            document.getElementById('ip-num').textContent = next ? `${ps.intimacy}/${next[0]}` : `${ps.intimacy} MAX`;
+            document.getElementById('ip-bar').style.width = next
+                ? `${Math.min(100, (ps.intimacy - lv[0]) / (next[0] - lv[0]) * 100)}%` : '100%';
+        }
+
+        // 规则面板（S1-10）：展示当前宠物今日各互动次数与升级进度
+        function openIntimacyRules() {
+            document.getElementById('rules-mask')?.remove();
+            const ps = petState();
+            const daily = ensurePetDaily(ps);
+            const mask = document.createElement('div');
+            mask.id = 'rules-mask';
+            mask.className = 'mood-mask';
+            mask.setAttribute('role', 'dialog');
+            mask.setAttribute('aria-modal', 'true');
+            const rows = Object.entries(INTIMACY_RULES).map(([k, r]) =>
+                `<tr><td style="padding:4px 10px 4px 0;">${r.label}</td><td style="padding:4px 10px;text-align:center;">+${r.points}</td><td style="padding:4px 0;text-align:right;">${daily[k] || 0}/${r.dailyCap}</td></tr>`).join('');
+            const lv = levelOf(ps.intimacy);
+            const next = LEVELS[LEVELS.indexOf(lv) + 1];
+            mask.innerHTML = `
+                <div class="mood-card" style="width:min(94vw,340px)">
+                    <h3>今天的亲密互动 · ${SPECS[currentPetId].name}</h3>
+                    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:10px 0;">${rows}</table>
+                    <div class="sub" style="margin:8px 0 0">${next
+                        ? `距离「${next[1]}」还差 ${Math.max(0, next[0] - ps.intimacy)} 点`
+                        : '已达最高等级，感谢陪伴 ❤️'}</div>
+                    <div class="sub" style="margin:6px 0 0;font-size:12px;">每日次数在本地时间 00:00 重置</div>
+                    <div class="btn-row" style="margin-top:14px"><button class="mood-ok" id="rules-close">知道啦</button></div>
+                </div>`;
+            document.body.appendChild(mask);
+            mask.hidden = false;
+            mask.addEventListener('click', (e) => { if (e.target === mask) mask.remove(); });
+            document.getElementById('rules-close').addEventListener('click', () => mask.remove());
+            document.addEventListener('keydown', function esc(e) {
+                if (e.key === 'Escape') { mask.remove(); document.removeEventListener('keydown', esc); }
+            });
+        }
+
+        // ---------- 交互 ----------
+        const PET_LINES = {
+            pet: ['{name}舒服地眯起了眼睛~', '{name}的尾巴摇成了螺旋桨！', '{name}轻轻蹭了蹭你的手', '呼噜呼噜…{name}很享受'],
+            feed: ['{name}两口就吃掉了，还想再要！', '{name}吃得津津有味', '{name}舔了舔嘴：谢谢款待~'],
+        };
+        function pick(arr) { return arr[Math.floor(Math.random() * arr.length)].replace('{name}', SPECS[currentPetId].name); }
+
+        function doPetting() {
+            setAnim('petting', 1600);
+            burst('heart', 5);
+            const r = rewardIntimacy('pet');
+            if (r.reason === 'daily-cap') toast('今天已经摸得很满足啦，互动仍然可以继续～', 'info');
+            showBubble(pick(PET_LINES.pet), 1800);
+        }
+        function doFeed(kind) { completeFeeding(kind); }   // 点击/键盘路径：飞食物动画 + 统一结算
+
+        // ---------- S1-11：拖拽喂食（Pointer Events）+ 摄像头手势喂食 + 动作仲裁 ----------
+        let foodDrag = null;          // 指针拖拽：{pointerId, kind, startX, startY, dragging, ghostEl, suppressClick}
+        let gestureAction = null;     // 手势所有权：null | {type:'food',kind,startedAt,lastX,lastY,token,completed} | {type:'pet',startedAt}
+        let feedingLock = false;      // 结算瞬间锁新手势（~400ms）
+        let feedFailHinted = false;   // 失败提示只出一次
+        const gesturePending = { active: false, kind: null, frames: 0, x: 0, y: 0 };   // 食物拿取防误触确认窗
+        function interactionBusy() {
+            return Boolean(foodDrag || gestureAction || grabbed || dropping || feedingLock);
+        }
+
+        // 坐标：世界 → 页面（Pointer Events 用）/ 画布局部（手势用，与 DenVision 输出同空间）
+        function worldToClient(pos) {
+            const p = pos.clone().project(camera);
+            const rect = canvas.getBoundingClientRect();
+            return { x: rect.left + (p.x * 0.5 + 0.5) * rect.width, y: rect.top + (-p.y * 0.5 + 0.5) * rect.height };
+        }
+        function petMouthClientPos() {   // 页面坐标
+            const head = petHeadPos();
+            head.y -= Math.max(0.04, (petModel?.userData?.height || 1) * 0.06);
+            return worldToClient(head);
+        }
+        function petMouthCanvasPos() {   // 画布局部坐标（手势判定空间）
+            const head = petHeadPos();
+            head.y -= Math.max(0.04, (petModel?.userData?.height || 1) * 0.06);
+            const p = head.clone().project(camera);
+            return { x: (p.x * 0.5 + 0.5) * canvas.clientWidth, y: (-p.y * 0.5 + 0.5) * canvas.clientHeight };
+        }
+        function mouthHitRadius() {
+            const coarse = matchMedia('(pointer: coarse)').matches;
+            return coarse ? 105 : 78;   // 手机命中区更大
+        }
+        function gestureMouthRadius() {
+            return Math.min(125, Math.max(80, Math.min(canvas.clientWidth, canvas.clientHeight) * 0.12));
+        }
+        function mouthHitAvailable() {
+            // 模型未加载/被拎起/全屏游戏/嘴部投影出画布 → 禁用命中
+            if (!petModel || grabbed || dropping || !gameOverlay.hidden) return false;
+            const m = petMouthCanvasPos();
+            return m.x > 0 && m.y > 0 && m.x < canvas.clientWidth && m.y < canvas.clientHeight;
+        }
+
+        // 食物图标 dataURL（复用 shapeTexture 的画布；emoji 字体在不同环境会渲染成黑块，不使用）
+        const foodIconCache = {};
+        function foodIconUrl(kind) {
+            if (foodIconCache[kind]) return foodIconCache[kind];
+            const tex = TEX[kind];
+            if (tex && tex.image && tex.image.toDataURL) foodIconCache[kind] = tex.image.toDataURL('image/png');
+            return foodIconCache[kind] || '';
+        }
+        const FEED_ARIA = document.createElement('div');   // 喂食结果播报（无障碍）
+        FEED_ARIA.setAttribute('aria-live', 'polite');
+        FEED_ARIA.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);';
+        document.body.appendChild(FEED_ARIA);
+
+        // ghost 单例（指针拖拽与手势共用；绝不每次 move 建节点）
+        let ghostEl = null;
+        function ghostShow(kind, pageX, pageY) {
+            if (!ghostEl) {
+                ghostEl = document.createElement('div');
+                ghostEl.className = 'food-drag-ghost';
+                ghostEl.setAttribute('aria-hidden', 'true');
+                document.body.appendChild(ghostEl);
+            }
+            const url = foodIconUrl(kind);
+            ghostEl.style.background = url ? `center / contain no-repeat url("${url}")` : 'var(--c-primary)';
+            ghostEl.style.display = 'block';
+            ghostEl.classList.remove('near', 'settle');
+            ghostMove(pageX, pageY);
+            return ghostEl;
+        }
+        function ghostMove(pageX, pageY) {
+            if (ghostEl) { ghostEl.style.left = pageX + 'px'; ghostEl.style.top = pageY + 'px'; }
+        }
+        function ghostNear(on) {
+            if (ghostEl) ghostEl.classList.toggle('near', on && !matchMedia('(prefers-reduced-motion: reduce)').matches);
+        }
+        function ghostSnapThen(x, y, ms, done) {   // 吸附（成功）
+            if (!ghostEl) { done && done(); return; }
+            ghostEl.classList.add('settle');
+            if (matchMedia('(prefers-reduced-motion: reduce)').matches) { ghostEl.style.display = 'none'; done && done(); return; }
+            ghostEl.style.transition = `left ${ms}ms ease-in, top ${ms}ms ease-in`;
+            ghostMove(x, y);
+            setTimeout(() => { ghostEl.style.display = 'none'; ghostEl.style.transition = ''; done && done(); }, ms);
+        }
+        function ghostBounceTo(x, y, done) {   // 回弹（失败）
+            if (!ghostEl) { done && done(); return; }
+            if (matchMedia('(prefers-reduced-motion: reduce)').matches) { ghostEl.style.display = 'none'; done && done(); return; }
+            ghostEl.style.transition = 'left 180ms ease-out, top 180ms ease-out';
+            ghostMove(x, y);
+            setTimeout(() => { ghostEl.style.display = 'none'; ghostEl.style.transition = ''; done && done(); }, 190);
+        }
+        function ghostHide() { if (ghostEl) ghostEl.style.display = 'none'; }
+
+        // 嘴部目标光圈（画布局部坐标，挂在 den-wrap 内）
+        const denWrap = document.getElementById('den-wrap');
+        let feedRing = null;
+        function feedRingShow(on) {
+            if (!on) { if (feedRing) feedRing.style.opacity = '0'; return; }
+            if (!feedRing) {
+                feedRing = document.createElement('div');
+                feedRing.className = 'feed-target-ring';
+                denWrap.appendChild(feedRing);
+            }
+            const m = petMouthCanvasPos();
+            const r = Math.min(mouthHitRadius(), gestureMouthRadius());
+            feedRing.style.left = (m.x - r) + 'px';
+            feedRing.style.top = (m.y - r) + 'px';
+            feedRing.style.width = feedRing.style.height = (r * 2) + 'px';
+            feedRing.style.opacity = '1';
+        }
+        function buzz() { if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e) {} } }
+
+        // 统一喂食结算（S1-11）：fromDrag 时不重复飞世界食物
+        function completeFeeding(kind, options = {}) {
+            if (!options.fromDrag) flyFood(kind);
+            setTimeout(() => {
+                setAnim('eat', 1500);
+                burst(kind === 'fish' ? 'fish' : 'star', 3);
+                const r = rewardIntimacy('feed');
+                if (r.reason === 'daily-cap') toast('今天已经喂得很满足啦，互动仍然可以继续～', 'info');
+                showBubble(pick(PET_LINES.feed), 1800);
+                FEED_ARIA.textContent = `${SPECS[currentPetId].name}吃掉了${({ bone: '骨头', fish: '小鱼干', cookie: '饼干' })[kind] || '食物'}`;
+            }, options.fromDrag ? 60 : 550);
+            feedingLock = true;
+            setTimeout(() => { feedingLock = false; }, 400);
+        }
+
+        // ---------- 指针拖拽（鼠标/触屏统一 Pointer Events） ----------
+        const feedButtons = ['bone', 'fish', 'cookie'].map(k => document.getElementById(`btn-feed-${k}`));
+        feedButtons.forEach((btn) => {
+            const kind = btn.id.replace('btn-feed-', '');
+            btn.style.touchAction = 'none';   // 拖食物时不让页面滚动/缩放
+            btn.addEventListener('pointerdown', (e) => {
+                if (foodDrag || gestureAction || grabbed) return;   // 与手势互斥
+                foodDrag = { pointerId: e.pointerId, kind, startX: e.clientX, startY: e.clientY, dragging: false, ghostEl: null, suppressClick: false };
+                try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+            });
+            btn.addEventListener('pointermove', (e) => {
+                if (!foodDrag || foodDrag.pointerId !== e.pointerId || foodDrag.completed) return;
+                if (!foodDrag.dragging) {
+                    if (Math.hypot(e.clientX - foodDrag.startX, e.clientY - foodDrag.startY) < 8) return;
+                    foodDrag.dragging = true;
+                    foodDrag.suppressClick = true;
+                    ghostShow(kind, e.clientX, e.clientY);
+                }
+                ghostMove(e.clientX, e.clientY);
+                if (mouthHitAvailable()) {
+                    const m = petMouthClientPos();
+                    const near = Math.hypot(e.clientX - m.x, e.clientY - m.y) <= mouthHitRadius();
+                    if (near !== foodDrag.wasNear) { foodDrag.wasNear = near; ghostNear(near); feedRingShow(near); buzz(); }
+                }
+            });
+            const finish = (e, cancelled) => {
+                if (!foodDrag || foodDrag.pointerId !== e.pointerId) return;
+                const drag = foodDrag;
+                foodDrag = null;
+                feedRingShow(false);
+                if (!drag.dragging) return;              // 未成拖拽 → 让 click 正常触发直接喂食
+                // 已成拖拽：吞掉紧随的 click，避免双喂
+                const btn2 = btn;
+                const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+                btn2.addEventListener('click', swallow, { capture: true, once: true });
+                setTimeout(() => btn2.removeEventListener('click', swallow, { capture: true }), 350);
+                if (cancelled || !mouthHitAvailable()) { ghostHide(); return; }
+                const m = petMouthClientPos();
+                const hit = !cancelled && Math.hypot(e.clientX - m.x, e.clientY - m.y) <= mouthHitRadius();
+                if (hit) {
+                    ghostSnapThen(m.x, m.y, 160);
+                    completeFeeding(drag.kind, { fromDrag: true });
+                } else {
+                    const r = btn2.getBoundingClientRect();
+                    ghostBounceTo(r.left + r.width / 2, r.top + r.height / 2);
+                    if (!feedFailHinted) { feedFailHinted = true; toast('拖到嘴边再松手哦', 'info'); }
+                }
+            };
+            btn.addEventListener('pointerup', (e) => finish(e, false));
+            btn.addEventListener('pointercancel', (e) => finish(e, true));
+        });
+        function cancelPointerDrag() {
+            if (!foodDrag) return;
+            foodDrag = null;
+            feedRingShow(false);
+            ghostHide();
+        }
+
+        // ---------- 摄像头手势：托盘 / 仲裁 / 跟随 / 结算 ----------
+        const trayEl = document.getElementById('vision-food-tray');
+        let trayRects = [];   // 画布局部坐标命中矩形（含 18px 外扩）
+        function refreshTrayRects() {
+            trayRects = [];
+            if (!trayEl || trayEl.hidden) return;
+            const c = canvas.getBoundingClientRect();
+            [...trayEl.querySelectorAll('[data-hand-food]')].forEach((b) => {
+                const r = b.getBoundingClientRect();
+                trayRects.push({
+                    kind: b.dataset.handFood,
+                    left: r.left - c.left - 18, top: r.top - c.top - 18,
+                    right: r.right - c.left + 18, bottom: r.bottom - c.top + 18,
+                    cx: r.left - c.left + r.width / 2, cy: r.top - c.top + r.height / 2,
+                });
+            });
+        }
+        function hitTray(x, y) {   // x,y 为画布局部
+            for (const t of trayRects) {
+                if (x >= t.left && x <= t.right && y >= t.top && y <= t.bottom) return t;
+            }
+            return null;
+        }
+        function petGrabZoneHit(x, y) {   // 宠物可抓取区：头为中心的紧凑区域（画布局部）——过大误拎
+            if (!petModel) return false;
+            const hp = headScreenPos();
+            const ph = petModel.userData.height || 1;
+            const r = Math.max(90, canvas.clientHeight * ph * 0.24);
+            const bodyH = canvas.clientHeight * ph * 0.42;
+            return Math.hypot(x - hp.x, y - hp.y) < r ||          // 头部圆域
+                (Math.abs(x - hp.x) < r * 0.8 && y > hp.y && y < hp.y + bodyH);   // 躯干竖带
+        }
+        function gesturePagePos(x, y) {   // 画布局部 → 页面
+            const c = canvas.getBoundingClientRect();
+            return { x: c.left + x, y: c.top + y };
+        }
+
+        function beginGestureAction(pos) {
+            if (interactionBusy() || !(visionOn || window.__gestureTestArmed) || document.hidden) return;
+            const x = pos.pinchX != null ? pos.pinchX : pos.sx;
+            const y = pos.pinchY != null ? pos.pinchY : pos.sy;
+            const tray = hitTray(x, y);
+            if (tray) {
+                // 防误触确认窗：连续 2 帧 / ~120ms 仍在食物上才真正取得所有权
+                gesturePending.active = true;
+                gesturePending.kind = tray.kind;
+                gesturePending.frames = 0;
+                gesturePending.x = x; gesturePending.y = y;
+                return;
+            }
+            if (petGrabZoneHit(x, y)) {
+                gestureAction = { type: 'pet', startedAt: performance.now() };
+                if (petModel) {
+                    grabbed = true;
+                    grabHomeY = petModel.position.y;
+                    playAction('happy', 1.4);
+                    showBubble(`${SPECS[currentPetId].name}被拎起来了！放开我啦～`, 1800);
+                    burst('star', 3);
+                }
+                return;
+            }
+            // 空白处：本次捏合不执行任何动作
+        }
+        function confirmGesturePending(x, y) {   // onHand 每帧调用：稳定 2 帧后取得 food 所有权
+            if (!gesturePending.active) return;
+            const t = hitTray(x, y);
+            if (!t || t.kind !== gesturePending.kind) { gesturePending.active = false; return; }
+            gesturePending.frames += 1;
+            if (gesturePending.frames >= 2) {
+                gesturePending.active = false;
+                gestureAction = {
+                    type: 'food', kind: gesturePending.kind,
+                    startedAt: performance.now(),
+                    lastX: x, lastY: y,
+                    token: (crypto.randomUUID ? crypto.randomUUID() : 'tok-' + Math.random()),
+                    completed: false,
+                };
+                const p = gesturePagePos(x, y);
+                ghostShow(gestureAction.kind, p.x, p.y);
+                buzz();
+            }
+        }
+        function updateGestureAction(h) {
+            if (gesturePending.active && h.present) {
+                confirmGesturePending(h.pinchX != null ? h.pinchX : h.sx, h.pinchY != null ? h.pinchY : h.sy);
+            }
+            if (!gestureAction || gestureAction.type !== 'food') return;
+            const x = h.pinchX != null ? h.pinchX : h.sx;
+            const y = h.pinchY != null ? h.pinchY : h.sy;
+            gestureAction.lastX = x; gestureAction.lastY = y;
+            const p = gesturePagePos(x, y);
+            ghostMove(p.x, p.y);
+            const canHit = mouthHitAvailable();
+            const m = petMouthCanvasPos();
+            const near = canHit && Math.hypot(x - m.x, y - m.y) <= gestureMouthRadius();
+            if (near !== gestureAction.wasNear) {
+                gestureAction.wasNear = near;
+                ghostNear(near);
+                feedRingShow(near);
+                buzz();
+            }
+        }
+        function endGestureAction(pos, reason) {
+            if (gesturePending.active) { gesturePending.active = false; return; }   // 还没取得所有权：无事发生
+            if (!gestureAction) return;
+            const act = gestureAction;
+            gestureAction = null;
+            feedRingShow(false);
+            if (act.type === 'pet') {
+                grabbed = false;
+                dropping = true;
+                showBubble(`吓死我了…不要突然放手啦！`, 2200);
+                const r = rewardIntimacy('hand');
+                if (r.reason === 'daily-cap') showBubble('今天已经抱了很久啦～', 1600);
+                return;
+            }
+            // food：
+            if (reason !== 'release' || act.completed) { ghostHide(); return; }   // 丢失/停止 → 取消不误喂
+            const dur = performance.now() - act.startedAt;
+            const lastX = act.lastX, lastY = act.lastY;
+            const ok = dur >= 150 && mouthHitAvailable() &&
+                Math.hypot(lastX - petMouthCanvasPos().x, lastY - petMouthCanvasPos().y) <= gestureMouthRadius();
+            if (ok) {
+                act.completed = true;   // 幂等锁
+                const m = petMouthClientPos();
+                ghostSnapThen(m.x, m.y, 120);
+                completeFeeding(act.kind, { fromDrag: true });
+            } else {
+                const tray = trayRects.find(t => t.kind === act.kind);
+                const p = tray ? gesturePagePos(tray.cx, tray.cy) : { x: lastX, y: lastY };
+                ghostBounceTo(p.x, p.y);
+                if (!feedFailHinted) { feedFailHinted = true; toast('拿到嘴边再松手哦', 'info'); }
+            }
+        }
+        function cancelGestureAction(reason) {
+            if (!gestureAction && !gesturePending.active) return;
+            gesturePending.active = false;
+            const act = gestureAction;
+            gestureAction = null;
+            feedRingShow(false);
+            ghostHide();
+            if (act && act.type === 'pet') {   // 拎着宠物被取消：安全放回
+                grabbed = false;
+                dropping = true;
+            }
+        }
+        // 托盘按钮点击 = 直接喂食（与所有路径共用结算）
+        trayEl.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-hand-food]');
+            if (b) completeFeeding(b.dataset.handFood);
+        });
+
+        // 调试钩子（S1-11）：注入 onHand/onGrab 事件走真实仲裁与结算，不绕过逻辑；
+        // 无摄像头环境（HTTP/VPN）也能用它验证手势矩阵
+        window.__denGestureDebug = {
+            hand(state) { handleVisionHand(state); },
+            grab(pinching, pos, reason) { handleVisionGrab(pinching, pos, reason); },
+            arm(on) { window.__gestureTestArmed = !!on; },   // 测试专用：允许无摄像头走仲裁链
+            gesture(name) { handlePetGesture(name); },          // 注入手势事件 → 真实回应链
+            snapshot() { return { gestureAction, foodDrag: !!foodDrag, grabbed }; },
+        };
+        function doDress() {
+            const ps = petState();
+            ps.accessory = ((ps.accessory || 0) + 1) % 4; // 0无 1帽 2围巾 3蝴蝶结
+            saveState();
+            const parts = petModel.userData;
+            parts.accessories.forEach(a => (a.visible = false));
+            const names = ['恢复素颜', '戴上了派对帽 🎉', '围上了红围巾 🧣', '别上了蜜橙蝴蝶结 🎀'];
+            if (ps.accessory > 0) parts.accessories[ps.accessory - 1].visible = true;
+            setAnim('happy', 1400);
+            burst('star', 5);
+            showBubble(`${SPECS[currentPetId].name}${names[ps.accessory]}`, 1800);
+        }
+        function doPhoto() {
+            renderer.render(scene, camera);
+            const a = document.createElement('a');
+            a.download = `我的${SPECS[currentPetId].name}-${new Date().toISOString().slice(0, 10)}.png`;
+            a.href = canvas.toDataURL('image/png');
+            a.click();
+            toast('照片已保存 ', 'success');
+            burst('star', 4);
+        }
+
+        // ---------- 语音（浏览器本地 TTS，离线、零上传） ----------
+        let ttsOn = true;
+        let zhVoice = null;
+        function refreshVoices() {
+            if (!window.speechSynthesis) return;
+            const vs = speechSynthesis.getVoices();
+            // 优先级：Natural(神经网络) > Online > 普通中文
+            zhVoice = vs.find((v) => /natural/i.test(v.name) && /zh/i.test(v.lang)) ||
+                      vs.find((v) => /online/i.test(v.name) && /zh/i.test(v.lang)) ||
+                      vs.find((v) => /^zh[-_]CN/i.test(v.lang)) ||
+                      vs.find((v) => /^zh/i.test(v.lang)) ||
+                      vs.find((v) => /Huihui|Yaoyao|Kangkang|Chinese/i.test(v.name)) || null;
+        }
+        if (window.speechSynthesis) {
+            refreshVoices();
+            speechSynthesis.onvoiceschanged = refreshVoices;
+        }
+        let userInteracted = false;   // 浏览器自动播放策略：首次交互前不主动发声（说话动画照常）
+        ['pointerdown', 'click', 'keydown', 'touchstart'].forEach(evt => {
+            window.addEventListener(evt, () => { userInteracted = true; }, { once: true, passive: true });
+        });
+        // 页面获得焦点也算交互（从别的标签页切回来）
+        window.addEventListener('focus', () => { userInteracted = true; }, { passive: true });
+        // 温柔模式参数（TTS 尽量柔和）
+        const TTS_GENTLE = { rate: 0.88, pitch: 0.95 };
+        // 浏览器语音降级时的四宠差异化 rate/pitch（S1-04；仅降级体验，非正式音色差异）
+        const PET_SPEECH_STYLE = {
+            1: { rate: 1.00, pitch: 1.08 },
+            2: { rate: 0.94, pitch: 0.92 },
+            3: { rate: 0.96, pitch: 1.20 },
+            4: { rate: 0.88, pitch: 0.82 },
+        };
+        // GLM 后端 TTS（真人级，音色由服务端按 petId 选择）：fire-and-forget，失败降级浏览器语音
+        const ttsAudioCache = {};
+        function glmTTS(text) {
+            const key = `${currentPetId}:${text.slice(0, 50)}`;   // 缓存键含宠物 ID：切宠不复用上一只的音频
+            if (ttsAudioCache[key]) {
+                const audio = new Audio(ttsAudioCache[key]);
+                audio.volume = 0.85;
+                audio.play();
+                return;
+            }
+            fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text, petId: currentPetId }),
+            }).then((r) => {
+                if (!r.ok) throw new Error('tts ' + r.status);
+                return r.blob();
+            }).then((blob) => {
+                const url = URL.createObjectURL(blob);
+                ttsAudioCache[key] = url;
+                const audio = new Audio(url);
+                audio.volume = 0.85;
+                audio.play();
+            }).catch(() => {
+                // 后端 TTS 失败 → 降级浏览器语音
+                browserSpeak(text);
+            });
+        }
+        // 浏览器 SpeechSynthesis 降级（按宠物微调 rate/pitch）
+        function browserSpeak(text) {
+            if (!window.speechSynthesis) return;
+            try {
+                const st = PET_SPEECH_STYLE[currentPetId] || TTS_GENTLE;
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = 'zh-CN';
+                u.rate = st.rate;
+                u.pitch = st.pitch;
+                if (zhVoice) u.voice = zhVoice;
+                speechSynthesis.cancel();
+                speechSynthesis.speak(u);
+            } catch (e) {}
+        }
+        function speak(text, opts = {}) {
+            const clean = String(text).replace(/[～~♪🎯🎉🧣🎀✨]/g, '').trim().slice(0, 140);
+            if (opts.talk !== false && petModel && clean) setAnim('talk', 1200 + clean.length * 60);   // 说话动画不随静音关闭
+            if (!ttsOn || !userInteracted || !clean) return;
+            // 优先 GLM 后端 TTS（真人级声音），失败自动降级浏览器
+            glmTTS(clean);
+        }
+        document.getElementById('btn-tts').addEventListener('click', function () {
+            ttsOn = !ttsOn;
+            if (!ttsOn && window.speechSynthesis) speechSynthesis.cancel();
+            this.textContent = ttsOn ? '语音' : '语音';
+            toast(ttsOn ? '宠物开口说话啦' : '宠物语音已静音', 'info');
+        });
+
+        // 气泡（显示时同步朗读 → 宠物"会说话"）
+        let bubbleTimer = null;
+        const bubbleEl = document.getElementById('bubble');
+        function showBubble(text, dur, silent) {
+            const b = bubbleEl;
+            b.textContent = text;
+            // 跟随宠物头部投影位置
+            const head = petHeadPos().clone().project(camera);
+            b.style.left = `${(head.x * 0.5 + 0.5) * canvas.clientWidth + 16}px`;
+            b.style.top = `${(-head.y * 0.5 + 0.5) * canvas.clientHeight - 70}px`;
+            b.classList.add('show');
+            clearTimeout(bubbleTimer);
+            bubbleTimer = setTimeout(() => b.classList.remove('show'), dur || 2000);
+            if (!silent) speak(text);
+        }
+
+        // 点击宠物（射线检测）
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        let lastPetClick = 0;
+        canvas.addEventListener('pointerdown', (e) => {
+            pointer.x = (e.clientX - canvas.getBoundingClientRect().left) / canvas.clientWidth * 2 - 1;
+            pointer.y = -((e.clientY - canvas.getBoundingClientRect().top) / canvas.clientHeight) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+            if (!petModel) return;
+            const hit = raycaster.intersectObject(petModel, true);
+            if (hit.length && performance.now() - lastPetClick > 900) {
+                lastPetClick = performance.now();
+                doPetting();
+            }
+        });
+
+        // ---------- 场景内聊天（复用 /get_gpt_response） ----------
+        const chatMsgs = document.getElementById('chat-msgs');
+        const chatInput = document.getElementById('chat-input');
+        const chatSend = document.getElementById('chat-send');
+        let chatBusy = false;
+        let denHistory = [];   // 场景内聊天多轮记忆（逐宠，切换即清空）
+        function appendMsg(role, text) {
+            const d = document.createElement('div');
+            d.className = 'm ' + (role === 'user' ? 'user' : 'pet');
+            d.innerHTML = `<div class="who">${role === 'user' ? '我' : SPECS[currentPetId].name}</div>${String(text).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}`;
+            chatMsgs.appendChild(d);
+            chatMsgs.scrollTop = chatMsgs.scrollHeight;
+        }
+        document.getElementById('chat-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (!text || chatBusy) return;
+            chatBusy = true; chatSend.disabled = true;
+            chatInput.value = '';
+            appendMsg('user', text);
+            setAnim('talk', 8000);
+            try {
+                const resp = await fetch('/get_gpt_response', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text, chatHistory: denHistory.slice(-10), model: MODELS[0], petId: currentPetId,
+                        petGender: window.PetProfile ? PetProfile.promptValue(PetProfile.get(currentPetId).gender) : null,
+                    }),
+                });
+                const data = await resp.json();
+                if (data.reply) {
+                    appendMsg('pet', data.reply);
+                    // 多轮记忆：与 /gpt 同协议（后端拼装，前端只回传历史）
+                    denHistory.push({ role: 'user', content: text }, { role: 'assistant', content: data.reply });
+                    if (denHistory.length > 20) denHistory.splice(0, denHistory.length - 20);
+                    setAnim('talk', 1200 + Math.min(data.reply.length * 40, 3000));
+                    speak(data.reply, { talk: false });   // 念出回复（talk 动画已设）
+                    // 情绪联动：根据回复关键词触发动画与粒子
+                    if (/汪汪|哈哈|嘿嘿|开心|高兴|好玩|！！|球/.test(data.reply)) { setAnim('happy', 1600); burst('star', 4); }
+                    else if (/喜欢|爱|抱抱|摸摸|亲亲|想你/.test(data.reply)) { setAnim('petting', 1500); burst('heart', 5); }
+                    const rc = rewardIntimacy('chat');
+                    if (rc.reason === 'daily-cap') showBubble('今天聊得够多啦，明天再继续～', 1800);
+                } else {
+                    appendMsg('pet', '（耳朵耷拉…好像没听清，再试一次？）');
+                }
+            } catch (err) {
+                appendMsg('pet', '（网络开小差了…）');
+            } finally {
+                chatBusy = false; chatSend.disabled = false;
+            }
+        });
+
+        // ---------- UI 绑定 ----------
+        function renderPetChips() {
+            const box = document.getElementById('den-pets');
+            box.innerHTML = '';
+            PETS.forEach((p) => {
+                const b = document.createElement('button');
+                b.className = 'den-pet-chip' + (p.id === currentPetId ? ' selected' : '');
+                b.innerHTML = `<img src="/images/${p.avatar}" alt="">${p.name}`;
+                b.addEventListener('click', () => spawnPet(p.id));
+                box.appendChild(b);
+            });
+        }
+        document.getElementById('btn-pet').addEventListener('click', doPetting);
+        document.getElementById('btn-feed-bone').addEventListener('click', () => doFeed('bone'));
+        document.getElementById('btn-feed-fish').addEventListener('click', () => doFeed('fish'));
+        document.getElementById('btn-feed-cookie').addEventListener('click', () => doFeed('cookie'));
+        document.getElementById('btn-dress').addEventListener('click', doDress);
+        document.getElementById('btn-photo').addEventListener('click', doPhoto);
+        document.getElementById('btn-chat').addEventListener('click', () => {
+            document.getElementById('den-chat').classList.toggle('hidden');
+            chatInput.focus();
+        });
+        document.getElementById('btn-chat-close').addEventListener('click', () => {
+            document.getElementById('den-chat').classList.add('hidden');
+        });
+        const bgm = new Audio("{{ url_for('static', filename='mp3/m2.mp3') }}");
+        bgm.loop = true; bgm.volume = 0.35;
+        bgm.preload = 'auto';
+        let musicOn = false;
+        // 某些浏览器需要先 resume AudioContext
+        function unlockAudio() {
+            if (window.AudioContext || window.webkitAudioContext) {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                if (ctx.state === 'suspended') ctx.resume();
+            }
+        }
+        document.getElementById('btn-music').addEventListener('click', function () {
+            if (!musicOn) {
+                unlockAudio();
+                bgm.volume = 0.35;   // 确保音量非零
+                bgm.play().then(() => {
+                    musicOn = true; this.textContent = '静音';
+                    if (bgm.volume === 0) { bgm.volume = 0.35; }
+                }).catch((e) => {
+                    musicOn = false; this.textContent = '音乐';
+                    toast('播放被浏览器拦截，请先点击页面任意位置再试', 'info');
+                });
+            } else {
+                bgm.pause(); musicOn = false; this.textContent = '音乐';
+            }
+        });
+
+        // ---------- 心理治愈 · 心情打卡（记录 + 连续陪伴天数 + 宠物语音安抚） ----------
+        const MOOD_KEY = 'denMood';
+        const MOOD_EMOJI = { happy: '😊', calm: '🙂', low: '😔', anxious: '😰', sad: '😢' };
+        function loadMood() {
+            try { return JSON.parse(localStorage.getItem(MOOD_KEY) || '{}'); } catch (e) { return {}; }
+        }
+        function saveMood(m) {
+            try { localStorage.setItem(MOOD_KEY, JSON.stringify(m)); }
+            catch (e) { toast('心情记录暂时存不下来（存储受限）', 'error'); }
+        }
+        const moodMask = document.getElementById('mood-mask');
+        let moodSel = null;
+        function moodDateStr(offset = 0) {
+            const d = new Date(); d.setDate(d.getDate() - offset);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        function renderMoodWeek() {
+            const m = loadMood();
+            const box = document.getElementById('mood-week');
+            const wk = ['日', '一', '二', '三', '四', '五', '六'];
+            let html = '';
+            for (let i = 6; i >= 0; i--) {
+                const key = moodDateStr(i);
+                const rec = m.days && m.days[key];
+                const d = new Date(key.replace(/-/g, '/'));
+                html += `<div class="d">周${wk[d.getDay()]}<b>${rec ? MOOD_EMOJI[rec.mood] : '·'}</b></div>`;
+            }
+            box.innerHTML = html;
+            const streak = m.streak || 0;
+            document.getElementById('mood-streak').textContent =
+                streak > 0 ? `已连续互相陪伴 ${streak} 天 💛` : '每天来记一笔，它会更懂你';
+        }
+        document.getElementById('mood-row').addEventListener('click', (e) => {
+            const opt = e.target.closest('.mood-opt');
+            if (!opt) return;
+            document.querySelectorAll('.mood-opt').forEach(o => o.classList.remove('sel'));
+            opt.classList.add('sel');
+            moodSel = opt.dataset.mood;
+        });
+        document.getElementById('btn-mood').addEventListener('click', () => {
+            moodSel = null;
+            document.querySelectorAll('.mood-opt').forEach(o => o.classList.remove('sel'));
+            document.getElementById('mood-note').value = '';
+            renderMoodWeek();
+            moodMask.hidden = false;
+        });
+        document.getElementById('mood-cancel').addEventListener('click', () => { moodMask.hidden = true; });
+        moodMask.addEventListener('click', (e) => { if (e.target === moodMask) moodMask.hidden = true; });
+        document.getElementById('mood-ok').addEventListener('click', async function () {
+            if (this.disabled) return;
+            if (!moodSel) { toast('先选一个今天的心情吧', 'info'); return; }
+            this.disabled = true; this.textContent = '它正在听…';
+            const today = moodDateStr();
+            const m = loadMood();
+            if (!m.days) m.days = {};
+            const label = document.querySelector(`.mood-opt[data-mood="${moodSel}"]`).dataset.label;
+            const note = document.getElementById('mood-note').value.trim();
+            m.days[today] = { mood: moodSel, note };
+            m.streak = (m.lastDate === moodDateStr(1)) ? (m.streak || 0) + 1
+                : (m.lastDate === today) ? (m.streak || 1) : 1;
+            m.lastDate = today;
+            saveMood(m);
+            moodMask.hidden = true;
+            burst('heart', 3);
+            setAnim('petting', 2000);
+            // 宠物安抚：真实 GLM 回应（人设本身温暖），回复由气泡+TTS 朗读
+            try {
+                const resp = await fetch('/get_gpt_response', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: `我今天心情是「${label}」。${note ? '我想对你说：' + note : '请你抱抱我，安慰我一下。'}`,
+                        chatHistory: [], model: MODELS[0], petId: currentPetId,
+                    }),
+                });
+                const data = await resp.json();
+                showBubble(data.reply || `${SPECS[currentPetId].name}一直都在哦`, 4200);
+            } catch (err) {
+                showBubble(`${SPECS[currentPetId].name}一直都在，别怕`, 3200);
+            } finally {
+                this.disabled = false; this.textContent = '告诉它';
+            }
+        });
+
+        // ---------- 心理治愈 · 跟它一起深呼吸（4-4-6 节律 ×3 轮） ----------
+        const breathMask = document.getElementById('breath-mask');
+        const breathCircle = document.getElementById('breath-circle');
+        const breathText = document.getElementById('breath-text');
+        const breathRound = document.getElementById('breath-round');
+        let breathTimers = [];
+        let breathActive = false;   // 与视觉互动双向互斥：任一启动时另一功能不激活
+        function breathClear() { breathTimers.forEach(t => clearTimeout(t)); breathTimers = []; }
+        function breathPhase(text, dur, scale, emoji) {
+            breathText.textContent = text;
+            breathCircle.style.transitionDuration = dur + 's';
+            breathCircle.style.transform = `scale(${scale})`;
+            breathCircle.textContent = emoji;
+        }
+        function startBreath() {
+            breathClear();   // 防键盘重入：旧链先清
+            breathActive = true;
+            if (visionOn) {   // 练习期间收起视觉互动，保持沉浸（抚摸动画会打断呼吸同步）
+                stopVision();
+                const vb = document.getElementById('btn-vision');
+                if (vb) vb.textContent = '眼神互动';
+            }
+            breathMask.hidden = false;
+            // 舒缓呼吸坐姿（不借用 sleep 状态——那会侧躺）：独立状态播 idle 慢放
+            anim.state = 'breath';
+            anim.until = performance.now() + 48000;
+            anim.lastInteract = performance.now();
+            playAction('idle', 0.42);
+            const ROUNDS = 3;
+            for (let r = 0; r < ROUNDS; r++) {
+                breathTimers.push(setTimeout(() => {
+                    breathRound.textContent = `第 ${r + 1} / ${ROUNDS} 轮`;
+                    breathPhase('跟着它，慢慢吸气…', 4, 1.35, '🐶');
+                }, r * 14000));
+                breathTimers.push(setTimeout(() => breathPhase('轻轻屏住…', 4, 1.35, '🐾'), r * 14000 + 4000));
+                breathTimers.push(setTimeout(() => breathPhase('缓缓呼气，把烦恼吐出去…', 6, 0.62, '💨'), r * 14000 + 8000));
+            }
+            breathTimers.push(setTimeout(() => {
+                breathPhase('完成啦，做得很好', 2, 1, '💛');
+                breathRound.textContent = '';
+                burst('star', 5);
+                setAnim('petting', 2200);
+                showBubble('你做得很好，现在有没有轻松一点点？', 3600);
+            }, ROUNDS * 14000));
+            breathTimers.push(setTimeout(() => { breathClear(); breathActive = false; breathMask.hidden = true; }, ROUNDS * 14000 + 4000));
+        }
+        function stopBreath() {
+            breathClear();
+            breathActive = false;
+            breathMask.hidden = true;
+            breathCircle.style.transitionDuration = '0.6s';
+            breathCircle.style.transform = 'scale(1)';
+            setAnim('idle', 0);
+        }
+        // 自然完成回调结束的是遮罩；状态回落由 anim.until 到期统一处理（breath → idle）
+        document.getElementById('btn-breath').addEventListener('click', startBreath);
+        document.getElementById('breath-close').addEventListener('click', (e) => { e.stopPropagation(); stopBreath(); });
+        breathMask.addEventListener('click', stopBreath);
+
+        // ---------- 心理治愈 · 快捷倾诉（聊天面板一键说出情绪） ----------
+        document.getElementById('chat-chips').addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-say]');
+            if (!btn) return;
+            if (typeof chatBusy !== 'undefined' && chatBusy) { toast('它正在回复，等一下下哦', 'info'); return; }
+            chatInput.value = btn.dataset.say;
+            document.getElementById('chat-form').requestSubmit();
+        });
+
+        // ---------- 宠物眨眼（同步用户眨眼 + 日常自动眨） ----------
+        // 不做贴片（位置难对准且生硬）——用模型自带快速头部动画（HitReact 抖头=眨眼反应）
+        // + 头顶小粒子增强反馈
+        function petBlink() {
+            if (!petModel || anim.state === 'sleep' || anim.state === 'breath') return;
+            // 随机左右 HitReact（头部快速偏转抖动，300-400ms，视觉像眨眼反应）
+            const key = Math.random() < 0.5 ? 'blinkL' : 'blinkR';
+            const a = actions[key];
+            if (a) {
+                a.reset();
+                a.setLoop(THREE.LoopOnce, 1);
+                a.clampWhenFinished = false;   // 播完自动回到权重 0
+                a.timeScale = 1.6;             // 加快更像快速反应
+                if (activeAction && activeAction !== a) a.crossFadeFrom(activeAction, 0.08, false);
+                a.play();
+                // 不改 activeAction（idle 继续作为基础层，HitReact 是叠加短暂层）
+            }
+            // 头顶小粒子（微妙的视觉提示）
+            burst('star', 1, petHeadPos().add(new THREE.Vector3(0, 0.18, 0)));
+        }
+        // 日常自动眨眼
+        let autoBlinkAt = performance.now() + 2000 + Math.random() * 3000;
+        function autoBlinkTick(now) {
+            if (now > autoBlinkAt) {
+                autoBlinkAt = now + 2500 + Math.random() * 4000;
+                petBlink();
+            }
+        }
+
+        // ---------- 心理学游戏中心 ----------
+        const gamesMask = document.getElementById('games-mask');
+        const gameOverlay = document.getElementById('game-overlay');
+        const gameArea = document.getElementById('game-area');
+        const gameTitle = document.getElementById('game-title');
+        const gameScore = document.getElementById('game-score');
+        const gameTimer = document.getElementById('game-timer');
+        const gameResult = document.getElementById('game-result');
+        let activeGame = null, gameTimerId = null, gameAnimId = null, gameSpawnId = null, gameSession = 0;
+
+        document.getElementById('btn-rules').addEventListener('click', openIntimacyRules);
+        document.getElementById('btn-games').addEventListener('click', () => { gamesMask.hidden = false; });
+        // 宠物资料弹窗（S1-09）：性别设定，保存后刷新聊天标题
+        document.getElementById('btn-profile').addEventListener('click', () => {
+            if (!window.PetProfile) return;
+            PetProfile.openDialog({
+                petId: currentPetId,
+                petName: SPECS[currentPetId].name,
+                onChange: () => updatePetTitles(),
+            });
+        });
+        function updatePetTitles() {
+            const spec = SPECS[currentPetId];
+            const g = window.PetProfile ? PetProfile.label(PetProfile.get(currentPetId).gender) : '';
+            document.getElementById('chat-title').textContent = `和${spec.name}聊天` + (g ? `（${g}）` : '');
+        }
+        window.addEventListener('storage', (e) => {   // 其他标签页改资料时同步（S1-09）
+            if (e.key === 'petProfilesV1') updatePetTitles();
+        });
+        document.getElementById('games-close').addEventListener('click', () => { gamesMask.hidden = true; });
+        gamesMask.addEventListener('click', (e) => { if (e.target === gamesMask) gamesMask.hidden = true; });
+        gamesMask.addEventListener('click', (e) => {
+            const card = e.target.closest('.game-card');
+            if (!card) return;
+            gamesMask.hidden = true;
+            startGame(card.dataset.game);
+        });
+        document.getElementById('game-quit').addEventListener('click', endGame);
+
+        function endGame() {
+            if (gameTimerId) clearInterval(gameTimerId);
+            if (gameSpawnId) clearInterval(gameSpawnId);
+            if (gameAnimId) cancelAnimationFrame(gameAnimId);
+            gameTimerId = gameSpawnId = gameAnimId = null;
+            activeGame = null;
+            setAnim('idle', 0);   // 游戏中可能触发过睡觉/表演动画，退出时归位
+            gameArea.innerHTML = '';
+            gameResult.hidden = true;
+            gameOverlay.hidden = true;
+        }
+        function showResult(score, msg, intimacy) {
+            gameResult.innerHTML = `<h2>🎉 完成！</h2><div class="score">${score}分</div><div class="msg">${msg}</div>
+                <div class="result-btns"><button class="btn-again">再来一局</button><button class="btn-exit-game">退出</button></div>`;
+            const g = activeGame;   // 捕获：再来一局要重开同一款
+            gameResult.querySelector('.btn-again').addEventListener('click', () => startGame(g));
+            gameResult.querySelector('.btn-exit-game').addEventListener('click', endGame);
+            gameResult.hidden = false;
+            if (intimacy > 0) {
+                const r = rewardIntimacy('game', Math.min(3, intimacy));   // 游戏结算分走统一入口，单次上限 3
+                if (r.reason === 'daily-cap') toast('今天已经玩得很尽兴啦～', 'info');
+            }
+            burst('star', 6);
+        }
+
+        // ===== 游戏一：情绪气球 =====
+        const EMOTIONS = [
+            { emoji: '😊', name: '开心', color: '#FFD54F', valence: 'positive' },
+            { emoji: '😢', name: '难过', color: '#64B5F6', valence: 'negative' },
+            { emoji: '😡', name: '生气', color: '#E57373', valence: 'negative' },
+            { emoji: '😰', name: '焦虑', color: '#BA68C8', valence: 'negative' },
+            { emoji: '😌', name: '平静', color: '#A5D6A7', valence: 'positive' },
+            { emoji: '🥰', name: '幸福', color: '#F48FB1', valence: 'positive' },
+            { emoji: '😴', name: '疲惫', color: '#90A4AE', valence: 'negative' },
+            { emoji: '🤗', name: '感恩', color: '#FFB74D', valence: 'positive' },
+        ];
+        function startBalloonGame() {
+            activeGame = 'balloon';
+            gameTitle.textContent = '🎈 情绪气球';
+            gameOverlay.hidden = false;
+            let score = 0, combo = 0, timeLeft = 30;
+            gameScore.textContent = `得分: 0`;
+            gameTimer.textContent = `⏱ ${timeLeft}s`;
+            gameArea.style.background = 'linear-gradient(180deg, #E3F2FD, #BBDEFB)';
+            gameResult.hidden = true;
+
+            function spawnBalloon() {
+                if (activeGame !== 'balloon') return;
+                const e = EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
+                const b = document.createElement('div');
+                b.className = 'balloon';
+                b.style.background = `radial-gradient(circle at 35% 30%, rgba(255,255,255,.5), ${e.color})`;
+                b.style.left = (5 + Math.random() * 85) + '%';
+                b.style.bottom = '-80px';
+                b.style.fontSize = '28px';
+                b.innerHTML = `${e.emoji}<span style="font-size:12px;font-weight:700;color:#333;margin-top:2px">${e.name}</span><div class="balloon-string"></div>`;
+                b.title = e.name;
+                const speed = 0.4 + Math.random() * 0.6;
+                let sway = Math.random() * 2 * Math.PI;
+                let y = -80;
+                function float() {
+                    if (activeGame !== 'balloon' || !b.isConnected) return;
+                    y += speed;
+                    sway += 0.02;
+                    b.style.bottom = y + 'px';
+                    b.style.left = (parseFloat(b.style.left) + Math.sin(sway) * 0.15) + '%';
+                    if (y > gameArea.clientHeight + 20) { b.remove(); combo = 0; return; }
+                    gameAnimId = requestAnimationFrame(float);
+                }
+                b.addEventListener('click', () => {
+                    if (b.classList.contains('balloon-popped')) return;
+                    b.classList.add('balloon-popped');
+                    combo++;
+                    let pts, act;
+                    if (e.valence === 'negative') { pts = 15; act = '放飞'; burst('star', 2); }
+                    else { pts = 10; act = '收下'; burst('heart', 2); }
+                    if (combo >= 3) pts += combo * 2;
+                    score += pts;
+                    gameScore.textContent = '得分: ' + score + (combo >= 3 ? ' x' + combo : '');
+                    const fb = document.createElement('div');
+                    fb.textContent = e.emoji + ' ' + e.name + ' ' + act;
+                    fb.style.cssText = 'position:absolute;left:50%;top:15%;transform:translateX(-50%);font-size:22px;font-weight:800;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.4);z-index:10;pointer-events:none';
+                    gameArea.appendChild(fb);
+                    setTimeout(() => { fb.remove(); b.remove(); }, 600);
+                });
+                gameArea.appendChild(b);
+                float();
+            }
+            const spawnId = setInterval(() => { if (activeGame === 'balloon') spawnBalloon(); }, 900);
+            gameSpawnId = spawnId;
+            gameTimerId = setInterval(() => {
+                timeLeft--;
+                gameTimer.textContent = `⏱ ${timeLeft}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(gameTimerId); clearInterval(spawnId);
+                    gameTimerId = gameSpawnId = null;
+                    gameArea.querySelectorAll('.balloon').forEach(el => el.remove());   // 清场：结算面板下不再残留可点气球
+                    const msg = score >= 100 ? '太棒了！你认识好多情绪！' : score >= 50 ? '不错的情绪识别力！' : '再试试，认识更多情绪吧！';
+                    showResult(score, msg, Math.min(3, Math.floor(score / 40)));
+                }
+            }, 1000);
+            spawnBalloon();
+        }
+
+        // ===== 游戏二：烦恼泡泡 =====
+        function startWorryGame() {
+            activeGame = 'worry';
+            const sess = ++gameSession;
+            gameTitle.textContent = '🫧 烦恼泡泡';
+            gameOverlay.hidden = false;
+            let released = 0;
+            gameScore.textContent = `已放飞: 0 个烦恼`;
+            gameTimer.textContent = '';
+            gameArea.style.background = 'linear-gradient(180deg, #E8EAF6, #C5CAE9)';
+            gameResult.hidden = true;
+            gameArea.innerHTML = `<div class="worry-input-area">
+                <h3 style="margin:0;color:var(--c-text)">写下你的烦恼</h3>
+                <p style="font-size:13px;color:var(--c-text-sub);margin:4px 0 0">它会变成一个泡泡，戳破它就放下了</p>
+                <textarea id="worry-text" placeholder="最近让你烦心的事..." maxlength="50"></textarea>
+                <button class="worry-launch-btn" id="worry-launch">变成泡泡 🫧</button>
+            </div>`;
+            document.getElementById('worry-launch').addEventListener('click', () => {
+                const text = document.getElementById('worry-text').value.trim();
+                if (!text) { toast('先写点什么吧', 'info'); return; }
+                document.getElementById('worry-text').value = '';
+                // 收起输入区（如果是第一个）
+                const inputArea = gameArea.querySelector('.worry-input-area');
+                if (inputArea) inputArea.style.display = 'none';
+                createWorryBubble(text);
+            });
+            function createWorryBubble(text) {
+                const size = Math.max(100, Math.min(200, text.length * 5 + 80));
+                const bubble = document.createElement('div');
+                bubble.className = 'worry-bubble';
+                bubble.style.width = size + 'px';
+                bubble.style.height = size + 'px';
+                bubble.style.left = (10 + Math.random() * 60) + '%';
+                bubble.style.top = (15 + Math.random() * 50) + '%';
+                bubble.textContent = text.length > 20 ? text.slice(0, 20) + '…' : text;
+                bubble.addEventListener('click', () => {
+                    if (bubble.classList.contains('bubble-popped') || !gameResult.hidden) return;
+                    bubble.classList.add('bubble-popped');
+                    released++;
+                    gameScore.textContent = `已放飞: ${released} 个烦恼`;
+                    burst('heart', 3);
+                    setTimeout(() => {
+                        bubble.remove();
+                        if (sess !== gameSession) return;   // 已开新局/退出：旧闭包不再生效
+                        if (gameResult.hidden === false) return;   // 已结算，不再重复触发
+                        if (released >= 3) {
+                            showResult(released * 20, `放飞了 ${released} 个烦恼，心里是不是轻松了一点？`, Math.min(3, released));
+                        } else {
+                            // 重新显示输入
+                            const ia = gameArea.querySelector('.worry-input-area');
+                            if (ia) ia.style.display = 'flex';
+                        }
+                    }, 400);
+                });
+                gameArea.appendChild(bubble);
+            }
+            // 提示文字
+            const tip = document.createElement('div');
+            tip.style.cssText = 'position:absolute;bottom:20px;left:0;right:0;text-align:center;font-size:13px;color:var(--c-text-sub)';
+            tip.textContent = '💡 心理学 tip：把烦恼写下来再「放下」，是认知行为疗法中的外化技巧';
+            gameArea.appendChild(tip);
+        }
+
+        // ===== 游戏三：宠物猜心 =====
+        // 线索句刻意不含情绪词本身，让孩子从"行为线索"猜心情（心理理论训练）
+        const EMPATHY_EMOTIONS = [
+            { name: '开心', emoji: '😄', hints: ['尾巴摇得停不下来，汪汪！', '最喜欢你陪我玩球啦！', '嘴角都翘起来啦，嘿嘿～'] },
+            { name: '难过', emoji: '😢', hints: ['呜…耳朵耷拉下来了…', '今天没什么精神，趴着不想动…', '眼睛湿湿的，想找个角落待着…'] },
+            { name: '生气', emoji: '😠', hints: ['哼！不理你了！', '气得直跺脚，背过身去！', '低吼了一声，毛都竖起来了！'] },
+            { name: '害怕', emoji: '😨', hints: ['那个声音好吓人…能躲你后面吗', '耳朵贴着脑袋，缩成一团…', '心怦怦跳，想找个地方藏起来…'] },
+            { name: '困了', emoji: '😴', hints: ['眼皮好重…哈欠…', '趴着打了个大大的哈欠…', '头一点一点的，快撑不住了…'] },
+        ];
+        function startEmpathyGame() {
+            activeGame = 'empathy';
+            const sess = ++gameSession;
+            gameTitle.textContent = '🎭 宠物猜心';
+            gameOverlay.hidden = false;
+            let round = 0, correct = 0, total = 5;
+            gameScore.textContent = `正确: 0/${total}`;
+            gameTimer.textContent = `第 ${round + 1} 轮`;
+            gameArea.style.background = 'linear-gradient(180deg, #FFF3E0, #FFE0B2)';
+            gameResult.hidden = true;
+            nextRound();
+
+            function nextRound() {
+                if (sess !== gameSession) return;   // 已退出/已开新局
+                round++;
+                if (round > total) {
+                    const msg = correct === total ? `满分！你太懂${SPECS[currentPetId].name}了！` :
+                        correct >= 3 ? `不错的默契！你们越来越亲近了` : `多陪陪它，会更懂它的心情哦`;
+                    showResult(correct * 20, msg, Math.min(3, correct));
+                    return;
+                }
+                gameTimer.textContent = `第 ${round}/${total} 轮`;
+                // 随机选一个情绪
+                const answer = EMPATHY_EMOTIONS[Math.floor(Math.random() * EMPATHY_EMOTIONS.length)];
+                const hint = answer.hints[Math.floor(Math.random() * answer.hints.length)];
+                // 生成 4 个选项（包含正确答案）
+                const options = [answer];
+                const pool = EMPATHY_EMOTIONS.filter(e => e !== answer);
+                while (options.length < 4 && pool.length) {
+                    options.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+                }
+                options.sort(() => Math.random() - 0.5);
+
+                gameArea.innerHTML = `<div class="empathy-stage">
+                    <div class="empathy-prompt">${SPECS[currentPetId].name}正在表达一种心情，猜猜是什么？</div>
+                    <div class="empathy-pet-hint">🐾「${hint}」</div>
+                    <div class="empathy-answer"></div>
+                    <div class="empathy-options">
+                        ${options.map(o => `<button class="empathy-btn" data-correct="${o === answer}">${o.name}</button>`).join('')}
+                    </div>
+                </div>`;
+                // 宠物播放对应动画（配合台词线索）
+                if (answer.name === '开心') { setAnim('happy', 2200); }
+                else if (answer.name === '困了') { setAnim('sleep', 2800); }
+                else { setAnim('talk', 1800); }
+                // 选项点击
+                let answered = false;
+                gameArea.querySelectorAll('.empathy-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        if (answered || sess !== gameSession || !gameResult.hidden) return;
+                        answered = true;
+                        const isCorrect = btn.dataset.correct === 'true';
+                        if (isCorrect) { btn.classList.add('correct'); correct++; burst('star', 3); }
+                        else { btn.classList.add('wrong'); gameArea.querySelectorAll('[data-correct=true]').forEach(b => b.classList.add('correct')); }
+                        gameArea.querySelector('.empathy-prompt').textContent = isCorrect ? '答对啦！' : '再观察一下～';
+                        gameArea.querySelector('.empathy-answer').textContent = `它刚才的心情是 ${answer.emoji} ${answer.name}`;
+                        gameScore.textContent = `正确: ${correct}/${total}`;
+                        setTimeout(() => { if (sess === gameSession) nextRound(); }, isCorrect ? 1100 : 1800);
+                    });
+                });
+            }
+        }
+
+        function startGame(name) {
+            endGame();
+            cancelPointerDrag();      // S1-11：进游戏前清拖拽/手势，不遗留 ghost
+            cancelGestureAction('game-open');
+            if (name === 'balloon') startBalloonGame();
+            else if (name === 'worry') startWorryGame();
+            else if (name === 'empathy') startEmpathyGame();
+        }
+
+        // ---------- 视觉互动（眼神对视 + 伸手抚摸；本地 WASM 推理，画面不上传） ----------
+        let dv = null, visionOn = false, visionTick = null;
+        let gazeNow = false, gazeSec = 0, lastGazeHeart = 0;
+        let grabbed = false, dropping = false, grabHomeY = 0.02, bounceBack = 0;
+        let handTouch = false, handSec = 0, lastHandHeart = 0, lastHandBubble = 0;
+        // （S1-10）旧的共享 state.daily 计数已废弃：每日次数挂在每只宠物 petState().daily，
+        // 根级 state.daily 若存在于旧数据中则原样保留、不再读取。
+        function headScreenPos() {
+            const v = petHeadPos().clone().project(camera);
+            return { x: (v.x * 0.5 + 0.5) * canvas.clientWidth, y: (-v.y * 0.5 + 0.5) * canvas.clientHeight };
+        }
+        const vStatus = document.getElementById('vision-status');
+        const vHandEl = document.getElementById('vision-hand');
+        const vBox = document.getElementById('vision-box');
+        let vStatusCache = '';
+        let lastHandMirror = { present: false };   // 页面级手状态镜像（真实检测与调试注入共用）
+        function visionRenderStatus() {
+            const hs = lastHandMirror.present ? lastHandMirror : null;
+            const handTxt = !hs ? '🖐 等待伸手'
+                : hs.quality === false ? '🖐 手离镜头近一点'
+                : hs.pinching ? '🤏 捏合中'
+                : '🖐 手已识别';
+            const flash = gestureFlash && performance.now() < gestureFlash.until ? '|✨ ' + gestureFlash.label : '';
+            const txt = (gazeNow ? '对视中' : '看向别处') + '|' +
+                (handTouch ? '🖐 抚摸中' : handTxt) + flash;
+            if (txt === vStatusCache) return;
+            vStatusCache = txt;
+            if (vStatus) vStatus.innerHTML = txt.split('|').map(s => s.includes('中') ? `<b>${s}</b>` : s).join('<br>');
+        }
+        function stopVision() {
+            if (visionTick) { clearInterval(visionTick); visionTick = null; }
+            if (dv) dv.stop();
+            if (grabbed) { grabbed = false; dropping = true; }   // 停视觉时松手
+            cancelGestureAction('vision-stop');   // S1-11：进行中的手势喂食一并取消
+            cancelPointerDrag();
+            visionOn = false; gazeNow = false; handTouch = false; gazeSec = 0; handSec = 0;
+            trayEl.hidden = true; refreshTrayRects();
+            vBox.classList.remove('ready');
+            vHandEl.style.opacity = '0';
+        }
+        // 视觉回调（顶层定义：真实摄像头与 __denGestureDebug 注入共用同一条仲裁链路）
+        function handleVisionGrab(pinching, pos, reason) {
+            if (pinching && pos) {
+                beginGestureAction(pos);
+            } else {
+                endGestureAction(pos, reason === 'lost' || reason === 'stop' ? 'cancel' : 'release');
+            }
+        }
+        function handleVisionHand(h) {
+            const pinchEl = document.getElementById('vision-pinch');
+            lastHandMirror = h;   // 状态栏镜像：真实检测与调试注入一致
+            if (h.present) {
+                // 虚拟手掌：跟随掌心，尺寸随手的远近缩放（palm 越大=离镜头越近）
+                const size = 34 + Math.min(h.palm, 0.55) * 95;
+                vHandEl.style.opacity = h.reaching ? '0.95' : '0.4';
+                vHandEl.style.width = vHandEl.style.height = size + 'px';
+                vHandEl.querySelector('svg').setAttribute('width', size);
+                vHandEl.querySelector('svg').setAttribute('height', size);
+                vHandEl.classList.toggle('reaching', !!h.reaching);
+                vHandEl.classList.toggle('pinching', !!h.pinching);
+                vHandEl.style.transform = `translate(${h.sx - 0}px, ${h.sy - 0}px)`;
+                // 捏合点十字准星：让用户看到系统判定的精确操作坐标
+                const px = h.pinchX != null ? h.pinchX : h.sx;
+                const py = h.pinchY != null ? h.pinchY : h.sy;
+                pinchEl.style.opacity = h.quality === false ? '0.35' : '0.9';
+                pinchEl.classList.toggle('pinching', !!h.pinching);
+                pinchEl.style.transform = `translate(${px - 22}px, ${py - 22}px)`;
+                // 手势喂食跟随与拿取确认（S1-11）
+                updateGestureAction(h);
+                // 托盘悬停高亮（只做反馈不触发拿取）
+                if (trayEl && !trayEl.hidden && !gestureAction) {
+                    const hitT = hitTray(px, py);
+                    trayEl.querySelectorAll('[data-hand-food]').forEach((b) => {
+                        b.classList.toggle('hover', !!hitT && b.dataset.handFood === hitT.kind);
+                    });
+                }
+            } else {
+                vHandEl.style.opacity = '0';
+                pinchEl.style.opacity = '0';
+                // 手部识别丢失：取消进行中的手势动作（不能误判为嘴边松手）
+                if (gestureAction || gesturePending.active) cancelGestureAction('hand-lost');
+            }
+            // 触摸判定：伸手 且 虚拟手落在宠物头部附近；手持食物时暂停抚摸累计（S1-11）
+            let nowTouch = false;
+            if (h.present && h.reaching && petModel && !grabbed &&
+                !(gestureAction && gestureAction.type === 'food')) {
+                const hp = headScreenPos();
+                nowTouch = Math.hypot(h.sx - hp.x, h.sy - hp.y) < 110;
+            }
+            if (nowTouch !== handTouch) {
+                handTouch = nowTouch;
+                if (nowTouch) {
+                    handSec = 0; lastHandBubble = performance.now();
+                    showBubble(`${SPECS[currentPetId].name}享受你的抚摸～`, 2200);
+                }
+            }
+            visionRenderStatus();
+        }
+        document.getElementById('btn-vision').addEventListener('click', async function () {
+            if (visionOn) { stopVision(); this.textContent = '眼神互动'; return; }
+            if (!cameraAvailable) {   // S1-12：HTTP/VPN 环境友好降级，不影响其他功能
+                toast('当前访问方式不支持摄像头互动。聊天、喂食和游戏仍可正常使用。', 'info', 5000);
+                return;
+            }
+            if (!window.DenVision) { toast('视觉模块加载失败，请刷新页面', 'error'); return; }
+            this.disabled = true; this.textContent = '开启中…';
+            dv = dv || new window.DenVision();
+            window.__denVision = dv;   // 调试/验收钩子
+            // 第三个参数 = 主画布：虚拟手与触摸判定的坐标换算基准（勿传预览小窗）
+            const ok = await dv.start(document.getElementById('vision-cam'), {
+                onBlink() {
+                    petBlink();   // 用户眨眼 → 宠物同步眨
+                },
+                onSnap() {
+                    // 打响指 → 宠物被惊到：跳起 + 星星 + 气泡 + 短暂缩一下（表演中不打扰）
+                    if (!petModel || grabbed || performing()) return;
+                    setAnim('happy', 900);
+                    burst('star', 5);
+                    showBubble(`${SPECS[currentPetId].name}被吓了一跳！什么声音？！`, 2000);
+                    // 被吓缩一下（tick 里的恢复代码会自动恢复）
+                    if (petModel.scale.x > 0.7) {
+                        petModel.scale.setScalar(petModel.scale.x * 0.82);
+                    }
+                },
+                onGrab: handleVisionGrab,
+                onGesture(g) { handlePetGesture(g); },
+                onGaze(on) {
+                    gazeNow = on;
+                    if (on) {
+                        gazeSec = 0;
+                        if (!performing()) {
+                            showBubble(`${SPECS[currentPetId].name}也正在看着你呢～`, 2200);
+                            setAnim('happy', 900);
+                        }
+                    }
+                    visionRenderStatus();
+                },
+                onHand: handleVisionHand,
+                onError(kind) {
+                    toast(kind === 'camera' ? '无法访问摄像头：请在浏览器地址栏允许摄像头权限'
+                        : kind === 'runtime' ? '视觉推理异常，已自动停止'
+                        : '视觉模型加载失败', 'error');
+                    // runtime 自停后同步复位页面 UI（按钮/预览窗/虚拟手）
+                    if (kind === 'runtime') {
+                        stopVision();
+                        const b = document.getElementById('btn-vision');
+                        if (b) b.textContent = '眼神互动';
+                    }
+                },
+            }, canvas);
+            this.disabled = false;
+            if (!ok) { this.textContent = '眼神互动'; dv = null; window.__denVision = null; return; }
+            if (breathActive) { dv.stop(); dv = null; window.__denVision = null; this.textContent = '眼神互动'; toast('先专注呼吸，练完再开启眼神互动吧', 'info'); return; }
+            visionOn = true;
+            this.textContent = '关闭视觉';
+            vBox.classList.add('ready');
+            // S1-11：视觉开启 → 显示手势食物托盘并缓存命中矩形
+            trayEl.hidden = false;
+            [...trayEl.querySelectorAll('[data-hand-food]')].forEach((b) => {
+                if (!b.querySelector('img')) {
+                    const img = document.createElement('img');
+                    img.alt = '';
+                    img.src = foodIconUrl(b.dataset.handFood) || '';
+                    b.prepend(img);
+                }
+            });
+            requestAnimationFrame(() => refreshTrayRects());   // 布局稳定后量矩形
+            visionRenderStatus();
+            // 低频节拍：对视/抚摸的亲密度累计与粒子节流
+            visionTick = setInterval(() => {
+                const now = performance.now();
+                if (gazeNow) {
+                    gazeSec += 0.5;
+                    if (now - lastGazeHeart > 4200) { lastGazeHeart = now; burst('heart', 1, petHeadPos().add(new THREE.Vector3(0, 0.25, 0))); }
+                    if (gazeSec >= 20) {
+                        gazeSec = 0;
+                        const r = rewardIntimacy('gaze');
+                        if (r.reason === 'ok') showBubble('对视让感情更深了 +1', 1600);
+                        else showBubble('今天的眼神互动已经够多啦～', 1600);
+                    }
+                } else gazeSec = 0;
+                if (handTouch) {
+                    handSec += 0.5;
+                    if (!performing()) setAnim('petting', 600);
+                    if (now - lastHandHeart > 1000) { lastHandHeart = now; burst('heart', 1, petHeadPos().add(new THREE.Vector3(0, 0.2, 0))); }
+                    if (now - lastHandBubble > 7000) { lastHandBubble = now; showBubble(`${SPECS[currentPetId].name}轻轻蹭着你的手…`, 1800); }
+                    if (handSec >= 2.5) {
+                        handSec = 0;
+                        rewardIntimacy('hand');   // 满额时静默：抚摸动画照播
+                    }
+                } else handSec = 0;
+            }, 500);
+        });
+        window.addEventListener('pagehide', () => { if (visionOn) stopVision(); });
+        // 切到其他标签页立即停摄像头（隐私指示灯不该常亮）
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (window.speechSynthesis) speechSynthesis.cancel();   // 切页停止朗读
+                cancelPointerDrag();          // S1-11：页面隐藏取消进行中的喂食操作
+                cancelGestureAction('page-hidden');
+                if (visionOn) {
+                    stopVision();
+                    const b = document.getElementById('btn-vision');
+                    if (b) b.textContent = '眼神互动';
+                }
+            }
+        });
+
+        // ---------- 主循环 ----------
+        const clock = new THREE.Clock();
+        let timeOfDayChecked = 0;
+        function tick() {
+            requestAnimationFrame(tick);
+            const dt = Math.min(clock.getDelta(), 0.05);
+            const t = clock.elapsedTime;
+            const now = performance.now();
+
+            if (now - timeOfDayChecked > 60000) { applyTimeOfDay(); timeOfDayChecked = now; }
+            autoBlinkTick(now);
+
+            if (petModel) {
+                // 保底：被捏住但视觉互动已停（切页/关闭/异常）→ 强制释放掉落（测试臂除外：无摄像头验证拎宠链路）
+                if (grabbed && (!dv || !dv.running) && !window.__gestureTestArmed) {
+                    grabbed = false;
+                    dropping = true;
+                }
+
+                // 捏住跟随：缩小 + 挂在虚拟手前方（用视觉互动的手坐标）
+                if (grabbed && petModel) {
+                    const hs = dv ? dv.handState : null;
+                    if (hs && hs.present) {
+                        // 屏幕坐标 → 3D（反投影）
+                        const ndcX = (hs.sx / canvas.clientWidth) * 2 - 1;
+                        const ndcY = -(hs.sy / canvas.clientHeight) * 2 + 1;
+                        const vec = new THREE.Vector3(ndcX, ndcY, 0.5).unproject(camera);
+                        const dir = vec.sub(camera.position).normalize();
+                        const dy = 1.3 - camera.position.y;
+                        const dist = dy / (dir.y || 0.1);
+                        const target = camera.position.clone().add(dir.multiplyScalar(Math.abs(dist)));
+                        // 平滑跟随 + 悬空晃动
+                        const wob = Math.sin(performance.now() * 0.006) * 0.06;
+                        petModel.position.lerp(new THREE.Vector3(target.x, 1.3 + wob, target.z), 0.15);
+                    }
+                    // 缩小（渐变到 0.45）
+                    const ts = 0.45;
+                    if (petModel.scale.x > ts) petModel.scale.setScalar(Math.max(ts, petModel.scale.x - dt * 3));
+                    petModel.rotation.y += 0.025;   // 被拎着缓慢转
+                }
+
+                // 掉落回地面（松手后）
+                if (dropping && petModel) {
+                    petModel.position.y -= 6.5 * dt;   // 重力
+                    petModel.rotation.y *= 0.95;
+                    if (petModel.position.y <= 0.05) {  // 用固定地面高度，不依赖 grabHomeY
+                        petModel.position.y = 0.02;
+                        dropping = false;
+                        bounceBack = 0.12;
+                        setAnim('idle', 0);
+                    }
+                }
+                // 弹跳衰减
+                if (bounceBack > 0 && petModel && !dropping && !grabbed) {
+                    bounceBack -= dt * 0.5;
+                    petModel.position.y = grabHomeY + Math.max(0, bounceBack) * Math.sin(bounceBack * 30);
+                    if (bounceBack <= 0) petModel.position.y = grabHomeY;
+                }
+                // 捏住时恢复正常大小（松手后渐回）
+                if (!grabbed && !dropping && petModel && petModel.scale.x < 0.95) {
+                    petModel.scale.setScalar(Math.min(1, petModel.scale.x + dt * 2));
+                }
+
+                // 出生缩放（弹性放大）
+                if (anim.birth !== undefined && anim.birth < 1) {
+                    anim.birth = Math.min(1, anim.birth + dt * 2.2);
+                    petModel.scale.setScalar(anim.birth < 1
+                        ? (1 - Math.pow(1 - anim.birth, 3)) * (1 + Math.sin(anim.birth * Math.PI) * 0.12) : 1);
+                }
+
+                // 状态到期回落 + 长时间无互动入睡（动画切换交给 setAnim）
+                // 表演链期间不回落：链子自己按时序推进，tick 抢回落会造成一步闪帧
+                if (anim.until && now > anim.until && !performing()) { setAnim('idle', 0); anim.until = 0; }
+                else if (anim.state === 'idle' && now - anim.lastInteract > 45000) {
+                    anim.state = 'sleep'; anim.sleptAt = now; playSleep();   // 不经 setAnim（它会刷新互动时间）
+                } else if (anim.state === 'sleep' && anim.lastInteract > (anim.sleptAt || 0)) {
+                    anim.state = 'idle'; playAction('idle', 1);   // 入睡后发生过新互动才唤醒（crossFade 翻身站起）
+                }
+                if (mixer) mixer.update(dt);
+                const st = anim.state;
+
+                // 配饰跟随宠物位置（挂 scene 根，每帧同步坐标）
+                const accs = petModel.userData.accessories;
+                if (accs) {
+                    const pp = petModel.position;
+                    const ph = petModel.userData.height || 1;
+                    accs[0].position.set(pp.x, pp.y + ph * 0.95, pp.z + 0.3);
+                    accs[1].position.set(pp.x, pp.y + ph * 0.5, pp.z + 0.25);
+                    accs[2].position.set(pp.x + ph * 0.18, pp.y + ph * 0.72, pp.z + 0.12);
+                }
+                // 接触阴影：贴地跟随，被提起时淡出缩小
+                contactShadow.visible = true;
+                {
+                    const pp = petModel.position;
+                    const lift = Math.max(0, pp.y);
+                    const fade = Math.max(0, 1 - lift / 0.7);
+                    contactShadow.position.set(pp.x, 0.012, pp.z);
+                    contactShadow.material.opacity = 0.34 * fade;
+                    const s = 0.9 + 0.25 * fade;
+                    contactShadow.scale.set(s, s, 1);
+                }
+
+                // 睡觉 Zzz
+                if (st === 'sleep' && Math.random() < 0.006) burst('zzz', 1, petHeadPos().add(new THREE.Vector3(0.25, 0.15, 0)));
+                // 气泡跟随：拖拽/缩放相机时实时贴住宠物头部投影
+                if (bubbleEl && bubbleEl.classList.contains('show')) {
+                    const hp = petHeadPos().clone().project(camera);
+                    bubbleEl.style.left = `${(hp.x * 0.5 + 0.5) * canvas.clientWidth + 16}px`;
+                    bubbleEl.style.top = `${(-hp.y * 0.5 + 0.5) * canvas.clientHeight - 70}px`;
+                }
+            }
+
+            // 主题环境粒子（樱花飘落/落雪/微尘上浮）与篝火闪烁
+            for (const sp of envSprites) {
+                sp.position.y += sp.userData.v * dt;
+                sp.userData.sway += dt * 1.2;
+                sp.position.x += Math.sin(sp.userData.sway) * dt * 0.18;
+                if (sp.userData.rise) {
+                    if (sp.position.y > 3.2) { sp.position.y = 0.1; sp.position.x = (Math.random() - 0.5) * 7; sp.position.z = (Math.random() - 0.5) * 7; }
+                } else if (sp.position.y < 0.05) {
+                    sp.position.y = 2.8 + Math.random() * 0.6; sp.position.x = (Math.random() - 0.5) * 7; sp.position.z = (Math.random() - 0.5) * 7;
+                }
+            }
+            if (themeFireLight) themeFireLight.intensity = 0.85 + Math.sin(t * 9) * 0.15 + Math.sin(t * 23) * 0.1;
+            if (themeFlame) themeFlame.scale.setScalar(1 + Math.sin(t * 11) * 0.12);
+
+            // 粒子物理
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const sp = particles[i];
+                sp.userData.life -= dt;
+                sp.userData.v.y -= 1.6 * dt;
+                sp.position.addScaledVector(sp.userData.v, dt);
+                sp.material.opacity = Math.max(0, sp.userData.life);
+                if (sp.userData.life <= 0) { scene.remove(sp); sp.material.dispose(); particles.splice(i, 1); }
+            }
+            // 食物飞行
+            if (flyingFood) {
+                flyingFood.t += dt * 1.8;
+                const k = Math.min(1, flyingFood.t);
+                flyingFood.sprite.position.lerpVectors(flyingFood.from, flyingFood.to, k);
+                flyingFood.sprite.position.y += Math.sin(k * Math.PI) * 0.9;
+                if (k >= 1) { scene.remove(flyingFood.sprite); flyingFood = null; }
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function resize() {
+            const w = canvas.clientWidth, h = canvas.clientHeight;
+            if (canvas.width !== w * renderer.getPixelRatio()) {
+                renderer.setSize(w, h, false);
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+            }
+        }
+        // S1-11/S1-12：旋转/缩放窗口 → 取消进行中的喂食操作并重算托盘命中矩形
+        function onViewportChange() {
+            cancelPointerDrag();
+            cancelGestureAction('viewport-change');
+            refreshTrayRects();
+            resize();
+        }
+        canvas.clientWidth; // init
+        window.addEventListener('resize', onViewportChange);
+        window.addEventListener('orientationchange', onViewportChange);
+
+        // ---------- 启动 ----------
+        applyTimeOfDay();
+        spawnPet(currentPetId);
+        appendMsg('pet', SPECS[currentPetId].greet + ' 点点下面的按钮，或者直接点我！');
+        resize();
+        tick();
+        new ResizeObserver(resize).observe(canvas);
+        // 调试/测试钩子
+        window.__den = {
+            get scene() { return scene; },
+            get petModel() { return petModel; },
+            get mixer() { return mixer; },
+            SPECS, spawnPet, setAnim, speak, petBlink, camera: () => camera,
+            get grabbed() { return grabbed; }, get dropping() { return dropping; },
+        };
+    })();
+    </script>
+</body>
+</html>

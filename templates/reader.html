@@ -1,0 +1,75 @@
+{% extends 'layout.html' %}
+{% block title %}我的空间 · MPC 宠物聊天{% endblock %}
+{% block head %}
+<style>
+    .panel-hero { text-align: center; padding: 32px 0 24px; }
+    .panel-hero h2 { margin: 0 0 6px; font-family: var(--font-round); font-size: 22px; }
+    .panel-hero p { margin: 0; color: var(--c-text-sub); font-size: 13px; }
+
+    .entry-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .entry-main {
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        gap: 12px; padding: 40px 24px; text-align: center; cursor: pointer;
+    }
+    .entry-main .icon {
+        width: 72px; height: 72px; border-radius: 50%;
+        background: var(--c-primary);
+        display: flex; align-items: center; justify-content: center; font-size: 34px;
+    }
+    .entry-main h3 { margin: 0; font-size: 20px; color: var(--c-primary-deep); }
+    .entry-side {
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        gap: 8px; padding: 24px; text-align: center; cursor: pointer;
+    }
+    .entry-side .icon {
+        width: 48px; height: 48px; border-radius: 50%;
+        background: var(--c-bubble-user);
+        display: flex; align-items: center; justify-content: center; font-size: 22px;
+    }
+    .entry-side h4 { margin: 0; font-size: 15px; }
+    .entry-side p { margin: 0; font-size: 12px; color: var(--c-text-sub); }
+
+    @media (max-width: 767px) {
+        .entry-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+{% block body %}
+<div class="panel-hero">
+    <h2>你好，{{ g.user }} 👋</h2>
+    <p>今天想和宠物们聊点什么呢？</p>
+</div>
+
+<div class="entry-grid">
+    <div class="card entry-main" onclick="location.href='/gpt'" role="button" tabindex="0"
+         onkeydown="if(event.key==='Enter') location.href='/gpt'">
+        <span class="icon">💬</span>
+        <h3>开始聊天</h3>
+        <p class="text-sub">柴犬、哈士奇、猫咪、德牧都在等你</p>
+    </div>
+    <div class="card entry-side" onclick="location.href='/diary'" role="button" tabindex="0"
+         onkeydown="if(event.key==='Enter') location.href='/diary'">
+        <span class="icon">📖</span>
+        <h4>我的日记</h4>
+        <p>回顾聊天的温暖瞬间</p>
+    </div>
+    <div class="card entry-side" onclick="location.href='/reader/info'" role="button" tabindex="0"
+         onkeydown="if(event.key==='Enter') location.href='/reader/info'">
+        <span class="icon">⚙️</span>
+        <h4>修改资料</h4>
+        <p>昵称与个性签名</p>
+    </div>
+</div>
+
+<div class="card clickable" onclick="location.href='/reader/histroy'" role="button" tabindex="0"
+     onkeydown="if(event.key==='Enter') location.href='/reader/histroy'"
+     style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px;">
+    <span>📚 我的借阅记录</span>
+    <span class="text-sub">查看 →</span>
+</div>
+{% endblock %}

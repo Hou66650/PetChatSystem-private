@@ -1,0 +1,72 @@
+define('common:widget/ui/utils/dataType', function(require, exports, module) {
+
+  /**
+   * @file dataType checker
+   * @author caigang@baidu.com
+   */
+  
+  /**
+   * Check if value is undefined.
+   * @param {any} v value to check
+   * @returns {boolean}
+   */
+  function isUndef(v) {
+      return v === undefined || v === null;
+  }
+  
+  /**
+   * Check if value is defined.
+   * @param {any} v value to check
+   * @returns {boolean}
+   */
+  function isDef(v) {
+      return v !== undefined && v !== null;
+  }
+  
+  /**
+   * Check if value is primitive.
+   * @param {any} v value to check
+   * @returns {boolean}
+   */
+  function isPrimitive(v) {
+      return typeof v === 'string'
+          || typeof v === 'number'
+          || typeof v === 'symbol'
+          || typeof v === 'boolean';
+  }
+  
+  /**
+   * Quick object check
+   * @param {any} obj value to check
+   * @returns boolean
+   */
+  function isObject(obj) {
+      return obj !== null && typeof obj === 'object';
+  }
+  
+  // Get the raw type string of a value.
+  var _toString = Object.prototype.toString;
+  
+  function toRawType(value) {
+      return _toString.call(value).slice(8, -1);
+  }
+  
+  /**
+   * Strict object type check.
+   * @param {any} obj value to check
+   * @returns {boolean}
+   */
+  function isPlainObject(obj) {
+      return toRawType(obj) === 'Object';
+  }
+  
+  module.exports = {
+      isUndef,
+      isDef,
+      isPrimitive,
+      isObject,
+      isPlainObject
+  };
+  
+
+});

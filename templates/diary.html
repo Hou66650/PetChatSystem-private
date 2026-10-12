@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>我的日记 · MPC 宠物聊天</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <style>
+        body.theme {
+            padding-top: var(--nav-h);
+            min-height: 100vh;
+            /* 保留原书房/纸张背景（设计文档 二.8：背景图不改） */
+            background: var(--c-bg) url("/images/study-room.jpg") no-repeat center center fixed;
+            background-size: cover;
+            font-family: var(--font-body);
+        }
+        .diary-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px;
+        }
+        .diary-head {
+            width: min(1000px, 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            color: var(--c-text);
+            text-shadow: 0 1px 0 rgba(255,255,255,.6);
+        }
+        .diary-head h2 { margin: 0; font-family: var(--font-round); font-size: 20px; }
+        .paper {
+            position: relative;
+            width: min(1000px, 100%);
+            min-height: 60vh;
+            background: url("/images/paper.png") no-repeat center center;
+            background-size: 100% 100%;
+            padding: clamp(24px, 5vw, 64px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, .3);
+            border-radius: 12px;
+            overflow-y: auto;
+            max-height: 75vh;
+        }
+        /* 纸张自带横线纹理会"穿字"：垫一层半透明白底，纹理保留但退到文字后 */
+        .paper::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 253, 248, .82);
+            border-radius: 12px;
+        }
+        /* 筛选工具栏（S1-05） */
+        .diary-toolbar {
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 18px;
+            font-size: 13px;
+        }
+        .diary-toolbar select,
+        .diary-toolbar input[type="search"] {
+            padding: 6px 10px;
+            border: 1px solid #d8cbb8;
+            border-radius: 8px;
+            background: rgba(255, 253, 248, .9);
+            color: var(--c-text);
+            font: inherit;
+            font-size: 13px;
+        }
+        .diary-toolbar input[type="search"] { min-width: 180px; }
+        .diary-toolbar .btn-link {
+            border: 0;
+            background: transparent;
+            color: var(--c-text-sub);
+            cursor: pointer;
+            font: inherit;
+            font-size: 13px;
+            text-decoration: underline;
+            padding: 4px;
+        }
+        .diary-count { color: var(--c-text-sub); margin-left: auto; }
+        .diary-content {
+            position: relative;
+            font-size: 15px;
+            line-height: 1.8;
+            color: #3c342c;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+        .diary-day { margin: 0 0 22px; }
+        .diary-day-title {
+            margin: 0 0 10px;
+            font-size: 15px;
+            color: #6b5a49;
+            border-bottom: 1px dashed #d8cbb8;
+            padding-bottom: 4px;
+            font-weight: 600;
+        }
+        .diary-entry {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin: 0 0 8px;
+        }
+        .diary-entry-main { flex: 1; min-width: 0; word-break: break-word; }
+        .diary-entry-main strong { color: #2f2620; }
+        .diary-del {
+            flex-shrink: 0;
+            border: 0;
+            background: transparent;
+            color: #b0a08c;
+            cursor: pointer;
+            font: inherit;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            min-height: 24px;
+        }
+        .diary-del:hover { color: var(--c-danger); background: rgba(180, 60, 60, .08); }
+        .diary-empty {
+            text-align: center;
+            color: var(--c-text-sub);
+            padding: 48px 16px;
+        }
+    </style>
+</head>
+<body class="theme">
+    {% include '_navbar.html' %}
+    <div class="diary-wrap">
+        <div class="diary-head">
+            <h2>📖 我的聊天日记</h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <span id="diary-date" class="text-sub" style="font-size:13px;"></span>
+                <button class="btn-outline btn-sm" id="btn-export-pdf">导出 PDF</button>
+                <button class="btn btn-sm" onclick="location.href='/gpt'">继续聊天</button>
+            </div>
+        </div>
+        <div class="paper">
+            <div class="diary-toolbar" role="group" aria-label="日记筛选">
+                <label for="f-pet">宠物</label>
+                <select id="f-pet">
+                    <option value="all">全部</option>
+                    <option value="1">球球（柴犬）</option>
+                    <option value="2">雪球（哈士奇）</option>
+                    <option value="3">团子（猫咪）</option>
+                    <option value="4">大壮（德牧）</option>
+                </select>
+                <label for="f-date">日期</label>
+                <select id="f-date">
+                    <option value="all">全部日期</option>
+                    <option value="7">最近 7 天</option>
+                    <option value="30">最近 30 天</option>
+                    <option value="legacy">历史未知日期</option>
+                </select>
+                <label for="f-kw">关键词</label>
+                <input type="search" id="f-kw" placeholder="搜索日记内容…" aria-label="关键词搜索">
+                <button type="button" class="btn-link" id="btn-reset-filters">重置筛选</button>
+                <span class="diary-count" id="diary-count" aria-live="polite"></span>
+            </div>
+            <div id="diary-content" class="diary-content">正在加载日记内容…</div>
+        </div>
+    </div>
+    {% include '_footer.html' %}
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/vendor/html2canvas.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/vendor/jspdf.umd.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/diary.js') }}"></script>
+    <script>
+    // 标题栏日期
+    (function () {
+        var d = new Date();
+        var pad = function (n) { return String(n).padStart(2, '0'); };
+        document.getElementById('diary-date').textContent =
+            d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    })();
+    </script>
+</body>
+</html>

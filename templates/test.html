@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 测试</title>
+</head>
+
+<body>
+    <h1>JSON 数据测试</h1>
+    <div id="json-data"></div>
+
+     <audio controls>
+        <source src="./mp3/m2.mp3" type="audio/mpeg">
+        你的浏览器不支持音频播放。
+    </audio>
+
+    <script>
+        // 创建一个 XMLHttpRequest 对象
+        const xhr = new XMLHttpRequest();
+
+        // 打开一个 GET 请求，请求 data.json 文件
+        xhr.open('GET', './json/role_description1.json', true);
+
+        // 监听请求状态变化
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                try {
+                    // 解析 JSON 数据
+                    const jsonData = JSON.parse(xhr.responseText);
+
+                    // 创建一个字符串来展示 JSON 数据
+                    let dataString = '';
+                    for (const key in jsonData) {
+                        if (jsonData.hasOwnProperty(key)) {
+                            dataString += `<p><strong>${key}:</strong> ${jsonData[key]}</p>`;
+                        }
+                    }
+
+                    // 将数据展示在页面上
+                    document.getElementById('json-data').innerHTML = dataString;
+                } catch (error) {
+                    console.error('解析 JSON 数据时出错:', error);
+                }
+            }
+        };
+
+        // 发送请求
+        xhr.send();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,27 @@
+define('common:widget/ui/ai/survey/components/questionnaire', function(require, exports, module) {
+
+  var san = require('common:widget/ui/ai/san');
+  
+  return san.defineComponent({
+      template: ''
+          + ' <div class="questionnaire question-button" on-click="handleClick">'
+          + '     <img src="https://psstatic.cdn.bcebos.com/basics/image_fe/questionnaire_1709015622000.png"/>'
+          + '     <div class="questionnaire-text">{{buttonText}}</div>'
+          + ' </div> ',
+      computed: {
+          buttonText() {
+              return this.data.get('questionData.buttonText') || '去参与调研';
+          }
+      },
+      initData: function () {
+          return {
+              questionData: {},
+          };
+      },
+      handleClick: function () {
+          this.dispatch('SURVEY:updateAnswer', {ans: '', index: -1});
+          window.open(this.data.get('questionData.questionUrl'), '_blank');
+      }
+  });
+
+});
