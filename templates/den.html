@@ -1083,12 +1083,24 @@ document.addEventListener('DOMContentLoaded', () => {
         // 链式编排复用已有动作键（全宠物都有映射）；petting=低头鞠躬、blinkL/R=歪头、happy=跳跃
         const GESTURE_REACT = {
             pray: {
-                label: '🤝 作揖', lines: ['{name}拱起前爪回了一个揖！新的一年请多关照～🧧', '{name}深深鞠了一躬：恭喜恭喜！万事如意！'],
+                label: '🤝 作揖',
+                petLines: {
+                    1: ['球球麻利地拱爪作揖：汪汪！新的一年请多关照！🧧', '球球拜得飞快：恭喜发财，骨头拿来！'],
+                    2: ['雪球郑重抱拳：大侠，新年快乐！', '雪球作了个揖：嗷呜~恭喜恭喜，一起撒欢！'],
+                    3: ['团子矜持地拱了拱爪：喵…新年快乐，勉强大方地祝福你。', '团子慢悠悠作揖：本喵恩准你新的一年继续伺候。'],
+                    4: ['大壮端正作揖：新年安康，我会一直守着你。', '大壮深深一拜：愿新的一年平安顺遂。'],
+                },
                 chain: [['happy', 550], ['petting', 850], ['happy', 450], ['petting', 800], ['happy', 1100]],
                 fx: () => { burst('star', 10); setTimeout(() => burst('heart', 4), 500); },
             },
             heart: {
-                label: '♡ 比心', lines: ['{name}眯起眼睛回比了一个心：收到啦，我也爱你 ♡', '心心相印！{name}开心得原地转圈 ♡'],
+                label: '♡ 比心',
+                petLines: {
+                    1: ['球球用爪爪比了个大大的心：最喜欢你啦！♡', '球球眯眼比心：这颗心比零食还甜！'],
+                    2: ['雪球咧嘴比心：收到！你也是我的好伙伴！♡', '雪球豪爽比心：这份友谊，雪球记下了！'],
+                    3: ['团子别过脸比心：哼，才、才不是喜欢你呢…♡', '团子小声：这颗心…收好，不许弄丢。'],
+                    4: ['大壮温柔比心：你的心意，大壮收到了。♡', '大壮轻轻碰了碰心口：守护你，是我的荣幸。'],
+                },
                 chain: [['petting', 700], ['happy', 1500]],
                 fx: () => {
                     for (let i = 0; i < 8; i++) setTimeout(() => burst('heart', 1,
@@ -1096,12 +1108,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
             },
             wave: {
-                label: '👋 挥手', lines: ['{name}用力摇着爪子回应你：嗨嗨~你来啦！', '{name}歪着脑袋挥挥爪：好久不见呀！'],
+                label: '👋 挥手',
+                petLines: {
+                    1: ['球球的爪子摇成了小风扇：你来啦你来啦！', '球球蹦着挥手：嗨嗨嗨~'],
+                    2: ['雪球甩着尾巴挥手：来啦？走，玩去！', '雪球抬爪打招呼：嗷呜~好久不见！'],
+                    3: ['团子懒懒抬爪：来了？坐吧，本喵批准了。', '团子耳朵动了动：喵~算你识相来看我。'],
+                    4: ['大壮抬爪致意：欢迎回来，一切安好。', '大壮摇摇尾巴：嗨，今天也辛苦了。'],
+                },
                 chain: [['happy', 550], ['blinkL', 380], ['blinkR', 380], ['blinkL', 360], ['happy', 900]],
                 fx: () => burst('star', 5),
             },
             thumb: {
-                label: '👍 点赞', lines: ['{name}挺起胸脯：我们是最棒的搭档！', '{name}骄傲地扬起下巴：哇！满分好评！'],
+                label: '👍 点赞',
+                petLines: {
+                    1: ['球球挺起小胸脯：我们是最棒的搭档！', '球球骄傲翘尾：满分！我也给你满分！'],
+                    2: ['雪球昂首：那必须的，我们最强！', '雪球嘿嘿一笑：眼光不错嘛！'],
+                    3: ['团子优雅点头：眼光尚可，本喵收下夸奖。', '团子尾巴一卷：嗯，你也很不错…一点点。'],
+                    4: ['大壮挺立敬礼：好搭档，随时待命！', '大壮目光坚定：你的信任，我不会辜负。'],
+                },
                 chain: [['happy', 650], ['talk', 900], ['happy', 1000]],
                 fx: () => burst('star', 6),
             },
@@ -1112,7 +1136,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const g = GESTURE_REACT[name];
             if (!g || !petModel) return;
             if (grabbed || dropping || gestureAction || foodDrag || !gameOverlay.hidden) return;   // 互动中不打架
-            const line = pick(g.lines);
+            const lines = (g.petLines && g.petLines[currentPetId]) || [];
+            const line = lines.length ? pick(lines) : `${SPECS[currentPetId].name}很开心！`;
+            const rr = rewardIntimacy('gesture');   // 手势也有成长意义：+1，每日一次
             playChain(g.chain);
             grabSuppressUntil = performance.now() + 1500;
             showBubble(line, 2400, true);   // silent：气泡自带speak会开talk嘴型吞掉表演链，语音由下一行统一出
@@ -1123,6 +1149,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let spawnBusy = false;   // 首载窗口并发守卫
+        // 模型加载提示：GLB 下载期间不再空白
+        const petLoadingEl = document.createElement('div');
+        petLoadingEl.textContent = '🐾 宠物回家中…';
+        petLoadingEl.style.cssText = 'position:fixed;left:50%;top:46%;transform:translate(-50%,-50%);z-index:60;' +
+            'background:rgba(255,253,248,.94);border:2px solid #D8C7B4;border-radius:14px;padding:12px 24px;' +
+            'color:#6F6055;font:600 15px sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.15);pointer-events:none;';
+        petLoadingEl.hidden = true;
+        document.body.appendChild(petLoadingEl);
+        function showPetLoading(v) { petLoadingEl.hidden = !v; }
 
         // ---------- 卡通渲染升级：Toon 三阶渐变 + 描边 + 绒毛外壳（零外部资源） ----------
         // Toon 三阶渐变贴图（暗部偏冷紫/中间调/亮部偏暖），NearestFilter 保证色阶干净不插值
@@ -1213,6 +1248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
             const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
             spawnBusy = true;
+            showPetLoading(true);
             if (petModel) scene.remove(petModel);
             cancelPointerDrag();       // S1-11：切宠清理拖拽与手势（目标宠不能误加分）
             cancelGestureAction('pet-switch');
@@ -1233,7 +1269,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentPetId !== id) return;   // 已被接管：静默让位（busy 归接管方管理，不误报/不闪回）
                 toast('宠物模型加载失败，请刷新重试', 'error');
                 gltfCache[spec.glb] = null;     // 清失败缓存（rejected promise 不常驻，下次点击可重试）
-                spawnBusy = false;               // 先复位再回滚：子级调用时标志状态正确
+                spawnBusy = false; showPetLoading(false);               // 先复位再回滚：子级调用时标志状态正确
                 if (prevId && !fromRollback) spawnPet(prevId, true);   // 回滚最多一跳：多资源损坏时不乒乓
                 return;
             }
@@ -1298,7 +1334,7 @@ document.addEventListener('DOMContentLoaded', () => {
             anim.birth = 0;
             setAnim('idle', 0);
             showBubble(spec.greet, 2600);
-            spawnBusy = false;
+            spawnBusy = false; showPetLoading(false);
         }
 
         // ---------- 粒子（canvas 路径绘制贴图，不依赖 emoji 字体——字体渲染在不同环境会变黑块/残片） ----------
@@ -1437,11 +1473,12 @@ document.addEventListener('DOMContentLoaded', () => {
             game: { label: '完成小游戏', points: 1, dailyCap: 3 },
             gaze: { label: '持续对视', points: 1, dailyCap: 5 },
             hand: { label: '手势抚摸', points: 1, dailyCap: 10 },
+            gesture: { label: '趣味手势', points: 1, dailyCap: 1 },
         };
         function ensurePetDaily(ps) {
             const today = localDateKey(new Date());
             if (!ps.daily || ps.daily.date !== today) {
-                ps.daily = { date: today, pet: 0, feed: 0, chat: 0, game: 0, gaze: 0, hand: 0 };
+                ps.daily = { date: today, pet: 0, feed: 0, chat: 0, game: 0, gaze: 0, hand: 0, gesture: 0 };
             }
             return ps.daily;
         }
@@ -2649,25 +2686,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 endGestureAction(pos, reason === 'lost' || reason === 'stop' ? 'cancel' : 'release');
             }
         }
+        let vhLastWrite = null;   // DOM 写入节流：位置/状态真变化才写样式
         function handleVisionHand(h) {
             const pinchEl = document.getElementById('vision-pinch');
             lastHandMirror = h;   // 状态栏镜像：真实检测与调试注入一致
             if (h.present) {
+                const px0 = h.pinchX != null ? h.pinchX : h.sx, py0 = h.pinchY != null ? h.pinchY : h.sy;
+                const moved = !vhLastWrite ||
+                    Math.abs(vhLastWrite.sx - h.sx) + Math.abs(vhLastWrite.sy - h.sy) +
+                    Math.abs(vhLastWrite.px - px0) + Math.abs(vhLastWrite.py - py0) > 0.4 ||
+                    vhLastWrite.pinching !== !!h.pinching || vhLastWrite.reaching !== !!h.reaching;
                 // 虚拟手掌：跟随掌心，尺寸随手的远近缩放（palm 越大=离镜头越近）
-                const size = 34 + Math.min(h.palm, 0.55) * 95;
-                vHandEl.style.opacity = h.reaching ? '0.95' : '0.4';
-                vHandEl.style.width = vHandEl.style.height = size + 'px';
-                vHandEl.querySelector('svg').setAttribute('width', size);
-                vHandEl.querySelector('svg').setAttribute('height', size);
-                vHandEl.classList.toggle('reaching', !!h.reaching);
-                vHandEl.classList.toggle('pinching', !!h.pinching);
-                vHandEl.style.transform = `translate(${h.sx - 0}px, ${h.sy - 0}px)`;
-                // 捏合点十字准星：让用户看到系统判定的精确操作坐标
-                const px = h.pinchX != null ? h.pinchX : h.sx;
-                const py = h.pinchY != null ? h.pinchY : h.sy;
-                pinchEl.style.opacity = h.quality === false ? '0.35' : '0.9';
-                pinchEl.classList.toggle('pinching', !!h.pinching);
-                pinchEl.style.transform = `translate(${px - 22}px, ${py - 22}px)`;
+                const px = px0, py = py0;
+                if (moved) {
+                    vhLastWrite = { sx: h.sx, sy: h.sy, px, py, pinching: !!h.pinching, reaching: !!h.reaching };
+                    const size = 34 + Math.min(h.palm, 0.55) * 95;
+                    vHandEl.style.opacity = h.reaching ? '0.95' : '0.4';
+                    vHandEl.style.width = vHandEl.style.height = size + 'px';
+                    vHandEl.querySelector('svg').setAttribute('width', size);
+                    vHandEl.querySelector('svg').setAttribute('height', size);
+                    vHandEl.classList.toggle('reaching', !!h.reaching);
+                    vHandEl.classList.toggle('pinching', !!h.pinching);
+                    vHandEl.style.transform = `translate(${h.sx}px, ${h.sy}px)`;
+                    // 捏合点十字准星：让用户看到系统判定的精确操作坐标
+                    pinchEl.style.opacity = h.quality === false ? '0.35' : '0.9';
+                    pinchEl.classList.toggle('pinching', !!h.pinching);
+                    pinchEl.style.transform = `translate(${px - 22}px, ${py - 22}px)`;
+                }
                 // 手势喂食跟随与拿取确认（S1-11）
                 updateGestureAction(h);
                 // 托盘悬停高亮（只做反馈不触发拿取）
@@ -2678,6 +2723,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             } else {
+                vhLastWrite = null;
                 vHandEl.style.opacity = '0';
                 pinchEl.style.opacity = '0';
                 // 手部识别丢失：取消进行中的手势动作（不能误判为嘴边松手）
@@ -2756,6 +2802,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (breathActive) { dv.stop(); dv = null; window.__denVision = null; this.textContent = '眼神互动'; toast('先专注呼吸，练完再开启眼神互动吧', 'info'); return; }
             visionOn = true;
             this.textContent = '关闭视觉';
+            try {
+                if (!sessionStorage.getItem('mpc_gesture_tip')) {
+                    sessionStorage.setItem('mpc_gesture_tip', '1');
+                    toast('手势玩法：双手作揖🤝 · 双手比心♡ · 挥手👋 · 点赞👍，还能捏合拿食物喂它', 'info', 6000);
+                }
+            } catch (e) {}
             vBox.classList.add('ready');
             // S1-11：视觉开启 → 显示手势食物托盘并缓存命中矩形
             trayEl.hidden = false;
