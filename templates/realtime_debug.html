@@ -30,6 +30,10 @@
   #log { max-height:200px; overflow:auto; font-family:Consolas,monospace; font-size:11px; line-height:1.7;
          background:#2d2a26; color:#d8d3c8; border-radius:8px; padding:10px; }
   #log .t { color:#8ab4f8; } #log .err { color:#f87171; } #log .round { color:#6ee7b7; }
+  #lvlWrap { display:inline-flex; align-items:center; gap:5px; margin-left:8px; }
+  #lvlBar { width:80px; height:6px; border-radius:3px; background:#efe7db; overflow:hidden; }
+  #lvlBar i { display:block; height:100%; width:0; background:#22c55e; transition:width .25s linear; }
+  #lvlDb { font-size:11px; color:#9a8878; min-width:44px; font-family:Consolas,monospace; }
   .hint { font-size:12px; color:#9a8878; line-height:1.6; }
   input[type=text] { font-size:14px; padding:7px 10px; border-radius:8px; border:1px solid var(--c-line); flex:1; min-width:220px; }
 </style>
@@ -47,12 +51,14 @@
       <select id="genderSel"><option value="">不指定</option><option value="male">男</option><option value="female">女</option></select>
     </label>
     <span id="state">IDLE</span>
+    <span id="lvlWrap"><span id="lvlBar"><i></i></span><span id="lvlDb">— dB</span></span>
   </div>
   <div class="row">
     <button class="primary" id="btnMic">🎤 真实麦克风开始</button>
     <button class="primary" id="btnSyn">🧪 合成语音注入测试</button>
     <button id="btnMute" disabled>🔇 静音</button>
     <button id="btnStop" disabled>■ 结束</button>
+    <button id="btnDev">🎤 列出麦克风设备</button>
   </div>
   <div class="row">
     <input type="text" id="synText" value="你好呀，我是新来的主人，你叫什么名字呀？">
@@ -88,6 +94,7 @@
         metricsEl = $('metrics'), logEl = $('log');
   let ctl = null;
   let aiAccum = '';
+  let silenceFrom = 0, silenceHinted = false;
 
   function log(kind, msg) {
     const line = document.createElement('div');
@@ -121,6 +128,22 @@
     const gender = $('genderSel').value || null;
     return new RealtimeController({
       petId, petGender: gender, synthetic,
+      onLevel: (db) => {
+        const pct = Math.max(2, Math.min(100, Math.round(((db + 70) / 70) * 100)));
+        const bar = document.querySelector('#lvlBar i'), txt = $('lvlDb');
+        bar.style.width = pct + '%';
+        bar.style.background = db > -60 ? '#22c55e' : '#d6cabb';
+        txt.textContent = db <= -99 ? '无声' : db + ' dB';
+        // 诊断：开麦后一直接近无声 → 提示（说话时 -35~-10dB，环境 -55~-40dB）
+        if (db > -55) { silenceFrom = 0; silenceHinted = false; }
+        else if (!silenceHinted && ctl && !ctl.synthetic && !ctl.muted) {
+          if (!silenceFrom) silenceFrom = Date.now();
+          else if (Date.now() - silenceFrom > 5000) {
+            silenceHinted = true;
+            log('err', '⚠️ 麦克风 5 秒无声音：检查系统静音键 / 输入设备选择 / Windows隐私设置-麦克风');
+          }
+        }
+      },
       onState: (s, extra) => {
         stateEl.textContent = s + (extra.attempt != null ? ` (${extra.attempt})` : '');
         stateEl.className = s === 'READY' || s === 'AI_SPEAKING' || s === 'USER_SPEAKING' ? 'ok'
@@ -212,6 +235,13 @@
   $('btnSyn').onclick = () => startSession(true);
   $('btnStop').onclick = () => { ctl && ctl.stop(); log('t', '会话已由用户结束'); };
   $('btnMute').onclick = () => { if (ctl) { ctl.setMuted(!ctl.muted); $('btnMute').textContent = ctl.muted ? '🔊 取消静音' : '🔇 静音'; } };
+  $('btnDev').onclick = async () => {
+    try {
+      const devs = await navigator.mediaDevices.enumerateDevices();
+      const mics = devs.filter(d => d.kind === 'audioinput');
+      log('t', `检测到 ${mics.length} 个输入设备：` + (mics.map((m, i) => `${i + 1}.${m.label || '(未命名，需先授权)'}`).join(' ') || '无'));
+    } catch (e) { log('err', '枚举设备失败: ' + e.message); }
+  };
 
   // 供自动化测试调用
   window.__rtDebug = {

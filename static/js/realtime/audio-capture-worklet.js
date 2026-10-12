@@ -22,6 +22,7 @@ class CaptureProcessor extends AudioWorkletProcessor {
     this._lastSample = 0;
     this._frac = 0; // 上一帧消费到的分数位置
     this._muted = false;
+    this._levelTick = 0;   // 静音期间也照常上报电平（每8片≈0.8s一次），便于诊断设备状态
     this.port.onmessage = (e) => {
       const d = e.data;
       if (d && d.type === 'mute') this._muted = !!d.value;
@@ -50,7 +51,15 @@ class CaptureProcessor extends AudioWorkletProcessor {
   process(inputs) {
     const ch = inputs[0] && inputs[0][0];
     if (!ch || !ch.length) return true;
-    if (this._muted) return true; // 静音期间不产出（不向服务端发帧）
+    // 电平（RMS→dBFS）：即使静音也周期上报，页面用来诊断"麦克风有没有声音"
+    if ((this._levelTick = (this._levelTick + 1) & 7) === 0) {
+      let sum = 0;
+      for (let i = 0; i < ch.length; i++) sum += ch[i] * ch[i];
+      const rms = Math.sqrt(sum / ch.length);
+      const db = rms > 0 ? Math.max(-100, 20 * Math.log10(rms)) : -100;
+      this.port.postMessage({ type: 'level', level: Math.round(db) });
+    }
+    if (this._muted) return true; // 静音期间不产出音频片（不向服务端发帧）
     const resampled = this._resample(ch, sampleRate);
     for (let i = 0; i < resampled.length; i++) {
       this._buf[this._filled++] = resampled[i];

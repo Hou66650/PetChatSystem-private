@@ -26,6 +26,11 @@ class RealtimeController {
     this.onTranscripts = opts.onTranscripts || function () {};
     this.onMetrics = opts.onMetrics || function () {};
     this.onError = opts.onError || function () {};
+    this.onLevel = opts.onLevel || function () {};
+    this.lastLevel = null;
+    // 指定输入设备（deviceId）：避开 ToDesk/OBS 等虚拟麦克风时使用
+    this.micDeviceId = opts.micDeviceId || null;
+    this.micLabel = '';
 
     this.state = 'IDLE';
     this.muted = false;
@@ -45,6 +50,21 @@ class RealtimeController {
     this.onState(s, extra || {});
   }
 
+  /** 麦克风申请失败 → 友好错误文案。 */
+  _failPermission(e) {
+    const name = (e && e.name) || '';
+    let msg = '无法获得麦克风权限';
+    if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+      msg = '没有找到可用的麦克风设备';
+    } else if (name === 'NotAllowedError' || name === 'SecurityError') {
+      msg = '麦克风权限被拒绝：点浏览器地址栏的 🔒 图标，把麦克风设为允许后重试';
+    } else if (name === 'NotReadableError') {
+      msg = '麦克风被其他程序占用或系统层禁用，请检查 Windows 麦克风设置';
+    }
+    this._setState('ERROR', { reason: 'permission_denied', error: String(e) });
+    this.onError({ code: name || 'permission_denied', message: msg });
+  }
+
   /** 启动整条链路：权限 → 采集 → 连接 → READY（synthetic 模式跳过权限与采集）。 */
   async start() {
     if (this.state !== 'IDLE' && this.state !== 'ERROR' && this.state !== 'STOPPED') return;
@@ -53,21 +73,45 @@ class RealtimeController {
       this._setState('REQUESTING_PERMISSION');
       this._tPermissionStart = performance.now();
       try {
-        // 麦克风约束（方案 §6）：AEC/NS/AGC 全开，单声道；sampleRate 仅作期望值
+        // 麦克风约束（方案 §6）：AEC/NS/AGC 全开，单声道；sampleRate 仅作期望值；
+        // 指定了 deviceId 时用 exact 强制（避开 ToDesk/OBS 等虚拟麦克风）
+        const audioConstraints = {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 16000,
+        };
+        if (this.micDeviceId) audioConstraints.deviceId = { exact: this.micDeviceId };
         this._stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            channelCount: 1,
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            sampleRate: 16000,
-          },
+          audio: audioConstraints,
           video: false,
         });
+        // 记录实际使用的设备名（诊断展示）
+        try {
+          const track = this._stream.getAudioTracks()[0];
+          this.micLabel = (track && track.label) || '';
+        } catch (e) { /* ignore */ }
       } catch (e) {
-        this._setState('ERROR', { reason: 'permission_denied', error: String(e) });
-        this.onError({ code: 'permission_denied', message: '无法获得麦克风权限' });
-        return;
+        // 指定设备失败时回退系统默认重试一次（设备可能被拔掉）
+        if (this.micDeviceId) {
+          this.micDeviceId = null;
+          try {
+            this._stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                channelCount: 1, echoCancellation: true, noiseSuppression: true,
+                autoGainControl: true, sampleRate: 16000,
+              },
+              video: false,
+            });
+          } catch (e2) {
+            this._failPermission(e2);
+            return;
+          }
+        } else {
+          this._failPermission(e);
+          return;
+        }
       }
       tPermission = Math.round(performance.now() - this._tPermissionStart);
 
@@ -79,7 +123,10 @@ class RealtimeController {
         const src = this._ctx.createMediaStreamSource(this._stream);
         this._node = new AudioWorkletNode(this._ctx, 'petchat-capture');
         this._node.port.onmessage = (e) => {
-          if (e.data && e.data.type === 'chunk') this._client && this._client.sendAudio(e.data.buffer);
+          const d = e.data;
+          if (!d) return;
+          if (d.type === 'chunk') this._client && this._client.sendAudio(d.buffer);
+          else if (d.type === 'level') { this.lastLevel = d.level; this.onLevel(d.level); }
         };
         src.connect(this._node); // 不连 destination：避免把麦克风外放
       } catch (e) {
