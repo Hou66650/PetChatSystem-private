@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实时语音调试 · MPC 宠物聊天</title>
+<style>
+  :root { --c-primary:#f59e0b; --c-bg:#fdf8f2; --c-text:#4a3b32; --c-line:#eadfd2; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+         background:var(--c-bg); color:var(--c-text); padding:20px; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .sub { font-size:12px; color:#9a8878; margin-bottom:16px; }
+  .card { background:#fff; border:1px solid var(--c-line); border-radius:12px; padding:14px; margin-bottom:14px; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }
+  label { font-size:13px; }
+  select, button { font-size:14px; padding:7px 14px; border-radius:8px; border:1px solid var(--c-line);
+    background:#fff; color:var(--c-text); cursor:pointer; }
+  button.primary { background:var(--c-primary); border-color:var(--c-primary); color:#fff; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  #state { font-weight:600; padding:4px 12px; border-radius:999px; background:#f3ece3; font-size:14px; }
+  #state.err { background:#fee2e2; color:#b91c1c; }
+  #state.ok { background:#dcfce7; color:#15803d; }
+  .metrics { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:6px 18px; font-size:12px; font-family:Consolas,monospace; }
+  .metrics div { white-space:nowrap; }
+  .metrics b { color:#b45309; }
+  #userText, #aiText { min-height:22px; font-size:14px; padding:8px 10px; background:#faf6ef; border-radius:8px; }
+  #aiText { background:#fff7e6; }
+  .cap { font-size:12px; color:#9a8878; margin:2px 0; }
+  #log { max-height:200px; overflow:auto; font-family:Consolas,monospace; font-size:11px; line-height:1.7;
+         background:#2d2a26; color:#d8d3c8; border-radius:8px; padding:10px; }
+  #log .t { color:#8ab4f8; } #log .err { color:#f87171; } #log .round { color:#6ee7b7; }
+  #lvlWrap { display:inline-flex; align-items:center; gap:5px; margin-left:8px; }
+  #lvlBar { width:80px; height:6px; border-radius:3px; background:#efe7db; overflow:hidden; }
+  #lvlBar i { display:block; height:100%; width:0; background:#22c55e; transition:width .25s linear; }
+  #lvlDb { font-size:11px; color:#9a8878; min-width:44px; font-family:Consolas,monospace; }
+  .hint { font-size:12px; color:#9a8878; line-height:1.6; }
+  input[type=text] { font-size:14px; padding:7px 10px; border-radius:8px; border:1px solid var(--c-line); flex:1; min-width:220px; }
+</style>
+</head>
+<body>
+<h1>实时语音端到端调试页</h1>
+<div class="sub">GLM Realtime · server_vad · 16kHz PCM16 输入 / 24kHz PCM 输出 · 短期 JWT 直连（方案 §9 第1天）</div>
+
+<div class="card">
+  <div class="row">
+    <label>宠物
+      <select id="petSel"><option value="1">球球·柴犬</option><option value="2">哈士奇</option><option value="3">猫咪</option><option value="4">德牧</option></select>
+    </label>
+    <label>主人性别
+      <select id="genderSel"><option value="">不指定</option><option value="male">男</option><option value="female">女</option></select>
+    </label>
+    <span id="state">IDLE</span>
+    <span id="lvlWrap"><span id="lvlBar"><i></i></span><span id="lvlDb">— dB</span></span>
+  </div>
+  <div class="row">
+    <button class="primary" id="btnMic">🎤 真实麦克风开始</button>
+    <button class="primary" id="btnSyn">🧪 合成语音注入测试</button>
+    <button id="btnMute" disabled>🔇 静音</button>
+    <button id="btnStop" disabled>■ 结束</button>
+    <button id="btnDev">🎤 列出麦克风设备</button>
+  </div>
+  <div class="row">
+    <input type="text" id="synText" value="你好呀，我是新来的主人，你叫什么名字呀？">
+    <span class="hint" style="flex-basis:100%">合成模式：文本经 /api/tts 生成语音→重采样16k→按100ms片注入（含首尾静音），全程无需麦克风。摄像头/麦克风画面不上传，仅音频流直达智谱。</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="cap">👤 用户最终字幕（input_audio_transcription）</div>
+  <div id="userText">—</div>
+  <div class="cap" style="margin-top:8px">🐾 宠物增量字幕（response.audio_transcript.delta 累积）</div>
+  <div id="aiText">—</div>
+</div>
+
+<div class="card">
+  <div class="cap">性能埋点（方案 §8，只记耗时不记音频）</div>
+  <div class="metrics" id="metrics"><div>等待会话…</div></div>
+</div>
+
+<div class="card">
+  <div class="cap">事件流（类型 + 关键字段）</div>
+  <div id="log"></div>
+</div>
+
+<script src="/static/js/realtime/pcm-player.js?v=2"></script>
+<script src="/static/js/realtime/realtime-client.js?v=2"></script>
+<script src="/static/js/realtime/realtime-controller.js?v=2"></script>
+<script>
+'use strict';
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const stateEl = $('state'), userEl = $('userText'), aiEl = $('aiText'),
+        metricsEl = $('metrics'), logEl = $('log');
+  let ctl = null;
+  let aiAccum = '';
+  let silenceFrom = 0, silenceHinted = false;
+
+  function log(kind, msg) {
+    const line = document.createElement('div');
+    const t = new Date().toTimeString().slice(0, 8);
+    line.innerHTML = `<span class="t">${t}</span> <span class="${kind}">${msg}</span>`;
+    logEl.appendChild(line);
+    while (logEl.childElementCount > 400) logEl.removeChild(logEl.firstChild);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  function renderMetrics(m) {
+    if (!m) return;
+    const rows = [
+      ['t_permission_ms', m.t_permission_ms], ['t_ws_connect_ms', m.t_ws_connect_ms],
+      ['t_session_ready_ms', m.t_session_ready_ms],
+      ['t_speech_end_to_first_text_ms', m.t_speech_end_to_first_text_ms],
+      ['t_speech_end_to_first_audio_ms', m.t_speech_end_to_first_audio_ms],
+      ['interrupt_latency_ms', m.interrupt_latency_ms],
+      ['audio_underrun_count', m.audio_underrun_count],
+      ['reconnect_count', m.reconnect_count], ['error_code', m.error_code],
+    ];
+    metricsEl.innerHTML = rows.map(([k, v]) =>
+      `<div>${k} = <b>${v == null ? '—' : esc(v)}</b></div>`).join('');
+  }
+
+  function makeController(synthetic) {
+    aiAccum = '';
+    userEl.textContent = '—'; aiEl.textContent = '—';
+    const petId = parseInt($('petSel').value, 10);
+    const gender = $('genderSel').value || null;
+    return new RealtimeController({
+      petId, petGender: gender, synthetic,
+      onLevel: (db) => {
+        const pct = Math.max(2, Math.min(100, Math.round(((db + 70) / 70) * 100)));
+        const bar = document.querySelector('#lvlBar i'), txt = $('lvlDb');
+        bar.style.width = pct + '%';
+        bar.style.background = db > -60 ? '#22c55e' : '#d6cabb';
+        txt.textContent = db <= -99 ? '无声' : db + ' dB';
+        // 诊断：开麦后一直接近无声 → 提示（说话时 -35~-10dB，环境 -55~-40dB）
+        if (db > -55) { silenceFrom = 0; silenceHinted = false; }
+        else if (!silenceHinted && ctl && !ctl.synthetic && !ctl.muted) {
+          if (!silenceFrom) silenceFrom = Date.now();
+          else if (Date.now() - silenceFrom > 5000) {
+            silenceHinted = true;
+            log('err', '⚠️ 麦克风 5 秒无声音：检查系统静音键 / 输入设备选择 / Windows隐私设置-麦克风');
+          }
+        }
+      },
+      onState: (s, extra) => {
+        stateEl.textContent = s + (extra.attempt != null ? ` (${extra.attempt})` : '');
+        stateEl.className = s === 'READY' || s === 'AI_SPEAKING' || s === 'USER_SPEAKING' ? 'ok'
+          : (s === 'ERROR' ? 'err' : '');
+        $('btnStop').disabled = $('btnMute').disabled = !(ctl && ctl._client);
+        $('btnMute').textContent = ctl && ctl.muted ? '🔊 取消静音' : '🔇 静音';
+        log('t', `state → ${s}`);
+      },
+      onTranscripts: (t) => {
+        if (t.assistantDelta != null) { aiAccum += t.assistantDelta; aiEl.textContent = aiAccum || '…'; }
+        if (t.userText) userEl.textContent = t.userText;
+        if (t.assistantText) aiEl.textContent = aiAccum = t.assistantText;
+        if (t.done) log('round', `round.done 用户「${(t.userText||'').slice(0,20)}…」 宠物${(t.assistantText||'').length}字`);
+      },
+      onMetrics: renderMetrics,
+      onError: (e) => log('err', `ERROR ${e.code}: ${e.message}`),
+    });
+  }
+
+  async function startSession(synthetic) {
+    if (ctl) ctl.stop();
+    ctl = makeController(synthetic);
+    await ctl.start();
+    renderMetrics(ctl.finalMetrics);
+    if (synthetic && ctl.state === 'READY') await runSynthetic();
+  }
+
+  /* ---------- 合成语音注入：TTS wav → 16k PCM16 → 100ms 片（含首尾静音） ---------- */
+  async function synthesizeSpeechPCM(text, petId) {
+    const r = await fetch('/api/tts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, petId }),
+    });
+    if (!r.ok) throw new Error(`tts http ${r.status}`);
+    const wavBuf = await r.arrayBuffer();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const decodeCtx = new AC();
+    const decoded = await decodeCtx.decodeAudioData(wavBuf.slice(0));
+    decodeCtx.close().catch(() => {});
+    const ch = decoded.getChannelData(0);          // 任意采样率
+    const outRate = 16000, inRate = decoded.sampleRate;
+    const step = inRate / outRate;
+    const outLen = Math.floor(ch.length / step);
+    const out = new Float32Array(outLen);
+    for (let i = 0; i < outLen; i++) {
+      const p = i * step, i0 = Math.floor(p), t = p - i0;
+      out[i] = ch[i0] + (ch[Math.min(i0 + 1, ch.length - 1)] - ch[i0]) * t;
+    }
+    // 归一化音量，确保 VAD 可触发
+    let peak = 0;
+    for (let i = 0; i < out.length; i++) peak = Math.max(peak, Math.abs(out[i]));
+    if (peak > 0 && peak < 0.5) for (let i = 0; i < out.length; i++) out[i] *= 0.5 / peak;
+    const pcm = new Int16Array(out.length);
+    for (let i = 0; i < out.length; i++) {
+      let v = Math.max(-1, Math.min(1, out[i]));
+      pcm[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
+    }
+    return pcm;
+  }
+
+  function runSynthetic() {
+    return new Promise(async (resolve) => {
+      const text = $('synText').value.trim() || '你好';
+      const petId = parseInt($('petSel').value, 10);
+      log('t', `synthetic: 合成「${text.slice(0, 24)}…」`);
+      let pcm;
+      try { pcm = await synthesizeSpeechPCM(text, petId); }
+      catch (e) { log('err', `TTS失败: ${e.message}`); resolve(); return; }
+      const CHUNK = 1600;                          // 100ms @16k
+      const LEAD_SILENCE = 10, TAIL_SILENCE = 40;  // 1s 静音起手 + 4s 静音收尾（供 VAD 判定结束）
+      const total = LEAD_SILENCE + Math.ceil(pcm.length / CHUNK) + TAIL_SILENCE;
+      let idx = 0, sent = 0;
+      const timer = setInterval(() => {
+        if (!ctl || !ctl._client || ctl.state === 'STOPPED' || idx >= total) {
+          clearInterval(timer); log('t', `synthetic: 注入完成 ${sent}片`); resolve(); return;
+        }
+        const buf = new Int16Array(CHUNK);
+        if (idx >= LEAD_SILENCE && idx < total - TAIL_SILENCE) {
+          const off = (idx - LEAD_SILENCE) * CHUNK;
+          buf.set(pcm.subarray(off, off + CHUNK));
+        }
+        ctl.injectAudioChunk(buf.buffer);
+        sent++; idx++;
+      }, 100);
+    });
+  }
+
+  $('btnMic').onclick = () => startSession(false);
+  $('btnSyn').onclick = () => startSession(true);
+  $('btnStop').onclick = () => { ctl && ctl.stop(); log('t', '会话已由用户结束'); };
+  $('btnMute').onclick = () => { if (ctl) { ctl.setMuted(!ctl.muted); $('btnMute').textContent = ctl.muted ? '🔊 取消静音' : '🔇 静音'; } };
+  $('btnDev').onclick = async () => {
+    try {
+      const devs = await navigator.mediaDevices.enumerateDevices();
+      const mics = devs.filter(d => d.kind === 'audioinput');
+      log('t', `检测到 ${mics.length} 个输入设备：` + (mics.map((m, i) => `${i + 1}.${m.label || '(未命名，需先授权)'}`).join(' ') || '无'));
+    } catch (e) { log('err', '枚举设备失败: ' + e.message); }
+  };
+
+  // 供自动化测试调用
+  window.__rtDebug = {
+    get state() { return ctl ? ctl.state : 'IDLE'; },
+    get metrics() { return ctl ? ctl.finalMetrics : null; },
+    start: startSession,
+    stop: () => ctl && ctl.stop(),
+    // 同一会话内追加注入（验证多轮上下文与插话打断），不重建 WS
+    inject: (text) => {
+      if (!ctl || !ctl._client || ctl.state === 'STOPPED') return Promise.reject(new Error('no active session'));
+      if (text) $('synText').value = text;
+      return runSynthetic();
+    },
+    getUserText: () => userEl.textContent,
+    getAiText: () => aiEl.textContent,
+  };
+})();
+</script>
+</body>
+</html>

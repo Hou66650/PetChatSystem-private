@@ -237,6 +237,13 @@
             box-shadow: 0 0 0 3px rgba(255, 158, 88, .2);
         }
         .send-btn { width: 88px; flex: none; min-height: 44px; }
+        .voice-btn { flex: none; min-height: 44px; padding: 0 14px; border-radius: 12px;
+            display: inline-flex; align-items: center; gap: 6px; font-size: 15px; }
+        .voice-btn.on { background: #f59e0b; border-color: #f59e0b; color: #fff;
+            animation: voice-pulse 1.6s infinite; }
+        @keyframes voice-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,.45); }
+            50% { box-shadow: 0 0 0 8px rgba(245,158,11,0); } }
+        .voice-btn .v-label { font-size: 13px; }
         .pet-strip::-webkit-scrollbar { display: none; }   /* S1-12：选宠条横滑不显滚动条 */
 
         .disclaimer {
@@ -285,6 +292,8 @@
                 <textarea class="chat-input" id="chat-input" rows="1"
                           placeholder="和它聊点什么… （Enter 发送，Shift+Enter 换行）"
                           aria-label="消息输入框"></textarea>
+                <button class="btn voice-btn" id="voice-btn" title="实时语音对话"
+                        aria-label="开启实时语音对话">🎤<span class="v-label">实时语音</span></button>
                 <button class="btn send-btn" id="send-btn">发送</button>
             </div>
         </div>
@@ -324,6 +333,10 @@
     <script src="{{ url_for('static', filename='js/vendor/jspdf.umd.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/share-card.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pet-profile.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/realtime/pcm-player.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='js/realtime/realtime-client.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='js/realtime/realtime-controller.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='js/realtime/realtime-ui.js') }}?v=2"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
     /* ===== 聊天页逻辑（规范：docs/UI重构设计文档.md 三.1） ===== */
@@ -363,6 +376,39 @@
         const stripEl = $('pet-strip');
         const currentPetNameEl = $('current-pet-name');
         const uploadInput = $('upload-input');
+
+        // ---------- 实时语音（P0）：面板与状态机见 static/js/realtime/ ----------
+        const rtUI = new RealtimeUI({
+            getPet: () => currentPet(),
+            getGender: () => (window.PetProfile ? PetProfile.promptValue(PetProfile.get(currentPet().id).gender) : null),
+            // 一轮语音对话完整结束才落历史：一条用户消息 + 一条宠物消息（与 doSend 同结构）
+            onRound: (userText, aiText, pet) => {
+                if (userText) {
+                    const uRow = { role: 'user', sender: prefs.nickname || '我',
+                        message: userText, petId: pet.id, ...messageTimeFields() };
+                    history.push(uRow);
+                    appendHtml(bubbleHtml(uRow));
+                }
+                if (aiText) {
+                    const aRow = { role: 'assistant', sender: pet.name,
+                        message: aiText, petId: pet.id, ...messageTimeFields() };
+                    history.push(aRow);
+                    appendHtml(bubbleHtml(aRow));
+                }
+                if (userText || aiText) saveHistory();
+            },
+        });
+        $('voice-btn').addEventListener('click', () => {
+            rtUI.toggle();
+            $('voice-btn').classList.toggle('on', rtUI.isActive());
+        });
+        const rtVoiceBtnSync = setInterval(() => {
+            const on = rtUI.isActive();
+            if ($('voice-btn').classList.contains('on') !== on) {
+                $('voice-btn').classList.toggle('on', on);
+            }
+            if (!on && !rtUI._panel) clearInterval(rtVoiceBtnSync);
+        }, 800);
 
         // ---------- 状态 ----------
         let currentPetIndex = Math.max(0, PETS.findIndex(p => p.id === INIT_PET));
@@ -730,6 +776,7 @@
         function selectPet(i, silent) {
             if (i === currentPetIndex && !silent) { renderStrip(); return; }
             currentPetIndex = i;
+            if (typeof rtUI !== 'undefined' && rtUI.isActive()) rtUI.restartForPet();
             useCustomAvatar = false;
             const pet = currentPet();
             document.body.style.backgroundImage = `url('${pet.background}')`;

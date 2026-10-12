@@ -90,3 +90,14 @@ class Config:
         4: os.getenv('PET_TTS_VOICE_4', 'chuichui'),    # 德牧：稳定可靠
     }
     PET_TTS_DEFAULT_VOICE = 'tongtong'
+
+    # --- GLM Realtime 实时语音（P0）--------------------------------------
+    # 浏览器直连 Realtime WS；Flask 只签发短期 JWT，长期 GLM_API_KEY 不出后端。
+    # 移动端优先 server_vad + PCM（官方建议）；token TTL 默认 600s、硬上限 900s。
+    GLM_REALTIME_URL = os.environ.get(
+        'GLM_REALTIME_URL', 'wss://open.bigmodel.cn/api/paas/v4/realtime')
+    GLM_REALTIME_TOKEN_TTL = min(_int('GLM_REALTIME_TOKEN_TTL', 600), 900)
+    GLM_REALTIME_ENABLED = _bool('GLM_REALTIME_ENABLED', True)
+    GLM_REALTIME_VAD = os.environ.get('GLM_REALTIME_VAD', 'server_vad')
+    GLM_REALTIME_INPUT_FORMAT = os.environ.get('GLM_REALTIME_INPUT_FORMAT', 'pcm16')
+    GLM_REALTIME_OUTPUT_FORMAT = os.environ.get('GLM_REALTIME_OUTPUT_FORMAT', 'pcm')

@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "task": "limited_scene_chinese_sign_language_recognition",
+  "labels": [
+    {"id": 0, "code": "SL01", "folder": "SL01_hello", "name": "你好"},
+    {"id": 1, "code": "SL02", "folder": "SL02_thanks", "name": "谢谢"},
+    {"id": 2, "code": "SL03", "folder": "SL03_goodbye", "name": "再见"},
+    {"id": 3, "code": "SL04", "folder": "SL04_yes", "name": "是 / 对"},
+    {"id": 4, "code": "SL05", "folder": "SL05_no", "name": "不是 / 不对"},
+    {"id": 5, "code": "SL06", "folder": "SL06_can", "name": "可以"},
+    {"id": 6, "code": "SL07", "folder": "SL07_cannot", "name": "不可以"},
+    {"id": 7, "code": "SL08", "folder": "SL08_please", "name": "请"},
+    {"id": 8, "code": "SL09", "folder": "SL09_help", "name": "帮助"},
+    {"id": 9, "code": "SL10", "folder": "SL10_eat", "name": "吃"},
+    {"id": 10, "code": "SL11", "folder": "SL11_drink", "name": "喝"},
+    {"id": 11, "code": "SL12", "folder": "SL12_pain", "name": "疼"},
+    {"id": 12, "code": "SL13", "folder": "SL13_unwell", "name": "不舒服"},
+    {"id": 13, "code": "SL14", "folder": "SL14_toilet", "name": "厕所"},
+    {"id": 14, "code": "SL15", "folder": "SL15_wait", "name": "等一下"},
+    {"id": 15, "code": "SL16", "folder": "SL16_family", "name": "家人"},
+    {"id": 16, "code": "SL17", "folder": "SL17_doctor", "name": "医生"},
+    {"id": 17, "code": "SL18", "folder": "SL18_emergency", "name": "紧急 / 救命"},
+    {"id": 18, "code": "SL19", "folder": "SL19_repeat", "name": "请再说一次"},
+    {"id": 19, "code": "SL20", "folder": "SL20_stop", "name": "停止"},
+    {"id": 20, "code": "UNKNOWN", "folder": "UNKNOWN", "name": "非目标动作 / 拒识"}
+  ]
+}

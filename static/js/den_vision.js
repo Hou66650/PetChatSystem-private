@@ -13,8 +13,8 @@ const DETECT_MS = 100;          // 检测频率（10fps 足够，省 CPU）
 const GAZE_HOLD_FRAMES = 12;    // 连续注视 ~1.2s 才算"对视"（防误触）
 const GAZE_LOST_FRAMES = 8;     // 丢失 ~0.8s 结束对视
 const HAND_REACH = 0.16;        // 掌距（腕→中指根）超过即视为"伸手靠近"（离摄像头近）
-const PINCH_ON = 0.42;          // 捏合：拇指食指尖距 / 掌长 < 0.42（按手尺寸归一化，与离镜头远近无关）
-const PINCH_OFF = 0.62;         // 松开：比值 > 0.62 才释放（滞后防抖）
+const PINCH_ON = 0.35;          // 捏合：拇指食指尖距 / 掌长 < 0.35（真捏合≈0.05-0.3，握拳搭指≈0.3-0.7）
+const PINCH_OFF = 0.55;         // 松开：比值 > 0.55 才释放（滞后防抖）
 const PALM_MIN = 0.06;          // 手掌过小（太远/未完全入镜）时忽略手势，防噪声误判
 
 /* 纯计算：21 个关键点 → 手势指标。归一化到"掌长"（腕0→中指根9），
@@ -371,10 +371,10 @@ class DenVision {
             const quality = palm >= PALM_MIN;
             const reaching = palm > HAND_REACH;
             // 捏合：按掌长归一化后滞后判定（张开≈1.0-1.6，捏合≈0.1-0.3）
-            // 真捏合必然食指伸展（指尖越过指节伸向拇指）：点赞/握拳等食指蜷曲形态永不判捏合
-            const indexExt = HandGestures.ext(lms, 8, 6);
+            // 捏合判定：只看指尖距比值（食指弯曲姿态不影响——真捏合时食指就是弯的）；
+            // 与握拳的区分交给收紧的阈值：拳 thumb-index tip ≈0.3-0.7掌长 > PINCH_ON
             let pinching = false;
-            if (quality && indexExt && !this.gestures.twoHandEngaged) {
+            if (quality && !this.gestures.twoHandEngaged) {
                 if (this._pinching) pinching = m.pinchRatio < PINCH_OFF;
                 else pinching = m.pinchRatio < PINCH_ON;
             }
