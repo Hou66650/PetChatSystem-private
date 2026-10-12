@@ -1047,6 +1047,9 @@ document.addEventListener('DOMContentLoaded', () => {
             state: anim.state, untilLeft: Math.max(0, Math.round((anim.until || 0) - performance.now())),
             active: activeAction ? activeAction.getClip().name : null,
             performing: performing ? performing() : false,
+            pos: petModel ? [petModel.position.x.toFixed(2), petModel.position.y.toFixed(2), petModel.position.z.toFixed(2)] : null,
+            scale: petModel ? petModel.scale.x.toFixed(3) : null,
+            vis: petModel ? petModel.visible : null,
         });
         function setAnim(state, dur) {
             if (window.__animLog) window.__animLog.push([Math.round(performance.now()), state, dur,
@@ -1104,12 +1107,14 @@ document.addEventListener('DOMContentLoaded', () => {
             },
         };
         let gestureFlash = null;   // {label, until} 状态栏短暂显示
+        let grabSuppressUntil = 0;   // 手势回应后的拎宠抑制窗：放松双手不应被当成捏宠
         function handlePetGesture(name) {
             const g = GESTURE_REACT[name];
             if (!g || !petModel) return;
             if (grabbed || dropping || gestureAction || foodDrag || !gameOverlay.hidden) return;   // 互动中不打架
             const line = pick(g.lines);
             playChain(g.chain);
+            grabSuppressUntil = performance.now() + 1500;
             showBubble(line, 2400, true);   // silent：气泡自带speak会开talk嘴型吞掉表演链，语音由下一行统一出
             g.fx();
             gestureFlash = { label: g.label, until: performance.now() + 2200 };
@@ -1770,7 +1775,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gesturePending.x = x; gesturePending.y = y;
                 return;
             }
-            if (petGrabZoneHit(x, y)) {
+            if (petGrabZoneHit(x, y) && performance.now() >= grabSuppressUntil) {
                 gestureAction = { type: 'pet', startedAt: performance.now() };
                 if (petModel) {
                     grabbed = true;
@@ -2807,6 +2812,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // ---------- 主循环 ----------
         const clock = new THREE.Clock();
         let timeOfDayChecked = 0;
+        const DBG = new URLSearchParams(location.search).has('debug');
+        const dbgEl = document.createElement('div');
+        dbgEl.style.cssText = 'position:fixed;left:8px;top:64px;z-index:500;background:rgba(20,15,10,.82);color:#7FE08A;' +
+            'font:12px/1.6 Consolas,monospace;padding:8px 12px;border-radius:8px;pointer-events:none;white-space:nowrap;';
+        dbgEl.hidden = !DBG;
+        document.body.appendChild(dbgEl);
+        let dbgN = 0;
         function tick() {
             requestAnimationFrame(tick);
             const dt = Math.min(clock.getDelta(), 0.05);
@@ -2821,6 +2833,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (grabbed && (!dv || !dv.running) && !window.__gestureTestArmed) {
                     grabbed = false;
                     dropping = true;
+                }
+
+                // 拎宠安全钳：无论手势把手移到哪，宠物不许离开舞台（半径 2.0）
+                const STAGE_R = 2.0;
+                if (petModel) {
+                    const dxy = Math.hypot(petModel.position.x, petModel.position.z);
+                    if (dxy > STAGE_R) {
+                        const k = STAGE_R / dxy;
+                        petModel.position.x *= k;
+                        petModel.position.z *= k;
+                    }
                 }
 
                 // 捏住跟随：缩小 + 挂在虚拟手前方（用视觉互动的手坐标）
@@ -2851,6 +2874,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     petModel.rotation.y *= 0.95;
                     if (petModel.position.y <= 0.05) {  // 用固定地面高度，不依赖 grabHomeY
                         petModel.position.y = 0.02;
+                        const d2 = Math.hypot(petModel.position.x, petModel.position.z);
+                        if (d2 > STAGE_R) { const k2 = STAGE_R / d2; petModel.position.x *= k2; petModel.position.z *= k2; }
                         dropping = false;
                         bounceBack = 0.12;
                         setAnim('idle', 0);
@@ -2865,6 +2890,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 捏住时恢复正常大小（松手后渐回）
                 if (!grabbed && !dropping && petModel && petModel.scale.x < 0.95) {
                     petModel.scale.setScalar(Math.min(1, petModel.scale.x + dt * 2));
+                }
+
+                // 兜底自愈：出生早已完成却缩成微粒/被隐藏 → 立即恢复（"消失"类问题的最后防线）
+                if (petModel && (anim.birth === undefined || anim.birth >= 1) && !grabbed &&
+                    (petModel.scale.x < 0.3 || !petModel.visible)) {
+                    petModel.visible = true;
+                    if (petModel.scale.x < 0.3) petModel.scale.setScalar(0.55);
                 }
 
                 // 出生缩放（弹性放大）
@@ -2948,6 +2980,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (k >= 1) { scene.remove(flyingFood.sprite); flyingFood = null; }
             }
 
+            // 调试悬浮窗（?debug=1）：宠物消失/卡住类问题的现场取证
+            if (DBG) {
+                dbgN = (dbgN + 1) % 12;
+                if (dbgN === 0) {
+                    const ps = petState();
+                    dbgEl.textContent =
+                        `scale=${petModel.scale.x.toFixed(2)} pos=${petModel.position.x.toFixed(1)},${petModel.position.y.toFixed(1)},${petModel.position.z.toFixed(1)} vis=${petModel.visible} | ` +
+                        `anim=${anim.state}/${activeAction ? activeAction.getClip().name : '-'} | ` +
+                        `grab=${grabbed} drop=${dropping} gest=${gestureAction ? gestureAction.type : '-'} | ` +
+                        `hand=${dv && dv.handState.present ? (dv.handState.pinching ? 'pinch' : 'ok') : 'no'} | ` +
+                        `fps=${(1 / Math.max(dt, 0.001)).toFixed(0)} int=${ps.intimacy}`;
+                }
+            }
             controls.update();
             renderer.render(scene, camera);
         }
