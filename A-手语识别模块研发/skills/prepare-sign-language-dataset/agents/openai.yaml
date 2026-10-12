@@ -1,0 +1,4 @@
+interface:
+  display_name: "手语数据集处理"
+  short_description: "质检、切分、匿名化、转码并同步孤立手语录像训练数据"
+  default_prompt: "使用 $prepare-sign-language-dataset 分析新录制的手语视频，生成候选切片、质检报告和元数据。"
