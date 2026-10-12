@@ -274,6 +274,9 @@
       },
     });
     await this.controller.start();
+    // 开启完成后把占位文案换掉，避免一直显示"正在开启…"
+    var aiEl = panel.querySelector('#rt-ai');
+    if (aiEl.textContent === '正在开启…') aiEl.textContent = '我在听——直接说话就好，说完它自动回答';
     // 权限到位后（label 可见）填充设备下拉；默认设备是虚拟麦克风时自动切换
     if (this.controller._stream) this._populateDevices();
   };

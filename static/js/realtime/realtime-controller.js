@@ -119,7 +119,7 @@ class RealtimeController {
         // 采集上下文尽量运行在 16kHz；Worklet 内仍会真实重采样兜底
         const AC = window.AudioContext || window.webkitAudioContext;
         this._ctx = new AC({ sampleRate: 16000 });
-        await this._ctx.audioWorklet.addModule('/static/js/realtime/audio-capture-worklet.js');
+        await this._ctx.audioWorklet.addModule('/static/js/realtime/audio-capture-worklet.js?v=2');
         const src = this._ctx.createMediaStreamSource(this._stream);
         this._node = new AudioWorkletNode(this._ctx, 'petchat-capture');
         this._node.port.onmessage = (e) => {
