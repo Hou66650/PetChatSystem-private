@@ -149,6 +149,45 @@ def remark():
     return _remark_view(target_id, target_name)
 
 
+# 叫声类别白名单（与 static/audio/pets/<species>/<kind>_N.wav 对应）
+PET_SOUND_KINDS = ('bark', 'whine', 'meow', 'purr')
+
+
+@bp.route('/api/pet-sound', methods=['GET'])
+def pet_sound():
+    """真实宠物叫声（v1.0.0）：GET ?petId=&kind= → 随机返回一条 wav 变体。
+
+    - 物种由服务端 PET_SPECIES 决定，kind 白名单校验，杜绝路径拼接；
+    - 每类多条变体随机挑一条，配合前端 ±1.5 半音微变调避免机械重复；
+    - 库缺失返回 404，前端降级为人声 TTS。
+    """
+    try:
+        pet_id = int(request.args.get('petId', 1))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'invalid petId'}), 400
+    kind = request.args.get('kind', 'bark')
+    if kind not in PET_SOUND_KINDS:
+        return jsonify({'error': 'invalid kind'}), 400
+    species = (current_app.config.get('PET_SPECIES') or {}).get(pet_id)
+    if not species:
+        return jsonify({'error': 'unknown pet'}), 400
+    import os as _os
+    import random as _random
+    from flask import send_file as _send_file
+    d = _os.path.join(current_app.static_folder, 'audio', 'pets', species)
+    try:
+        variants = sorted(f for f in _os.listdir(d)
+                          if f.startswith(kind + '_') and f.endswith('.wav'))
+    except OSError:
+        variants = []
+    if not variants:
+        return jsonify({'error': 'no sound asset'}), 404
+    resp = _send_file(_os.path.join(d, _random.choice(variants)),
+                      mimetype='audio/wav', conditional=True)
+    resp.headers['Cache-Control'] = 'public, max-age=86400'
+    return resp
+
+
 @bp.route('/api/tts', methods=['POST'])
 def tts():
     """GLM-TTS 语音合成：POST {text, petId} → audio/wav 二进制。

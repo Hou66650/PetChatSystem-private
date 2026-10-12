@@ -61,6 +61,9 @@
             -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 18px), transparent);
         }
         .action-bar::-webkit-scrollbar { display: none; }
+        .ver-chip { background: linear-gradient(135deg,#f59e0b,#f97316); color:#fff;
+            font-weight:800; font-size:13px; letter-spacing:.5px; padding:4px 12px;
+            border-radius:999px; box-shadow:0 2px 8px rgba(245,158,11,.4); pointer-events:none; }
         .action-bar .action-btn { white-space: nowrap; flex: none; }   /* 修复：眼神互动/游戏中心等长按钮被压窄换行、竖排溢出胶囊 */
         @media (max-width: 767px) {
             .action-btn { height: 44px; padding: 0 14px; }   /* 触控 ≥44px */
@@ -385,7 +388,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <header>
                 <span id="chat-title">和小家伙聊天</span>
                 <button class="icon-btn" id="btn-chat-close" aria-label="收起聊天" style="width:28px;height:28px;">✕</button>
-            </header>
+                <span class="ver-chip" style="position:fixed;top:14px;right:16px;z-index:200;" title="MPC 宠物聊天 v{{ app_version }}">v{{ app_version }}</span>
+</header>
             <div class="msgs" id="chat-msgs"></div>
             <div class="chat-chips" id="chat-chips">
                 <button type="button" data-say="我今天有点难过，你能陪陪我吗">有点难过 😢</button>
@@ -501,6 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/vendor/GLTFLoader.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pet-profile.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/den_vision.js') }}"></script>
+    <script src="/static/js/pet-sounds.js?v=1"></script>
     <script>
     /* ============================================================
        3D 宠物小窝 —— Quaternius CC0 骨骼动画 GLB 模型 + 交互系统
@@ -2024,9 +2029,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const clean = String(text).replace(/[～~♪🎯🎉🧣🎀✨]/g, '').trim().slice(0, 140);
             if (opts.talk !== false && petModel && clean) setAnim('talk', 1200 + clean.length * 60);   // 说话动画不随静音关闭
             if (!ttsOn || !userInteracted || !clean) return;
-            // 优先 GLM 后端 TTS（真人级声音），失败自动降级浏览器
+            // v1.0.0：拟声词改真实叫声（狗 bark/whine、猫 meow/purr），与人声顺序无缝拼接
+            if (window.PetSounds) {
+                const segs = PetSounds.split(clean, currentPetId);
+                if (PetSounds.hasSound(segs)) {
+                    if (petPlayer) petPlayer.stop();
+                    petPlayer = PetSounds.play(segs, currentPetId);
+                    petPlayer.promise.catch(() => browserSpeak(clean));
+                    return;
+                }
+            }
+            // 纯语言台词：优先 GLM 后端 TTS（真人级声音），失败自动降级浏览器
             glmTTS(clean);
         }
+        let petPlayer = null;   // 当前 PetSounds 播放器（打断/切宠时停止）
         document.getElementById('btn-tts').addEventListener('click', function () {
             ttsOn = !ttsOn;
             if (!ttsOn && window.speechSynthesis) speechSynthesis.cancel();

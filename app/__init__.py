@@ -48,6 +48,12 @@ def create_app(config_object=Config):
         g.user = session.get('user_id')
 
     from .routes import ALL_BLUEPRINTS
+
+    @app.context_processor
+    def _inject_app_version():
+        """所有模板可直接用 {{ app_version }} 显示版本徽标。"""
+        from .config import Config as _Cfg
+        return {'app_version': _Cfg.APP_VERSION}
     for blueprint in ALL_BLUEPRINTS:
         app.register_blueprint(blueprint)
 

@@ -91,6 +91,13 @@ class Config:
     }
     PET_TTS_DEFAULT_VOICE = 'tongtong'
 
+    # --- 版本管理（v1.0.0 起）：页面徽标 + CHANGELOG.md 同步维护 ---------------
+    APP_VERSION = os.environ.get('APP_VERSION', '1.0.0')
+
+    # --- 真实宠物叫声（v1.0.0）：petId → 物种，决定叫声库目录 ---------------
+    # 1 柴犬 / 2 哈士奇 / 4 德牧 = 狗；3 猫咪 = 猫。与前端 pet-sounds.js 保持一致。
+    PET_SPECIES = {1: 'dog', 2: 'dog', 3: 'cat', 4: 'dog'}
+
     # --- GLM Realtime 实时语音（P0）--------------------------------------
     # 浏览器直连 Realtime WS；Flask 只签发短期 JWT，长期 GLM_API_KEY 不出后端。
     # 移动端优先 server_vad + PCM（官方建议）；token TTL 默认 600s、硬上限 900s。

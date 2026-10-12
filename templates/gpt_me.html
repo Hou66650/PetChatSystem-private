@@ -237,6 +237,9 @@
             box-shadow: 0 0 0 3px rgba(255, 158, 88, .2);
         }
         .send-btn { width: 88px; flex: none; min-height: 44px; }
+        .ver-chip { flex: none; align-self: center; background: linear-gradient(135deg,#f59e0b,#f97316);
+            color: #fff; font-weight: 800; font-size: 13px; letter-spacing: .5px;
+            padding: 4px 12px; border-radius: 999px; box-shadow: 0 2px 8px rgba(245,158,11,.4); }
         .voice-btn { flex: none; min-height: 44px; padding: 0 14px; border-radius: 12px;
             display: inline-flex; align-items: center; gap: 6px; font-size: 15px; }
         .voice-btn.on { background: #f59e0b; border-color: #f59e0b; color: #fff;
@@ -276,6 +279,7 @@
         <button type="button" id="btn-pet-profile" class="btn-link" style="border:0;background:transparent;color:#A89484;font:inherit;font-size:12px;cursor:pointer;padding:4px 6px;text-decoration:underline;">资料</button>
         <div class="spacer"></div>
         <button class="icon-btn" id="btn-diary" aria-label="我的日记" title="我的日记">📖<span class="btn-label">日记</span></button>
+        <span class="ver-chip" title="MPC 宠物聊天 v{{ app_version }}，更新日志见仓库 CHANGELOG.md">v{{ app_version }}</span>
         <button class="icon-btn" id="btn-feedback" aria-label="宠物反馈" title="宠物反馈">⭐<span class="btn-label">反馈</span></button>
         <button class="icon-btn" id="btn-pdf" aria-label="导出聊天记录 PDF" title="导出 PDF">📄<span class="btn-label">PDF</span></button>
         <button class="icon-btn" id="btn-settings" aria-label="设置" title="设置">⚙️<span class="btn-label">设置</span></button>
@@ -337,6 +341,7 @@
     <script src="{{ url_for('static', filename='js/realtime/realtime-client.js') }}?v=2"></script>
     <script src="{{ url_for('static', filename='js/realtime/realtime-controller.js') }}?v=2"></script>
     <script src="{{ url_for('static', filename='js/realtime/realtime-ui.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='js/pet-sounds.js') }}?v=1"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
     /* ===== 聊天页逻辑（规范：docs/UI重构设计文档.md 三.1） ===== */
@@ -598,8 +603,10 @@
         // 音频生命周期：同屏只允许一条在播
         let activeAudio = null;
         let activeAudioUrl = null;
+        let activePetPlayer = null;   // v1.0.0 PetSounds 序列播放器（朗读真实叫声链）
         let activeSpeakButton = null;
         function stopSpeaking() {
+            if (activePetPlayer) { activePetPlayer.stop(); activePetPlayer = null; }
             if (activeAudio) { try { activeAudio.pause(); } catch (e) {} activeAudio = null; }
             if (activeAudioUrl) { URL.revokeObjectURL(activeAudioUrl); activeAudioUrl = null; }
             if (activeSpeakButton) {
@@ -689,6 +696,21 @@
             stopSpeaking();
             const text = ttsCleanText(row.message);
             if (!text) { toast('这条消息没有可朗读的文字', 'info'); return; }
+            // v1.0.0：拟声词（汪汪/喵/嗷呜…）不再人声朗读，改为真实叫声与人声顺序拼接
+            if (window.PetSounds) {
+                const segs = PetSounds.split(text, inferPetId(row) || currentPet().id);
+                if (PetSounds.hasSound(segs)) {
+                    stopSpeaking();
+                    activeSpeakButton = button;
+                    button.disabled = false;
+                    button.textContent = '停止';
+                    activePetPlayer = PetSounds.play(segs, inferPetId(row) || currentPet().id);
+                    activePetPlayer.promise.finally(() => {
+                        if (activeSpeakButton === button) stopSpeaking();
+                    });
+                    return;
+                }
+            }
             button.disabled = true;
             button.textContent = '生成中…';
             try {
