@@ -30,6 +30,7 @@ class RealtimeController {
     this.onError = opts.onError || function () {};
     this.onWarning = opts.onWarning || function () {};
     this.onLevel = opts.onLevel || function () {};
+    this.onPlayback = opts.onPlayback || function () {};
     this.lastLevel = null;
     // 指定输入设备（deviceId）：避开 ToDesk/OBS 等虚拟麦克风时使用
     this.micDeviceId = opts.micDeviceId || null;
@@ -55,6 +56,7 @@ class RealtimeController {
 
   /** 麦克风申请失败 → 友好错误文案。 */
   _failPermission(e) {
+    this.stop();
     const name = (e && e.name) || '';
     let msg = '无法获得麦克风权限';
     if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
@@ -75,6 +77,11 @@ class RealtimeController {
     const current = () => generation === this._generation;
     let tPermission = 0;
     if (!this.synthetic) {
+      // Preserve the user's activation: do this before the microphone promise.
+      this._player = new PCMPlayer({sampleRate:24000});
+      try { this._player.unlock(); } catch (e) {
+        this.onPlayback({state:'error',message:'声音尚未开启，请点击“试听声音”重试。'});
+      }
       this._setState('REQUESTING_PERMISSION');
       this._tPermissionStart = performance.now();
       try {
@@ -151,7 +158,7 @@ class RealtimeController {
     }
 
     this._setState('CONNECTING');
-    this._player = new PCMPlayer({ sampleRate: 24000 });
+    if (!this._player) this._player = new PCMPlayer({ sampleRate: 24000 });
     this._client = new RealtimeClient({
       petId: this.petId,
       petGender: this.petGender,
@@ -189,10 +196,25 @@ class RealtimeController {
   /** 由播放器/客户端事件驱动的状态观察。 */
   _startWatch() {
     this._watchTimer = setInterval(() => {
+      this._reportPlayback();
       if (this.state === 'AI_SPEAKING' && this._player && !this._player.playing) {
         this._setState('READY');
       }
     }, 250);
+  }
+
+  _reportPlayback() {
+    if (!this._player) return;
+    const state=this._player.outputState, received=this._player.receivedChunks || 0;
+    this.onPlayback({state,received,message:state==='running'
+      ? (received ? '已收到回复声音；听不到时请检查浏览器是否静音及电脑输出设备。' : '声音已开启，可以点击“试听声音”检查耳机或扬声器。')
+      : '浏览器尚未开启声音，请点击“试听声音”。'});
+  }
+
+  testPlayback() {
+    if (!this._player) return;
+    try { this._player.testTone(); this._reportPlayback(); }
+    catch (e) { this.onPlayback({state:'error',message:'无法播放声音，请检查浏览器声音权限或输出设备。'}); }
   }
 
   _onClientEvent(type, data) {
@@ -205,10 +227,21 @@ class RealtimeController {
         if (this.state === 'USER_SPEAKING') this._setState('AI_THINKING');
         break;
       case 'response.created':
+        this._roundAudioChunks = 0;
+        this._playbackResponseId = data.response?.id;
         if (this.state !== 'USER_SPEAKING') this._setState('AI_THINKING');
         break;
       case 'response.audio.delta':
+        if (!data.response_id || data.response_id === this._playbackResponseId)
+          this._roundAudioChunks = (this._roundAudioChunks || 0) + (data.delta ? 1 : 0);
         if (this.state === 'AI_THINKING' || this.state === 'READY') this._setState('AI_SPEAKING');
+        break;
+      case 'response.done':
+        if (data.response?.id === this._playbackResponseId && !this._roundAudioChunks && data.response?.status !== 'cancelled')
+          this.onWarning({code:'reply_audio_missing',message:'这轮没有收到回复音频，请再说一次。'});
+        break;
+      case 'playback.error':
+        this.onPlayback({state:'error',message:'回复声音播放失败，请点击“试听声音”检查播放。'});
         break;
       case 'conversation.item.input_audio_transcription.completed':
         this.onTranscripts({ userText: data.transcript || '', assistantText: '', done: false, finalUserText:true, turnId:data.turnId });

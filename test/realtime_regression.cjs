@@ -20,7 +20,7 @@ async function test(name,fn){await fn();passed++;console.log('PASS',name);}
  });
  await test('closing while microphone permission is pending releases late stream',async()=>{
   const pending=defer();let tracksStopped=0;
-  const ctx=vm.createContext({...base(),navigator:{mediaDevices:{getUserMedia:()=>pending.promise}}});
+  const ctx=vm.createContext({...base(),PCMPlayer:class{unlock(){}destroy(){}},navigator:{mediaDevices:{getUserMedia:()=>pending.promise}}});
   vm.runInContext(source('realtime-controller'),ctx);const c=new ctx.window.RealtimeController({petId:1});
   const starting=c.start();c.stop();pending.resolve({getTracks:()=>[{stop:()=>tracksStopped++}]});await starting;
   assert.equal(c.state,'STOPPED');assert.equal(tracksStopped,1);assert.equal(c._client,null);

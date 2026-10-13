@@ -19,6 +19,9 @@ class PCMPlayer {
     this._volume = opts.volume != null ? opts.volume : 1.0;
     this.underrunCount = 0;
     this.queuedDuration = 0; // 已调度未播完的秒数（近似）
+    this.receivedChunks = 0;
+    this.lastError = '';
+    this._resumePending = null;
   }
 
   /** 惰性创建（必须在用户手势后 resume）。 */
@@ -30,8 +33,39 @@ class PCMPlayer {
       this._gain.gain.value = this._volume;
       this._gain.connect(this._ctx.destination);
     }
-    if (this._ctx.state === 'suspended') this._ctx.resume();
     return this._ctx;
+  }
+
+  /** Call synchronously from a click, before permissions/network awaits. */
+  unlock(force = false) {
+    const ctx = this.ensureContext();
+    if (ctx.state === 'running') return Promise.resolve(true);
+    if (this._resumePending && !force) return this._resumePending;
+    const pending = Promise.resolve(ctx.resume()).then(() => {
+      if (this._ctx !== ctx) return false;
+      this.lastError = '';
+      return ctx.state === 'running';
+    }).catch(e => {
+      if (this._ctx === ctx) this.lastError = e.name || 'playback_failed';
+      return false;
+    }).finally(() => { if (this._resumePending === pending) this._resumePending = null; });
+    this._resumePending = pending;
+    return pending;
+  }
+
+  get outputState() { return this._ctx ? this._ctx.state : 'uninitialized'; }
+
+  /** Brief local tone using the same PCM path as a voice reply. */
+  testTone() {
+    this.unlock(true);
+    let bytes = '';
+    const count = Math.round(this.sampleRate * .28);
+    for (let i=0;i<count;i++) {
+      const fade = Math.min(1,i/240,(count-i)/480);
+      const sample = Math.round(Math.sin(i*2*Math.PI*660/this.sampleRate)*.12*fade*32767);
+      bytes += String.fromCharCode(sample & 255,(sample >> 8) & 255);
+    }
+    return this.append(btoa(bytes), false);
   }
 
   /** base64 → Int16 PCM → Float32 AudioBuffer。 */
@@ -50,10 +84,12 @@ class PCMPlayer {
   }
 
   /** 追加一片 base64 PCM；返回本片调度时长（秒）。 */
-  append(b64) {
+  append(b64, received = true) {
     const ctx = this.ensureContext();
+    this.unlock();
     const f32 = PCMPlayer.base64ToFloat32(b64);
     if (!f32.length) return 0;
+    if (received) this.receivedChunks++;
     const now = ctx.currentTime;
     let when = this._nextTime;
     if (when < now + 0.02) {
@@ -93,7 +129,7 @@ class PCMPlayer {
   }
 
   pause() { if (this._ctx && this._ctx.state === 'running') this._ctx.suspend(); }
-  resume() { if (this._ctx && this._ctx.state === 'suspended') this._ctx.resume(); }
+  resume() { return this.unlock(); }
   get playing() { return this.queuedDuration > 0.03; }
 
   reset() { this.interrupt(); }
@@ -103,6 +139,7 @@ class PCMPlayer {
     if (this._ctx) {
       const c = this._ctx;
       this._ctx = null;
+      this._resumePending = null;
       c.close().catch(() => {});
     }
   }

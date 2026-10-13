@@ -211,7 +211,8 @@ class RealtimeClient {
           }
         }
 
-        this.player.append(data.delta);
+        try { this.player.append(data.delta); }
+        catch (e) { this.onEvent('playback.error', {code:e.name || 'playback_failed'}); }
 
         break;
       }

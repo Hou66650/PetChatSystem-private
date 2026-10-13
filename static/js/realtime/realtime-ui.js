@@ -100,8 +100,10 @@
       '<div id="rt-devrow"><label for="rt-dev">🎤 输入设备</label><select id="rt-dev"><option>正在识别…</option></select></div>' +
       '<div id="rt-actions">' +
       '<button type="button" id="rt-mute">🔇 静音</button>' +
+      '<button type="button" id="rt-sound-test">试听声音</button>' +
       '<button type="button" id="rt-stop" class="danger">■ 结束对话</button>' +
       '</div>' +
+      '<div id="rt-output" role="status" style="margin-top:8px;font-size:12px;color:#8a7666"></div>' +
       '<div id="rt-notice" role="status" style="margin-top:8px;font-size:12px;color:#8a7666"></div>' +
       '<div id="rt-memory" role="status" style="margin-top:8px;font-size:12px;color:#8a7666"></div>' +
       '<div id="rt-metrics"></div>';
@@ -113,6 +115,9 @@
       this.textContent = self.controller.muted ? '🔊 取消静音' : '🔇 静音';
     });
     p.querySelector('#rt-stop').addEventListener('click', function () { self.stop(); });
+    p.querySelector('#rt-sound-test').addEventListener('click', function () {
+      if (self.controller) self.controller.testPlayback();
+    });
     p.querySelector('#rt-dev').addEventListener('change', function () {
       if (!this.value) return;
       try { localStorage.setItem('rt_mic_id', this.value); } catch (e) { /* ignore */ }
@@ -260,6 +265,7 @@
     panel.querySelector('#rt-metrics').textContent = '';
     panel.querySelector('#rt-memory').textContent = '';
     panel.querySelector('#rt-notice').textContent = '';
+    panel.querySelector('#rt-output').textContent = '';
     panel.querySelector('#rt-lvdb').textContent = '— dB';
     panel.querySelector('#rt-lvbar i').style.width = '0';
 
@@ -269,6 +275,11 @@
       surface: this.surface,
       micDeviceId: micId,
       onLevel: function (db) { if(current()) self._renderLevel(db); },
+      onPlayback: function (info) {
+        if(!current()) return;
+        var output=panel.querySelector('#rt-output');
+        if(output.textContent!==info.message) output.textContent=info.message;
+      },
       onState: function (s, extra) {
         if(!current()) return;
         self._renderState(s, extra);
