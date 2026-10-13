@@ -521,7 +521,8 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/vendor/three.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/OrbitControls.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/GLTFLoader.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/den/scene-navigation.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/den/sakura-river-layout.js') }}?v=1.7.0"></script>
+    <script src="{{ url_for('static', filename='js/den/scene-navigation.js') }}?v=1.7.0"></script>
     <script src="{{ url_for('static', filename='js/den/pet-locomotion.js') }}"></script>
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
@@ -898,7 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const SAKURA_NAV = {"radius": 3.2, "obstacles": [{"x": -2.1, "z": -1.5, "r": 0.36}, {"x": 2.25, "z": -1.2, "r": 0.38}, {"kind": "rect", "x": 0, "z": -2.65, "w": 3.7, "d": 0.26}, {"x": -2, "z": 0.15, "r": 0.18}, {"x": -1.75, "z": 0.6, "r": 0.13}], "interest_points": [{"name": "food", "x": -1.45, "z": 0.15}, {"name": "ball", "x": -1.2, "z": 0.6}, {"name": "rest", "x": 0.7, "z": 0.45}]};
         const SNOW_NAV = {"radius":3.2,"obstacles":[{"x":-2.0,"z":-1.55,"r":0.54},{"x":-0.85,"z":-2.35,"r":0.41},{"kind":"rect","x":2.2,"z":-1.2,"w":0.85,"d":0.25},{"x":2.65,"z":0.3,"r":0.43},{"x":2.7,"z":0.85,"r":0.3},{"x":-1.7,"z":0.65,"r":0.14}],"interest_points":[{"name":"ball","x":-1.0,"z":0.65},{"name":"rest","x":0.65,"z":0.4}]};
         const MODELED_STAGES = {
-            sakura: {url:"/static/models/petchat-courtyard-v3/sakura.glb?v=1.5.5", navigation:SAKURA_NAV},
+            sakura: {url:"/static/models/petchat-river-v1/sakura.glb?v=1.7.0", navigation:{...SAKURA_NAV,...SakuraRiverLayout}},
             snow: {url:"/static/models/petchat-snow-v1/snow.glb?v=20261013-1", navigation:SNOW_NAV}
         };
         function applyTheme(name) {
@@ -1453,8 +1454,9 @@ document.addEventListener('DOMContentLoaded', () => {
             petModel.userData = { pbr:!!spec.pbr, height: spec.h, headBone, mouthSocket: model.getObjectByName('SOCKET_mouth'), groundY: modeledStage ? .039 : 0, origH, animations: gltf.animations.map(a => clipShort(a.name)) };
             buildAccessories(model, headBone, neckBone, origH, spec);
             scene.add(petModel); petModel.position.y = petModel.userData.groundY; grabHomeY = petModel.userData.groundY;
-            const navigation = new PetNavigation.Navigation({radius:3.2, bodyRadius:Math.hypot(box.max.x-box.min.x,box.max.z-box.min.z)*spec.h/origH/2+.015,
-                obstacles:modeledStage ? MODELED_STAGES[spec.theme].navigation.obstacles : PetNavigation.legacy[spec.theme]});
+            const navigation = new PetNavigation.Navigation({radius:3.2,
+                ...(modeledStage ? MODELED_STAGES[spec.theme].navigation : {obstacles:PetNavigation.legacy[spec.theme]}),
+                bodyRadius:Math.hypot(box.max.x-box.min.x,box.max.z-box.min.z)*spec.h/origH/2+.015});
             locomotion = new PetLocomotion.Controller({navigation,model:petModel,speed:spec.pbr ? .34 : .46,
                 strideSpeed:spec.pbr ? .42 * spec.h / origH : .46,
                 animate(key,speed) { anim.state = key; anim.until = 0; playAction(key,speed); },
@@ -2242,7 +2244,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (performance.now()-lastPetClick>900) {lastPetClick=performance.now();doPetting();} return;
             }
             if (movementBlocked()) return;
-            const point=raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),0),new THREE.Vector3());
+            const point=modeledStage ? raycaster.intersectObject(decorGroup,true)[0]?.point :
+                raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),0),new THREE.Vector3());
             if (point && locomotion && !locomotion.goTo(point)) toast('那里暂时走不过去，试试空地吧', 'info',1600);
         });
         function updateRoamingButton() {
@@ -3295,13 +3298,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 掉落回地面（松手后）
                 if (dropping && petModel) {
+                    // Gesture release, tracking loss and stopping the camera converge here.
+                    // Move an unsafe release to dry ground/deck before descending.
+                    if (locomotion && !locomotion.navigation.isWalkable(petModel.position)) locomotion.safePlacement();
+                    const landingY=modeledStage && locomotion ? locomotion.navigation.surfaceHeight(petModel.position) : 0;
                     petModel.position.y -= 6.5 * dt;   // 重力
                     petModel.rotation.y *= 0.95;
-                    if (petModel.position.y <= 0.05) {  // 用固定地面高度，不依赖 grabHomeY
-                        petModel.position.y = petModel.userData.groundY || 0;
+                    if (petModel.position.y <= landingY+.015) {
                         const d2 = Math.hypot(petModel.position.x, petModel.position.z);
                         if (d2 > STAGE_R) { const k2 = STAGE_R / d2; petModel.position.x *= k2; petModel.position.z *= k2; }
                         if (locomotion) { locomotion.safePlacement(); locomotion.interrupt(); }
+                        grabHomeY=modeledStage && locomotion ? locomotion.navigation.surfaceHeight(petModel.position) : 0;
+                        petModel.userData.groundY=grabHomeY;petModel.position.y=grabHomeY;
                         dropping = false;
                         bounceBack = 0.12;
                         setAnim('idle', 0);
@@ -3310,7 +3318,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 弹跳衰减
                 if (bounceBack > 0 && petModel && !dropping && !grabbed) {
                     bounceBack -= dt * 0.5;
-                    petModel.position.y = grabHomeY + Math.max(0, bounceBack) * Math.sin(bounceBack * 30);
+                    petModel.position.y = grabHomeY + Math.max(0, bounceBack) * Math.abs(Math.sin(bounceBack * 30));
                     if (bounceBack <= 0) petModel.position.y = grabHomeY;
                 }
                 // 捏住时恢复正常大小（松手后渐回）
@@ -3353,8 +3361,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const next=actionTransition.next;actionTransition=null;next();
                 }
                 if (modeledStage && !grabbed && !dropping && bounceBack<=0) {
-                    const radius=Math.hypot(petModel.position.x,petModel.position.z);
-                    const ground=.013+.026*Math.max(0,Math.min(1,(1.68-radius)/.16));
+                    const ground=locomotion.navigation.surfaceHeight(petModel.position);
                     petModel.userData.groundY=ground;grabHomeY=ground;petModel.position.y=ground;
                 }
                 const st = anim.state;
@@ -3374,7 +3381,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const pp = petModel.position;
                     const lift = Math.max(0, pp.y);
                     const fade = Math.max(0, 1 - lift / 0.7);
-                    contactShadow.position.set(pp.x, 0.012, pp.z);
+                    contactShadow.position.set(pp.x, modeledStage && locomotion ? locomotion.navigation.surfaceHeight(pp)+.001 : .012, pp.z);
                     contactShadow.material.opacity = 0.34 * fade;
                     const s = 0.9 + 0.25 * fade;
                     contactShadow.scale.set(s, s, 1);

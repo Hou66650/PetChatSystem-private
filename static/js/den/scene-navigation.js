@@ -7,11 +7,14 @@
     'use strict';
     const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
     class Navigation {
-        constructor({radius = 3.2, bodyRadius = .36, margin = .08, cell = .18, obstacles = []} = {}) {
+        constructor({radius = 3.2, bodyRadius = .36, margin = .08, cell = .18, obstacles = [], water = [], bridges = [], rug = null} = {}) {
             this.radius = radius - bodyRadius - margin;
             this.clearance = bodyRadius + margin;
             this.cell = cell;
-            this.obstacles = obstacles;
+            this.water = water; this.bridges = bridges; this.rug = rug;
+            this.obstacles = [...obstacles, ...bridges.flatMap(b => [-1,1].map(side => ({
+                kind:'rect', x:b.x+side*(b.w-b.rail)/2, z:b.z, w:b.rail, d:b.d
+            })))];
             this.n = Math.floor(this.radius / cell);
             this.size = 2 * this.n + 1;
             this.nodes = [];
@@ -22,6 +25,13 @@
         }
         isWalkable(p) {
             if (!Number.isFinite(p.x + p.z) || Math.hypot(p.x, p.z) > this.radius) return false;
+            for (const w of this.water) {
+                const distanceToWater = Math.hypot(Math.max(0,Math.abs(p.x-w.x)-w.w/2),Math.max(0,Math.abs(p.z-w.z)-w.d/2));
+                // Only the deck corridor can override water exclusion. Ordinary props
+                // and bridge rails below remain obstacles, including at the banks.
+                if (distanceToWater <= this.clearance && !this.bridges.some(b =>
+                    Math.abs(p.x-b.x) < b.w/2-b.rail-this.clearance && Math.abs(p.z-b.z) <= b.d/2)) return false;
+            }
             for (const o of this.obstacles) {
                 if (o.kind === 'rect') {
                     const c = Math.cos(o.angle || 0), s = Math.sin(o.angle || 0);
@@ -32,6 +42,15 @@
                 } else if (distance(p, o) <= o.r + this.clearance) return false;
             }
             return true;
+        }
+        surfaceHeight(p) {
+            const r=this.rug || {x:0,z:0,radius:1.68,fade:.16,base:.013,rise:.026};
+            let height=r.base+r.rise*Math.max(0,Math.min(1,(r.radius-Math.hypot(p.x-r.x,p.z-r.z))/r.fade));
+            for (const b of this.bridges) if (Math.abs(p.x-b.x)<=b.w/2 && Math.abs(p.z-b.z)<=b.d/2) {
+                const t=(p.z-b.z)/b.d+.5;
+                height=Math.max(height,b.base+b.rise*Math.sin(Math.PI*t)**2);
+            }
+            return height;
         }
         segmentClear(a, b) {
             const count = Math.max(1, Math.ceil(distance(a, b) / .035));
