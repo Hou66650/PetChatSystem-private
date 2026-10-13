@@ -526,6 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/pet-locomotion.js') }}"></script>
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
+    <script src="/static/js/den/sky-background.js?v={{ app_version }}"></script>
     <script>window.COMPANION_SCOPE={{ companion_scope | tojson }};</script>
     <script src="/static/js/realtime/pcm-player.js?v={{ app_version }}"></script>
     <script src="/static/js/realtime/realtime-client.js?v={{ app_version }}"></script>
@@ -620,6 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderer.toneMappingExposure = 1.12;
 
         const scene = new THREE.Scene();
+        const skyBackground = new SkyBackground(scene, canvas, "/static/textures/cloud-sky-v1");
         const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
         camera.position.set(3.7, 3.2, 6.3);
         camera.lookAt(0, 0.8, 0);
@@ -915,20 +917,6 @@ document.addEventListener('DOMContentLoaded', () => {
             themeFlame = decorGroup.getObjectByName('__flame') || null;
             rug.material.color.setHex(t.rug);
             applyTimeOfDay();
-            // 营地主题强制黄昏偏暗天空（配合月亮+篝火营造夜晚氛围）
-            if (name === 'camp') {
-                scene.background = new THREE.Color(0x2A3A5C);   // 深蓝夜空
-                scene.fog = new THREE.Fog(0x2A3A5C, 8, 20);
-                hemi.intensity = 0.35;
-                sun.intensity = 0.25;
-
-            } else if (name === 'room') {
-                // 温馨小窝：暖黄偏暗（标准日光会把木地板曝白）
-                scene.background = new THREE.Color(0xF5E8D0);
-                scene.fog = new THREE.Fog(0xF5E8D0, 10, 22);
-                hemi.intensity = 0.45;
-                sun.intensity = 0.55;
-            }
             envSprites.forEach((s) => { scene.remove(s); s.material.dispose(); });
             envSprites = [];
             if (!envTexCache[t.env.kind]) envTexCache[t.env.kind] = shapeTexture(t.env.kind);
@@ -961,17 +949,20 @@ document.addEventListener('DOMContentLoaded', () => {
             let h = new Date().getHours();
             if (q === 'night') h = 22; else if (q === 'morning') h = 7;
             else if (q === 'day') h = 12; else if (q === 'dusk') h = 18;
+            if (currentTheme === 'camp') h = 22;
             let sky, fog, sunI;
             if (h >= 6 && h < 9) { sky = 0xFFE0C0; fog = 0xFFE0C0; sunI = 0.75; }        // 清晨
             else if (h >= 9 && h < 17) { sky = 0xCDEBF7; fog = 0xCDEBF7; sunI = 0.95; }  // 白天
             else if (h >= 17 && h < 20) { sky = 0xFFC9A3; fog = 0xFFC9A3; sunI = 0.6; }  // 黄昏
             else { sky = 0x3E4A6B; fog = 0x3E4A6B; sunI = 0.35; }                        // 夜晚
-            scene.background = new THREE.Color(sky);
+            if (currentTheme === 'room') sky = fog = 0xF5E8D0;
+            skyBackground.set(currentTheme === 'room' ? null : (h >= 6 && h < 20 ? 'day' : 'night'), sky);
             scene.fog = new THREE.Fog(fog, 9, 22);
             sun.intensity = sunI;
             hemi.intensity = 0.5 + sunI * 0.4;
             // room 主题光照覆盖（持久化，不被周期刷新重置）
             if (currentTheme === 'room') { hemi.intensity = 0.45; sun.intensity = 0.55; }
+            if (currentTheme === 'camp') { hemi.intensity = 0.35; sun.intensity = 0.25; }
             // 地面随昼夜明暗 + 主题配色（雪原/木地板为纯色，庭院/营地为草地贴图）
             const gnd = (currentTheme && THEMES[currentTheme]) ? THEMES[currentTheme].ground : { grass: true, day: 0xe8e0d0, dusk: 0xc8c2b8, night: 0x8a8a96 };
             groundMat.map = gnd.grass ? grassTex : null;
@@ -3448,11 +3439,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function resize() {
             const w = canvas.clientWidth, h = canvas.clientHeight;
-            if (canvas.width !== w * renderer.getPixelRatio()) {
+            if (!w || !h) return;
+            if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) {
                 renderer.setSize(w, h, false);
                 camera.aspect = w / h;
                 camera.updateProjectionMatrix();
             }
+            skyBackground.resize();
         }
         // S1-11/S1-12：旋转/缩放窗口 → 取消进行中的喂食操作并重算托盘命中矩形
         function onViewportChange() {
