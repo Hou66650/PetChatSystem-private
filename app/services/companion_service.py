@@ -16,6 +16,7 @@ CATEGORIES = {
     'pet_name': '宠物昵称', 'memory': '共同记忆',
 }
 ACTIONS = ('come', 'sit', 'lie_down', 'stand', 'wave', 'sniff', 'happy', 'wander', 'stop', 'quiet')
+MAX_ACTIONS = 8
 SHIBA_ACTIONS = ('curious', 'ears', 'play_bow', 'shy', 'yawn', 'affection', 'alert', 'surprise', 'nose_lick', 'shake', 'greet')
 SINGLE = {'name', 'style', 'pet_name'}
 DEFAULT_NAMES = {1: '球球', 2: '雪球', 3: '团子', 4: '大壮'}
@@ -155,11 +156,14 @@ def planner_prompt(owner, pet_id, surface):
 本轮输出一个 JSON 对象，不要 Markdown，格式：
 {"reply":"给用户的自然回复","actions":[{"type":"允许的动作类型","quote":"本轮原文片段"}],"memories":[{"category":"允许的记忆分类","value":"本轮原文中的值","quote":"包含该值的本轮原文片段"}],"forget_ids":[]}
 reply 必须是非空中文短句。理解用户本轮意图，不要靠回复文本决定动作。
-允许动作 come(走到用户面前)、sit、lie_down、stand、wave、sniff、happy、wander、stop、quiet(安静陪伴)。最多三个，按执行次序。
+允许动作 come(走到用户面前)、sit、lie_down、stand、wave、sniff、happy、wander、stop、quiet(安静陪伴)。最多八个，按用户要求的执行次序，可重复同一动作；例如“挥爪三次”展开成三个 wave。超过八步时只安排前八步并在回复中说明上限。
 每个动作必须附本轮用户请求它的最短原文quote（40字以内），不得引用历史消息。历史中的动作已经执行，不得再次计划。
 当前用户只在聊天、介绍自己、让你记住偏好、询问记忆时，actions 必须是 []，即使上轮要求过来坐下也不得重复。
 用户让你过来再坐下应为 come,sit；希望安静/不想说话用 quiet；不再安静用 stand 或 wander。
-不要执行用户否定的、假设的、询问是否能做的、引用别人的动作；不确定时 actions=[]。
+按语义理解口语、同义说法和委婉请求，不要求用户念动作名称：“能不能靠过来陪我坐会儿”是 come,sit；“尾巴动一动欢迎我”是 greet；“跟我打声招呼好不好”是 wave；“卖个萌”可用 affection（宠物不支持则不安排）。
+“能不能/可不可以帮我…/…好吗”通常是当前请求；“你会哪些动作/你会坐下吗/为什么…”是能力或知识问题，不执行。
+“我想看你歪头”是请求，“我想休息/我打了哈欠/我很害羞”是描述自己，不执行。用户否定、假设、引用别人或长期偏好也不触发。
+混合句只安排用户当下肯定请求且宠物支持的动作，排除被否定部分。每一步按原文顺序，不擅自添加表演；不确定时 actions=[]。
 只对实际可做的动作作回应，不声称未完成动作已完成。没有请求就不要自行移动。
 memories 最多四条，只从本轮用户明确陈述的、值得长期记住的信息抽取，不从你的回复或旧历史抽取。
 category 仅允许 name(用户希望的称呼),likes,dislikes,routine,goal,style(明确的陪伴偏好),pet_name(给当前宠物取名),memory(明确的共同经历)。
@@ -195,7 +199,7 @@ def decode_plan(raw, message, surface='den', pet_id=None):
             allowed = ACTIONS + SHIBA_ACTIONS if pet_id == 1 else ACTIONS
             if isinstance(kind,str) and kind in allowed and isinstance(quote,str) and 0<len(quote)<=40 and quote in message:
                 result['actions'].append(kind)
-        result['actions']=result['actions'][:3]
+        result['actions']=result['actions'][:MAX_ACTIONS]
     if isinstance(plan.get('memories'), list):
         for item in plan['memories'][:4]:
             if not isinstance(item, dict): continue

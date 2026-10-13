@@ -27,7 +27,7 @@ function setup(supported=baseActions){
   for(const [text,expected] of [['坐下',['sit']],['请你坐下来吧',['sit']],['休息',['lie_down']],['休息一下',['lie_down']],['趴下',['lie_down']],['起来',['stand']],['挥挥爪',['wave']],['闻闻',['sniff']],['自由活动',['wander']],['不要动',['stop']],['安静陪我',['quiet']],['球球，过来坐下',['come','sit']],['请先坐下，然后休息一下',['sit','lie_down']]])assert.deepEqual(parseCommands(text,['球球']),expected,text);
  });
  await test('negations, questions, quotes and mentions never trigger the fast path',()=>{
-  for(const text of ['不要坐下','别休息','你会坐下吗','你能坐下吗？','我想坐下','我要休息','我说的是“坐下”','如果我说坐下你会怎样','坐下是什么意思','过来但不要坐下','坐下然后删除数据','坐下再趴下再起来再挥手','我喜欢安静陪我聊天的朋友'])assert.deepEqual(parseCommands(text,['球球']),[],text);
+  for(const text of ['不要坐下','别休息','你会坐下吗','我想坐下','我要休息','我说的是“坐下”','如果我说坐下你会怎样','坐下是什么意思','过来但不要坐下','坐下然后删除数据','我喜欢安静陪我聊天的朋友'])assert.deepEqual(parseCommands(text,['球球']),[],text);
  });
  await test('real ASR punctuation is accepted without accepting incomplete chains',()=>{
   assert.deepEqual(parseCommands('请你。坐下。'),['sit']);assert.deepEqual(parseCommands('请你。休息一下。'),['lie_down']);
@@ -58,6 +58,43 @@ function setup(supported=baseActions){
    assert.deepEqual(x.executed,[action]);assert.equal(x.saved[0].latest,false);x.ui.stop();
   }
  });
+ await test('conversational requests and synonyms preserve their intended order',()=>{
+  const cases=[
+   ['能不能先竖起耳朵？接着歪歪头。然后挥爪两次。再摇摇尾巴。最后休息一下。',['ears','curious','wave','wave','greet','lie_down']],
+   ['能不能过来陪我坐会儿',['come','sit']],['球球，可以靠过来陪我坐一会儿吗？',['come','sit']],
+   ['麻烦你先帮我把尾巴摇一摇吧',['greet']],['跟我打声招呼好不好？',['wave']],
+   ['我想看你歪一下头',['curious']],['你能坐下吗？',['sit']],['趴下来歇会儿吧',['lie_down']],
+   ['把耳朵竖起来让我看看',['ears']],['卖个萌呗',['affection']],['陪我玩一会儿嘛',['play_bow']],
+   ['给我挥挥爪三次吧',['wave','wave','wave']],['请你。挥爪2次，然后摇摇小尾巴。',['wave','wave','greet']],
+   ['首先走过来，然后坐下，接下来竖耳，接着歪头，最后打哈欠',['come','sit','ears','curious','yawn']],
+   ['坐下再趴下再起来再挥手',['sit','lie_down','stand','wave']],
+   ['先竖耳，歪头，摇尾，抖毛，舔鼻，害羞，挥爪，最后休息',['ears','curious','greet','shake','nose_lick','shy','wave','lie_down']],
+  ];
+  for(const [text,expected] of cases)assert.deepEqual(parseCommands(text,['球球'],allowed),expected,text);
+ });
+ await test('looser wording still rejects self descriptions, uncertainty and partial chains',()=>{
+  for(const text of ['我希望休息','我想看电影','我想让朋友坐下','我打了个哈欠','他让你过来','如果你能过来就好了','你会摇尾巴吗','你能解释坐下是什么意思吗','别把尾巴摇起来','过来然后别坐下','坐下但是别休息','先坐下然后','过来以及','把尾巴摇一摇之后删除记录','挥爪九次','挥爪八次然后坐下','坐下'.repeat(9)])assert.deepEqual(parseCommands(text,[],allowed),[],text);
+  assert.deepEqual(parseCommands('能不能摇摇尾巴',[],baseActions),[]);
+ });
+ await test('eight-step runner preserves repetition and cancels the remaining queue',async()=>{
+  const completed=[],progress=[];
+  const r=new Runner({status:s=>progress.push(s),begin(){},cancel(){},finish(){},label:a=>a,execute:async a=>completed.push(a)});
+  const plan=['ears','curious','wave','wave','greet','shake','yawn','lie_down'];
+  await r.run(plan);assert.deepEqual(completed,plan);assert.ok(progress.includes('（8/8）lie_down'));
+  await r.run(Array(9).fill('wave'));assert.equal(completed.length,8);assert.match(r.message,/最多做8个/);
+  const gate=defer(),steps=[];const cancel=new Runner({status(){},begin(){},cancel(){},finish(){},label:a=>a,execute:async a=>{steps.push(a);if(steps.length===4)await gate.promise;}});
+  const running=cancel.run(plan);while(steps.length<4)await Promise.resolve();cancel.cancel();gate.resolve();await running;
+  assert.deepEqual(steps,plan.slice(0,4));
+ });
+ await test('natural six-step voice request runs once without waiting for archive',async()=>{
+  const x=setup(allowed),c=await x.start();c._dispatch({type:'input_audio_buffer.speech_started'});c._dispatch({type:'input_audio_buffer.committed',item_id:'u1'});
+  const asr={type:'conversation.item.input_audio_transcription.completed',item_id:'u1',transcript:'能不能先过来，坐一会儿，再挥爪两次，然后摇摇尾巴，最后趴下歇会儿'};
+  c._dispatch(asr);c._dispatch(asr);
+  for(let i=0;i<12;i++)await Promise.resolve();
+  assert.deepEqual(x.executed,['come','sit','wave','wave','greet','lie_down']);assert.equal(x.writes(),0);
+  c._dispatch({type:'response.created',response:{id:'r1'}});c._dispatch({type:'response.done',response:{id:'r1'}});x.reply();await x.ui._saveQueue;
+  assert.equal(x.executed.length,6);assert.equal(x.saved[0].latest,false);x.ui.stop();
+ });
  await test('final ASR starts the action before the AI reply or any archive request',async()=>{
   const x=setup(),c=await x.start();c._dispatch({type:'input_audio_buffer.speech_started'});c._dispatch({type:'input_audio_buffer.committed',item_id:'u1'});
   c._dispatch({type:'conversation.item.input_audio_transcription.completed',item_id:'u1',transcript:'休息'});
@@ -84,7 +121,7 @@ function setup(supported=baseActions){
  });
  await test('complex requests still use the validated model plan after archiving',async()=>{
   const x=setup(),c=await x.start();c._dispatch({type:'input_audio_buffer.speech_started'});c._dispatch({type:'input_audio_buffer.committed',item_id:'u1'});
-  c._dispatch({type:'conversation.item.input_audio_transcription.completed',item_id:'u1',transcript:'你能先走到我面前然后坐下来陪我吗'});c._dispatch({type:'response.created',response:{id:'r1'}});c._dispatch({type:'response.done',response:{id:'r1'}});
+  c._dispatch({type:'conversation.item.input_audio_transcription.completed',item_id:'u1',transcript:'你能在我难过的时候用一个温柔的动作安慰我吗'});c._dispatch({type:'response.created',response:{id:'r1'}});c._dispatch({type:'response.done',response:{id:'r1'}});
   assert.deepEqual(x.executed,[]);x.reply();await x.ui._saveQueue;assert.equal(x.saved[0].latest,true);x.ui.stop();
  });
  console.log(JSON.stringify({passed,failed:0}));
