@@ -527,6 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/den/sky-background.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/waterfall-flow.js?v={{ app_version }}"></script>
     <script>window.COMPANION_SCOPE={{ companion_scope | tojson }};</script>
     <script src="/static/js/realtime/pcm-player.js?v={{ app_version }}"></script>
     <script src="/static/js/realtime/realtime-client.js?v={{ app_version }}"></script>
@@ -897,18 +898,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-        let themeEpoch = 0, modeledStage = false;
+        let themeEpoch = 0, modeledStage = false, waterfallFlow = null, waterfallViewInitialized = false;
         const SAKURA_NAV = {"radius": 3.2, "obstacles": [{"x": -2.1, "z": -1.5, "r": 0.36}, {"x": 2.25, "z": -1.2, "r": 0.38}, {"kind": "rect", "x": 0, "z": -2.65, "w": 3.7, "d": 0.26}, {"x": -2, "z": 0.15, "r": 0.18}, {"x": -1.75, "z": 0.6, "r": 0.13}], "interest_points": [{"name": "food", "x": -1.45, "z": 0.15}, {"name": "ball", "x": -1.2, "z": 0.6}, {"name": "rest", "x": 0.7, "z": 0.45}]};
         const SNOW_NAV = {"radius":3.2,"obstacles":[{"x":-2.0,"z":-1.55,"r":0.54},{"x":-0.85,"z":-2.35,"r":0.41},{"kind":"rect","x":2.2,"z":-1.2,"w":0.85,"d":0.25},{"x":2.65,"z":0.3,"r":0.43},{"x":2.7,"z":0.85,"r":0.3},{"x":-1.7,"z":0.65,"r":0.14}],"interest_points":[{"name":"ball","x":-1.0,"z":0.65},{"name":"rest","x":0.65,"z":0.4}]};
         const MODELED_STAGES = {
-            sakura: {url:"/static/models/petchat-river-v1/sakura.glb?v=1.7.0", navigation:{...SAKURA_NAV,...SakuraRiverLayout}},
+            sakura: {url:"/static/models/petchat-waterfalls-v1/sakura.glb?v=1.7.2", navigation:{...SAKURA_NAV,...SakuraRiverLayout}},
             snow: {url:"/static/models/petchat-snow-v1/snow.glb?v=20261013-1", navigation:SNOW_NAV}
         };
         function applyTheme(name) {
             const t = THEMES[name], modeledSpec = MODELED_STAGES[name];
             if (!t) return;
+            if(name==='sakura' && !waterfallViewInitialized){
+                // Leave room beneath the island for both waterfalls on first entry.
+                camera.position.set(2.4,3.4,8.7);controls.target.set(0,.25,0);
+                waterfallViewInitialized=true;
+            }
             currentTheme = name;
             const epoch = ++themeEpoch; modeledStage = false; ground.visible = true; rug.visible = true;
+            if(waterfallFlow)waterfallFlow.dispose();waterfallFlow=null;
             disposeObjectTree(decorGroup);   // 显式释放 GPU 资源，防止反复切宠累积
             while (decorGroup.children.length) decorGroup.remove(decorGroup.children[0]);
             themeFireLight = null; themeFlame = null;
@@ -935,6 +942,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (epoch !== themeEpoch) { disposeObjectTree(gltf.scene); resolve(); return; }
                 gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
                 decorGroup.add(gltf.scene); modeledStage = true; ground.visible = false; rug.visible = false;
+                if(name==='sakura')waterfallFlow=new WaterfallFlow.Controller(gltf.scene);
                 if (name === 'sakura') { const light = new THREE.PointLight(0xFFE0A3, .55, 3.5); light.position.set(2.25, .89, -1.2); decorGroup.add(light); }
                 resolve();
             }, undefined, error => {
@@ -3245,6 +3253,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const now = performance.now();
 
             if (now - timeOfDayChecked > 60000) { applyTimeOfDay(); timeOfDayChecked = now; }
+            if(waterfallFlow)waterfallFlow.update(t);
             autoBlinkTick(now);
 
             if (petModel) {
