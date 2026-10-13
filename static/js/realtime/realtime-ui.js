@@ -32,6 +32,7 @@
     this.onError = opts.onError || function () {};
     this.onState = opts.onState || function () {};
     this.onTurnStart = opts.onTurnStart || function () {};
+    this.onUserTranscript = opts.onUserTranscript || function () { return false; };
     this.onSaved = opts.onSaved || function () {};
     this.surface = opts.surface || 'chat';
     this._generation = 0;
@@ -101,6 +102,7 @@
       '<button type="button" id="rt-mute">🔇 静音</button>' +
       '<button type="button" id="rt-stop" class="danger">■ 结束对话</button>' +
       '</div>' +
+      '<div id="rt-notice" role="status" style="margin-top:8px;font-size:12px;color:#8a7666"></div>' +
       '<div id="rt-memory" role="status" style="margin-top:8px;font-size:12px;color:#8a7666"></div>' +
       '<div id="rt-metrics"></div>';
     document.body.appendChild(p);
@@ -235,6 +237,8 @@
     var pet = Object.assign({}, this.getPet());
     var gender = this.getGender();
     var turnContexts = new Map();
+    var transcriptTurns = new Set();
+    var handledActionTurns = new Set();
     var latestTurn = 0;
     var self = this;
     var current = function(){return generation === self._generation;};
@@ -255,6 +259,7 @@
     panel.querySelector('#rt-ai').textContent = '正在开启…';
     panel.querySelector('#rt-metrics').textContent = '';
     panel.querySelector('#rt-memory').textContent = '';
+    panel.querySelector('#rt-notice').textContent = '';
     panel.querySelector('#rt-lvdb').textContent = '— dB';
     panel.querySelector('#rt-lvbar i').style.width = '0';
 
@@ -283,7 +288,10 @@
         if(t.reset) {
           latestTurn=t.turnId;
           turnContexts.set(t.turnId,self.onTurnStart(pet));
-          if(turnContexts.size>40) turnContexts.delete(turnContexts.keys().next().value);
+          if(turnContexts.size>40){
+            var oldest=turnContexts.keys().next().value;
+            turnContexts.delete(oldest);transcriptTurns.delete(oldest);handledActionTurns.delete(oldest);
+          }
           panel.querySelector('#rt-user').textContent='正在听…';
           panel.querySelector('#rt-ai').textContent='';
         }
@@ -291,7 +299,16 @@
           self._aiText += t.assistantDelta;
           panel.querySelector('#rt-ai').textContent = self._aiText || '…';
         }
-        if (t.userText) panel.querySelector('#rt-user').textContent = '你：' + t.userText;
+        if (t.userText && (t.turnId == null || t.turnId === latestTurn)) panel.querySelector('#rt-user').textContent = '你：' + t.userText;
+        if (t.userText && (t.finalUserText || t.done) && t.turnId === latestTurn &&
+            turnContexts.has(t.turnId) && !transcriptTurns.has(t.turnId)) {
+          transcriptTurns.add(t.turnId);
+          // Explicit scene commands act on finalized ASR, before reply/memory work.
+          try {
+            if(self.onUserTranscript(t.userText,pet,turnContexts.get(t.turnId)) === true)
+              handledActionTurns.add(t.turnId);
+          } catch(e) { console.warn('onUserTranscript error', e); }
+        }
         if (t.done) {
           // 一轮完整结束：增量字幕结算，交由页面写历史（一条用户 + 一条宠物）
           var context = turnContexts.get(t.turnId);
@@ -328,15 +345,20 @@
               }
               var timely=performance.now()-completedAt<30000;
               if(t.turnId===latestTurn){
-                panel.querySelector('#rt-memory').textContent=!timely&&data.actions?.length?'这轮动作等待过久，已取消。可以再说一次。':data.memorySaved?'已记住你的偏好，陪伴方式已更新':data.profile.enabled===false?'长期记忆已暂停':'这轮对话已保存';
+                panel.querySelector('#rt-memory').textContent=!handledActionTurns.has(t.turnId)&&!timely&&data.actions?.length?'这轮动作等待过久，已取消。可以再说一次。':data.memorySaved?'已记住你的偏好，陪伴方式已更新':data.profile.enabled===false?'长期记忆已暂停':'这轮对话已保存';
               }
-              self.onSaved(data,pet,context,t.turnId===latestTurn && current() && timely);
+              self.onSaved(data,pet,context,t.turnId===latestTurn && current() && timely && !handledActionTurns.has(t.turnId));
             }).catch(function(e){if(current()){panel.querySelector('#rt-memory').textContent='这轮语音暂未保存，请稍后再试';self.onError({code:'archive_failed',message:e.message});}});
           }
           self._aiText = '';
         }
       },
       onMetrics: function (m) { if(current())self._renderMetrics(m); },
+      onWarning: function (e) {
+        if(!current()) return;
+        // Inline status avoids a repeated service-error toast for a recoverable event.
+        panel.querySelector('#rt-notice').textContent = e.message;
+      },
       onError: function (e) {
         if(!current()) return;
         self._lastErrMsg = (e && e.message) || '';

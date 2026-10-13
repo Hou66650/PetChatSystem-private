@@ -2227,7 +2227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         function movementBlocked() {
             return document.hidden || spawnBusy || !petModel || anim.birth < 1 || grabbed || dropping || bounceBack > 0 || interactionBusy() ||
-                performing() || chatBusy || (voiceBusy&&!dialogueRunner.active) || breathActive || !gameOverlay.hidden || !gamesMask.hidden || !moodMask.hidden ||
+                performing() || (chatBusy&&!dialogueRunner.active) || (voiceBusy&&!dialogueRunner.active) || breathActive || !gameOverlay.hidden || !gamesMask.hidden || !moodMask.hidden ||
                 (!dialogueRunner.active && !document.getElementById('den-chat').classList.contains('hidden')) ||
                 !['idle','walk','trot'].includes(anim.state) || performance.now()<anim.until;
         }
@@ -2353,6 +2353,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(state==='STOPPED'||state==='ERROR')dialogueRunner.cancel('语音已结束');
             },
             onTurnStart(){return {petId:currentPetId,epoch:locomotionEpoch,commandToken:dialogueRunner.serial};},
+            onUserTranscript(text,pet,turn){
+                if(pet.id!==currentPetId||!turn||turn.epoch!==locomotionEpoch||
+                   turn.commandToken!==dialogueRunner.serial||chatBusy)return false;
+                const plan=DialogueActions.parseCommands(text,[pet.name,SPECS[currentPetId].name]);
+                if(!plan.length)return false;
+                dialogueRunner.run(plan);
+                rewardIntimacy('chat');
+                return true;
+            },
             onRound(userText,aiText,pet){
                 if(pet.id!==currentPetId)return;
                 historyEpoch++;
@@ -2398,9 +2407,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if(voiceUI.isActive())voiceUI.stop();
             const targetPet=currentPetId, targetEpoch=locomotionEpoch;
             historyEpoch++;dialogueRunner.cancel('正在认真听你说…');endDialogueHold();
+            const directPlan=DialogueActions.parseCommands(text,[SPECS[targetPet].displayName,SPECS[targetPet].name]);
+            if(directPlan.length)dialogueRunner.run(directPlan);
             const commandToken=dialogueRunner.serial;
             chatBusy=true;chatSend.disabled=true;chatInput.value='';appendMsg('user',text);
-            setAnim('idle',0);
+            if(!directPlan.length)setAnim('idle',0);
             try{
                 const resp=await fetch('/get_gpt_response',{
                     method:'POST',headers:{'Content-Type':'application/json'},
@@ -2415,7 +2426,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 applyCompanionName(data.profile);
                 if(commandToken!==dialogueRunner.serial){document.getElementById('dialogue-status').textContent='已取消本轮动作';return;}
                 speak(data.reply,{talk:false});
-                if(data.actions?.length)dialogueRunner.run(data.actions);
+                if(directPlan.length){ /* Already acted; never replay a delayed model plan. */ }
+                else if(data.actions?.length)dialogueRunner.run(data.actions);
                 else {document.getElementById('dialogue-status').textContent=data.memorySaved?'已经记入陪伴档案':'我在听呢';companionReaction();}
                 rewardIntimacy('chat');
             }catch(err){if(targetPet===currentPetId&&targetEpoch===locomotionEpoch){appendMsg('pet',err.message||'网络开小差了，请再试一次');document.getElementById('dialogue-status').textContent='消息未完成';}}

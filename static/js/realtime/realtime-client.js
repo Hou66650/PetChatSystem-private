@@ -34,6 +34,15 @@ class RealtimeClient {
     this._reconnectAttempts = 0;
     this._reconnectTimer = null;
     this._pendingAudio = [];   // 断线期间到达的采集片直接丢弃（不重放）
+    this._sessionReady = false;
+    this._sessionUpdate = null;
+    this._updateTimer = null;
+    this._updatesDisabled = false;
+    this._appliedInstructions = null;
+    this._desiredInstructions = null;
+    this._speaking = false;
+    this._awaitingResponse = false;
+    this._activeResponses = new Set();
 
     // 一轮对话的累计器
     this._round = { userText: '', assistantText: '', responseId: '', itemId: '' };
@@ -81,6 +90,14 @@ class RealtimeClient {
   connect() {
     return new Promise((resolve, reject) => {
       if (this._closedByUser) { reject(new Error('closed')); return; }
+      this._sessionReady = false;
+      this._updatesDisabled = false;
+      this._sessionUpdate = null;
+      this._desiredInstructions = null;
+      this._activeResponses.clear();
+      this._speaking = false;
+      this._awaitingResponse = false;
+      clearTimeout(this._updateTimer);
       let settled = false;
       const done = (err) => {
         if (settled) return;
@@ -105,6 +122,8 @@ class RealtimeClient {
       ws.onerror = () => { /* onclose 会跟进 */ };
       ws.onclose = (ev) => {
         this._ws = null;
+        this._sessionReady = false;
+        clearTimeout(this._updateTimer);
         if (this._closedByUser) { done(new Error('closed')); return; }
         done(new Error(`ws closed (${ev.code})`));
         this._scheduleReconnect();
@@ -117,18 +136,38 @@ class RealtimeClient {
     const type = data.type || '';
     if (this._closedByUser) return;
     if (type === 'input_audio_buffer.speech_started') { this._turnId++; this._resetRound(); }
-    this.onEvent(type, {...data, turnId:this._turnId});
+    // ASR can arrive after the next turn starts; retain the committed item's turn.
+    const eventTurn = type === 'conversation.item.input_audio_transcription.completed'
+      ? this._items.get(data.item_id)?.turnId : this._turnId;
+    this.onEvent(type, {...data, turnId:eventTurn});
     switch (type) {
       case 'session.created':
         this._sid = (data.session && data.session.id) || '';
         this._sendSessionUpdate();
         break;
       case 'session.updated':
+        if (this._sessionUpdate) {
+          const applied = data.session && data.session.instructions;
+          if (!this._sessionUpdate.initial && typeof applied === 'string' &&
+              applied !== this._sessionUpdate.instructions) {
+            this._disableUpdates();
+            this.onEvent('server.error', {code:'profile_update_not_applied',
+              kind:'profile_update', recoverable:true});
+          } else {
+            this._appliedInstructions = this._sessionUpdate.instructions;
+            this._sessionUpdate = null;
+            clearTimeout(this._updateTimer);
+          }
+        }
+        this._sessionReady = true;
         this.metrics.t_session_ready_ms = Math.round(performance.now() - this._tConnectStart);
         this.onStatus('ready');
         connectDone && connectDone(null);
+        this._flushInstructions();
         break;
       case 'input_audio_buffer.speech_started': {
+        this._speaking = true;
+        this._awaitingResponse = true;
         // Server VAD 模式下打断由服务端托管，客户端只需清空本地播放（方案 §6）。
         // interrupt_latency_ms = 收到 speech_started → 本地旧音频全部停止的实测耗时；
         // interrupt_cleared_ms = 被清掉未播完的音频量（毫秒）。
@@ -140,6 +179,8 @@ class RealtimeClient {
         break;
       }
       case 'input_audio_buffer.speech_stopped':
+        // Wait for response.done as well: speech_stopped precedes response.created.
+        this._speaking = false;
         this._tSpeechEnd = performance.now();
         this._seenFirstText = false;
         this._seenFirstAudio = false;
@@ -154,7 +195,9 @@ class RealtimeClient {
           round.userText = data.transcript || ''; this._finishRound(round); }
         break;
       case 'response.created':
+        this._awaitingResponse = false;
         this._round.responseId = (data.response && data.response.id) || '';
+        this._activeResponses.add(this._round.responseId);
         this._responses.set(this._round.responseId, this._round);
         if(this._responses.size>40) this._responses.delete(this._responses.keys().next().value);
         break;
@@ -186,18 +229,31 @@ class RealtimeClient {
         break;
       }
       case 'response.done': {
+        this._activeResponses.delete((data.response && data.response.id) || '');
         const round = this._responses.get(data.response && data.response.id) || this._round;
         round.done = true;
         this._finishRound(round);
+        this._flushInstructions();
 
         // 播完队列里的余量即回到 READY（由 controller 观察 player 状态）
         break;
       }
       case 'error': {
-        const code = (data.error && data.error.code) || 'unknown';
+        const error = data.error || {};
+        const code = String(error.code || 'unknown');
         this.metrics.error_code = code;
-        console.warn('[realtime] server error:', code, data.error && data.error.message);
-        this.onEvent('server.error', data.error || {});
+        this.onMetrics(this.metrics);
+        console.warn('[realtime] server error:', code, error.type, error.message);
+        // GLM error events normally leave the socket open. A failed profile update
+        // must not hang up an otherwise usable call (observed: 1210 + session.updated).
+        const updateRejected = error.type === 'session_update_validate_error';
+        const fatal = /auth|permission|forbidden|quota|billing|expired/i.test(error.type || '') ||
+          /^(1000|1001|1002|1003|1004|1110|1112|1113|invalid_api_key|insufficient_quota)$/.test(code);
+        const recoverable = this._sessionReady && !fatal;
+        if (updateRejected && recoverable) this._disableUpdates();
+        if (!recoverable && connectDone) connectDone(new Error('语音服务拒绝连接（' + code + '）'));
+        this.onEvent('server.error', {...error, code, recoverable,
+          kind: updateRejected ? 'profile_update' : 'voice'});
         break;
       }
       default:
@@ -206,25 +262,53 @@ class RealtimeClient {
   }
 
   /** session.update：配置全部来自服务端下发的 config（方案 §4.2 返回结构）。 */
-  _sendSessionUpdate() {
+  _sendSessionUpdate(instructions = this._session.config.instructions || '') {
     const c = this._session.config;
-    this._send({
+    const initial = !this._sessionReady;
+    this._sessionUpdate = {instructions, initial};
+    const sent = this._send({
       type: 'session.update',
       session: {
         turn_detection: c.turn_detection || { type: 'server_vad' },
-        instructions: c.instructions || '',
+        instructions,
         input_audio_format: c.input_audio_format || 'pcm16',
         output_audio_format: c.output_audio_format || 'pcm',
         beta_fields: { chat_mode: c.chat_mode || 'audio', tts_source: 'e2e' },
         voice: c.voice || 'default',
       },
     });
+    if (!sent) this._sessionUpdate = null;
+    if (sent && !initial) {
+      this._updateTimer = setTimeout(() => {
+        this._disableUpdates();
+        this.onEvent('server.error', {code:'profile_update_timeout',
+          kind:'profile_update', recoverable:true});
+      }, 10000);
+    }
+    return sent;
   }
 
   updateInstructions(instructions) {
     if (!this._session || typeof instructions !== 'string') return false;
-    this._session.config.instructions = instructions;
-    return this._send({type:'session.update', session:{instructions}});
+    this._desiredInstructions = instructions;
+    return this._flushInstructions();
+  }
+
+  _flushInstructions() {
+    if (!this._sessionReady || this._closedByUser || this._updatesDisabled ||
+        this._sessionUpdate || this._speaking || this._awaitingResponse || this._activeResponses.size ||
+        this._desiredInstructions == null || this._desiredInstructions === this._appliedInstructions) return false;
+    // GLM documents a complete configuration for session.update. Serialize updates
+    // and wait for a reply boundary, preserving audio/VAD/voice settings each time.
+    return this._sendSessionUpdate(this._desiredInstructions);
+  }
+
+  _disableUpdates() {
+    clearTimeout(this._updateTimer);
+    this._sessionUpdate = null;
+    this._updatesDisabled = true;
+    // Memory is already persisted. The next call loads the latest profile afresh;
+    // do not repeatedly send a rejected update or reset the ongoing conversation.
   }
 
   _send(obj) {
@@ -273,6 +357,9 @@ class RealtimeClient {
   /** 用户主动结束：停重连、关 WS。 */
   close() {
     this._closedByUser = true;
+    this._sessionReady = false;
+    clearTimeout(this._updateTimer);
+    this._sessionUpdate = null;
     if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
     this._pendingAudio = [];
     if (this._ws) {

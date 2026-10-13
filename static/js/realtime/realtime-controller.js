@@ -28,6 +28,7 @@ class RealtimeController {
     this.onTranscripts = opts.onTranscripts || function () {};
     this.onMetrics = opts.onMetrics || function () {};
     this.onError = opts.onError || function () {};
+    this.onWarning = opts.onWarning || function () {};
     this.onLevel = opts.onLevel || function () {};
     this.lastLevel = null;
     // 指定输入设备（deviceId）：避开 ToDesk/OBS 等虚拟麦克风时使用
@@ -210,7 +211,7 @@ class RealtimeController {
         if (this.state === 'AI_THINKING' || this.state === 'READY') this._setState('AI_SPEAKING');
         break;
       case 'conversation.item.input_audio_transcription.completed':
-        this.onTranscripts({ userText: data.transcript || '', assistantText: '', done: false });
+        this.onTranscripts({ userText: data.transcript || '', assistantText: '', done: false, finalUserText:true, turnId:data.turnId });
         break;
       case 'response.audio_transcript.delta':
         // 增量字幕：由页面累积，这里只保证状态
@@ -222,11 +223,21 @@ class RealtimeController {
       case 'session.updated':
         if (this.state === 'RECONNECTING') this._setState('READY');
         break;
-      case 'server.error':
+      case 'server.error': {
+        const code = String(data.code || 'unknown').replace(/[^a-zA-Z0-9_.-]/g, '').slice(0,64);
+        if (data.recoverable) {
+          // A config rejection does not invalidate the reply currently playing.
+          this.onWarning({code, kind:data.kind, message:data.kind === 'profile_update'
+            ? '记忆已保存；语音陪伴设置将在下次通话生效。当前可以继续聊。'
+            : '这一轮语音暂时出错，可以直接再说一次。（' + code + '）'});
+          if (data.kind !== 'profile_update' && this.state === 'AI_THINKING') this._setState('READY');
+          break;
+        }
         this.stop();
-        this._setState('ERROR', {reason:'server_error'});
-        this.onError({code:data.code||'server_error',message:'语音服务暂时不可用，请结束后重试。'});
+        this._setState('ERROR', {reason:'server_error',code});
+        this.onError({code, message:'语音连接已停止（错误码：' + code + '），请重新开启语音。'});
         break;
+      }
       default:
         break;
     }
