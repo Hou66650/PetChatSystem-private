@@ -1,10 +1,10 @@
 const assert=require('assert'),fs=require('fs'),vm=require('vm'),crypto=require('crypto');
 const root=process.env.PETCHAT_ROOT||require('path').resolve(__dirname,'..');
-const {parseCommands,Runner}=require(root+'/static/js/den/dialogue-actions.js');
+const {parseCommands,Runner,allowed,baseActions,expressiveKeys}=require(root+'/static/js/den/dialogue-actions.js');
 const source=n=>fs.readFileSync(root+'/static/js/realtime/'+n+'.js','utf8');
 const defer=()=>{let resolve;const promise=new Promise(r=>resolve=r);return{promise,resolve};};
 let passed=0;async function test(name,fn){await fn();passed++;console.log('PASS',name);}
-function setup(){
+function setup(supported=baseActions){
  const pending=defer(),elements=new Map(),executed=[],saved=[],transcripts=[];let writes=0,epoch=0;
  const panel={hidden:true,querySelector(k){if(!elements.has(k))elements.set(k,{textContent:'',style:{},className:''});return elements.get(k);}};
  const context=vm.createContext({window:{},console,performance,crypto,setTimeout,clearTimeout,setInterval,clearInterval,Map,Set,
@@ -16,7 +16,7 @@ function setup(){
  const runner=new Runner({status(){},begin(){},cancel(){},finish(){},label:a=>a,execute:async a=>executed.push(a)});
  const ui=new context.window.RealtimeUI({surface:'den',getPet:()=>({id:1,name:'球球'}),
   onState:s=>{if(s==='USER_SPEAKING')runner.cancel();},onTurnStart:()=>({token:runner.serial,epoch}),
-  onUserTranscript:(text,pet,turn)=>{transcripts.push(text);if(turn.token!==runner.serial||turn.epoch!==epoch)return false;const actions=parseCommands(text,[pet.name]);if(!actions.length)return false;runner.run(actions);return true;},
+  onUserTranscript:(text,pet,turn)=>{transcripts.push(text);if(turn.token!==runner.serial||turn.epoch!==epoch)return false;const actions=parseCommands(text,[pet.name],supported);if(!actions.length)return false;runner.run(actions);return true;},
   onSaved:(data,pet,turn,latest)=>saved.push({data,latest})});
  const start=async()=>{await ui.start();const c=new context.window.RealtimeClient({petId:1,player:{append(){},interrupt:()=>0},onEvent:(t,d)=>ui.controller?._onClientEvent(t,d)});c._session={profileRevision:0,profileScope:'test',config:{}};c.updateInstructions=()=>{};ui.controller._client=c;return c;};
  const reply=()=>pending.resolve({ok:true,json:async()=>({profile:{revision:0,enabled:true},actions:['sit'],instructions:'updated'})});
@@ -32,6 +32,31 @@ function setup(){
  await test('real ASR punctuation is accepted without accepting incomplete chains',()=>{
   assert.deepEqual(parseCommands('请你。坐下。'),['sit']);assert.deepEqual(parseCommands('请你。休息一下。'),['lie_down']);
   assert.deepEqual(parseCommands('坐下然后'),[]);assert.deepEqual(parseCommands('坐下再'),[]);
+ });
+ await test('all expression buttons have a spoken command and an exported animation',()=>{
+  const E=require(root+'/static/js/den/shiba-expression.js');
+  const samples={curious:'歪头听你说',ears:'竖耳听一听',shy:'害羞一下',alert:'认真望一望',yawn:'打个小哈欠',affection:'开心蹭蹭',surprise:'惊讶一下',play_bow:'邀请我玩',wave:'挥爪打招呼',nose_lick:'舔舔小鼻子',shake:'抖抖毛',greet:'摇尾欢迎你'};
+  assert.deepEqual(new Set(Object.keys(samples).map(a=>expressiveKeys[a]||a)),new Set(Object.keys(E.acts)));
+  for(const [action,text] of Object.entries(samples)){
+   assert.deepEqual(parseCommands('团团，请你。'+text+'吧。',['团团'],allowed),[action],text);
+   for(const phrase of ['别'+text,'我想'+text,text+'是什么意思','你会'+text+'吗','“'+text+'”'])assert.deepEqual(parseCommands(phrase,[],allowed),[],phrase);
+  }
+  for(const [text,action] of [['竖起耳朵','ears'],['打哈欠','yawn'],['撒娇','affection'],['舔舔鼻子','nose_lick'],['摇摇尾巴','greet'],['歪歪头','curious']])assert.deepEqual(parseCommands(text,[],allowed),[action]);
+  assert.deepEqual(parseCommands('请先歪头，然后竖耳，再摇摇尾巴',[],allowed),['curious','ears','greet']);
+ });
+ await test('unsupported expressions reject the entire chain, including fallback models',()=>{
+  for(const text of ['竖耳','坐下然后打哈欠','先摇尾巴再坐下'])assert.deepEqual(parseCommands(text),[],text);
+  assert.deepEqual(parseCommands('坐下然后竖耳',[],[...baseActions,'curious']),[]);
+  assert.deepEqual(parseCommands('先歪头再坐下',[],[...baseActions,'curious']),['curious','sit']);
+ });
+ await test('new expressions execute on final ASR once, before delayed memory analysis',async()=>{
+  for(const [text,action] of [['请你。竖耳听一听。','ears'],['打个小哈欠','yawn'],['摇摇尾巴','greet']]){
+   const x=setup(allowed),c=await x.start();c._dispatch({type:'input_audio_buffer.speech_started'});c._dispatch({type:'input_audio_buffer.committed',item_id:'u1'});
+   const asr={type:'conversation.item.input_audio_transcription.completed',item_id:'u1',transcript:text};c._dispatch(asr);c._dispatch(asr);
+   assert.deepEqual(x.executed,[action]);assert.equal(x.writes(),0);
+   c._dispatch({type:'response.created',response:{id:'r1'}});c._dispatch({type:'response.done',response:{id:'r1'}});x.reply();await x.ui._saveQueue;
+   assert.deepEqual(x.executed,[action]);assert.equal(x.saved[0].latest,false);x.ui.stop();
+  }
  });
  await test('final ASR starts the action before the AI reply or any archive request',async()=>{
   const x=setup(),c=await x.start();c._dispatch({type:'input_audio_buffer.speech_started'});c._dispatch({type:'input_audio_buffer.committed',item_id:'u1'});

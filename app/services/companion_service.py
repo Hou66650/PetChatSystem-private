@@ -16,7 +16,7 @@ CATEGORIES = {
     'pet_name': '宠物昵称', 'memory': '共同记忆',
 }
 ACTIONS = ('come', 'sit', 'lie_down', 'stand', 'wave', 'sniff', 'happy', 'wander', 'stop', 'quiet')
-SHIBA_ACTIONS = ('curious', 'play_bow', 'shy', 'yawn', 'affection', 'alert', 'surprise', 'nose_lick', 'shake', 'greet')
+SHIBA_ACTIONS = ('curious', 'ears', 'play_bow', 'shy', 'yawn', 'affection', 'alert', 'surprise', 'nose_lick', 'shake', 'greet')
 SINGLE = {'name', 'style', 'pet_name'}
 DEFAULT_NAMES = {1: '球球', 2: '雪球', 3: '团子', 4: '大壮'}
 SENSITIVE = re.compile(r'密码|验证码|身份证|银行卡|手机号|电话号码|住址|诊断|抑郁症|精神疾病|宗教|政治立场|性取向|病历|自杀|自残|\b\d{11,}\b')
@@ -169,7 +169,7 @@ value 使用用户原文中的连续片段，最多80字；quote 是本轮用户
 同一个昵称/称呼/style 的新表述覆盖旧表述。不要将问题、否定或虚构内容存为事实。
 明确要求忘记某事时，仅在 forget_ids 中列出档案中对应的 id，同时 memories=[]；不明确时询问用户要忘记哪条。
 若当前界面是 chat，只回复交流，不声称3D宠物正在动作，actions=[]。
-''' + ('\n当前宠物是柴犬球球，还支持以下动作（仍需本轮原文依据）：curious(歪头倾听)、play_bow(前伏邀玩)、shy(害羞收耳)、yawn(打哈欠)、affection(亲昵)、alert(警觉观察)、surprise(惊讶)、nose_lick(舔鼻)、shake(抖毛)、greet(摇尾欢迎)。仅在用户明确请求时计划，不把用户情绪当作表演命令。' if pet_id == 1 else '') + '\n当前界面：' + surface
+''' + ('\n当前宠物是柴犬球球，还支持以下动作（仍需本轮原文依据）：curious(歪头倾听)、ears(竖耳倾听)、play_bow(前伏邀玩)、shy(害羞收耳)、yawn(打哈欠)、affection(亲昵)、alert(警觉观察)、surprise(惊讶)、nose_lick(舔鼻)、shake(抖毛)、greet(摇尾欢迎)。仅在用户明确请求时计划，不把用户情绪当作表演命令。' if pet_id == 1 else '') + '\n当前界面：' + surface
 
 
 def decode_plan(raw, message, surface='den', pet_id=None):

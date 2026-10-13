@@ -2269,8 +2269,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // A dialogue owns its action chain until finished, cancelled or the pet changes.
         let dialogueHeld=false, dialogueRestoreRoam=true;
-        const actionLabels={come:'正在走到你身边',sit:'正在坐下',lie_down:'正在趴下',stand:'正在站起来',wave:'正在挥爪',sniff:'正在闻闻',happy:'开心地回应你',wander:'开始自由活动',stop:'停下来等你',quiet:'安静地陪着你',curious:'歪着头认真听',play_bow:'邀请你一起玩',shy:'有点害羞呢',yawn:'打个小哈欠',affection:'开心地蹭蹭',alert:'竖耳望一望',surprise:'咦，怎么啦',nose_lick:'舔舔小鼻子',shake:'抖抖毛',greet:'摇尾欢迎你'};
-        const expressiveKeys={curious:'curious',play_bow:'playBow',shy:'shy',yawn:'yawn',affection:'affection',alert:'alert',surprise:'surprise',nose_lick:'noseLick',shake:'shake',greet:'greet'};
+        const actionLabels={come:'正在走到你身边',sit:'正在坐下',lie_down:'正在趴下',stand:'正在站起来',wave:'正在挥爪',sniff:'正在闻闻',happy:'开心地回应你',wander:'开始自由活动',stop:'停下来等你',quiet:'安静地陪着你',curious:'歪着头认真听',ears:'竖起耳朵听一听',play_bow:'邀请你一起玩',shy:'有点害羞呢',yawn:'打个小哈欠',affection:'开心地蹭蹭',alert:'竖耳望一望',surprise:'咦，怎么啦',nose_lick:'舔舔小鼻子',shake:'抖抖毛',greet:'摇尾欢迎你'};
+        const expressiveKeys=DialogueActions.expressiveKeys;
+        function parsePetCommands(text,id,names){
+            const extra=id===currentPetId&&shibaExpression
+                ? Object.keys(expressiveKeys).filter(action=>actions[expressiveKeys[action]]) : [];
+            return DialogueActions.parseCommands(text,names,[...DialogueActions.baseActions,...extra]);
+        }
         const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
         async function actionWait(test,current,timeout=20000){
             const started=performance.now();
@@ -2404,7 +2409,7 @@ document.addEventListener('DOMContentLoaded', () => {
             onUserTranscript(text,pet,turn){
                 if(pet.id!==currentPetId||!turn||turn.epoch!==locomotionEpoch||
                    turn.commandToken!==dialogueRunner.serial||chatBusy)return false;
-                const plan=DialogueActions.parseCommands(text,[pet.name,SPECS[currentPetId].name]);
+                const plan=parsePetCommands(text,pet.id,[pet.name,SPECS[currentPetId].name]);
                 if(!plan.length)return false;
                 dialogueRunner.run(plan);
                 rewardIntimacy('chat');
@@ -2455,7 +2460,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(voiceUI.isActive())voiceUI.stop();
             const targetPet=currentPetId, targetEpoch=locomotionEpoch;
             historyEpoch++;dialogueRunner.cancel('正在认真听你说…');endDialogueHold();
-            const directPlan=DialogueActions.parseCommands(text,[SPECS[targetPet].displayName,SPECS[targetPet].name]);
+            const directPlan=parsePetCommands(text,targetPet,[SPECS[targetPet].displayName,SPECS[targetPet].name]);
             if(directPlan.length)dialogueRunner.run(directPlan);
             const commandToken=dialogueRunner.serial;
             chatBusy=true;chatSend.disabled=true;chatInput.value='';appendMsg('user',text);
