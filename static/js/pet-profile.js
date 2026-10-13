@@ -4,7 +4,7 @@
 (function () {
     'use strict';
 
-    var KEY = 'petProfilesV1';
+    var KEY = 'petProfilesV1:' + (window.COMPANION_SCOPE || 'legacy');
     var VALID = ['male', 'female', 'unspecified'];
 
     function loadAll() {

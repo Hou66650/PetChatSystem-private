@@ -9,7 +9,7 @@
 """
 import sqlite3
 
-from flask import g
+from flask import g, current_app
 
 from .config import Config
 
@@ -17,7 +17,7 @@ from .config import Config
 def get_db():
     """当前应用上下文复用同一个连接，请求结束自动关闭。"""
     if 'db' not in g:
-        g.db = sqlite3.connect(Config.DATABASE_PATH)
+        g.db = sqlite3.connect(current_app.config['DATABASE_PATH'], timeout=15)
         g.db.row_factory = sqlite3.Row
     return g.db
 

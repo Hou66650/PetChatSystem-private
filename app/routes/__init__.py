@@ -6,5 +6,6 @@ from .chat import bp as chat_bp
 from .reader import bp as reader_bp
 from .manager import bp as manager_bp
 from .realtime import bp as realtime_bp
+from .companion import bp as companion_bp
 
-ALL_BLUEPRINTS = (main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp)
+ALL_BLUEPRINTS = (main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)

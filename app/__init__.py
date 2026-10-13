@@ -42,6 +42,14 @@ def create_app(config_object=Config):
     )
 
     app.teardown_appcontext(close_db)
+    from .services import companion_service
+    with app.app_context():
+        companion_service.init_schema()
+
+    @app.context_processor
+    def _companion_scope():
+        return {'companion_scope': companion_service.browser_scope()}
+
 
     @app.before_request
     def load_logged_in_user():

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>我们的陪伴档案 · 宠物小窝</title>
+ <link rel="stylesheet" href="{{ url_for('static',filename='css/theme.css') }}">
+ <style>
+ *{box-sizing:border-box}body{margin:0;background:#fff8f0;color:#46392f;font-family:system-ui,sans-serif}main{max-width:1040px;margin:auto;padding:30px 24px 60px}a{color:#88532b}header{display:flex;justify-content:space-between;align-items:center;gap:20px}h1{font-size:30px;margin:26px 0 10px}h2{font-size:20px;margin:0 0 12px}p{line-height:1.7}.muted{color:#75685e;font-size:14px}button,select,input{font:inherit}button,a.button{cursor:pointer;border:1px solid #d9c8b8;background:white;color:#674a35;border-radius:10px;padding:9px 13px;text-decoration:none}button.primary{background:#ffad6f;color:#472a17;border-color:#ee9758}button:disabled{opacity:.5;cursor:wait}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #a46c39;outline-offset:3px}.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:20px;margin:24px 0}.card{padding:24px;border:1px solid #e7d9cc;border-radius:18px;background:#fffefa}.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.pet-heading{display:flex;align-items:center;gap:15px}.pet-heading img{width:66px;height:66px;border-radius:50%;object-fit:cover;background:#f3e6d3}.fact{padding:18px 0;border-bottom:1px solid #eee2d8}.fact:last-child{border:0}.fact label{display:block;font-size:12px;color:#77665a;margin-bottom:7px}.fact input{width:100%;padding:10px;border:1px solid #decebf;border-radius:8px;background:white;color:#43382f}.source{font-size:12px;color:#78685b;overflow-wrap:anywhere;margin:8px 0}.fact .toolbar{margin-top:10px}.tag{font-size:12px;background:#f5e7d9;border-radius:20px;padding:4px 9px}.add-form{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.add-form input{flex:1;min-width:150px;border:1px solid #d9c8b8;border-radius:8px;padding:10px}.add-form select{max-width:180px;border:1px solid #d9c8b8;border-radius:8px;padding:10px}.wide{grid-column:1/-1}#notice{min-height:24px;color:#845324;margin:10px 0}#notice.error{color:#ad3434}.danger{color:#a33b2e}.empty{padding:25px 0;color:#857567}.history-row{padding:10px 0;border-bottom:1px solid #eee2d8;white-space:pre-wrap;overflow-wrap:anywhere}.history-row small{display:block;color:#897665;margin-bottom:5px}details{margin-top:24px}summary{cursor:pointer} @media(max-width:680px){.grid{grid-template-columns:1fr}main{padding:20px 16px}.card{padding:18px}h1{font-size:25px}header{align-items:flex-start}}
+ </style>
+</head>
+<body><main>
+ <header><a href="/den">← 回到宠物小窝</a><span class="muted">v{{ app_version }}</span></header>
+ <h1>我们的陪伴档案</h1>
+ <p class="muted">直接和它聊天就会自动形成档案，语音和文字都可以。你的偏好会改变它的回应方式与小窝里的活动习惯。</p>
+ <div class="toolbar"><label for="pet-select">与谁的故事</label><select id="pet-select">{% for pet in pets %}<option value="{{ pet.id }}">{{ pet.name }}</option>{% endfor %}</select><button id="toggle-memory">读取中…</button></div>
+ <p id="identity" class="muted"></p><div id="notice" role="status" aria-live="polite"></div>
+ <div class="grid">
+  <section class="card"><h2>它眼中的你</h2><p class="muted">只记录你说过的事，不给你贴性格或健康标签。</p><div id="user-facts"></div></section>
+  <section class="card"><div class="pet-heading"><img id="pet-avatar" alt=""><div><h2 id="pet-name">你的伙伴</h2><span id="pet-species" class="tag"></span></div></div>
+   <p id="pet-style"></p><ul id="pet-rules" style="padding-left:20px;line-height:1.8"></ul><p id="pet-basis" class="muted"></p>
+   <div style="background:#f8eddf;padding:14px;border-radius:12px"><strong id="behavior-label"></strong><p id="behavior-summary"></p><p id="behavior-source" class="muted"></p></div>
+   <details><summary>原本的性格</summary><p id="pet-personality" class="muted"></p></details>
+   <div id="pet-facts"></div><p id="pet-count" class="muted"></p>
+  </section>
+  <section class="card wide"><h2>告诉它一件值得记住的事</h2><form id="add-form" class="add-form"><select id="category" aria-label="记忆分类"></select><input id="fact-value" maxlength="80" required placeholder="例如：叫我小林／更喜欢简短、安静的陪伴" aria-label="记忆内容"><button class="primary" type="submit">加入档案</button></form>
+   <p class="muted">编辑或忘记后，旧聊天不再用于生成回答；聊天记录仍可在下方单独查看和清除。新的对话可以建立新的记忆。</p>
+  </section>
+ </div>
+ <details id="history-panel"><summary>查看与这只宠物最近的60条聊天记录</summary><div id="history"></div><button id="clear-history">清除这只宠物的聊天记录</button></details>
+ <p class="muted">暂停后不读取长期档案，也不保存新的聊天或记忆。恢复后继续使用已有档案。</p>
+ <button id="clear-all" class="danger">清除我的全部记忆与聊天</button>
+</main>
+<script>window.COMPANION_PETS={{ pets | tojson }};</script>
+<script src="{{ url_for('static', filename='js/companion-profile.js') }}?v={{ app_version }}"></script>
+</body></html>

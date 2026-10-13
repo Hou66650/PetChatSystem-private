@@ -18,6 +18,8 @@ class RealtimeController {
   constructor(opts) {
     this.opts = opts || {};
     this.petId = opts.petId;
+    this.surface = opts.surface || 'chat';
+    this._generation = 0;
     this.petGender = opts.petGender || null;
     // synthetic=true：调试页合成语音注入模式——跳过麦克风/Worklet，
     // 由外部用 injectAudioChunk() 按 100ms 节奏喂 PCM16（含静音片）。
@@ -68,6 +70,8 @@ class RealtimeController {
   /** 启动整条链路：权限 → 采集 → 连接 → READY（synthetic 模式跳过权限与采集）。 */
   async start() {
     if (this.state !== 'IDLE' && this.state !== 'ERROR' && this.state !== 'STOPPED') return;
+    const generation = ++this._generation;
+    const current = () => generation === this._generation;
     let tPermission = 0;
     if (!this.synthetic) {
       this._setState('REQUESTING_PERMISSION');
@@ -83,28 +87,34 @@ class RealtimeController {
           sampleRate: 16000,
         };
         if (this.micDeviceId) audioConstraints.deviceId = { exact: this.micDeviceId };
-        this._stream = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
           audio: audioConstraints,
           video: false,
         });
+        if(!current()) { stream.getTracks().forEach(t=>t.stop()); return; }
+        this._stream=stream;
         // 记录实际使用的设备名（诊断展示）
         try {
           const track = this._stream.getAudioTracks()[0];
           this.micLabel = (track && track.label) || '';
         } catch (e) { /* ignore */ }
       } catch (e) {
+        if(!current()) return;
         // 指定设备失败时回退系统默认重试一次（设备可能被拔掉）
         if (this.micDeviceId) {
           this.micDeviceId = null;
           try {
-            this._stream = await navigator.mediaDevices.getUserMedia({
+            const stream = await navigator.mediaDevices.getUserMedia({
               audio: {
                 channelCount: 1, echoCancellation: true, noiseSuppression: true,
                 autoGainControl: true, sampleRate: 16000,
               },
               video: false,
             });
+            if(!current()) { stream.getTracks().forEach(t=>t.stop()); return; }
+        this._stream=stream;
           } catch (e2) {
+            if(!current()) return;
             this._failPermission(e2);
             return;
           }
@@ -120,6 +130,7 @@ class RealtimeController {
         const AC = window.AudioContext || window.webkitAudioContext;
         this._ctx = new AC({ sampleRate: 16000 });
         await this._ctx.audioWorklet.addModule('/static/js/realtime/audio-capture-worklet.js?v=2');
+        if(!current()) return;
         const src = this._ctx.createMediaStreamSource(this._stream);
         this._node = new AudioWorkletNode(this._ctx, 'petchat-capture');
         this._node.port.onmessage = (e) => {
@@ -130,9 +141,10 @@ class RealtimeController {
         };
         src.connect(this._node); // 不连 destination：避免把麦克风外放
       } catch (e) {
+        if(!current()) return;
+        this.stop();
         this._setState('ERROR', { reason: 'capture_init_failed', error: String(e) });
         this.onError({ code: 'capture_init_failed', message: '音频采集初始化失败' });
-        this.stop();
         return;
       }
     }
@@ -142,6 +154,7 @@ class RealtimeController {
     this._client = new RealtimeClient({
       petId: this.petId,
       petGender: this.petGender,
+      surface: this.surface,
       player: this._player,
       onEvent: (type, data) => this._onClientEvent(type, data),
       onStatus: (status, info) => {
@@ -150,15 +163,19 @@ class RealtimeController {
       onMetrics: (m) => { this.metrics = Object.assign({}, m); this.onMetrics(this.metrics); },
     });
 
+    const client = this._client;
     try {
-      await this._client.fetchSession();
-      await this._client.connect(); // resolve 于 session.updated
+      await client.fetchSession();
+      if(!current()) { client.close(); return; }
+      await client.connect(); // resolve 于 session.updated
     } catch (e) {
+      if(!current()) return;
+      this.stop();
       this._setState('ERROR', { reason: 'connect_failed', error: String(e) });
       this.onError({ code: 'connect_failed', message: `实时连接失败：${e.message || e}` });
-      this.stop();
       return;
     }
+    if(!current()) return;
 
     const ready = { t_permission_ms: tPermission, t_ws_connect_ms: this._client.metrics.t_ws_connect_ms,
                     t_session_ready_ms: this._client.metrics.t_session_ready_ms };
@@ -181,7 +198,7 @@ class RealtimeController {
     switch (type) {
       case 'input_audio_buffer.speech_started':
         this._setState('USER_SPEAKING');
-        this.onTranscripts({ userText: '', assistantText: '', done: false });
+        this.onTranscripts({ userText: '', assistantText: '', done: false, reset:true, turnId:data.turnId });
         break;
       case 'input_audio_buffer.speech_stopped':
         if (this.state === 'USER_SPEAKING') this._setState('AI_THINKING');
@@ -200,12 +217,15 @@ class RealtimeController {
         this.onTranscripts({ assistantDelta: data.delta || '', done: false });
         break;
       case 'round.done':
-        this.onTranscripts({ userText: data.userText, assistantText: data.assistantText, done: true });
+        this.onTranscripts({ ...data, done: true });
         break;
       case 'session.updated':
         if (this.state === 'RECONNECTING') this._setState('READY');
         break;
       case 'server.error':
+        this.stop();
+        this._setState('ERROR', {reason:'server_error'});
+        this.onError({code:data.code||'server_error',message:'语音服务暂时不可用，请结束后重试。'});
         break;
       default:
         break;
@@ -225,6 +245,7 @@ class RealtimeController {
 
   /** 结束会话：销毁 WS、播放器、采集。 */
   stop() {
+    ++this._generation;
     if (this._watchTimer) { clearInterval(this._watchTimer); this._watchTimer = null; }
     if (this._client) { this._client.close(); this._client = null; }
     if (this._player) { this._player.destroy(); this._player = null; }

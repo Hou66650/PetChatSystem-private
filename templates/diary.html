@@ -167,7 +167,7 @@
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/html2canvas.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/jspdf.umd.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/diary.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/diary.js') }}?v={{ app_version }}"></script>
     <script>
     // 标题栏日期
     (function () {

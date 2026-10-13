@@ -91,16 +91,15 @@ class GLMClient:
     # ------------------------------------------------------------------
     # 对外：对话 / 看图 / 画图
     # ------------------------------------------------------------------
-    def chat(self, messages, model=None, temperature=1.0):
+    def chat(self, messages, model=None, temperature=1.0, json_mode=False):
         """文本对话，返回助手回复文本。model 必须在白名单内。"""
         model = model or self.models[0]
         if model not in self.models:
             raise LLMError(f'模型 {model} 不在允许列表 {self.models} 中（可在 .env 的 GLM_MODELS 扩展）')
-        data = self._post('/chat/completions', {
-            'model': model,
-            'messages': messages,
-            'temperature': temperature,
-        })
+        payload = {'model': model, 'messages': messages, 'temperature': temperature}
+        if json_mode:
+            payload.update(response_format={'type':'json_object'}, thinking={'type':'disabled'}, max_tokens=1400)
+        data = self._post('/chat/completions', payload)
         return self._content(data)
 
     def describe_image(self, image_bytes, mime='image/png', prompt=None):

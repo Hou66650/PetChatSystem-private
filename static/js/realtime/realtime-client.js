@@ -19,6 +19,7 @@ class RealtimeClient {
    */
   constructor(opts) {
     this.petId = opts.petId;
+    this.surface = opts.surface || 'chat';
     this.petGender = opts.petGender || null;
     this.player = opts.player;
     this.onEvent = opts.onEvent || function () {};
@@ -36,6 +37,10 @@ class RealtimeClient {
 
     // 一轮对话的累计器
     this._round = { userText: '', assistantText: '', responseId: '', itemId: '' };
+
+    this._turnId = 0;
+    this._items = new Map();
+    this._responses = new Map();
 
     // 延迟埋点（方案 §8，只记耗时不记音频）
     this.metrics = {
@@ -58,7 +63,7 @@ class RealtimeClient {
     const r = await fetch('/api/realtime/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ petId: this.petId, petGender: this.petGender }),
+      body: JSON.stringify({ petId: this.petId, petGender: this.petGender, surface: this.surface }),
       cache: 'no-store',
     });
     if (!r.ok) {
@@ -75,6 +80,7 @@ class RealtimeClient {
   /** 建立 WS 连接并完成 session.update。resolve 于 session.updated。 */
   connect() {
     return new Promise((resolve, reject) => {
+      if (this._closedByUser) { reject(new Error('closed')); return; }
       let settled = false;
       const done = (err) => {
         if (settled) return;
@@ -109,7 +115,9 @@ class RealtimeClient {
   /** 服务端事件分发：协议机制内部消化，业务通过 onEvent 透出。 */
   _dispatch(data, connectDone) {
     const type = data.type || '';
-    this.onEvent(type, data);
+    if (this._closedByUser) return;
+    if (type === 'input_audio_buffer.speech_started') { this._turnId++; this._resetRound(); }
+    this.onEvent(type, {...data, turnId:this._turnId});
     switch (type) {
       case 'session.created':
         this._sid = (data.session && data.session.id) || '';
@@ -129,7 +137,6 @@ class RealtimeClient {
         this.metrics.interrupt_latency_ms = Math.round(performance.now() - t0);
         this.metrics.interrupt_cleared_ms = Math.round(remainSec * 1000);
         this.onMetrics(this.metrics);
-        this._resetRound();
         break;
       }
       case 'input_audio_buffer.speech_stopped':
@@ -139,12 +146,17 @@ class RealtimeClient {
         break;
       case 'input_audio_buffer.committed':
         this._round.itemId = data.item_id || '';
+        this._items.set(this._round.itemId, this._round);
+        if(this._items.size>40) this._items.delete(this._items.keys().next().value);
         break;
       case 'conversation.item.input_audio_transcription.completed':
-        this._round.userText = data.transcript || '';
+        { const round = this._items.get(data.item_id) || this._round;
+          round.userText = data.transcript || ''; this._finishRound(round); }
         break;
       case 'response.created':
         this._round.responseId = (data.response && data.response.id) || '';
+        this._responses.set(this._round.responseId, this._round);
+        if(this._responses.size>40) this._responses.delete(this._responses.keys().next().value);
         break;
       case 'response.audio.delta': {
         if (!this._seenFirstAudio) {
@@ -169,17 +181,14 @@ class RealtimeClient {
             this.onMetrics(this.metrics);
           }
         }
-        this._round.assistantText += data.delta || '';
+        const round = this._responses.get(data.response_id) || this._round;
+        round.assistantText += data.delta || '';
         break;
       }
       case 'response.done': {
-        const final = {
-          userText: this._round.userText,
-          assistantText: this._round.assistantText,
-          itemId: this._round.itemId,
-          responseId: this._round.responseId,
-        };
-        this.onEvent('round.done', final);
+        const round = this._responses.get(data.response && data.response.id) || this._round;
+        round.done = true;
+        this._finishRound(round);
 
         // 播完队列里的余量即回到 READY（由 controller 观察 player 状态）
         break;
@@ -210,6 +219,12 @@ class RealtimeClient {
         voice: c.voice || 'default',
       },
     });
+  }
+
+  updateInstructions(instructions) {
+    if (!this._session || typeof instructions !== 'string') return false;
+    this._session.config.instructions = instructions;
+    return this._send({type:'session.update', session:{instructions}});
   }
 
   _send(obj) {
@@ -246,6 +261,7 @@ class RealtimeClient {
       this._reconnectTimer = null;
       try {
         await this.fetchSession();          // 重新取 JWT（旧的可能已过期）
+        if(this._closedByUser) return;
         await this.connect();               // session.created → session.update → ready
         this._reconnectAttempts = 0;
       } catch (e) {
@@ -266,7 +282,14 @@ class RealtimeClient {
   }
 
   _resetRound() {
-    this._round = { userText: '', assistantText: '', responseId: '', itemId: '' };
+    this._round = { userText: '', assistantText: '', responseId: '', itemId: '', turnId:this._turnId };
+  }
+
+  _finishRound(round) {
+    // ASR may arrive after response.done. Archive only once both are available.
+    if (!round.done || !round.userText || round.emitted) return;
+    round.emitted = true;
+    this.onEvent('round.done', {...round});
   }
 }
 

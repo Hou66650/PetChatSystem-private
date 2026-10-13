@@ -28,7 +28,10 @@ def reader_login():
         elif not check_password_hash(user['pwd'], request.form['password']):
             error = '用户名或密码不正确'
         else:
+            session.clear()
             session['user_id'] = user['user_name']
+            session['auth_kind'] = 'user'
+            session.permanent = True
             return redirect(url_for('reader.reader'))
     return render_template('reader_login.html', error=error)
 
@@ -69,7 +72,9 @@ def manager_login():
         elif not check_password_hash(manager['password'], request.form['password']):
             error = '用户名或密码不正确'
         else:
+            session.clear()
             session['user_id'] = request.form['user_id']
+            session['auth_kind'] = 'manager'
             return redirect(url_for('manager.manager'))
     return render_template('manager_login.html', error=error)
 

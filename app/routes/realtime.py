@@ -34,6 +34,7 @@ def _rate_limited(ip):
 @bp.route('/api/realtime/session', methods=['POST'])
 def realtime_session():
     data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict): return jsonify(error='invalid request'), 400
     try:
         pet_id = int(data.get('petId', 1))
     except (TypeError, ValueError):
@@ -45,7 +46,7 @@ def realtime_session():
         return jsonify({'error': 'rate limited, retry later'}), 429
     started = time.monotonic()
     try:
-        payload = build_realtime_session(pet_id, gender)
+        payload = build_realtime_session(pet_id, gender, 'den' if data.get('surface') == 'den' else 'chat')
     except RealtimeError as e:
         # 日志只记元信息，严禁 token / API Key / 人设正文
         current_app.logger.info('realtime session petId=%s status=%s', pet_id, e.status)

@@ -44,7 +44,7 @@ def about():
 
 @bp.route('/logout')
 def logout():
-    session.pop('user_id', None)
+    session.clear()
     return redirect(url_for('main.index'))
 
 

@@ -30,6 +30,13 @@
     // onRound(userText, assistantText, pet)：仅在一轮完整结束时调用一次
     this.onRound = opts.onRound || function () {};
     this.onError = opts.onError || function () {};
+    this.onState = opts.onState || function () {};
+    this.onTurnStart = opts.onTurnStart || function () {};
+    this.onSaved = opts.onSaved || function () {};
+    this.surface = opts.surface || 'chat';
+    this._generation = 0;
+    this._restartTimer = null;
+    this._saveQueue = Promise.resolve();
     this.controller = null;
     this._panel = null;
     this._aiText = '';
@@ -42,6 +49,8 @@
       '#rt-panel{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;z-index:320;',
       'width:min(560px,92vw);background:#fffdf8;border:1px solid #eadfd2;border-radius:16px;',
       'box-shadow:0 8px 30px rgba(74,59,50,.18);padding:14px 16px;font-size:14px;color:#4a3b32;}',
+      '#rt-panel[data-surface=den]{left:18px;transform:none;width:min(360px,92vw);}',
+      '@media(max-width:760px){#rt-panel[data-surface=den]{left:50%;transform:translateX(-50%);max-height:42vh;overflow:auto;}}',
       '#rt-panel[hidden]{display:none;}',
       '#rt-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}',
       '#rt-dot{width:10px;height:10px;border-radius:50%;background:#f59e0b;flex:none;}',
@@ -79,6 +88,7 @@
     if (this._panel) return this._panel;
     var p = document.createElement('div');
     p.id = 'rt-panel';
+    p.dataset.surface=this.surface;
     p.setAttribute('role', 'region');
     p.setAttribute('aria-label', '实时语音对话');
     p.hidden = true;
@@ -91,6 +101,7 @@
       '<button type="button" id="rt-mute">🔇 静音</button>' +
       '<button type="button" id="rt-stop" class="danger">■ 结束对话</button>' +
       '</div>' +
+      '<div id="rt-memory" role="status" style="margin-top:8px;font-size:12px;color:#8a7666"></div>' +
       '<div id="rt-metrics"></div>';
     document.body.appendChild(p);
     var self = this;
@@ -104,8 +115,7 @@
       if (!this.value) return;
       try { localStorage.setItem('rt_mic_id', this.value); } catch (e) { /* ignore */ }
       p.querySelector('#rt-ai').textContent = '正在切换到 ' + (this.options[this.selectedIndex] || {}).textContent + ' …';
-      self.stop();
-      setTimeout(function () { self.start(this.value); }.bind(this), 350);
+      self._restart(this.value);
     });
     this._panel = p;
     return p;
@@ -116,6 +126,7 @@
 
   /** 权限到位后枚举输入设备填充下拉；默认设备是虚拟麦克风时自动切换到真实麦克风。 */
   RealtimeUI.prototype._populateDevices = async function () {
+    var generation = this._generation;
     var panel = this._panel;
     var sel = panel && panel.querySelector('#rt-dev');
     if (!sel) return;
@@ -127,6 +138,7 @@
       sel.innerHTML = '<option>设备列表不可用</option>';
       return;
     }
+    if(generation !== this._generation || !this.isActive()) return;
     sel.innerHTML = '';
     var V = RealtimeUI._VIRTUAL_MIC;
     devs.forEach(function (d) {
@@ -159,7 +171,7 @@
           '检测到浏览器默认用了虚拟麦克风（' + curLabel + '），已自动切换到「' +
           real.label + '」。现在可以直接说话了。';
         var self2 = this;
-        setTimeout(function () { self2.stop(); setTimeout(function () { self2.start(real.deviceId); }, 300); }, 500);
+        self2._restart(real.deviceId);
       }
     }
   };
@@ -213,12 +225,19 @@
   };
 
   RealtimeUI.prototype.isActive = function () {
-    return !!(this.controller && this.controller._client);
+    return !!(this.controller && !['IDLE','ERROR','STOPPED'].includes(this.controller.state));
   };
 
   RealtimeUI.prototype.start = async function (deviceId) {
     if (this.isActive()) return;
+    this.stop();
+    var generation = ++this._generation;
+    var pet = Object.assign({}, this.getPet());
+    var gender = this.getGender();
+    var turnContexts = new Map();
+    var latestTurn = 0;
     var self = this;
+    var current = function(){return generation === self._generation;};
     var panel = this._ensurePanel();
     // 设备优先级：手动切换 > 记忆选择 > 系统默认
     var micId = deviceId || null;
@@ -226,6 +245,8 @@
       try { micId = localStorage.getItem('rt_mic_id') || null; } catch (e) { /* ignore */ }
     }
     panel.hidden = false;
+    panel.querySelector('#rt-stop').textContent='■ 结束对话';
+    panel.querySelector('#rt-mute').textContent='🔇 静音';
     this._aiText = '';
     this._silentFrom = 0;
     this._silentHinted = false;
@@ -233,17 +254,23 @@
     panel.querySelector('#rt-user').textContent = '—';
     panel.querySelector('#rt-ai').textContent = '正在开启…';
     panel.querySelector('#rt-metrics').textContent = '';
+    panel.querySelector('#rt-memory').textContent = '';
     panel.querySelector('#rt-lvdb').textContent = '— dB';
     panel.querySelector('#rt-lvbar i').style.width = '0';
 
-    this.controller = new RealtimeController({
-      petId: this.getPet().id,
-      petGender: this.getGender(),
+    var controller = new RealtimeController({
+      petId: pet.id,
+      petGender: gender,
+      surface: this.surface,
       micDeviceId: micId,
-      onLevel: function (db) { self._renderLevel(db); },
+      onLevel: function (db) { if(current()) self._renderLevel(db); },
       onState: function (s, extra) {
+        if(!current()) return;
         self._renderState(s, extra);
+        self.onState(s, extra, pet);
+        if(s === 'USER_SPEAKING') self._aiText='';
         if (s === 'ERROR') {
+          panel.hidden=false;
           var btn = panel.querySelector('#rt-stop');
           btn.textContent = '✍️ 切换文字聊天';
           panel.querySelector('#rt-ai').textContent =
@@ -252,6 +279,14 @@
         if (s === 'STOPPED') panel.hidden = true;
       },
       onTranscripts: function (t) {
+        if(!current()) return;
+        if(t.reset) {
+          latestTurn=t.turnId;
+          turnContexts.set(t.turnId,self.onTurnStart(pet));
+          if(turnContexts.size>40) turnContexts.delete(turnContexts.keys().next().value);
+          panel.querySelector('#rt-user').textContent='正在听…';
+          panel.querySelector('#rt-ai').textContent='';
+        }
         if (t.assistantDelta != null) {
           self._aiText += t.assistantDelta;
           panel.querySelector('#rt-ai').textContent = self._aiText || '…';
@@ -259,21 +294,59 @@
         if (t.userText) panel.querySelector('#rt-user').textContent = '你：' + t.userText;
         if (t.done) {
           // 一轮完整结束：增量字幕结算，交由页面写历史（一条用户 + 一条宠物）
-          var pet = self.getPet();
+          var context = turnContexts.get(t.turnId);
           if (t.userText || t.assistantText) {
-            try { self.onRound(t.userText || '', t.assistantText || '(……)', pet); }
+            try { self.onRound(t.userText || '', t.assistantText || '', pet); }
             catch (e) { console.warn('onRound error', e); }
+          }
+          if(t.userText) {
+            var completedAt=performance.now();
+            panel.querySelector('#rt-memory').textContent='正在整理这一轮的记忆'+(self.surface==='den'?'与动作':'')+'…';
+            var revision=controller._client?controller._client._session.profileRevision:null;
+            var scope=controller._client?controller._client._session.profileScope:null;
+            var requestId=crypto.randomUUID();
+            self._saveQueue=self._saveQueue.catch(function(){}).then(async function(){
+              // Completed turns still persist after hang-up; scope/revision guard forgotten or changed accounts.
+              var r=await fetch('/api/companion/voice-round',{
+                method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({message:t.userText,assistantText:t.assistantText||'…',petId:pet.id,
+                  petGender:gender,surface:self.surface,requestId,profileRevision:revision,profileScope:scope})
+              });
+              var data=await r.json();
+              if(!r.ok){
+                if(r.status===409 && current()){
+                  self.stop();self.onError({code:'profile_changed',message:data.error});return;
+                }
+                throw Error(data.error||'这轮语音暂未保存');
+              }
+              if(!current()) return;
+              if(controller._client){
+                if(data.profile.revision!==revision){
+                  // Forget requires a fresh server conversation, not just new instructions.
+                  self._restart();
+                } else controller._client.updateInstructions(data.instructions);
+              }
+              var timely=performance.now()-completedAt<30000;
+              if(t.turnId===latestTurn){
+                panel.querySelector('#rt-memory').textContent=!timely&&data.actions?.length?'这轮动作等待过久，已取消。可以再说一次。':data.memorySaved?'已记住你的偏好，陪伴方式已更新':data.profile.enabled===false?'长期记忆已暂停':'这轮对话已保存';
+              }
+              self.onSaved(data,pet,context,t.turnId===latestTurn && current() && timely);
+            }).catch(function(e){if(current()){panel.querySelector('#rt-memory').textContent='这轮语音暂未保存，请稍后再试';self.onError({code:'archive_failed',message:e.message});}});
           }
           self._aiText = '';
         }
       },
-      onMetrics: function (m) { self._renderMetrics(m); },
+      onMetrics: function (m) { if(current())self._renderMetrics(m); },
       onError: function (e) {
+        if(!current()) return;
         self._lastErrMsg = (e && e.message) || '';
+        panel.querySelector('#rt-ai').textContent=self._lastErrMsg;
         self.onError(e);
       },
     });
-    await this.controller.start();
+    this.controller=controller;
+    await controller.start();
+    if(!current()) return;
     // 开启完成后把占位文案换掉，避免一直显示"正在开启…"
     var aiEl = panel.querySelector('#rt-ai');
     if (aiEl.textContent === '正在开启…') aiEl.textContent = '我在听——直接说话就好，说完它自动回答';
@@ -282,10 +355,12 @@
   };
 
   RealtimeUI.prototype.stop = function () {
+    clearTimeout(this._restartTimer);this._restartTimer=null;
     if (this.controller) {
       this.controller.stop();
       this.controller = null;
     }
+    ++this._generation;
     if (this._panel) this._panel.hidden = true;
   };
 
@@ -297,9 +372,13 @@
   /** 切换宠物后调用：销毁旧会话并按新宠物重建（方案 §7）。 */
   RealtimeUI.prototype.restartForPet = function () {
     if (!this.isActive()) return;
+    this._restart();
+  };
+
+  RealtimeUI.prototype._restart = function(deviceId){
     this.stop();
-    var self = this;
-    setTimeout(function () { self.start(); }, 300);
+    var self=this;
+    this._restartTimer=setTimeout(function(){self._restartTimer=null;self.start(deviceId);},300);
   };
 
   window.RealtimeUI = RealtimeUI;

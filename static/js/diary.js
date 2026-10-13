@@ -5,7 +5,7 @@
 (function () {
     'use strict';
 
-    var HISTORY_KEY = 'chatHistory';
+    var serverHistory = [];
     var PET_NAMES = { 1: '球球', 2: '雪球', 3: '团子', 4: '大壮' };
     var PET_SPECIES = { 1: '柴犬', 2: '哈士奇', 3: '猫', 4: '德牧' };   // 旧记录 sender 兜底推断
     var DATE_LABELS = { all: '全部日期', '7': '最近 7 天', '30': '最近 30 天', legacy: '历史未知日期' };
@@ -55,15 +55,8 @@
         return String(e.sender || (pid != null ? PET_SPECIES[pid] : '') || '宠物');
     }
 
-    function loadHistory() {
-        try {
-            var arr = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-            return Array.isArray(arr) ? arr : [];
-        } catch (e) { return []; }
-    }
-    function saveHistory(arr) {
-        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(arr)); } catch (e) {}
-    }
+    function loadHistory() { return serverHistory; }
+    function saveHistory(arr) { serverHistory=arr; }
 
     // ---------- 筛选 ----------
     function currentFilters() {
@@ -156,8 +149,9 @@
         del.className = 'diary-del';
         del.textContent = '删除';
         del.setAttribute('aria-label', '删除这条记录');
-        del.addEventListener('click', function () {
+        del.addEventListener('click', async function () {
             if (!confirm('确定删除这条日记吗？删除后无法恢复。')) return;
+            try { var r=await fetch('/api/companion/history/'+e.serverId,{method:'DELETE',headers:{'Content-Type':'application/json'},body:'{}'});if(!r.ok)throw Error('delete');}catch(err){toast('暂时无法删除，请稍后重试','error');return;}
             var arr = loadHistory();
             var idx = -1;
             for (var i = 0; i < arr.length; i++) {
@@ -269,5 +263,7 @@
         render();
     });
 
-    render();
+    fetch('/api/companion/history').then(function(r){if(!r.ok)throw Error('history');return r.json();}).then(function(d){
+        serverHistory=d.messages.map(function(m){return {serverId:m.id,localId:'server-'+m.id,role:m.role,petId:m.petId,message:m.content,createdAt:m.created_at,ts:new Date(m.created_at).toLocaleTimeString()};});render();
+    }).catch(function(){toast('历史记录暂时未能恢复','error');});
 })();

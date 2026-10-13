@@ -1,72 +1,60 @@
-# -*- coding: utf-8 -*-
-"""聊天编排：角色提示词 + 历史裁剪 + 调用 GLM。
+"""Dialogue, server-owned memory and validated behavior plans share one model call."""
+import uuid
+from urllib.parse import urlsplit
 
-旧版的两个隐性 bug 在这里一并修复：
-1. convert_to_openai_messages 把所有非 'w' 的 sender（包括 AI 的自定义名）
-   一律映射成 user 角色，导致"记忆"里的 AI 回复全被当成用户发言；
-   现在前端历史带 role 字段，后端只认 user/assistant，其余丢弃。
-2. 全量历史无限送入，长对话会撑爆 token；现在按 HISTORY_LIMIT 截断。
-"""
-from flask import current_app
+from flask import current_app, request
 
 from ..config import Config
 from ..llm import pets as pet_registry
 from ..llm.client import LLMError
+from . import companion_service as memory
 
 
 def _sanitize_history(history):
-    """清洗前端聊天历史：只保留带合法 role 的条目，截断条数与单条长度。"""
-    if not isinstance(history, list):
-        return []
-    msgs = []
-    for entry in history:
-        if not isinstance(entry, dict):
-            continue
-        role = entry.get('role')
-        content = str(entry.get('message') or entry.get('content') or '').strip()
-        if role not in ('user', 'assistant') or not content:
-            continue
-        msgs.append({'role': role, 'content': content[:Config.MAX_MESSAGE_CHARS]})
-    return msgs[-Config.HISTORY_LIMIT:]
+    if not isinstance(history,list): return []
+    return [{'role':r['role'],'content':str(r.get('message') or r.get('content') or '')[:Config.MAX_MESSAGE_CHARS]}
+            for r in history if isinstance(r,dict) and r.get('role') in ('user','assistant')][-Config.HISTORY_LIMIT:]
 
 
-def handle_chat(data):
-    """处理 /get_gpt_response。返回 (payload, http_status)。"""
-    if not isinstance(data, dict):
-        return {'error': '请求格式错误'}, 400
-
-    user_message = str(data.get('message') or '').strip()
-    if not user_message:
-        return {'error': '请输入消息内容。'}, 400
-
-    # 宠物编号白名单加载，非法编号回落到 1 号宠物
+def handle_chat(data, observed_reply=None):
+    if not isinstance(data,dict): return {'error':'请求格式错误'},400
+    origin=request.headers.get('Origin')
+    if (origin and urlsplit(origin).netloc != request.host) or request.headers.get('Sec-Fetch-Site')=='cross-site':
+        return {'error':'请在本站发送消息'},403
+    if not isinstance(data.get('message'),str) or not data['message'].strip():
+        return {'error':'请输入消息内容。'},400
+    message=data['message'].strip()[:Config.MAX_MESSAGE_CHARS]
+    try: pet=pet_registry.get_pet(data.get('petId',1))
+    except LookupError: return {'error':'宠物不存在'},400
+    gender=data.get('petGender')
+    if gender not in ('male','female'): gender=None
+    surface='den' if data.get('surface')=='den' else 'chat'
+    owner=memory.owner_key(); state=memory.settings(owner)
+    if observed_reply is not None and (data.get('profileRevision', state['revision']) != state['revision']
+            or data.get('profileScope', memory.browser_scope()) != memory.browser_scope()):
+        return {'error':'档案已更新，这轮旧语音未写入，请重新开始通话。'},409
+    request_id=data.get('requestId')
+    if not isinstance(request_id,str) or not 8<=len(request_id)<=80: request_id=uuid.uuid4().hex
+    from ..db import get_db
+    previous=get_db().execute("SELECT content FROM companion_messages WHERE owner=? AND pet_id=? AND request_id=? AND role='assistant'",(owner,pet['id'],request_id)).fetchone()
+    if previous:
+        return {'reply':previous['content'],'pet':pet_registry.public_info(pet),'actions':[],
+                'duplicate':True,'profile':memory.profile(owner,pet['id'])},200
+    messages=[{'role':'system','content':pet_registry.build_system_prompt(pet,gender)+memory.planner_prompt(owner,pet['id'],surface)}]
+    if state['enabled']:
+        messages += [{'role':r['role'],'content':r['content']} for r in memory.history(owner,pet['id'],for_prompt=True)]
+    # Browser chatHistory and body userId are deliberately ignored: account isolation is server-owned.
+    messages.append({'role':'user','content':message})
     try:
-        pet = pet_registry.get_pet(data.get('petId', 1))
-    except LookupError:
-        pet = pet_registry.get_pet(1)
-
-    model = data.get('model') or Config.GLM_MODELS[0]
-    client = current_app.extensions['llm']
-
-    # 性别白名单（S1-09）：只有 male/female 进入 prompt，其余（含任意长字符串/对象）一律丢弃
-    gender = data.get('petGender')
-    if gender not in ('male', 'female'):
-        gender = None
-
-    messages = [{'role': 'system', 'content': pet_registry.build_system_prompt(pet, gender)}]
-    messages += _sanitize_history(data.get('chatHistory'))
-    messages.append({'role': 'user', 'content': user_message[:Config.MAX_MESSAGE_CHARS]})
-
-    try:
-        reply = client.chat(messages, model=model)
-    except LLMError as e:
-        current_app.logger.error('GLM 调用失败: %s', e)
-        # 限流是瞬时的：明确告诉用户稍等再试，避免误以为服务坏了
-        if '429' in str(e):
-            return {'error': '当前聊天的人有点多，请几秒后再试一下'}, 503
-        return {'error': f'AI 服务暂时不可用，请稍后再试（{e}）'}, 503
-
-    return {
-        'reply': reply,
-        'pet': pet_registry.public_info(pet),
-    }, 200
+        raw=current_app.extensions['llm'].chat(messages,model=data.get('model') or Config.GLM_MODELS[0],temperature=.4,json_mode=True)
+    except LLMError:
+        current_app.logger.warning('Companion model request failed')
+        return {'error':'AI 服务暂时不可用，请稍后重试'},503
+    plan=memory.decode_plan(raw,message,surface)
+    if observed_reply is not None: plan['reply']=observed_reply
+    if not memory.save_turn(owner,pet['id'],request_id,message,plan,state['revision']):
+        return {'error':'陪伴档案刚刚发生变化，请重新发送这条消息。'},409
+    return {'reply':plan['reply'],'pet':pet_registry.public_info(pet),'actions':plan['actions'],
+            'profile':memory.profile(owner,pet['id']),
+            'memorySaved':bool(state['enabled'] and plan['memories']),
+            'requestId':request_id},200

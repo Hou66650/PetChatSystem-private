@@ -336,11 +336,12 @@
     <script src="{{ url_for('static', filename='js/vendor/html2canvas.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/jspdf.umd.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/share-card.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/pet-profile.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/realtime/pcm-player.js') }}?v=2"></script>
-    <script src="{{ url_for('static', filename='js/realtime/realtime-client.js') }}?v=2"></script>
-    <script src="{{ url_for('static', filename='js/realtime/realtime-controller.js') }}?v=2"></script>
-    <script src="{{ url_for('static', filename='js/realtime/realtime-ui.js') }}?v=2"></script>
+    <script>window.COMPANION_SCOPE={{ companion_scope | tojson }};</script>
+    <script src="{{ url_for('static', filename='js/pet-profile.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/realtime/pcm-player.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/realtime/realtime-client.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/realtime/realtime-controller.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/realtime/realtime-ui.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/pet-sounds.js') }}?v=1"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
@@ -355,9 +356,9 @@
         const MODEL_NAMES = { 'glm-4.5-flash': '标准（推荐）' };  // 模型友好名映射
 
         // ---------- 常量 ----------
-        const HISTORY_KEY = 'chatHistory';      // 沿用旧 key，日记页同源读取
-        const AVATAR_KEY = 'customAvatar';
-        const PREFS_KEY = 'userPrefs';
+        const HISTORY_KEY = 'chatHistory:' + window.COMPANION_SCOPE;      // 沿用旧 key，日记页同源读取
+        const AVATAR_KEY = 'customAvatar:' + window.COMPANION_SCOPE;
+        const PREFS_KEY = 'userPrefs:' + window.COMPANION_SCOPE;
         const HISTORY_CAP = 50;
         const GREETINGS = {
             1: '汪！我是球球，一只超活泼的柴犬！今天想和我聊点什么呀？',
@@ -384,6 +385,14 @@
 
         // ---------- 实时语音（P0）：面板与状态机见 static/js/realtime/ ----------
         const rtUI = new RealtimeUI({
+            surface:'chat',
+            onState(state){
+                const active=!['ERROR','STOPPED','IDLE'].includes(state);
+                $('voice-btn').classList.toggle('on',active);
+                $('voice-btn').setAttribute('aria-pressed',String(active));
+                if(active)stopSpeaking();
+            },
+            onError:e=>toast(e.message||'语音暂不可用','info'),
             getPet: () => currentPet(),
             getGender: () => (window.PetProfile ? PetProfile.promptValue(PetProfile.get(currentPet().id).gender) : null),
             // 一轮语音对话完整结束才落历史：一条用户消息 + 一条宠物消息（与 doSend 同结构）
@@ -401,19 +410,16 @@
                     appendHtml(bubbleHtml(aRow));
                 }
                 if (userText || aiText) saveHistory();
+
             },
         });
+        if(window.BroadcastChannel){const memoryChannel=new BroadcastChannel('companion-memory:'+window.COMPANION_SCOPE);memoryChannel.onmessage=()=>{if(rtUI.isActive())rtUI.stop();};}
         $('voice-btn').addEventListener('click', () => {
             rtUI.toggle();
             $('voice-btn').classList.toggle('on', rtUI.isActive());
         });
-        const rtVoiceBtnSync = setInterval(() => {
-            const on = rtUI.isActive();
-            if ($('voice-btn').classList.contains('on') !== on) {
-                $('voice-btn').classList.toggle('on', on);
-            }
-            if (!on && !rtUI._panel) clearInterval(rtVoiceBtnSync);
-        }, 800);
+        window.addEventListener('pagehide',()=>rtUI.stop());
+        window.__chatVoice=rtUI;
 
         // ---------- 状态 ----------
         let currentPetIndex = Math.max(0, PETS.findIndex(p => p.id === INIT_PET));
@@ -455,7 +461,7 @@
             lsSet(HISTORY_KEY, JSON.stringify(arr));
         }
 
-        let history = loadHistory();
+        let history = []; // Server-owned history prevents cross-account browser leakage.
 
         // ---------- 工具 ----------
         function escapeHtml(s) {
@@ -830,7 +836,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message,
+                        message, requestId:crypto.randomUUID(), surface:'chat',
                         chatHistory: history.slice(0, -1),   // 不含刚发的这条，后端会拼
                         model: prefs.model,
                         petId: pet.id,
@@ -929,8 +935,9 @@
             renderStrip();
             toast('已恢复默认头像', 'success');
         });
-        $('btn-clear-history').addEventListener('click', () => {
+        $('btn-clear-history').addEventListener('click', async () => {
             if (confirm('确定要清空所有聊天记录吗？清空后无法恢复')) {
+                try{const r=await fetch('/api/companion/history',{method:'DELETE',headers:{'Content-Type':'application/json'},body:'{}'});if(!r.ok)throw Error('clear');}catch(e){toast('暂时无法清除，请稍后重试','error');return;}
                 history = [];
                 lsRemove(HISTORY_KEY);
                 messagesEl.innerHTML = '';
@@ -1023,7 +1030,14 @@
               </div>`);
         }
 
-        function init() {
+        async function init() {
+            sending=true;setSending(true);
+            try{
+                const r=await fetch('/api/companion/history');if(!r.ok)throw Error('history');const d=await r.json();
+                history=d.messages.map(m=>({role:m.role,message:m.content,petId:m.petId,sender:m.role==='user'?'我':(PETS.find(p=>p.id===m.petId)?.name||'宠物'),...messageTimeFields(),createdAt:m.created_at,ts:new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}));
+            }catch(e){toast('历史记录暂时未能恢复，可到陪伴档案查看','info');}
+            sending=false;setSending(false);
+
             // 恢复偏好与自定义头像
             try { prefs = Object.assign(prefs, JSON.parse(lsGet(PREFS_KEY) || '{}')); } catch (e) {}
             customAvatarUrl = lsGet(AVATAR_KEY);
@@ -1048,6 +1062,7 @@
             }
             inputEl.focus();
         }
+        const memoryLink=document.createElement('a');memoryLink.href='/companion';memoryLink.textContent='陪伴档案';memoryLink.className='btn btn-sm';memoryLink.style.margin='8px';$('btn-diary').parentElement.append(memoryLink);
         init();
     })();
     </script>

@@ -60,7 +60,20 @@ def issue_realtime_token(ttl_seconds=600):
     return token, payload['exp']
 
 
-def build_realtime_session(pet_id, gender=None):
+def build_instructions(pet_id, gender=None, surface='chat'):
+    from . import companion_service
+    pet = pet_registry.get_pet(pet_id)
+    text = (pet_registry.build_system_prompt(pet, gender) + VOICE_CONSTRAINTS
+            + companion_service.context(companion_service.owner_key(), pet_id))
+    if surface == 'den':
+        text += ('\n你在3D小窝里陪伴用户。明确动作请求会由系统另行执行，'
+                 '可简短回应“好呀”，不要声称动作已经完成；不要朗读动作指令或JSON。')
+    else:
+        text += '\n这是聊天界面，不要声称正在执行3D动作。'
+    return text
+
+
+def build_realtime_session(pet_id, gender=None, surface='chat'):
     """组装 POST /api/realtime/session 的响应体。"""
     cfg = current_app.config
     if not cfg.get('GLM_REALTIME_ENABLED'):
@@ -76,8 +89,11 @@ def build_realtime_session(pet_id, gender=None):
         or cfg.get('PET_TTS_DEFAULT_VOICE', 'tongtong')
     ttl = int(cfg.get('GLM_REALTIME_TOKEN_TTL', 600))
     token, exp = issue_realtime_token(ttl)
-    instructions = pet_registry.build_system_prompt(pet, gender) + VOICE_CONSTRAINTS
+    from . import companion_service
+    instructions = build_instructions(pet_id, gender, surface)
     return {
+        'profileScope': companion_service.browser_scope(),
+        'profileRevision': companion_service.settings(companion_service.owner_key())['revision'],
         'sessionId': str(uuid.uuid4()),
         'token': token,
         'expiresAt': exp,
