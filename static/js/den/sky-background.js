@@ -1,39 +1,40 @@
-/* Painted cloud backgrounds, with cover cropping and safe asynchronous theme changes. */
+/* Only the selected theme/time owns a decoded background and a pending request. */
 (function(root){
  'use strict';
  class SkyBackground {
   constructor(scene,canvas,baseUrl){
    this.scene=scene;this.canvas=canvas;this.baseUrl=baseUrl;this.mode=null;
-   this.cache=new Map();this.pending=new Set();this.loader=new THREE.TextureLoader();
+   this.key=null;this.texture=null;this.request=null;
   }
-  set(mode,fallback){
-   this.mode=mode;
-   const texture=this.cache.get(mode);
-   this.scene.background=texture||new THREE.Color(fallback);
-   this.canvas.dataset.sky=texture?mode:'fallback';
-   if(texture){this.resize();return;}
-   if(!mode||this.pending.has(mode))return;
-   this.pending.add(mode);
-   this.loader.load(this.baseUrl+'/'+mode+'.webp',loaded=>{
-    loaded.encoding=THREE.sRGBEncoding;
-    loaded.minFilter=THREE.LinearFilter;loaded.magFilter=THREE.LinearFilter;
-    loaded.generateMipmaps=false;
-    this.cache.set(mode,loaded);this.pending.delete(mode);
-    if(this.mode===mode){this.scene.background=loaded;this.canvas.dataset.sky=mode;this.resize();}
-   },undefined,()=>{
-    this.pending.delete(mode);
-    console.warn('云海背景暂未加载，使用天空底色');
-   });
+  release(){
+   this.request?.abort();this.request=null;
+   if(this.texture){this.texture.dispose();this.texture.image?.close?.();this.texture=null;}
+  }
+  set(mode,fallback,baseUrl=this.baseUrl){
+   const key=mode?`${baseUrl}/${mode}.webp`:null;
+   if(key===this.key&&(this.texture||this.request)){this.resize();return;}
+   this.release();this.key=key;this.mode=mode;
+   this.scene.background=new THREE.Color(fallback);this.canvas.dataset.sky='fallback';
+   if(!key)return;
+   const request=new AbortController();this.request=request;
+   fetch(key,{signal:request.signal}).then(r=>{if(!r.ok)throw new Error(`Sky HTTP ${r.status}`);return r.blob();})
+    .then(blob=>createImageBitmap(blob,{imageOrientation:'flipY',premultiplyAlpha:'none'}))
+    .then(bitmap=>{
+     if(request.signal.aborted||this.request!==request){bitmap.close();return;}
+     const texture=new THREE.Texture(bitmap);texture.flipY=false;texture.encoding=THREE.sRGBEncoding;
+     texture.minFilter=THREE.LinearFilter;texture.magFilter=THREE.LinearFilter;texture.generateMipmaps=false;texture.needsUpdate=true;
+     this.texture=texture;this.request=null;this.scene.background=texture;this.canvas.dataset.sky=mode;this.resize();
+    }).catch(error=>{
+     if(this.request===request)this.request=null;
+     if(error.name!=='AbortError'&&!request.signal.aborted)console.warn('Cloud background unavailable; using sky color');
+    });
   }
   resize(){
-   const texture=this.cache.get(this.mode);
-   const width=this.canvas.clientWidth,height=this.canvas.clientHeight;
+   const texture=this.texture,width=this.canvas.clientWidth,height=this.canvas.clientHeight;
    if(!texture||!width||!height)return;
    const imageAspect=texture.image.width/texture.image.height,viewAspect=width/height;
-   // Preserve cloud and moon proportions on phones and ultra-wide displays.
    const x=Math.min(1,viewAspect/imageAspect),y=Math.min(1,imageAspect/viewAspect);
-   texture.repeat.set(x,y);texture.offset.set((1-x)/2,(1-y)/2);
-   texture.updateMatrix();
+   texture.repeat.set(x,y);texture.offset.set((1-x)/2,(1-y)/2);texture.updateMatrix();
   }
  }
  root.SkyBackground=SkyBackground;

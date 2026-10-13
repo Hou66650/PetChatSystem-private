@@ -522,6 +522,8 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/vendor/OrbitControls.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/GLTFLoader.js') }}"></script>
     <script src="{{ url_for('static', filename='js/den/sakura-river-layout.js') }}?v=1.7.0"></script>
+    <script src="{{ url_for('static', filename='js/den/snow-haven-layout.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/den/selected-assets.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/scene-navigation.js') }}?v=1.7.0"></script>
     <script src="{{ url_for('static', filename='js/den/pet-locomotion.js') }}"></script>
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
@@ -579,7 +581,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         function saveState() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
         const state = loadState();
-        let currentPetId = Number(Object.keys(SPECS)[0]);
+        const requestedPet=Number(new URLSearchParams(location.search).get('pet'));
+        let currentPetId = SPECS[requestedPet] ? requestedPet : (SPECS[state.selectedPetId] ? Number(state.selectedPetId) : 1);
         let voiceUI=null, voiceBusy=false, companionBehavior=null;
         // 陪伴天数（S1-07）：每只宠物独立记录领养日；旧数据只补今天，不按亲密度倒推
         function localDateKey(d) {
@@ -669,12 +672,8 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('offline', () => toast('网络断开，已保留本地记录', 'info'));
         window.addEventListener('online', () => toast('网络已恢复，可以继续啦', 'success'));
 
-        // 地面与小窝布景（草地纹理地面 + 地毯 + 灌木）
-        const grassTex = new THREE.TextureLoader().load('/static/images/grasslight-big.jpg');
-        grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
-        grassTex.repeat.set(5, 5);
-        grassTex.encoding = THREE.sRGBEncoding;
-        const groundMat = new THREE.MeshLambertMaterial({ map: grassTex, color: 0xE8E0D0 });
+        // 地面与小窝布景（轻量备用地面 + 地毯 + 灌木）
+        const groundMat = new THREE.MeshLambertMaterial({ color: 0xE8E0D0 });
         const ground = new THREE.Mesh(new THREE.CircleGeometry(7, 48), groundMat);
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
@@ -890,22 +889,15 @@ document.addEventListener('DOMContentLoaded', () => {
         let envSprites = [];
         let themeFireLight = null, themeFlame = null;   // tick 用引用缓存，避免每帧 getObjectByName
         const envTexCache = {};
-        function disposeObjectTree(root) {
-            root.traverse((o) => {
-                if (o.geometry) o.geometry.dispose();
-                if (o.material) {
-                    (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
-                }
-            });
-        }
+        const disposeObjectTree = SelectedAssets.disposeTree;
         let themeEpoch = 0, modeledStage = false, waterfallFlow = null, waterfallViewInitialized = false;
         const SAKURA_NAV = {"radius": 3.2, "obstacles": [{"x": -2.1, "z": -1.5, "r": 0.36}, {"x": 2.25, "z": -1.2, "r": 0.38}, {"kind": "rect", "x": 0, "z": -2.65, "w": 3.7, "d": 0.26}, {"x": -2, "z": 0.15, "r": 0.18}, {"x": -1.75, "z": 0.6, "r": 0.13}], "interest_points": [{"name": "food", "x": -1.45, "z": 0.15}, {"name": "ball", "x": -1.2, "z": 0.6}, {"name": "rest", "x": 0.7, "z": 0.45}]};
         const SNOW_NAV = {"radius":3.2,"obstacles":[{"x":-2.0,"z":-1.55,"r":0.54},{"x":-0.85,"z":-2.35,"r":0.41},{"kind":"rect","x":2.2,"z":-1.2,"w":0.85,"d":0.25},{"x":2.65,"z":0.3,"r":0.43},{"x":2.7,"z":0.85,"r":0.3},{"x":-1.7,"z":0.65,"r":0.14}],"interest_points":[{"name":"ball","x":-1.0,"z":0.65},{"name":"rest","x":0.65,"z":0.4}]};
         const MODELED_STAGES = {
             sakura: {url:"/static/models/petchat-waterfalls-v1/sakura.glb?v=1.7.2", navigation:{...SAKURA_NAV,...SakuraRiverLayout}},
-            snow: {url:"/static/models/petchat-snow-v1/snow.glb?v=20261013-1", navigation:SNOW_NAV}
+            snow: {url:"/static/models/petchat-snow-v2/snow.glb?v=1.8.0", navigation:SnowHavenLayout}
         };
-        function applyTheme(name) {
+        function applyTheme(name, assetTicket) {
             const t = THEMES[name], modeledSpec = MODELED_STAGES[name];
             if (!t) return;
             if(name==='sakura' && !waterfallViewInitialized){
@@ -913,9 +905,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 camera.position.set(2.4,3.4,8.7);controls.target.set(0,.25,0);
                 waterfallViewInitialized=true;
             }
+            if(name==='snow' && currentTheme!=='snow'){
+                camera.position.set(3.5,3.8,8.4);controls.target.set(0,.35,0);
+            }
             currentTheme = name;
             const epoch = ++themeEpoch; modeledStage = false; ground.visible = true; rug.visible = true;
-            if(waterfallFlow)waterfallFlow.dispose();waterfallFlow=null;
+            waterfallFlow=null; // The tree disposer owns the material textures.
             disposeObjectTree(decorGroup);   // 显式释放 GPU 资源，防止反复切宠累积
             while (decorGroup.children.length) decorGroup.remove(decorGroup.children[0]);
             themeFireLight = null; themeFlame = null;
@@ -926,6 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
             applyTimeOfDay();
             envSprites.forEach((s) => { scene.remove(s); s.material.dispose(); });
             envSprites = [];
+            for(const key of Object.keys(envTexCache))if(key!==t.env.kind){envTexCache[key].dispose();delete envTexCache[key];}
             if (!envTexCache[t.env.kind]) envTexCache[t.env.kind] = shapeTexture(t.env.kind);
             const tex = envTexCache[t.env.kind];
             for (let i = 0; i < t.env.n; i++) {
@@ -938,17 +934,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 envSprites.push(sp);
             }
             if (!modeledSpec) return Promise.resolve();
-            return new Promise(resolve => gltfLoader.load(modeledSpec.url, gltf => {
-                if (epoch !== themeEpoch) { disposeObjectTree(gltf.scene); resolve(); return; }
+            return assetLoader.glb(modeledSpec.url,assetTicket).then(gltf => {
+                if (epoch !== themeEpoch) { disposeObjectTree(gltf.scene); return; }
                 gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
                 decorGroup.add(gltf.scene); modeledStage = true; ground.visible = false; rug.visible = false;
                 if(name==='sakura')waterfallFlow=new WaterfallFlow.Controller(gltf.scene);
                 if (name === 'sakura') { const light = new THREE.PointLight(0xFFE0A3, .55, 3.5); light.position.set(2.25, .89, -1.2); decorGroup.add(light); }
-                resolve();
-            }, undefined, error => {
+                if(name==='snow')for(const [x,z,h] of [[1.25,-1.12,1.0],[2.35,-.8,1],[0,-2.8,1]]){
+                    const light=new THREE.PointLight(0xFFBF77,.30,2);light.position.set(x,h,z);decorGroup.add(light);
+                }
+            }).catch(error => {
+                if(error.name==='AbortError')return;
                 if (epoch === themeEpoch) { t.build(decorGroup); console.warn('庭院资产加载失败，使用原布景', error); }
-                resolve();
-            }));
+            });
         }
 
         // 昼夜背景（?scene=night/morning/day/dusk 可强制指定，便于演示与验收）
@@ -964,16 +962,17 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (h >= 17 && h < 20) { sky = 0xFFC9A3; fog = 0xFFC9A3; sunI = 0.6; }  // 黄昏
             else { sky = 0x3E4A6B; fog = 0x3E4A6B; sunI = 0.35; }                        // 夜晚
             if (currentTheme === 'room') sky = fog = 0xF5E8D0;
-            skyBackground.set(currentTheme === 'room' ? null : (h >= 6 && h < 20 ? 'day' : 'night'), sky);
+            skyBackground.set(currentTheme === 'room' ? null : (h >= 6 && h < 20 ? 'day' : 'night'), sky,
+                currentTheme==='snow'?'/static/textures/snow-sky-v1':'/static/textures/cloud-sky-v1');
             scene.fog = new THREE.Fog(fog, 9, 22);
             sun.intensity = sunI;
             hemi.intensity = 0.5 + sunI * 0.4;
             // room 主题光照覆盖（持久化，不被周期刷新重置）
             if (currentTheme === 'room') { hemi.intensity = 0.45; sun.intensity = 0.55; }
             if (currentTheme === 'camp') { hemi.intensity = 0.35; sun.intensity = 0.25; }
-            // 地面随昼夜明暗 + 主题配色（雪原/木地板为纯色，庭院/营地为草地贴图）
+            // 备用地面随昼夜明暗及主题配色变化。
             const gnd = (currentTheme && THEMES[currentTheme]) ? THEMES[currentTheme].ground : { grass: true, day: 0xe8e0d0, dusk: 0xc8c2b8, night: 0x8a8a96 };
-            groundMat.map = gnd.grass ? grassTex : null;
+            groundMat.map = null;
             groundMat.needsUpdate = true;
             groundMat.color.setHex(sunI < 0.5 ? (gnd.night || 0x8a8a96) : sunI < 0.8 ? (gnd.dusk || 0xc8c2b8) : (gnd.day || 0xe8e0d0));
             // 夜晚/黄昏给宠物加一盏暖色"窝灯"，避免主体打光过平
@@ -999,20 +998,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ---------- GLB 宠物（Quaternius CC0 动物包，本地 static/models，带骨骼动画） ----------
         for(const [key,act] of Object.entries(ShibaExpression.acts))SPECS[1].anims[key]=act.clip;
-        const gltfCache = {};
         const gltfLoader = new THREE.GLTFLoader();
+        const assetLoader = new SelectedAssets.Loader(gltfLoader);
         const clipShort = (n) => n.replace(/^.*\|/, '');
-        function loadGlb(url) {
-            if (!gltfCache[url]) {
-                gltfCache[url] = new Promise((resolve, reject) => {
-                    gltfLoader.load(url, resolve, undefined, reject);
-                });
-            }
-            return gltfCache[url];
-        }
+        const loadGlb=(url,ticket)=>assetLoader.glb(url,ticket);
 
         // 配饰（帽子/围巾/蝴蝶结）：优先挂头/颈骨骼（跟随动画），无骨骼则按体高近似
-        // 幂等：gltfCache 会复用同一 scene，二次 spawn 同一宠物时按名字找回已挂配饰，避免重复叠加
+        // Accessory helpers are idempotent within the selected model.
         function buildAccessories(model, headBone, neckBone, origH, spec) {
             const k = spec.pbr ? origH * .55 : origH;
             const reuse = (name) => model.getObjectByName(name) || null;
@@ -1262,6 +1254,9 @@ document.addEventListener('DOMContentLoaded', () => {
         function skinnedInflate(mat, key, offset) {
             mat.skinning = true;
             mat.onBeforeCompile = (shader) => {
+                // Basic materials omit the normal path when no environment map exists.
+                if(mat.isMeshBasicMaterial)shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',
+                    '#ifndef USE_ENVMAP\n#include <beginnormal_vertex>\n#include <morphnormal_vertex>\n#include <skinnormal_vertex>\n#endif\n#include <begin_vertex>');
                 shader.vertexShader = shader.vertexShader.replace(
                     '#include <skinning_vertex>',
                     `#include <skinning_vertex>\ntransformed += objectNormal * ${offset.toFixed(6)};`
@@ -1304,6 +1299,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     t.vertexColors = !!m.vertexColors;
                     return t;
                 });
+                converted.forEach(m=>{m.skinning=true;});
                 o.material = Array.isArray(o.material) ? converted : converted[0];
                 // 2) 描边壳（BackSide 反面外壳法，蒙皮后沿法线外扩；厚度按原始身高比例，缩放后各宠一致）
                 const outlineThick = OUTLINE_RATIO * origH;
@@ -1330,23 +1326,26 @@ document.addEventListener('DOMContentLoaded', () => {
             dialogueRunner.cancel('');endDialogueHold();
             spawnBusy = true;
             const epoch = ++locomotionEpoch;
+            const assetTicket=assetLoader.begin();
             if (locomotion) locomotion.interrupt(); locomotion = null;
             clearTimeout(chainTimer); chainTimer = null; performingUntil = 0;
-            if (mixer) mixer.stopAllAction(); mixer = null; actions = {}; activeAction = null; shibaExpression=null;
+            if (mixer) {mixer.stopAllAction();mixer.uncacheRoot(mixer.getRoot());} mixer = null; actions = {}; activeAction = null; facialBlinkAction=null; shibaExpression=null;
             document.getElementById('shiba-acting-dialog').close();
             document.getElementById('btn-shiba-acting').hidden=true;
             showPetLoading(true);
-            if (petModel) scene.remove(petModel);
             cancelPointerDrag();       // S1-11：切宠清理拖拽与手势（目标宠不能误加分）
             cancelGestureAction('pet-switch');
+            grabbed=false;dropping=false;bounceBack=0;
+            if (petModel) {scene.remove(petModel);disposeObjectTree(petModel);petModel=null;}
             currentPetId = id;
+            state.selectedPetId=id;saveState();
             companionBehavior=null;
             if(voiceUI) voiceUI.restartForPet();
             stopDenSpeech();
             if (typeof denHistory !== 'undefined') denHistory = [];   // 聊天记忆逐宠隔离
             const spec = {...SPECS[id]};
             actionTransition=null;
-            const themeReady = applyTheme(spec.theme);   // 每宠专属场景（需在 spec 定义后）
+            const themeReady = applyTheme(spec.theme,assetTicket);
             // 先刷 UI（加载是异步的，界面不该等）
             renderPetChips();
             updateIntimacyUI();
@@ -1355,28 +1354,28 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('ip-name-text').textContent = `${spec.name}的小窝`;
             let gltf;
             try {
-                try { gltf = await loadGlb(spec.glb); }
+                try { gltf = await loadGlb(spec.glb,assetTicket); }
                 catch (error) {
+                    if(error.name==='AbortError'||!assetLoader.active(assetTicket))throw error;
                     if (!spec.fallback) throw error;
-                    gltfCache[spec.glb] = null; gltf = await loadGlb(spec.fallback);spec.pbr=!!spec.expressive;
+                    gltf = await loadGlb(spec.fallback,assetTicket);spec.pbr=!!spec.expressive;
                     if(spec.expressive)spec.anims={...spec.anims,wave:'wave_paw'};
                     spec.expressive=false;
-                    toast('新模型暂时加载失败，已使用原来的球球', 'info');
+                    toast('新模型暂时加载失败，已使用备用模型', 'info');
                 }
                 await themeReady;
             } catch (e) {
-                if (currentPetId !== id) return;   // 已被接管：静默让位（busy 归接管方管理，不误报/不闪回）
+                if (currentPetId !== id || epoch !== locomotionEpoch) return;
                 toast('宠物模型加载失败，请刷新重试', 'error');
-                gltfCache[spec.glb] = null;     // 清失败缓存（rejected promise 不常驻，下次点击可重试）
                 spawnBusy = false; showPetLoading(false);               // 先复位再回滚：子级调用时标志状态正确
                 if (prevId && !fromRollback) spawnPet(prevId, true);   // 回滚最多一跳：多资源损坏时不乒乓
                 return;
             }
             // 用户等加载期间可能已切换到别的宠物：直接让位，busy 交给接管的 spawn 管理（其退出路径自会复位）
-            if (currentPetId !== id || epoch !== locomotionEpoch) return;
+            if (currentPetId !== id || epoch !== locomotionEpoch) {disposeObjectTree(gltf.scene);return;}
             const model = gltf.scene;
             if (model.parent) model.parent.remove(model);
-            // 归一化：目标高度、落地、居中（scene 会被缓存复用，先复位上次变换避免二次缩放）
+            // 归一化：目标高度、落地、居中。
             model.scale.setScalar(1);
             model.position.set(0, 0, 0);
             model.traverse(o=>{if(o.isSkinnedMesh) o.skeleton.pose();});
@@ -2514,9 +2513,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-chat-close').addEventListener('click', () => {
             document.getElementById('den-chat').classList.add('hidden');
         });
-        const bgm = new Audio("{{ url_for('static', filename='mp3/m2.mp3') }}");
+        const bgm = new Audio();
         bgm.loop = true; bgm.volume = 0.35;
-        bgm.preload = 'auto';
+        bgm.preload = 'none';
         let musicOn = false;
         // 某些浏览器需要先 resume AudioContext
         function unlockAudio() {
@@ -2527,6 +2526,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.getElementById('btn-music').addEventListener('click', function () {
             if (!musicOn) {
+                if(!bgm.src)bgm.src="{{ url_for('static', filename='mp3/m2.mp3') }}";
                 unlockAudio();
                 bgm.volume = 0.35;   // 确保音量非零
                 bgm.play().then(() => {
@@ -3468,7 +3468,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('orientationchange', onViewportChange);
 
         // ---------- 启动 ----------
-        applyTimeOfDay();
         spawnPet(currentPetId);
         appendMsg('pet', SPECS[currentPetId].greet + ' 点点下面的按钮，或者直接点我！');
         resize();
