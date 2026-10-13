@@ -11,6 +11,15 @@ __pycache__/
 *.pyc
 uploads/
 
+# Blender backups and local verification output (editable art and final renders stay tracked)
+*.blend1
+art/**/browser-*.png
+art/**/original-inspection.json
+art/**/source-inspection.json
+art/**/rig-analysis.json
+art/**/export-validation.json
+art/**/validation.json
+
 # 手语数据集：视频/含人脸的派生物/授权材料不入库（只保留目录规范与清单）
 A-手语识别模块研发/sign_dataset/raw/
 A-手语识别模块研发/sign_dataset/processed/

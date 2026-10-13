@@ -50,7 +50,7 @@ def handle_chat(data, observed_reply=None):
     except LLMError:
         current_app.logger.warning('Companion model request failed')
         return {'error':'AI 服务暂时不可用，请稍后重试'},503
-    plan=memory.decode_plan(raw,message,surface)
+    plan=memory.decode_plan(raw,message,surface,pet['id'])
     if observed_reply is not None: plan['reply']=observed_reply
     if not memory.save_turn(owner,pet['id'],request_id,message,plan,state['revision']):
         return {'error':'陪伴档案刚刚发生变化，请重新发送这条消息。'},409

@@ -83,6 +83,8 @@
         .action-btn:hover { transform: translateY(-2px); background: #fff; }
         .action-btn:active { transform: translateY(0); }
         .action-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+        #btn-shiba-acting[hidden] { display: none; }
+        #shiba-acting-dialog::backdrop { background: rgba(45,32,25,.3); }
 
         /* 场景内气泡 */
         .bubble-tip {
@@ -375,6 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-sniff">闻闻</button>
             <button class="action-btn" id="btn-rest">休息</button>
             <button class="action-btn" id="btn-pet" data-icon="pet">摸摸</button>
+            <button class="action-btn" id="btn-shiba-acting" hidden>球球的小表情</button>
             <button class="action-btn" id="btn-feed-bone" data-icon="bone">骨头</button>
             <button class="action-btn" id="btn-feed-fish" data-icon="fish">小鱼干</button>
             <button class="action-btn" id="btn-feed-cookie" data-icon="cookie">饼干</button>
@@ -390,6 +393,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-music" data-icon="music">音乐</button>
         </div>
 
+        <dialog id="shiba-acting-dialog" aria-labelledby="shiba-acting-title" style="border:1px solid #dfcbbb;border-radius:22px;background:#fffaf3;color:#654b3c;padding:24px;max-width:min(420px,88vw);box-shadow:0 18px 70px #44302244;">
+            <h3 id="shiba-acting-title" style="margin:0 0 6px">球球的小表情</h3>
+            <p style="margin:0 0 18px;font-size:14px">选一个，看看它怎样回应你。</p>
+            <div id="shiba-acting-options" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+            <form method="dialog" style="margin-top:18px;text-align:right"><button class="action-btn">回到小窝</button></form>
+        </dialog>
         <div class="den-chat hidden" id="den-chat">
             <header>
                 <span id="chat-title">和小家伙聊天</span>
@@ -515,6 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/scene-navigation.js') }}"></script>
     <script src="{{ url_for('static', filename='js/den/pet-locomotion.js') }}"></script>
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
     <script>window.COMPANION_SCOPE={{ companion_scope | tojson }};</script>
     <script src="/static/js/realtime/pcm-player.js?v={{ app_version }}"></script>
     <script src="/static/js/realtime/realtime-client.js?v={{ app_version }}"></script>
@@ -536,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const PETS = {{ pets | tojson }};
         const MODELS = {{ models | tojson }};
         const SPECS = {
-            1: { name: '柴犬', glb: '/static/models/petchat-v2/qiuqiu.glb?v=20261013-v2', fallback: '/static/models/shiba.glb', pbr: true, h: 0.95,
+            1: { name: '柴犬', glb: '/static/models/petchat-v3/qiuqiu.glb?v=1.5.0', fallback: '/static/models/petchat-v2/qiuqiu.glb', pbr: true, expressive: true, h: 0.95,
                  greet: '汪！欢迎来到我的小窝，摸摸我吧！',
                  anims: { idle: 'idle_breathe', walk: 'walk', trot: 'trot', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
                  theme: 'sakura', themeName: '樱花庭院' },
@@ -885,10 +895,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         let themeEpoch = 0, modeledStage = false;
-        const SAKURA_NAV = {"radius": 3.2, "obstacles": [{"x": -2.1, "z": -1.5, "r": 0.2}, {"x": 2.25, "z": -1.2, "r": 0.28}, {"kind": "rect", "x": 0, "z": -2.65, "w": 3.5, "d": 0.16}, {"x": -2, "z": 0.15, "r": 0.18}, {"x": -1.75, "z": 0.6, "r": 0.13}], "interest_points": [{"name": "food", "x": -1.45, "z": 0.15}, {"name": "ball", "x": -1.2, "z": 0.6}, {"name": "rest", "x": 0.7, "z": 0.45}]};
+        const SAKURA_NAV = {"radius": 3.2, "obstacles": [{"x": -2.1, "z": -1.5, "r": 0.36}, {"x": 2.25, "z": -1.2, "r": 0.28}, {"kind": "rect", "x": 0, "z": -2.65, "w": 3.5, "d": 0.16}, {"x": -2, "z": 0.15, "r": 0.18}, {"x": -1.75, "z": 0.6, "r": 0.13}], "interest_points": [{"name": "food", "x": -1.45, "z": 0.15}, {"name": "ball", "x": -1.2, "z": 0.6}, {"name": "rest", "x": 0.7, "z": 0.45}]};
         const SNOW_NAV = {"radius":3.2,"obstacles":[{"x":-2.0,"z":-1.55,"r":0.54},{"x":-0.85,"z":-2.35,"r":0.41},{"kind":"rect","x":2.2,"z":-1.2,"w":0.85,"d":0.25},{"x":2.65,"z":0.3,"r":0.43},{"x":2.7,"z":0.85,"r":0.3},{"x":-1.7,"z":0.65,"r":0.14}],"interest_points":[{"name":"ball","x":-1.0,"z":0.65},{"name":"rest","x":0.65,"z":0.4}]};
         const MODELED_STAGES = {
-            sakura: {url:"/static/models/petchat-v1/sakura.glb", navigation:SAKURA_NAV},
+            sakura: {url:"/static/models/petchat-sakura-v2/sakura.glb?v=1.5.1", navigation:SAKURA_NAV},
             snow: {url:"/static/models/petchat-snow-v1/snow.glb?v=20261013-1", navigation:SNOW_NAV}
         };
         function applyTheme(name) {
@@ -988,6 +998,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // ---------- GLB 宠物（Quaternius CC0 动物包，本地 static/models，带骨骼动画） ----------
+        for(const [key,act] of Object.entries(ShibaExpression.acts))SPECS[1].anims[key]=act.clip;
         const gltfCache = {};
         const gltfLoader = new THREE.GLTFLoader();
         const clipShort = (n) => n.replace(/^.*\|/, '');
@@ -1070,6 +1081,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // ---------- 动画状态机（GLB AnimationMixer 驱动） ----------
         let petModel = null;
         let mixer = null, actions = {}, activeAction = null, facialBlinkAction = null, faceMode = "open";
+        let shibaExpression = null, lastShibaIdle = 'idle';
         let locomotion = null, locomotionEpoch = 0, actionTransition = null;
         const anim = { state: 'idle', until: 0, lastInteract: performance.now(), birth: 1, lie: 0 };
         function playAction(key, timeScale) {
@@ -1320,7 +1332,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const epoch = ++locomotionEpoch;
             if (locomotion) locomotion.interrupt(); locomotion = null;
             clearTimeout(chainTimer); chainTimer = null; performingUntil = 0;
-            if (mixer) mixer.stopAllAction(); mixer = null; actions = {}; activeAction = null;
+            if (mixer) mixer.stopAllAction(); mixer = null; actions = {}; activeAction = null; shibaExpression=null;
+            document.getElementById('shiba-acting-dialog').close();
+            document.getElementById('btn-shiba-acting').hidden=true;
             showPetLoading(true);
             if (petModel) scene.remove(petModel);
             cancelPointerDrag();       // S1-11：切宠清理拖拽与手势（目标宠不能误加分）
@@ -1344,7 +1358,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 try { gltf = await loadGlb(spec.glb); }
                 catch (error) {
                     if (!spec.fallback) throw error;
-                    gltfCache[spec.glb] = null; gltf = await loadGlb(spec.fallback);spec.pbr=false;
+                    gltfCache[spec.glb] = null; gltf = await loadGlb(spec.fallback);spec.pbr=!!spec.expressive;
+                    if(spec.expressive)spec.anims={...spec.anims,wave:'wave_paw'};
+                    spec.expressive=false;
                     toast('新模型暂时加载失败，已使用原来的球球', 'info');
                 }
                 await themeReady;
@@ -1398,6 +1414,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (clip && spec.pbr) {
                     clip=clip.clone();
                     clip.tracks=clip.tracks.filter(t=>{
+                        if(spec.expressive&&t.name.includes('morphTargetInfluences'))return false;
                         if (!key.startsWith('blink')) return !faceTrack(t);
                         const side=key==='blinkL'?'L':'R';
                         return t.name.startsWith('eye_'+side+'.') || t.name.startsWith('lid_'+side+'.');
@@ -1405,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (clip) actions[key] = mixer.clipAction(clip);
             }
-            if (spec.pbr) {
+            if (spec.pbr && !spec.expressive) {
                 const left=gltf.animations.find(c=>clipShort(c.name)==='blink_L');
                 const right=gltf.animations.find(c=>clipShort(c.name)==='blink_R');
                 if (left && right) {
@@ -1418,6 +1435,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             if (!actions.idle && gltf.animations[0]) actions.idle = mixer.clipAction(gltf.animations[0]);
+            if(spec.expressive)shibaExpression=new ShibaExpression.Controller(model);
+            document.getElementById('btn-shiba-acting').hidden=!shibaExpression;
 
             let headBone = null, neckBone = null;
             model.traverse((o) => {
@@ -1440,6 +1459,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 strideSpeed:spec.pbr ? .42 * spec.h / origH : .46,
                 animate(key,speed) { anim.state = key; anim.until = 0; playAction(key,speed); },
                 rest(random) {
+                    if(shibaExpression){
+                        const key=ShibaExpression.idleChoice(random,companionBehavior?.mode,lastShibaIdle);lastShibaIdle=key;
+                        anim.state=key;anim.until=key==='idle'?0:performance.now()+(actions[key]?.getClip().duration||2.4)*1000;
+                        playAction(key,1);return;
+                    }
                     const calm=companionBehavior?.mode==='calm';
                     const key = !calm && random < .35 && actions.sniff ? 'sniff' : (!calm && random < .55 && actions.stretch ? 'stretch' : 'idle');
                     anim.state = key; anim.until = key === 'idle' ? 0 : performance.now()+2500; playAction(key,1);
@@ -1689,11 +1713,11 @@ document.addEventListener('DOMContentLoaded', () => {
         function pick(arr) { return arr[Math.floor(Math.random() * arr.length)].replace('{name}', SPECS[currentPetId].name); }
 
         function doPetting() {
-            setAnim('petting', 1600);
+            setAnim(shibaExpression?'affection':'petting', shibaExpression?2600:1600);
             burst('heart', 5);
             const r = rewardIntimacy('pet');
             if (r.reason === 'daily-cap') toast('今天已经摸得很满足啦，互动仍然可以继续～', 'info');
-            showBubble(pick(PET_LINES.pet), 1800);
+            showBubble(pick(PET_LINES.pet), 1800,!!shibaExpression);
         }
         function doFeed(kind) { completeFeeding(kind); }   // 点击/键盘路径：飞食物动画 + 统一结算
 
@@ -2245,7 +2269,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // A dialogue owns its action chain until finished, cancelled or the pet changes.
         let dialogueHeld=false, dialogueRestoreRoam=true;
-        const actionLabels={come:'正在走到你身边',sit:'正在坐下',lie_down:'正在趴下',stand:'正在站起来',wave:'正在挥爪',sniff:'正在闻闻',happy:'开心地回应你',wander:'开始自由活动',stop:'停下来等你',quiet:'安静地陪着你'};
+        const actionLabels={come:'正在走到你身边',sit:'正在坐下',lie_down:'正在趴下',stand:'正在站起来',wave:'正在挥爪',sniff:'正在闻闻',happy:'开心地回应你',wander:'开始自由活动',stop:'停下来等你',quiet:'安静地陪着你',curious:'歪着头认真听',play_bow:'邀请你一起玩',shy:'有点害羞呢',yawn:'打个小哈欠',affection:'开心地蹭蹭',alert:'竖耳望一望',surprise:'咦，怎么啦',nose_lick:'舔舔小鼻子',shake:'抖抖毛',greet:'摇尾欢迎你'};
+        const expressiveKeys={curious:'curious',play_bow:'playBow',shy:'shy',yawn:'yawn',affection:'affection',alert:'alert',surprise:'surprise',nose_lick:'noseLick',shake:'shake',greet:'greet'};
         const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
         async function actionWait(test,current,timeout=20000){
             const started=performance.now();
@@ -2285,6 +2310,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     dialogueRestoreRoam=true;locomotion.enabled=true;petState().roaming=true;saveState();
                 }else if(action==='stand'||action==='stop'){
                     setAnim('idle',0);
+                }else if(expressiveKeys[action]){
+                    const key=expressiveKeys[action];if(!shibaExpression||!actions[key])throw Error('这只宠物还在学习这个动作');
+                    setAnim(key,actions[key].getClip().duration*1000);
+                    await actionWait(()=>performance.now()>=anim.until,current,6000);
                 }else{
                     const key={lie_down:'sleep',quiet:'sleep',wave:'wave',sit:'sit',sniff:'sniff',happy:'happy'}[action];
                     if(!actions[key])throw Error('这只宠物暂时还不会这个动作');
@@ -2296,6 +2325,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         document.getElementById('btn-action-stop').onclick=()=>{dialogueRunner.cancel('已停止');endDialogueHold();if(petModel)setAnim('idle',0);};
+        const actingDialog=document.getElementById('shiba-acting-dialog');
+        for(const [key,act] of Object.entries(ShibaExpression.acts)){
+            const button=document.createElement('button');button.className='action-btn';button.type='button';button.textContent=act.label;
+            button.onclick=()=>{
+                actingDialog.close();if(!shibaExpression||spawnBusy||grabbed||dropping||interactionBusy())return;
+                if(voiceUI?.isActive()||chatBusy){toast('等这轮对话结束，再来玩小表情吧','info');return;}
+                dialogueRunner.cancel('');endDialogueHold();
+                const duration=(actions[key]?.getClip().duration||2.4)*1000;
+                if(['sit','sleep','standUp'].includes(anim.state)){
+                    const serial=dialogueRunner.serial;
+                    standForDialogue(()=>serial===dialogueRunner.serial&&!!shibaExpression).then(()=>setAnim(key,duration)).catch(()=>{});
+                }else setAnim(key,duration);
+                showBubble(act.label,1800,true);
+            };
+            document.getElementById('shiba-acting-options').appendChild(button);
+        }
+        document.getElementById('btn-shiba-acting').onclick=()=>{if(shibaExpression&&!spawnBusy)actingDialog.showModal();};
+        window.__denExpression=()=>shibaExpression?{...shibaExpression.debug(),state:anim.state,clips:Object.keys(ShibaExpression.acts).filter(k=>actions[k])}:null;
         // Explicit user interactions override an old dialogue plan.
         ['btn-pet','btn-feed-bone','btn-feed-fish','btn-feed-cookie','btn-roam','btn-recall','btn-rest','btn-sniff','btn-games','btn-breath','btn-vision'].forEach(id=>{
             document.getElementById(id).addEventListener('click',()=>{dialogueRunner.cancel('');endDialogueHold();},true);
@@ -2332,7 +2379,8 @@ document.addEventListener('DOMContentLoaded', () => {
         function companionReaction(){
             if(dialogueRunner.active||dialogueHeld||!petModel||interactionBusy())return;
             const lively=companionBehavior?.reaction==='happy';
-            setAnim(lively?'happy':'idle',lively?1600:0);
+            const key=lively?(shibaExpression?'greet':'happy'):(shibaExpression?'curious':'idle');
+            setAnim(key,key==='idle'?0:(actions[key]?.getClip().duration||1.6)*1000);
         }
         voiceUI=new RealtimeUI({
             surface:'den',
@@ -2642,6 +2690,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 不做贴片（位置难对准且生硬）——用模型自带快速头部动画（HitReact 抖头=眨眼反应）
         // + 头顶小粒子增强反馈
         function petBlink() {
+            if(shibaExpression){if(anim.state!=='sleep')shibaExpression.blink();return;}
             if (!petModel || anim.state === 'sleep' || anim.state === 'breath') return;
             if (facialBlinkAction) {
                 facialBlinkAction.reset();facialBlinkAction.setLoop(THREE.LoopOnce,1);
@@ -3294,6 +3343,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (anim.state!=='sleep' && faceMode==='sleep') {facialBlinkAction.stop();faceMode='open';}
                 }
                 if (mixer) mixer.update(actionTransition ? poseDt : dt);
+                if(shibaExpression)shibaExpression.update(poseDt,anim.state,activeAction?activeAction.time/Math.max(.01,activeAction.getClip().duration):0);
                 if (actionTransition && actionTransition.action.time>=actionTransition.action.getClip().duration-.0001) {
                     const next=actionTransition.next;actionTransition=null;next();
                 }
