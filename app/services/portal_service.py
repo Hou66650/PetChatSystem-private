@@ -35,6 +35,10 @@ def init_schema():
 
 def digest(value):return hashlib.sha256(value.encode()).hexdigest()
 
+def public_user_id(owner):
+    return owner[5:] if owner.startswith('user:') else None
+
+
 def pet_spec(owner,pet):
     if pet in PETS:return dict(PETS[pet],id=pet)
     row=get_db().execute('SELECT * FROM portal_custom_pets WHERE id=? AND owner=?',(pet,owner)).fetchone()
@@ -83,10 +87,11 @@ def public_trip(t,owner,brief=False):
     result={k:t[k] for k in ('id','pet','kind','destination','status','created','updated','ended','reason')}
     counts={key:sum(e['kind']==key for e in events) for key in EVENTS}
     summary='、'.join(EVENTS[k]+str(n)+'次' for k,n in counts.items() if n)
-    result.update(petSpec=pet_spec(t['owner'],t['pet']),mine=t['owner']==owner,events=events,messages=messages,snapshot=json.loads(t['snapshot']),story=('桌面探险' if t['kind']=='desktop' else '友邻串门')+'：'+(summary or '尚无互动记录')+('。'+t['reason'] if t['ended'] else '。等待桌面配对，尚未出发' if t['status']=='pairing' else '。正在旅途中'))
+    result.update(visitorId=public_user_id(t['owner']),petSpec=pet_spec(t['owner'],t['pet']),mine=t['owner']==owner,events=events,messages=messages,snapshot=json.loads(t['snapshot']),story=('桌面探险' if t['kind']=='desktop' else '友邻串门')+'：'+(summary or '尚无互动记录')+('。'+t['reason'] if t['ended'] else '。等待桌面配对，尚未出发' if t['status']=='pairing' else '。正在旅途中'))
     if t['destination']:
         host=db.execute('SELECT * FROM portal_islands WHERE id=?',(t['destination'],)).fetchone()
         result['hostPet']=pet_spec(host['owner'],host['pet'])
+        result['hostId']=public_user_id(host['owner'])
     return result
 
 def state(owner,brief=False):
@@ -95,10 +100,10 @@ def state(owner,brief=False):
     for i in own:i['petSpec']=pet_spec(owner,i['pet'])
     friends=[]
     for row in db.execute('SELECT i.* FROM portal_islands i JOIN portal_friends f ON f.friend=i.owner WHERE f.owner=?',(owner,)):
-        friends.append(dict(id=row['id'],petSpec=pet_spec(row['owner'],row['pet']),allow=bool(row['allow_visitors']),memorial=bool(row['memorial'])))
+        friends.append(dict(id=row['id'],userId=public_user_id(row['owner']),petSpec=pet_spec(row['owner'],row['pet']),allow=bool(row['allow_visitors']),memorial=bool(row['memorial'])))
     trips=db.execute("SELECT t.* FROM portal_trips t LEFT JOIN portal_islands i ON i.id=t.destination WHERE t.owner=? OR i.owner=? ORDER BY (t.status IN ('pairing','active')) DESC,t.created DESC LIMIT 30",(owner,owner)).fetchall()
     code=db.execute('SELECT code FROM portal_invites WHERE owner=?',(owner,)).fetchone()
-    return dict(islands=own,friends=friends,trips=[public_trip(t,owner,brief) for t in trips],invite=code['code'] if code else None,guest=not owner.startswith('user:'),rewards=[dict(r) for r in db.execute('SELECT trip,pet,item FROM portal_rewards WHERE owner=?',(owner,))])
+    return dict(userId=public_user_id(owner),islands=own,friends=friends,trips=[public_trip(t,owner,brief) for t in trips],invite=code['code'] if code else None,guest=not owner.startswith('user:'),rewards=[dict(r) for r in db.execute('SELECT trip,pet,item FROM portal_rewards WHERE owner=?',(owner,))])
 
 def operate(owner,op,data):
     ensure(owner);expire();db=get_db()

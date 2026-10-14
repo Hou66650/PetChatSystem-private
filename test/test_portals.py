@@ -16,6 +16,21 @@ class PortalTests(unittest.TestCase):
         self.post('settings',{'pet':'1','allow':True},self.b)
         return self.b.get('/api/portals').json['islands'][0]['id']
     def start(self,kind='desktop',**kw):return self.post('depart',dict(pet='3',kind=kind,confirmed=True,**kw))
+    def test_friend_and_journey_public_ids(self):
+        self.assertEqual(self.a.get('/api/portals').json['userId'],'1')
+        self.assertEqual(self.b.get('/api/portals').json['userId'],'2')
+        guest=self.app.test_client().get('/api/portals').json
+        self.assertIsNone(guest['userId'])
+        self.assertEqual(guest['friends'],[])
+        dest=self.friends()
+        self.assertEqual({f['userId'] for f in self.a.get('/api/portals').json['friends']},{'2'})
+        self.assertEqual({f['userId'] for f in self.b.get('/api/portals').json['friends']},{'1'})
+        tid=self.start('neighbor',destination=dest).json['trip']
+        for client in (self.a,self.b):
+            trip=client.get('/api/portals/trip/'+tid).json
+            self.assertEqual((trip['visitorId'],trip['hostId']),('1','2'))
+        self.assertEqual(self.app.test_client().get('/api/portals/trip/'+tid).status_code,404)
+
     def test_consent_csrf_and_exclusive_world(self):
         self.assertEqual(self.a.post('/api/portals/depart',json={}).status_code,409)
         self.assertEqual(self.post('depart',dict(pet='3',kind='desktop',confirmed=False)).status_code,400)
