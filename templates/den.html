@@ -2305,7 +2305,7 @@ document.addEventListener('DOMContentLoaded', () => {
             button.textContent='自由活动：'+(enabled?'开':'关');button.setAttribute('aria-pressed',String(enabled));
         }
         function movementBlocked() {
-            return document.hidden || toyWorkshop?.held?.state==='held' || ['held','flight'].includes(facePlay?.ball?.phase) || spawnBusy || !petModel || anim.birth < 1 || grabbed || dropping || bounceBack > 0 || (interactionBusy() && !facePlay?.guiding) ||
+            return document.hidden || (toyWorkshop?.held?.state==='held' && !(toyWorkshop.held.spec.id==='rattle' && toyWorkshop.rattlePath)) || ['held','flight'].includes(facePlay?.ball?.phase) || spawnBusy || !petModel || anim.birth < 1 || grabbed || dropping || bounceBack > 0 || (interactionBusy() && !facePlay?.guiding) ||
                 performing() || (chatBusy&&!dialogueRunner.active) || (voiceBusy&&!dialogueRunner.active) || breathActive || !gameOverlay.hidden || !gamesMask.hidden || !moodMask.hidden ||
                 (!dialogueRunner.active && !document.getElementById('den-chat').classList.contains('hidden')) ||
                 !['idle','walk','trot','run','turnLeft','turnRight'].includes(anim.state) || performance.now()<anim.until;

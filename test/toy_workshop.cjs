@@ -51,3 +51,34 @@ const camera=new THREE.PerspectiveCamera(45,1,.1,50);camera.position.set(0,4,5);
 w.a.camera=camera;w.a.canvas.clientWidth=500;w.a.canvas.clientHeight=500;w.ray=new THREE.Raycaster();assert.equal(w.pick(250,250),r,'ray picks the real prop');
 let cabinetDisposed=0;w.root=new THREE.Group();scene.add(w.root);w.a.dispose=root=>{assert.equal(root,w.root);cabinetDisposed++;};w.dialog={close(){}};w.clear();assert.equal(cabinetDisposed,1);assert.equal(node.parent,parent);assert.equal(disposed,0);assert.equal(w.records.length,0);w.clear();assert.equal(cabinetDisposed,1);
 console.log('PASS brush placement, real ray picking, scene switch restores props and releases cabinet once');
+
+// A held rattle uses the real river router, including the bridge, rather than a straight chase.
+const riverBase={...JSON.parse(fs.readFileSync('templates/den.html','utf8').match(/const SAKURA_NAV = (\{[^\n]+\});/)[1]),...require('../static/js/den/sakura-river-layout.js')};
+const riverNav=new Navigation({...W.navigation('sakura',riverBase),bodyRadius:.36});
+model.position.set(1.4,0,0);
+const runner=new Locomotion({navigation:riverNav,model,animate(){},rest(){},gaits:{walk:.55,trot:.9,run:1.5}});runner.enabled=false;
+w.a.locomotion=()=>runner;w.a.busy=()=>false;r.spec=W.catalog.find(i=>i.id==='rattle');w.take(r);
+let aim=new THREE.Vector3(0,0,2.35);
+w.evaluateTarget=()=>({valid:riverNav.isWalkable(aim)&&!!riverNav.route(model.position,aim),point:aim});
+assert(w.followRattle());assert.equal(runner.requestedGait,'run');
+const initial=runner.path;assert(w.followRattle());assert.equal(runner.path,initial,'same destination does not restart path');
+let crossed=false;
+for(let i=0;i<1600&&runner.path.length;i++){
+ runner.update(.02,false);assert(riverNav.isWalkable(model.position));
+ if(Math.abs(model.position.z-1.3)<.2){crossed=true;assert(Math.abs(model.position.x)<.8,'cross on bridge');}
+}
+assert(crossed);assert(Math.hypot(model.position.x-aim.x,model.position.z-aim.z)<.03);
+aim=new THREE.Vector3(1.4,0,0);assert(w.followRattle());assert(runner.path.length);
+aim=new THREE.Vector3(2,0,1.3);assert.equal(w.followRattle(),false);assert.equal(runner.path.length,0,'invalid river aim cancels chase');
+aim=new THREE.Vector3(0,0,0);assert(w.followRattle());w.cancel();assert.equal(runner.path.length,0,'putting away stops chase');
+w.take(r);assert(w.followRattle());runner.goTo({x:0,z:2.2});const replacement=runner.path;w.stopRattle();assert.equal(runner.path,replacement,'do not cancel another movement owner');
+w.cancel();
+console.log('PASS rattle run follows bridge, safe retargeting, invalid water, cancellation and movement ownership');
+// Run the real page guard: holding other toys still blocks wandering; a rattle route can move.
+const vm=require('node:vm'),page=fs.readFileSync('templates/den.html','utf8');
+const guard=page.match(/function movementBlocked\(\) \{([\s\S]*?)\n        \}/)[1];
+const env={document:{hidden:false,getElementById:()=>({classList:{contains:()=>true}})},toyWorkshop:{held:{state:'held',spec:{id:'rattle'}},rattlePath:[{}]},facePlay:{},spawnBusy:false,petModel:{},anim:{birth:1,state:'run',until:0},grabbed:false,dropping:false,bounceBack:0,interactionBusy:()=>false,performing:()=>false,chatBusy:false,voiceBusy:false,dialogueRunner:{active:false},breathActive:false,gameOverlay:{hidden:true},gamesMask:{hidden:true},moodMask:{hidden:true},performance:{now:()=>5000}};
+const blocked=()=>vm.runInNewContext('(function(){'+guard+'})()',env);
+assert.equal(blocked(),false);env.toyWorkshop.rattlePath=null;assert.equal(blocked(),true);
+env.toyWorkshop.rattlePath=[{}];env.toyWorkshop.held.spec.id='brush';assert.equal(blocked(),true);
+console.log('PASS live page movement guard allows only active rattle pursuit while holding a prop');

@@ -216,7 +216,7 @@
           if(p&&loc?.navigation.isWalkable(p)){this.a.act('idle',0);loc.goTo(p);this.note('慢慢移动零食，引它走到你身边。');}
         }
       }
-      if(point&&!tool&&!this.ball&&!point.pinching&&!this.a.busy()){
+      if(point&&!tool&&!this.ball&&!point.pinching&&!this.a.busy()&&this.a.toys?.()?.held?.spec.id!=='rattle'){
         const zone=zoneAt(point,this.zones());
         if(zone){
           const sample=this.touch.sample(point,zone.id,now);this.poseTouch=zone.id;

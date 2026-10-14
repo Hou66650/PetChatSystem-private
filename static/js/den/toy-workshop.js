@@ -1,7 +1,7 @@
 /* Physical props share the existing navigator and fetch animation controller. */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.ToyWorkshop=api;})(typeof window!=='undefined'?window:globalThis,function(){
  'use strict';
- const catalog=[{id:'ball',name:'彩纹球',icon:'●',hint:'抛出，让它叼回来',fetch:true},{id:'disc',name:'爪印飞盘',icon:'◉',hint:'低弧线旋转飞行',fetch:true},{id:'rope',name:'编织绳结',icon:'∞',hint:'拖着逗它，也能抛接',fetch:true},{id:'bone',name:'毛绒骨头',icon:'🦴',hint:'柔软的寻回玩具',fetch:true},{id:'duck',name:'小黄鸭',icon:'🐤',hint:'捏一捏，发出啾啾声',fetch:true},{id:'brush',name:'木梳刷',icon:'▥',hint:'沿宠物背部慢慢梳',fetch:false},{id:'rattle',name:'小摇铃',icon:'♫',hint:'左右摇动，吸引注意',fetch:false}];
+ const catalog=[{id:'ball',name:'彩纹球',icon:'●',hint:'抛出，让它叼回来',fetch:true},{id:'disc',name:'爪印飞盘',icon:'◉',hint:'低弧线旋转飞行',fetch:true},{id:'rope',name:'编织绳结',icon:'∞',hint:'拖着逗它，也能抛接',fetch:true},{id:'bone',name:'毛绒骨头',icon:'🦴',hint:'柔软的寻回玩具',fetch:true},{id:'duck',name:'小黄鸭',icon:'🐤',hint:'捏一捏，发出啾啾声',fetch:true},{id:'brush',name:'木梳刷',icon:'▥',hint:'沿宠物背部慢慢梳',fetch:false},{id:'rattle',name:'小摇铃',icon:'♫',hint:'左右摇动，引它跑来（可过桥）',fetch:false}];
  const positions={sakura:{x:.65,z:-1.93,w:1.12,d:.52},snow:{x:-.95,z:-1.2,w:1.12,d:.52}};
  function navigation(theme,base){const ball=theme==='snow'?{x:1.35,z:1.8}:{x:-1.75,z:.6};return {...base,obstacles:[...base.obstacles.filter(o=>Math.hypot(o.x-ball.x,o.z-ball.z)>.02),{kind:'rect',...positions[theme]}]};}
  class Controller {
@@ -38,11 +38,11 @@
    const objects=this.records.filter(r=>r.state==='available').map(r=>r.node);const hits=this.ray.intersectObjects(objects,true),cabinetHit=this.root?this.ray.intersectObject(this.root,true)[0]:null;if(cabinetHit&&(!hits.length||cabinetHit.distance<hits[0].distance-.002))return 'cabinet';if(hits.length){let n=hits[0].object;while(n){const r=this.records.find(r=>r.node===n);if(r)return r;n=n.parent;}}
    if(cabinetHit)return 'cabinet';return null;}
   takeKind(kind){const r=this.records.find(r=>r.spec.id===kind&&r.state==='available');if(!r){this.note('这个玩具还没准备好。');return;}this.dialog.close();if(this.take(r)){this.pointerId=null;this.move(this.a.face().project(this.a.model().position));this.note('已拿起'+r.spec.name+'。在空地按住移动，绿色落点松手生效；Esc 归还。');}}
-  take(r){if(this.a.busy())return false;this.cancel();this.point=null;this.lastPoint=null;this.a.cancelCommands();const f=this.a.face();r.before={stored:r.stored,position:r.node.getWorldPosition(new this.a.THREE.Vector3()),quaternion:r.node.getWorldQuaternion(new this.a.THREE.Quaternion())};this.a.scene.attach(r.node);r.state='held';this.held=r;this.mode=r.spec.fetch?'throw':'place';
+  take(r){if(this.a.busy())return false;this.cancel();this.point=null;this.lastPoint=null;this.shakeDistance=0;this.shakeAt=0;this.a.cancelCommands();const f=this.a.face();r.before={stored:r.stored,position:r.node.getWorldPosition(new this.a.THREE.Vector3()),quaternion:r.node.getWorldQuaternion(new this.a.THREE.Quaternion())};this.a.scene.attach(r.node);r.state='held';this.held=r;this.mode=r.spec.fetch?'throw':'place';
    f.pointerMode=!f.cameraOn;f.mode=r.spec.id==='brush'?'brush':'touch';f.render();
    if(r.spec.fetch)f.holdBall({mesh:r.node,offset:r.offset,kind:r.spec.id,label:r.spec.name,release:complete=>this.finish(r,complete)});
    this.a.locomotion()?.interrupt();this.render();return true;}
-  finish(r,complete){if(complete){r.state='available';r.stored=false;r.node.quaternion.copy(r.before?.quaternion||r.quaternion);}else if(r.before?.stored)this.restore(r);else if(r.before){this.a.scene.add(r.node);r.node.position.copy(r.before.position);r.node.quaternion.copy(r.before.quaternion);r.state='available';r.stored=false;}else this.restore(r);
+  finish(r,complete){this.stopRattle();if(complete){r.state='available';r.stored=false;r.node.quaternion.copy(r.before?.quaternion||r.quaternion);}else if(r.before?.stored)this.restore(r);else if(r.before){this.a.scene.add(r.node);r.node.position.copy(r.before.position);r.node.quaternion.copy(r.before.quaternion);r.state='available';r.stored=false;}else this.restore(r);
    if(this.held===r)this.held=null;this.preview.visible=false;this.target=null;this.pointerId=null;this.a.canvas.style.cursor='';this.render();}
   coords(e){const rect=this.a.canvas.getBoundingClientRect();return {x:e.clientX-rect.left,y:e.clientY-rect.top};}
   consume(e){e.preventDefault();e.stopImmediatePropagation();}
@@ -60,17 +60,33 @@
    if(r.spec.fetch){const f=this.a.face();f.ball.fetch=this.mode==='throw';f.ball.lift=this.mode==='throw'?(r.spec.id==='disc'?.32:.65):0;f.throwBall(target.point);if(!f.ball)return;r.state='playing';this.preview.visible=false;this.hud.hidden=true;}
    else{r.node.position.copy(target.point);this.finish(r,true);this.note('放好了，可以再次拿起。');}}
   quickToss(target){const r=this.records.find(r=>r.spec.id==='ball'&&r.state==='available');if(!r||!this.take(r))return;this.a.face().throwBall(target);if(!this.a.face().ball)return;r.state='playing';this.hud.hidden=true;}
-  use(){if(!this.held||performance.now()-this.lastUse<1100)return;this.lastUse=performance.now();const k=this.held.spec.id;this.a.act(k==='rope'?'playBow':k==='brush'?'affection':k==='rattle'?'ears':'curious',1500);this.a.say(k==='duck'?'啾啾！它好奇地看着小鸭。':k==='rope'?'它压低前爪，想和你一起玩绳结。':k==='brush'?'慢慢梳背毛，它会很舒服。':'它竖起耳朵，认真看着你手里的玩具。');
+  stopRattle(){const loc=this.a.locomotion();if(this.rattlePath&&loc?.path===this.rattlePath){loc.interrupt();this.a.act('idle',0);}this.rattlePath=null;this.rattleTarget=null;}
+  followRattle(){const target=this.evaluateTarget(),loc=this.a.locomotion();
+   if(!target?.valid||!loc){this.stopRattle();this.note('请把摇铃移到可到达的空地，宠物会沿安全路线跑来。');return false;}
+   const p=target.point;
+   if(this.rattlePath===loc.path&&this.rattleTarget&&Math.hypot(p.x-this.rattleTarget.x,p.z-this.rattleTarget.z)<.18)return true;
+   if(Math.hypot(p.x-this.a.model().position.x,p.z-this.a.model().position.z)<.22)return true;
+   this.a.act('idle',0);
+   if(!loc.goTo(p,{gait:'run'}))return false;
+   this.rattlePath=loc.path;this.rattleTarget={x:p.x,z:p.z};return true;
+  }
+  use(){if(!this.held||this.a.busy()||performance.now()-this.lastUse<1100)return;this.lastUse=performance.now();const k=this.held.spec.id;
+   if(k==='rattle'){if(this.followRattle())this.a.say('听到铃声啦！它会沿路跑来，遇到河流就走桥。');}
+   else{this.a.act(k==='rope'?'playBow':k==='brush'?'affection':'curious',1500);this.a.say(k==='duck'?'啾啾！它好奇地看着小鸭。':k==='rope'?'它压低前爪，想和你一起玩绳结。':k==='brush'?'慢慢梳背毛，它会很舒服。':'它认真看着你手里的玩具。');}
    if(k==='duck'||k==='rattle')try{const C=window.AudioContext||window.webkitAudioContext;this.audio ||=new C();this.audio.resume();const o=this.audio.createOscillator(),g=this.audio.createGain();o.frequency.setValueAtTime(k==='duck'?850:1500,this.audio.currentTime);o.frequency.exponentialRampToValueAtTime(k==='duck'?450:900,this.audio.currentTime+.16);g.gain.setValueAtTime(.045,this.audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,this.audio.currentTime+.2);o.connect(g);g.connect(this.audio.destination);o.start();o.stop(this.audio.currentTime+.21);o.onended=()=>{o.disconnect();g.disconnect();};}catch(e){}
   }
   update(dt,now){const r=this.held;if(!r||r.state!=='held')return;if(this.a.busy()){this.cancel();return;}if(!this.point)return;
    const f=this.a.face();f.input={...this.point,t:now,pinching:false};
-   if(!r.spec.fetch){const p=f.ground(this.point.x,this.point.y,1.1);if(p)r.node.position.lerp(p,.25);if(r.spec.id==='rattle'&&this.lastPoint&&Math.hypot(this.point.x-this.lastPoint.x,this.point.y-this.lastPoint.y)>12)this.use();}
+   if(!r.spec.fetch){const p=f.ground(this.point.x,this.point.y,1.1);if(p)r.node.position.lerp(p,.25);if(r.spec.id==='rattle'&&this.lastPoint){
+    if(now-(this.shakeAt||0)>350){this.shakeDistance=0;this.shakeAt=now;}
+    this.shakeDistance=(this.shakeDistance||0)+Math.hypot(this.point.x-this.lastPoint.x,this.point.y-this.lastPoint.y);
+    if(this.shakeDistance>28){this.use();this.shakeDistance=0;this.shakeAt=now;}
+   }}
    this.lastPoint={...this.point};const target=this.evaluateTarget();if(!target){this.preview.visible=false;return;}
    this.preview.visible=true;const color=target.valid?0x4cbd8a:0xe16b62;this.line.material.color.setHex(color);this.ring.material.color.setHex(color);this.ring.position.copy(target.point);this.ring.position.y-=r.offset-.035;
    const attr=this.line.geometry.attributes.position,lift=this.mode==='throw'?(r.spec.id==='disc'?.32:.65):0;
    for(let i=0;i<33;i++){const p=this.a.flightPoint(r.node.position,target.point,i/32,lift);attr.setXYZ(i,p.x,p.y,p.z);}attr.needsUpdate=true;this.line.geometry.computeBoundingSphere();
-   this.note(target.valid?(this.mode==='throw'?'绿色落点 · 松手抛出，宠物会叼回':'绿色落点 · 松手放下'):'红色落点 · 河面、障碍或岛外，松手会归还');
+   this.note(target.valid?(this.mode==='throw'?'绿色落点 · 松手抛出，宠物会叼回':r.spec.id==='rattle'?'左右晃动 · 宠物沿绿色落点跑来，可过桥；松手放下':'绿色落点 · 松手放下'):'红色落点 · 河面、障碍或岛外，松手会归还');
   }
  }
  return {catalog,positions,navigation,Controller};
