@@ -73,6 +73,12 @@ class RealtimeController {
   /** 启动整条链路：权限 → 采集 → 连接 → READY（synthetic 模式跳过权限与采集）。 */
   async start() {
     if (this.state !== 'IDLE' && this.state !== 'ERROR' && this.state !== 'STOPPED') return;
+    const remaining = Math.ceil(((RealtimeController.retryAfter || 0) - Date.now()) / 1000);
+    if (remaining > 0) {
+      this._setState('ERROR');
+      this.onError({code:'rate_limit_error',message:`语音服务限流，请等待 ${remaining} 秒后手动开启；也可以先使用文字聊天。`});
+      return;
+    }
     const generation = ++this._generation;
     const current = () => generation === this._generation;
     let tPermission = 0;
@@ -170,6 +176,7 @@ class RealtimeController {
       await client.connect(); // resolve 于 session.updated
     } catch (e) {
       if(!current()) return;
+      if (e.status === 429) { this._onClientEvent('server.error',{code:'rate_limit_error',kind:'rate_limit'}); return; }
       this.stop();
       this._setState('ERROR', { reason: 'connect_failed', error: String(e) });
       this.onError({ code: 'connect_failed', message: `实时连接失败：${e.message || e}` });
@@ -243,7 +250,10 @@ class RealtimeController {
       // Complete PCM turn plus trailing silence is sent only after session.updated.
       for(let i=0;i<pcm.byteLength;i+=3200)client.sendAudio(pcm.slice(i,i+3200));
       client.sendAudio(new Int16Array(16000).buffer);
-    }catch(e){if(current())throw e;}finally{clearTimeout(timer);if(this._speakerAbort===abort)this._speakerAbort=null;}
+    }catch(e){if(current()){
+      if(e.status===429)this._onClientEvent('server.error',{code:'rate_limit_error',kind:'rate_limit'});
+      else throw e;
+    }}finally{clearTimeout(timer);if(this._speakerAbort===abort)this._speakerAbort=null;}
   }
 
   /** 由播放器/客户端事件驱动的状态观察。 */
@@ -311,6 +321,14 @@ class RealtimeController {
         break;
       case 'server.error': {
         const code = String(data.code || 'unknown').replace(/[^a-zA-Z0-9_.-]/g, '').slice(0,64);
+        if (code === 'rate_limit_error' || data.kind === 'rate_limit') {
+          RealtimeController.retryAfter = Date.now() + 30000;
+          this.stop();
+          this._setState('ERROR', {reason:'rate_limit',code});
+          this.onPlayback({state:'error',message:'语音服务限流，本轮未正常完成；无需调整扬声器。'});
+          this.onError({code:'rate_limit_error',message:'语音服务请求过于频繁，已停止本次通话。请至少等待30秒后手动开启，或先切换文字聊天；如果持续出现，需要检查服务端并发或额度限制。'});
+          break;
+        }
         if (data.recoverable) {
           // A config rejection does not invalidate the reply currently playing.
           this.onWarning({code, kind:data.kind, message:data.kind === 'profile_update'

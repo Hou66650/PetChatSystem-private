@@ -68,5 +68,23 @@ function setup(){
   x.emit('input_audio_buffer.speech_stopped');x.emit('response.created',{response:{id:'new'}});x.emit('response.done',{response:{id:'old',status:'cancelled'}});assert.equal(x.frames.length,1);
   x.emit('response.done',{response:{id:'new',status:'completed'}});assert.equal(x.frames.length,2);x.c.close();
  });
+ await test('rate limit stops capture and reconnect and blocks new controllers during cooldown',async()=>{
+  const x=setup();x.ready();let stopped=0;x.controller._stream={getTracks:()=>[{stop(){stopped++;}}]};
+  x.emit('error',{error:{code:'rate_limit_error',type:'rate_limit_error'}});
+  assert.equal(x.controller.state,'ERROR');assert.equal(x.closed(),1);assert.equal(stopped,1);
+  assert.equal(x.warnings.length,0);assert.equal(x.failures[0].code,'rate_limit_error');
+  x.c._scheduleReconnect();assert.equal(x.c._reconnectTimer,null);
+  const again=new x.ctx.window.RealtimeController({petId:1,onError:e=>x.failures.push(e)});
+  await again.start();assert.equal(again.state,'ERROR');assert.equal(x.failures.length,2);
+ });
+ await test('nested failed response and type-only throttle use the same stop path',()=>{
+  for(const data of [
+   {type:'response.done',response:{status:'failed',status_details:{error:{code:'rate_limit_error'}}}},
+   {type:'error',error:{type:'rate_limit_error'}}
+  ]){
+   const x=setup();x.ready();x.c._dispatch(data);assert.equal(x.closed(),1);
+   assert.equal(x.failures[0].code,'rate_limit_error');assert.equal(x.warnings.length,0);
+  }
+ });
  console.log(JSON.stringify({passed,failed:0}));
 })().catch(e=>{console.error(e);process.exitCode=1;});

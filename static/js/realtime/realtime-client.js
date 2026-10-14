@@ -135,6 +135,16 @@ class RealtimeClient {
   _dispatch(data, connectDone) {
     const type = data.type || '';
     if (this._closedByUser) return;
+    const serviceError = type === 'error' ? data.error :
+      type === 'response.done' ? data.response?.status_details?.error : null;
+    if (serviceError && /rate_limit|too_many_requests/i.test([serviceError.code,serviceError.type].join(' '))) {
+      // A service throttle is not an invitation to immediately repeat the turn.
+      this.metrics.error_code = 'rate_limit_error';
+      this.close(); // prevent socket-close from scheduling automatic reconnects
+      if (connectDone) connectDone(new Error('语音服务限流，请稍后再试'));
+      this.onEvent('server.error', {code:'rate_limit_error',recoverable:false,kind:'rate_limit'});
+      return;
+    }
     if (type === 'input_audio_buffer.speech_started') { this._turnId++; this._resetRound(); }
     // ASR can arrive after the next turn starts; retain the committed item's turn.
     const eventTurn = type === 'conversation.item.input_audio_transcription.completed'
@@ -350,6 +360,11 @@ class RealtimeClient {
         await this.connect();               // session.created → session.update → ready
         this._reconnectAttempts = 0;
       } catch (e) {
+        if (!this._closedByUser && e.status === 429) {
+          this.close();
+          this.onEvent('server.error', {code:'rate_limit_error',recoverable:false,kind:'rate_limit'});
+          return;
+        }
         if (!this._closedByUser) this._scheduleReconnect();
       }
     }, delay);
