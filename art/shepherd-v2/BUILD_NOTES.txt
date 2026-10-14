@@ -1,0 +1,23 @@
+Reference-led shepherd rebuild — v1.18.1
+
+Reference identity: ../shepherd-v1/design-board.png (original dog on the right).
+Design-only images: model-reference.png, reconstruction-reference.png.
+Actual model images: shepherd-studio.png, front.png, side.png, eyes-open.png, eyes-closed.png.
+Actual exported animation renders: run-validation.png, sit_idle-validation.png, play_bow-validation.png.
+
+Source: rodin-detail.glb was reconstructed from reconstruction-reference.png using the Hyper3D Rodin Detail endpoint supported by the user's Blender MCP addon. This is a reference-driven mesh, not the earlier procedural sphere model. The 2K albedo is embedded in the source and shipped GLB. The rejected procedural drafts and texture experiments are retained locally under uploads/shepherd-v2-experiments and are not used by the app.
+
+Authoring: scripts/blender/build_reference_shepherd.py
+Validation: scripts/blender/validate_reference_shepherd.py
+Run both with Blender 5.2 --background --python from the project root. The build is local and needs no API credentials; remote reconstruction is only the provenance of the saved source mesh.
+
+Blender work includes geometric seam welding, removal of tiny disconnected scraps, surface refinement, original 2K pigment, directional mesh fur, 45-joint companion rig, 35 retained clips, actual eyelid shape keys, surface-geodesic tail weights, sitting foot IK, and long-tail floor clearance.
+Imported fractional-frame keys are removed before writing baked keys. Otherwise Blender viewport poses and exported NLA samples disagree.
+
+Runtime asset: static/models/petchat-shepherd-v2/shepherd.glb
+Scene remains static/models/petchat-shepherd-v1/alpine.glb.
+Selected-pet loading and disposal remain unchanged. Two mesh batches, roughly 164k triangles, 15.5 MB GLB. No high-resolution unselected pets are preloaded.
+
+The reference is the visual target. Actual renders, not the generated concept pictures, demonstrate the delivered mesh. Fine fur appearance, lighting and some facial detail differ from the concept; this is a browser asset and not a claim of pixel-identical reconstruction.
+
+Validation: node test/shepherd_alpine.cjs; node test/shepherd_geometry.cjs; node test/shepherd_reference.cjs; selected_assets, dog_locomotion, shiba_expression, husky_expression, toy_workshop and render_budget checks. Exported run/sit/play-bow skin remains above the floor. Frontend preview and expression activation checked in the in-app browser; no console errors. The user's separate Chrome/RTX GPU was not used for FPS measurement in this revision.

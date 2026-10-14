@@ -1,0 +1,22 @@
+GERMAN SHEPHERD — LOCKED APPEARANCE BRIEF
+Original identity: art/shepherd-v1/design-board.png, the dog on the right.
+Turnaround: model-reference.png. Reconstruction input: reconstruction-reference.png.
+
+Adult German Shepherd. Preserve the original individual, not just the breed.
+Natural athletic adult proportions; healthy straight back; long muscular legs and proper rear hocks.
+Wedge-shaped skull; long tapered black muzzle; small inset almond amber eyes; thick upright triangular ears with inner fur.
+Charcoal black saddle; warm golden tan face and limbs; lighter layered chest and neck ruff; long lowered fluffy tail.
+Teal woven collar; round brass medallion with engraved mountain motif.
+Gentle alert expression; slightly open mouth with natural teeth and small pink tongue.
+No enlarged cartoon eyes, bulbous cheeks, shortened limbs, plastic ears, floating eyebrows or uniform spike fur.
+
+TURNAROUND PROMPT
+Create a production modeling turnaround of ONLY the German Shepherd character on the RIGHT of the original reference board. This is the same individual dog, not a redesign. Preserve its face identity, adult anatomical proportions, realistic tan and charcoal saddle coat, long tapered black muzzle, small deep-set almond amber eyes, upright thick triangular ears, layered golden neck ruff, fluffy lowered tail, teal woven collar and round brass mountain medallion. No environment. Neutral light gray studio background. Three equally sized full-body standing views, front, exact left side orthographic, and front three-quarter; all same scale with paws on same baseline. Add large face close-up in a separate lower row, front and side, plus fur direction study. Handsome warm alert gentle expression, slightly open mouth with natural teeth and tongue. Natural adult German shepherd, healthy straight back, slender muscular long legs, correct rear hocks. Short dense fur on muzzle and legs, longer layered fur at neck/chest and tail. Broad charcoal saddle and black face mask exactly as original. High fidelity physically plausible 3D sculpt reference, soft neutral lighting to read form and coat color. Do not make a cartoon, toy, chibi, plush or big-eyed puppy. Do not shorten legs, inflate cheeks or muzzle, or add floating eyebrow pieces. No scenery, no extra accessories, no watermark. Label views with short English words only.
+
+RECONSTRUCTION PROMPT
+Match the reference German Shepherd exactly. Realistic adult anatomy, black saddle and tan fur, almond amber eyes, thick upright ears, tapered black muzzle, layered neck ruff, lowered fluffy tail, teal collar and brass medallion. Four separated legs. Full animal only, no ground.
+
+VALIDATION
+Compare actual Blender renders to the reference from front, side and three-quarter views.
+A beautiful generated image is not proof of a matching 3D model.
+Do not replace the running asset until visual and animation checks pass.

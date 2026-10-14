@@ -1,9 +1,11 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const THREE=require('../static/js/vendor/three.min.js');
 vm.runInNewContext(fs.readFileSync('static/js/vendor/GLTFLoader.js','utf8'),{THREE,console,TextDecoder,URL,Blob,self:{URL},setTimeout,clearTimeout});
+// Texture pixels are irrelevant to geometry and animation validation in Node.
+THREE.TextureLoader.prototype.load=function(url,onLoad){const texture=new THREE.Texture();queueMicrotask(()=>onLoad(texture));return texture;};
 const parse=path=>new Promise((resolve,reject)=>{const b=fs.readFileSync(path);new THREE.GLTFLoader().parse(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'',resolve,reject)});
 (async()=>{
- const stage=await parse('static/models/petchat-shepherd-v1/alpine.glb'),dog=await parse('static/models/petchat-shepherd-v1/shepherd.glb');
+ const stage=await parse('static/models/petchat-shepherd-v1/alpine.glb'),dog=await parse('static/models/petchat-shepherd-v2/shepherd.glb');
  stage.scene.updateMatrixWorld(true);dog.scene.updateMatrixWorld(true);
  const bounds=new THREE.Box3().setFromObject(dog.scene),h=bounds.max.y-bounds.min.y;
  const radius=Math.hypot(bounds.max.x-bounds.min.x,bounds.max.z-bounds.min.z)*1.12/h/2+.015;
