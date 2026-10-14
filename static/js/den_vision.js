@@ -182,7 +182,7 @@ class DenVision {
     calibrate() {
         if (!this.handState.present || !this.lastRaw) return false;
         this.configure({centerX:this.lastRaw.x, centerY:this.lastRaw.y});
-        this._smooth.ok = false;
+        this._smooth.ok = false;this._followAt=null;
         return {centerX:this.lastRaw.x, centerY:this.lastRaw.y};
     }
     _point(x, y) {
@@ -319,8 +319,9 @@ class DenVision {
         this.gazeLost = 0;
         this._errStreak = 0;
         this.handState = { present: false, reaching: false, sx: 0, sy: 0, palm: 0 };
-        this._smooth.ok = false;
+        this._smooth.ok = false;this._followAt=null;
         // 停止时显式通知：捏合释放 + 对视结束 + 手消失（页面据此取消手势喂食等清理）
+        this._trackedPalm=null;this._pinchCandidate=null;this._lastHandAt=null;
         if (this._pinching) { this._pinching = false; this.onGrab && this.onGrab(false, null, 'stop'); }
         this.onGaze(false);
         this.onHand(this.handState);
@@ -431,11 +432,17 @@ class DenVision {
         const allHands = (res.landmarks || []).filter((l) => l && l.length >= 21);
         // 趣味手势（作揖/比心/挥手/点赞）：事件驱动，内部带保持时长与冷却
         try {
-            this.gestures.update(this.options.gestures?allHands.filter(l=>handMetrics(l).palm>=PALM_MIN):[], ts).forEach((g) => this.onGesture && this.onGesture(g));
+            this.gestures.update(this.options.gestures&&!this._pinching?allHands.filter(l=>handMetrics(l).palm>=PALM_MIN):[], ts).forEach((g) => this.onGesture && this.onGesture(g));
         } catch (e) { /* 手势失败不影响基础视觉 */ }
-        const lms = allHands[0];
+        let lms = allHands[0];
+        if(this._trackedPalm){
+            lms=allHands.reduce((best,l)=>!best||Math.hypot(l[9].x-this._trackedPalm.x,l[9].y-this._trackedPalm.y)<Math.hypot(best[9].x-this._trackedPalm.x,best[9].y-this._trackedPalm.y)?l:best,null);
+            if(lms&&Math.hypot(lms[9].x-this._trackedPalm.x,lms[9].y-this._trackedPalm.y)>.28)lms=null;
+        }
+        if(lms&&handMetrics(lms).palm<PALM_MIN)lms=null;
         if (lms && lms.length >= 21) {
             const wrist = lms[0], mcp = lms[9];
+            this._lastHandAt=ts;this._trackedPalm={x:mcp.x,y:mcp.y};
             const m = handMetrics(lms);
             const palm = m.palm;
             // 掌长太小 = 手太远/不完整：不判手势（防噪声），但保留虚拟手位置反馈
@@ -446,7 +453,7 @@ class DenVision {
             // 捏合判定：只看指尖距比值（食指弯曲姿态不影响——真捏合时食指就是弯的）；
             // 与握拳的区分交给收紧的阈值：拳 thumb-index tip ≈0.3-0.7掌长 > PINCH_ON
             let pinching = false;
-            if (quality && !this.gestures.twoHandEngaged) {
+            if (quality && (this._pinching || !this.gestures.twoHandEngaged)) {
                 if (this._pinching) pinching = m.pinchRatio < PINCH_OFF;
                 else pinching = m.pinchRatio < PINCH_ON;
             }
@@ -455,19 +462,22 @@ class DenVision {
             const mapped=this._point((thumbTip.x+indexTip.x)/2,(thumbTip.y+indexTip.y)/2);
             const handPoint=this._point(mcp.x,mcp.y);
             const pinchX=mapped.x,pinchY=mapped.y;
-            // 捏合状态变化时通知（附捏合点；保留 sx/sy 兼容旧调用方）
-            if (pinching !== this._pinching) {
-                this._pinching = pinching;
-                this.onGrab && this.onGrab(pinching, {
-                    sx:handPoint.x, sy:handPoint.y,
-                    pinchX, pinchY, palm,
-                });
-            }
+            // Confirm both edges over time: brief landmark jitter must not pick up or throw a prop.
+            if(pinching!==!!this._pinching){
+                if(this._pinchCandidate!==pinching){this._pinchCandidate=pinching;this._pinchSince=ts;}
+                if(ts-this._pinchSince >= (pinching?90:120)){
+                    this._pinching=pinching;this._pinchCandidate=null;
+                    const sm=this._smooth;
+                    this.onGrab?.(pinching,{sx:sm.ok?sm.x:handPoint.x,sy:sm.ok?sm.y:handPoint.y,
+                        pinchX:sm.ok?sm.px:pinchX,pinchY:sm.ok?sm.py:pinchY,palm});
+                }
+            }else this._pinchCandidate=null;
+            const releasing=this._pinching&&this._pinchCandidate===false;
 
             // 打响指检测：拇指尖(4)-中指尖(12)距离从很小→骤增（弹开动作，同样按掌长归一化）
             const midTip = lms[12];
             const snapDist = Math.hypot(lms[4].x - midTip.x, lms[4].y - midTip.y) / palm;
-            if (quality && this.options.gestures && this._prevSnapRatio !== undefined) {
+            if (quality && !this._pinching && this.options.gestures && this._prevSnapRatio !== undefined) {
                 const snapSpeed = snapDist - this._prevSnapRatio;
                 if (this._prevSnapRatio < 0.30 && snapSpeed > 0.22) {
                     const now = performance.now();
@@ -482,21 +492,20 @@ class DenVision {
             const sx=handPoint.x,sy=handPoint.y;
             const was = this.handState;
             this.handState = {
-                present: true, reaching, sx, sy, palm, pinching,
+                present: true, reaching, sx, sy, palm, pinching:!!this._pinching, releasing,
                 pinchX, pinchY, pinchDist: m.pinchDist, pinchRatio: m.pinchRatio,
                 quality,
             };
             if (was.present !== true || was.reaching !== reaching) this.onHand(this.handState);
         } else {
-            this._prevSnapRatio=undefined;this.lastRaw=null;
-            // 手消失时释放捏合（无坐标：调用方只能按"取消"处理，不能当成功）
-            if (this._pinching) {
-                this._pinching = false;
-                this.onGrab && this.onGrab(false, null, 'lost');
+            this._pinchCandidate=null;this._prevSnapRatio=undefined;
+            if(this.handState.present&&ts-(this._lastHandAt??ts)<350){
+                this.handState={...this.handState,trackingLost:true};this.onHand(this.handState);return;
             }
-            if (this.handState.present) {
-                this.handState = { present: false, reaching: false, sx: 0, sy: 0, palm: 0 };
-                this.onHand(this.handState);
+            this.lastRaw=null;this._trackedPalm=null;
+            if(this._pinching){this._pinching=false;this.onGrab?.(false,null,'lost');}
+            if(this.handState.present){
+                this.handState={present:false,reaching:false,sx:0,sy:0,palm:0};this.onHand(this.handState);
             }
         }
     }
@@ -509,14 +518,18 @@ class DenVision {
         if (!h.present) { this._smooth.ok = false; return; }
         if (!this._smooth.ok) {
             this._smooth.x = h.sx; this._smooth.y = h.sy;
-            this._smooth.px = h.pinchX || h.sx; this._smooth.py = h.pinchY || h.sy;
+            this._smooth.px = h.pinchX ?? h.sx; this._smooth.py = h.pinchY ?? h.sy;
             this._smooth.ok = true;
         }
-        this._smooth.x += (h.sx - this._smooth.x) * 0.25;
-        this._smooth.y += (h.sy - this._smooth.y) * 0.25;
-        // 捏合点独立平滑（系数略高：拿食物要跟手但不过冲）
-        this._smooth.px += ((h.pinchX || h.sx) - this._smooth.px) * 0.30;
-        this._smooth.py += ((h.pinchY || h.sy) - this._smooth.py) * 0.30;
+        const now=performance.now(),dt=Math.min(.05,Math.max(.001,(now-(this._followAt??now-16.67))/1000));this._followAt=now;
+        // Equal response at 60/144/240 Hz; slow motion is steadier, large moves catch up quickly.
+        const distance=Math.hypot((h.pinchX??h.sx)-this._smooth.px,(h.pinchY??h.sy)-this._smooth.py);
+        const alpha=1-Math.exp(-dt*(distance>45?24:12));
+        if(!h.trackingLost&&!h.releasing){
+            this._smooth.x+=(h.sx-this._smooth.x)*alpha;this._smooth.y+=(h.sy-this._smooth.y)*alpha;
+            this._smooth.px+=((h.pinchX??h.sx)-this._smooth.px)*alpha;
+            this._smooth.py+=((h.pinchY??h.sy)-this._smooth.py)*alpha;
+        }
         this.onHand({ ...h, sx: this._smooth.x, sy: this._smooth.y,
                       pinchX: this._smooth.px, pinchY: this._smooth.py, smooth: true });
     }

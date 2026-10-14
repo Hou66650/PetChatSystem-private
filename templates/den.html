@@ -526,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </g>
             </svg>
         </div>
-        <div id="vision-pinch" aria-hidden="true"><div class="ring"></div><div class="dot"></div></div>
+        <div id="vision-pinch" aria-hidden="true"><div class="ring"></div><div class="dot"></div><span id="vision-hand-hint"></span></div>
         <!-- S1-11：手势食物托盘（视觉互动开启时显示；鼠标点它也直接喂食） -->
         <div id="vision-food-tray" class="vision-food-tray" hidden>
             <button type="button" data-hand-food="bone" aria-label="用手拿骨头，或点击直接喂食">骨头</button>
@@ -3136,6 +3136,10 @@ document.addEventListener('DOMContentLoaded', () => {
         function handleVisionHand(h) {
             facePlay?.hand(h);toyWorkshop?.hand(h);
             const pinchEl = document.getElementById('vision-pinch');
+            const handHint=document.getElementById('vision-hand-hint');
+            const hint=toyWorkshop?.handHint(h)||'';
+            if(handHint.textContent!==hint)handHint.textContent=hint;
+            pinchEl.classList.toggle('tracking-lost',!!h.trackingLost);
             lastHandMirror = h;   // 状态栏镜像：真实检测与调试注入一致
             if (h.present) {
                 const px0 = h.pinchX != null ? h.pinchX : h.sx, py0 = h.pinchY != null ? h.pinchY : h.sy;
@@ -3161,7 +3165,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     pinchEl.style.transform = `translate(${px - 22}px, ${py - 22}px)`;
                 }
                 // 手势喂食跟随与拿取确认（S1-11）
-                updateGestureAction(h);
+                if(!h.trackingLost&&!h.releasing)updateGestureAction(h);
                 // 托盘悬停高亮（只做反馈不触发拿取）
                 if (trayEl && !trayEl.hidden && !gestureAction) {
                     const hitT = hitTray(px, py);

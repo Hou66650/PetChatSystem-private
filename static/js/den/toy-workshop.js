@@ -37,6 +37,23 @@
   pick(x,y){this.root?.updateMatrixWorld(true);this.ray.setFromCamera(new this.a.THREE.Vector2(x/this.a.canvas.clientWidth*2-1,1-y/this.a.canvas.clientHeight*2),this.a.camera);
    const objects=this.records.filter(r=>r.state==='available').map(r=>r.node);const hits=this.ray.intersectObjects(objects,true),cabinetHit=this.root?this.ray.intersectObject(this.root,true)[0]:null;if(cabinetHit&&(!hits.length||cabinetHit.distance<hits[0].distance-.002))return 'cabinet';if(hits.length){let n=hits[0].object;while(n){const r=this.records.find(r=>r.node===n);if(r)return r;n=n.parent;}}
    if(cabinetHit)return 'cabinet';return null;}
+  handPick(x,y){
+   const direct=this.pick(x,y);if(direct)return direct;
+   // Modest screen-space tolerance for camera jitter; mouse picking remains exact.
+   for(const [dx,dy] of [[-12,0],[12,0],[0,-12],[0,12],[-8,-8],[8,-8],[-8,8],[8,8]]){
+    const hit=this.pick(x+dx,y+dy);if(hit&&hit!=='cabinet')return hit;
+   }
+   return null;
+  }
+  handHint(h){
+   if(!h.present)return '把手放回镜头，张开手指后再捏合';
+   if(h.trackingLost)return '暂时看不到手 · 保持拿取，正在找回';
+   if(h.quality===false)return '手靠近镜头一些，让整只手入镜';
+   if(this.held)return h.releasing?'正在确认松手…':this.held.spec.name+(this.held.spec.fetch&&this.mode==='throw'?' · 已拿稳，张开手指抛出':' · 已拿稳，张开手指放下');
+   const now=performance.now();
+   if(now-(this.hoverAt||0)>100){this.hoverAt=now;this.hoverHit=this.handPick(h.pinchX??h.sx,h.pinchY??h.sy);}
+   return this.hoverHit==='cabinet'?'玩具柜 · 捏合打开':this.hoverHit?this.hoverHit.spec.name+' · 拇指食指捏合拿起':'准星对准玩具 · 捏合拿起';
+  }
   takeKind(kind){const r=this.records.find(r=>r.spec.id===kind&&r.state==='available');if(!r){this.note('这个玩具还没准备好。');return;}this.dialog.close();if(this.take(r)){this.pointerId=null;this.move(this.a.face().project(this.a.model().position));this.note('已拿起'+r.spec.name+'。在空地按住移动，绿色落点松手生效；Esc 归还。');}}
   take(r){if(this.a.busy())return false;this.cancel();this.point=null;this.lastPoint=null;this.shakeDistance=0;this.shakeAt=0;this.a.cancelCommands();const f=this.a.face();r.before={stored:r.stored,position:r.node.getWorldPosition(new this.a.THREE.Vector3()),quaternion:r.node.getWorldQuaternion(new this.a.THREE.Quaternion())};this.a.scene.attach(r.node);r.state='held';this.held=r;this.mode=r.spec.fetch?'throw':'place';
    f.pointerMode=!f.cameraOn;f.mode=r.spec.id==='brush'?'brush':'touch';f.render();
@@ -51,8 +68,8 @@
   pointerMove(e){const p=this.coords(e);if(this.held&&this.held.state==='held'&&(this.pointerId===e.pointerId||this.pointerId==null)){this.consume(e);this.move(p);return true;}if(!this.held){const hit=this.pick(p.x,p.y);this.a.canvas.style.cursor=hit?'grab':'';}return false;}
   pointerUp(e){if(this.pointerId!==e.pointerId)return false;this.consume(e);this.move(this.coords(e));this.release();if(this.a.canvas.hasPointerCapture(e.pointerId))this.a.canvas.releasePointerCapture(e.pointerId);this.pointerId=null;return true;}
   move(p){this.point=p;this.a.face().input={...p,t:performance.now(),pinching:false};}
-  grab(on,pos,reason){if(!on&&this.held?.state==='held'){if(reason==='lost'||reason==='stop'||!pos)this.cancel();else{this.move({x:pos.pinchX??pos.sx,y:pos.pinchY??pos.sy});this.release();}return true;}if(!on||!pos)return false;const p={x:pos.pinchX??pos.sx,y:pos.pinchY??pos.sy},hit=this.pick(p.x,p.y);if(!hit)return false;if(hit==='cabinet'){this.open();return true;}if(this.take(hit))this.move(p);return true;}
-  hand(h){if(this.held?.state==='held'){if(!h.present){this.cancel();return;}if(h.pinching)this.move({x:h.pinchX??h.sx,y:h.pinchY??h.sy});}}
+  grab(on,pos,reason){if(!on&&this.held?.state==='held'){if(reason==='lost'||reason==='stop'||!pos)this.cancel();else{this.move({x:pos.pinchX??pos.sx,y:pos.pinchY??pos.sy});this.release();}return true;}if(!on||!pos)return false;const p={x:pos.pinchX??pos.sx,y:pos.pinchY??pos.sy},hit=this.handPick(p.x,p.y);if(!hit)return false;if(hit==='cabinet'){this.open();return true;}if(this.take(hit))this.move(p);return true;}
+  hand(h){if(h.trackingLost||h.releasing)return;if(this.held?.state==='held'){if(!h.present){this.cancel();return;}if(h.pinching)this.move({x:h.pinchX??h.sx,y:h.pinchY??h.sy});}}
   evaluateTarget(){if(!this.point||!this.held)return null;const f=this.a.face(),p=f.ground(this.point.x,this.point.y),loc=this.a.locomotion();if(!p||!loc)return null;
    const now=performance.now(),key=Math.round(p.x*15)+':'+Math.round(p.z*15);if(this.target?.key===key&&now-this.target.at<250)return this.target;
    const valid=loc.navigation.isWalkable(p)&&!!loc.navigation.route(this.a.model().position,p);p.y=loc.navigation.surfaceHeight(p)+this.held.offset;this.target={point:p,valid,key,at:now};return this.target;}
@@ -77,7 +94,7 @@
   }
   update(dt,now){const r=this.held;if(!r||r.state!=='held')return;if(this.a.busy()){this.cancel();return;}if(!this.point)return;
    const f=this.a.face();f.input={...this.point,t:now,pinching:false};
-   if(!r.spec.fetch){const p=f.ground(this.point.x,this.point.y,1.1);if(p)r.node.position.lerp(p,.25);if(r.spec.id==='rattle'&&this.lastPoint){
+   if(!r.spec.fetch){const p=f.ground(this.point.x,this.point.y,1.1);if(p)r.node.position.lerp(p,1-Math.exp(-Math.max(0,Math.min(.05,dt))*18));if(r.spec.id==='rattle'&&this.lastPoint){
     if(now-(this.shakeAt||0)>350){this.shakeDistance=0;this.shakeAt=now;}
     this.shakeDistance=(this.shakeDistance||0)+Math.hypot(this.point.x-this.lastPoint.x,this.point.y-this.lastPoint.y);
     if(this.shakeDistance>28){this.use();this.shakeDistance=0;this.shakeAt=now;}

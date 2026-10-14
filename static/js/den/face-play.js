@@ -101,6 +101,7 @@
     pointer(event){const r=this.a.canvas.getBoundingClientRect();this.input={x:event.clientX-r.left,y:event.clientY-r.top,t:performance.now()};}
     hand(h){
       if(!this.cameraOn)return;
+      if(h.trackingLost||h.releasing){this.input=null;this.touch.reset();this.hideHalo();return;}
       if(!h.present||h.quality===false){this.input=null;this.touch.reset();this.hideHalo();return;}
       this.input={x:h.sx,y:h.sy,t:performance.now(),pinching:h.pinching};
     }
