@@ -409,6 +409,15 @@ document.addEventListener('DOMContentLoaded', () => {
         </section>
 
 
+        <dialog id="island-music-dialog" aria-labelledby="island-music-title" style="border:1px solid #dfcbbb;border-radius:22px;background:#fffaf3;color:#654b3c;padding:24px;max-width:min(420px,88vw)">
+            <h3 id="island-music-title">小岛音乐</h3>
+            <p id="island-music-track" aria-live="polite"></p>
+            <button type="button" class="action-btn" id="island-music-toggle" aria-pressed="false">开启音乐</button>
+            <p><label for="island-music-volume">音乐音量</label> <output id="island-music-level">30%</output></p>
+            <input id="island-music-volume" type="range" min="0" max="100" value="30" style="width:100%">
+            <p style="font-size:13px">随岛屿切换旋律，通话时自动轻声陪伴。</p>
+            <form method="dialog"><button class="action-btn">回到小窝</button></form>
+        </dialog>
         <dialog id="shiba-acting-dialog" aria-labelledby="shiba-acting-title" style="border:1px solid #dfcbbb;border-radius:22px;background:#fffaf3;color:#654b3c;padding:24px;max-width:min(420px,88vw);box-shadow:0 18px 70px #44302244;">
             <h3 id="shiba-acting-title" style="margin:0 0 6px">球球的小表情</h3>
             <p style="margin:0 0 18px;font-size:14px">选一个，看看它怎样回应你。</p>
@@ -548,6 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/head-look.js') }}?v={{ app_version }}"></script>
+    <script src="/static/js/den/island-music.js?v={{ app_version }}"></script>
     <script src="/static/js/den/alpine-layout.js?v={{ app_version }}"></script>
     <script src="/static/js/den/mistwood-layout.js?v={{ app_version }}"></script>
     <script src="/static/js/den/sky-background.js?v={{ app_version }}"></script>
@@ -760,7 +770,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // ---------- 每宠专属场景主题（装饰/地面/环境粒子） ----------
         const decorGroup = new THREE.Group();
         scene.add(decorGroup);
-        let currentTheme = null;
+        let currentTheme = null, islandMusic = null;
         const M = (c) => new THREE.MeshLambertMaterial({ color: c });
 
         const THEMES = {
@@ -975,6 +985,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const shadowExtent=name==='room'?9:name==='camp'?7:4;
             Object.assign(sun.shadow.camera,{left:-shadowExtent,right:shadowExtent,top:shadowExtent,bottom:-shadowExtent});sun.shadow.camera.updateProjectionMatrix();
             currentTheme = name;
+            islandMusic?.setTheme(name);
             const epoch = ++themeEpoch; modeledStage = false; ground.visible = true; rug.visible = true;
             waterfallFlow=null; // The tree disposer owns the material textures.
             disposeObjectTree(decorGroup);   // 显式释放 GPU 资源，防止反复切宠累积
@@ -2619,33 +2630,22 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('den-chat').addEventListener('keydown', event => {
             if (event.key === 'Escape') { event.preventDefault(); setChatOpen(false); }
         });
-        const bgm = new Audio();
-        bgm.loop = true; bgm.volume = 0.35;
-        bgm.preload = 'none';
-        let musicOn = false;
-        // 某些浏览器需要先 resume AudioContext
-        function unlockAudio() {
-            if (window.AudioContext || window.webkitAudioContext) {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                if (ctx.state === 'suspended') ctx.resume();
-            }
-        }
-        document.getElementById('btn-music').addEventListener('click', function () {
-            if (!musicOn) {
-                if(!bgm.src)bgm.src="{{ url_for('static', filename='mp3/m2.mp3') }}";
-                unlockAudio();
-                bgm.volume = 0.35;   // 确保音量非零
-                bgm.play().then(() => {
-                    musicOn = true; this.textContent = '静音';
-                    if (bgm.volume === 0) { bgm.volume = 0.35; }
-                }).catch((e) => {
-                    musicOn = false; this.textContent = '音乐';
-                    toast('播放被浏览器拦截，请先点击页面任意位置再试', 'info');
-                });
-            } else {
-                bgm.pause(); musicOn = false; this.textContent = '音乐';
-            }
-        });
+        const musicDialog=document.getElementById('island-music-dialog');
+        const musicVolume=document.getElementById('island-music-volume');
+        let savedMusicVolume=.3;
+        try{const v=localStorage.getItem('denMusicVolume');if(v!==null&&Number.isFinite(Number(v)))savedMusicVolume=Math.max(0,Math.min(1,Number(v)));}catch(e){}
+        islandMusic=new IslandMusic.Controller({version:'{{ app_version }}',volume:savedMusicVolume,notify(s){
+            document.getElementById('island-music-track').textContent=s.title;
+            const toggle=document.getElementById('island-music-toggle');toggle.textContent=s.enabled?'关闭音乐':'开启音乐';toggle.setAttribute('aria-pressed',String(s.enabled));
+            musicVolume.value=Math.round(s.volume*100);document.getElementById('island-music-level').textContent=Math.round(s.volume*100)+'%';
+            if(s.error)toast(s.error,'info');
+        }});
+        islandMusic.setTheme(currentTheme||'sakura');islandMusic.emit();
+        document.getElementById('btn-music').onclick=()=>musicDialog.showModal();
+        document.getElementById('island-music-toggle').onclick=()=>islandMusic.toggle();
+        musicVolume.oninput=()=>{islandMusic.setVolume(Number(musicVolume.value)/100);try{localStorage.setItem('denMusicVolume',String(islandMusic.volume));}catch(e){}};
+        document.addEventListener('visibilitychange',()=>islandMusic.setHidden(document.hidden));
+        window.addEventListener('pagehide',()=>islandMusic.stop());
 
         // ---------- 心理治愈 · 心情打卡（记录 + 连续陪伴天数 + 宠物语音安抚） ----------
         const MOOD_KEY = 'denMood:' + window.COMPANION_SCOPE;
@@ -3396,6 +3396,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (now - timeOfDayChecked > 60000) { applyTimeOfDay(); timeOfDayChecked = now; }
             if(waterfallFlow)waterfallFlow.update(t);
             renderBudget.frame(frameDelta,now);
+            islandMusic?.update(frameDelta,!!voiceUI?.isActive()||!!(denAudio&&!denAudio.paused)||!!window.speechSynthesis?.speaking);
             if(renderDialog.open&&now-renderStatusAt>1000){renderStatusAt=now;renderStats();}
             autoBlinkTick(now);
 
