@@ -3,7 +3,7 @@
  const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
  const words={observe:'看看周围',sniff:'闻闻新气味',rub:'蹭蹭脸',jump:'轻轻跳一下',groom:'整理毛发',stretch:'伸个懒腰',rest:'歇一会儿'};
  class Controller{
-  constructor({model,locomotion,life,scope,animate,telemetry=false,onStatus=()=>{},fetcher=fetch,storage=globalThis.localStorage,now=()=>Date.now()}){
+  constructor({model,locomotion,life,scope,animate,telemetry=false,onStatus=()=>{},fetcher=(...args)=>fetch(...args),storage=globalThis.localStorage,now=()=>Date.now()}){
    Object.assign(this,{model,locomotion,life,scope,animate,onStatus,fetcher,storage,now});
    this.telemetry=telemetry;this.stream=globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`;this.events=[];this.lastTelemetry=0;this.perceived=[];this.reason='等待环境感知';
    this.catalog=[];this.memory={};this.energy=.85;this.goal=null;this.phase='loading';this.disposed=false;this.epoch=0;this.next=0;this.pending=null;this.networkAfter=0;this.cooldowns={};this.lastTarget=null;
@@ -23,7 +23,7 @@
    const queued=this.events.shift(),snapshot=queued||this.snapshot();this.lastTelemetry=this.now();this.sending=true;
    const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),4000);
    // Monitoring failure never blocks movement or decision execution.
-   this.fetcher('/api/cat-agent/telemetry',{method:'POST',headers:{'Content-Type':'application/json','X-Profile-Scope':this.scope},body:JSON.stringify({stream:this.stream,event:!!queued,snapshot}),signal:abort.signal})
+   Promise.resolve().then(()=>this.fetcher('/api/cat-agent/telemetry',{method:'POST',headers:{'Content-Type':'application/json','X-Profile-Scope':this.scope},body:JSON.stringify({stream:this.stream,event:!!queued,snapshot}),signal:abort.signal}))
     .then(r=>{if(r.status===409){this.scopeLost=true;this.interrupt('账号已变化，请刷新页面');}}).catch(()=>{})
     .finally(()=>{clearTimeout(timer);this.sending=false;if(this.events.length&&!this.scopeLost)this.emit();});
   }
