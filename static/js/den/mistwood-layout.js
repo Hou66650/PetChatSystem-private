@@ -2,6 +2,7 @@
 (function(root){
  const layout = {
   "radius": 7.8,
+  "surfaces": [{"x":3,"w":2.2,"front":-3.05,"back":-4.75,"base":0.035,"rise":0.49,"ramp":0.70}],
   "rug": {
     "x": 0,
     "z": 0,
@@ -33,13 +34,17 @@
     {"kind":"rect","tag":"catHome","x":-4.4,"z":4.35,"w":0.19,"d":2.4},
     {"kind":"rect","tag":"catHome","x":-1.6,"z":4.35,"w":0.19,"d":2.4},
     {"kind":"rect","tag":"catHome","x":-3,"z":3.25,"w":2.8,"d":0.19},
-    {
-      "kind": "rect",
-      "x": 3.0,
-      "z": -3.1,
-      "w": 4.4,
-      "d": 4.1
-    },
+    {"kind": "rect", "tag": "greenhouse", "x": 0.9, "z": -3.4, "w": 0.12, "d": 3.3},
+    {"kind": "rect", "tag": "greenhouse", "x": 5.1, "z": -3.4, "w": 0.12, "d": 3.3},
+    {"kind": "rect", "tag": "greenhouse", "x": 3, "z": -5.05, "w": 4.2, "d": 0.12},
+    {"kind": "rect", "tag": "greenhouse", "x": 1.4, "z": -1.75, "w": 1, "d": 0.12},
+    {"kind": "rect", "tag": "greenhouse", "x": 4.6, "z": -1.75, "w": 1, "d": 0.12},
+    {"kind": "rect", "tag": "greenhouse", "x": 1.4, "z": -3.5, "w": 1, "d": 0.07},
+    {"kind": "rect", "tag": "greenhouse", "x": 4.6, "z": -3.5, "w": 1, "d": 0.07},
+    {"kind": "rect", "tag": "greenhouse", "x": 1.28, "z": -2.7, "w": 0.5, "d": 1.35},
+    {"kind": "rect", "tag": "greenhouse", "x": 4.72, "z": -2.7, "w": 0.5, "d": 1.35},
+    {"kind": "rect", "tag": "greenhouse", "x": 1.28, "z": -4.55, "w": 0.5, "d": 0.5},
+    {"kind": "rect", "tag": "greenhouse", "x": 4.72, "z": -4.55, "w": 0.5, "d": 0.5},
     {
       "x": -4.7,
       "z": -2.8,

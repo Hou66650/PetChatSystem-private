@@ -7,11 +7,11 @@
     'use strict';
     const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
     class Navigation {
-        constructor({radius = 3.2, bodyRadius = .36, margin = .08, cell = .18, obstacles = [], water = [], bridges = [], rug = null} = {}) {
+        constructor({radius = 3.2, bodyRadius = .36, margin = .08, cell = .18, obstacles = [], water = [], bridges = [], rug = null, surfaces = []} = {}) {
             this.radius = radius - bodyRadius - margin;
             this.clearance = bodyRadius + margin;
             this.cell = cell;
-            this.water = water; this.bridges = bridges; this.rug = rug;
+            this.surfaces=surfaces;this.water = water; this.bridges = bridges; this.rug = rug;
             this.obstacles = [...obstacles, ...bridges.flatMap(b => [-1,1].map(side => ({
                 kind:'rect', x:b.x+side*(b.w-b.rail)/2, z:b.z, w:b.rail, d:b.d
             })))];
@@ -49,6 +49,9 @@
             for (const b of this.bridges) if (Math.abs(p.x-b.x)<=b.w/2 && Math.abs(p.z-b.z)<=b.d/2) {
                 const t=(p.z-b.z)/b.d+.5;
                 height=Math.max(height,b.base+b.rise*Math.sin(Math.PI*t)**2);
+            }
+            for(const s of this.surfaces)if(Math.abs(p.x-s.x)<=s.w/2&&p.z<=s.front&&p.z>=s.back){
+                height=Math.max(height,s.base+s.rise*Math.max(0,Math.min(1,(s.front-p.z)/s.ramp)));
             }
             return height;
         }

@@ -45,6 +45,15 @@ class CatAgentTests(unittest.TestCase):
             clock.return_value=1061;self.model.plan_once=ok
             self.assertEqual(self.post('decide',data).json['source'],'model')
             self.assertEqual(self.app.extensions['cat_agent_gate']['failures'],0)
+    def test_greenhouse_model_action_and_catalog(self):
+        self.model.plan_once=lambda messages: '{"target":"grass","action":"nibble"}'
+        r=self.post('decide',{'candidates':['grass','catnip','hammock']})
+        self.assertEqual(r.status_code,200)
+        self.assertEqual(r.json['action'],'nibble')
+        self.assertIn('猫草',r.json['intent'])
+        catalog=self.a.get('/api/cat-agent').json['catalog']
+        self.assertTrue({'grass','catnip','hammock'} <= {p['id'] for p in catalog})
+
     def test_care_priority_and_validation(self):
         r=self.post('decide',{'candidates':['home','food','bridge'],'hunger':.9,'energy':.8})
         self.assertEqual(r.json['action'],'eat')

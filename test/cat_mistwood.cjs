@@ -18,14 +18,14 @@ const parse=path=>new Promise((resolve,reject)=>{const b=fs.readFileSync(path);n
   const hits=ray.intersectObject(stage.scene,true);assert(hits.length);
   assert(Math.abs(hits[0].point.y-nav.surfaceHeight(p))<.025,'modeled deck follows navigation surface');
  }
- for(const p of [{x:3,z:1.8},{x:-3,z:1.8},{x:3,z:-3.4},{x:-4.7,z:-2.8},{x:8,z:0},{x:-2.4,z:-1.2}])assert(!nav.isWalkable(p),'water, building, trunks, edge and cabinet are blocked');
+ for(const p of [{x:3,z:1.8},{x:-3,z:1.8},{x:.9,z:-3.4},{x:-4.7,z:-2.8},{x:8,z:0},{x:-2.4,z:-1.2}])assert(!nav.isWalkable(p),'water, building, trunks, edge and cabinet are blocked');
  for(const t of layout.trees)assert(!nav.isWalkable({x:t.x,z:t.z}),'every modeled trunk is excluded');
  let from={x:0,z:0};let seed=81;const random=()=>((seed=(1664525*seed+1013904223)>>>0)/2**32);
  for(let i=0;i<20;i++){
   const path=nav.randomDestination(from,random);assert(path);let a=from;
   for(const b of path){assert(nav.segmentClear(a,b));for(let j=0;j<=40;j++)assert(nav.isWalkable({x:a.x+(b.x-a.x)*j/40,z:a.z+(b.z-a.z)*j/40}));a=b;}from=path.at(-1);
  }
- const report=JSON.parse(fs.readFileSync('art/mistwood-v1/stage-report.json'));assert(report.triangles<550000);assert(report.mesh_batches<=22);assert(report.bytes<40*1024*1024);
+ const report=JSON.parse(fs.readFileSync('art/mistwood-v1/stage-report.json'));assert(report.triangles<620000);assert(report.mesh_batches<=56);assert(report.bytes<40*1024*1024);
  const mixer=new THREE.AnimationMixer(dog.scene);
  for(const name of ['run','sit_idle','play_bow','stand_up']){
   mixer.stopAllAction();const clip=dog.animations.find(c=>c.name===name),a=mixer.clipAction(clip);a.play();mixer.update(clip.duration*.4);dog.scene.updateMatrixWorld(true);

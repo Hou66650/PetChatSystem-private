@@ -1,0 +1,10 @@
+#greenhouse-dialog{box-sizing:border-box;width:min(580px,calc(100vw - 28px));max-height:85dvh;overflow:auto;padding:32px;border:1px solid #c8dcc5;border-radius:26px;background:linear-gradient(145deg,#fbfcf4,#edf4e9);color:#324b3d;box-shadow:0 28px 100px #142d4266;font:15px/1.65 system-ui,sans-serif}
+#greenhouse-dialog::backdrop{background:#122e2c88;backdrop-filter:blur(8px)}
+#greenhouse-dialog h2{font-size:25px;letter-spacing:.08em;margin:6px 0}#greenhouse-dialog h3{margin:0}
+#greenhouse-dialog .garden-eyebrow{font-size:10px;letter-spacing:.24em;color:#778b62;margin:0}
+#greenhouse-dialog button{border:1px solid #b9cbae;border-radius:12px;padding:9px 13px;background:#fffdf5;color:#355744;cursor:pointer;margin:4px 3px 4px 0;font:inherit}
+#greenhouse-dialog button:hover{background:#e0ecd5}#greenhouse-dialog button:disabled{opacity:.5;cursor:default}
+#greenhouse-dialog .garden-close{position:absolute;right:18px;top:12px;border:0;background:transparent;font-size:25px}
+.garden-plants{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:22px 0 12px}.garden-plants article{padding:18px;background:#fffaf0cc;border:1px solid #e0e6d2;border-radius:18px}.garden-plants p{min-height:50px;font-size:13px}
+#greenhouse-dialog fieldset{border:1px solid #cbd8c2;border-radius:14px;margin-top:18px;padding:12px 16px}#greenhouse-dialog label{display:block;padding:5px 0}#greenhouse-dialog input{accent-color:#567a50;margin-right:8px;width:17px;height:17px;vertical-align:middle}
+#greenhouse-dialog .garden-note{font-size:12px;color:#687961;margin-bottom:0}@media(max-width:460px){#greenhouse-dialog{padding:25px 20px}.garden-plants{grid-template-columns:1fr}.garden-plants p{min-height:0}}

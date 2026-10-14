@@ -104,44 +104,10 @@ def lantern(x,y,z):
   for dy in [-.10,.10]:b.tube(iron,[(x+dx,y+dy,z+.46),(x+dx,y+dy,z+.77)],.012,6)
  b.mesh(iron,[(x-.15,y-.15,z+.78),(x+.15,y-.15,z+.78),(x+.15,y+.15,z+.78),(x-.15,y+.15,z+.78),(x,y,z+.90)],[(0,1,4),(1,2,4),(2,3,4),(3,0,4)])
 for x,y in [(-1.66,ry-1.8),(1.66,ry-1.8),(-1.66,ry+1.8),(1.66,ry+1.8),(-3.7,-3.8),(3.7,-3.8),(-2.5,2),(4.7,1.2)]:lantern(x,y,deck(y) if abs(x)<2 else .035)
-# Conservatory: stone plinth, glazed bays, curved tracery and a pitched glass roof.
-cx,cy=3.0,3.4;w,d=4.2,3.3;eaves=2.65;ridge=3.95
-for row in range(3):
- for i in range(14):
-  x=cx-w/2+(i+.5)*w/14
-  for side in [-1,1]:b.box(stone,(x,cy+side*d/2,.12+row*.20),(w/14-.008,.25,.19))
- for i in range(10):
-  y=cy-d/2+(i+.5)*d/10
-  for side in [-1,1]:b.box(stone,(cx+side*w/2,y,.12+row*.20),(.25,d/10-.008,.19))
-b.box(stone,(cx,cy,.05),(w,d,.08))
-for side in [-1,1]:
- y=cy+side*d/2
- for i in range(9):
-  x=cx-w/2+i*w/8;b.tube(iron,[(x,y,.62),(x,y,eaves)],.027,9)
-  if i<8:
-   x2=x+w/8;b.mesh(glass,[(x,y,.65),(x2,y,.65),(x2,y,eaves),(x,y,eaves)],[(0,1,2,3)])
-   b.tube(iron,[(x+(w/16)*(1-math.cos(k*math.pi/16)),y,2.18+.28*math.sin(k*math.pi/16)) for k in range(17)],.013,6)
- for z in [.62,1.25,2.18,eaves]:b.tube(iron,[(cx-w/2,y,z),(cx+w/2,y,z)],.025,8)
- for i in range(7):
-  yy=cy-d/2+i*d/6;xx=cx+side*w/2;b.tube(iron,[(xx,yy,.62),(xx,yy,eaves)],.025,8)
-  if i<6:b.mesh(glass,[(xx,yy,.63),(xx,yy+d/6,.63),(xx,yy+d/6,eaves),(xx,yy,eaves)],[(0,1,2,3)])
- for row in range(6):
-  x0=cx+side*w/2*row/6;x1=cx+side*w/2*(row+1)/6;z0=ridge-(ridge-eaves)*row/6;z1=ridge-(ridge-eaves)*(row+1)/6
-  for j in range(8):
-   y0=cy-d/2+j*d/8;y1=y0+d/8;b.mesh(glass,[(x0,y0,z0),(x1,y0,z1),(x1,y1,z1),(x0,y1,z0)],[(0,1,2,3)])
-  b.tube(iron,[(x0,cy-d/2,z0),(x0,cy+d/2,z0)],.018,7)
- for j in range(9):
-  y=cy-d/2+j*d/8;b.tube(iron,[(cx,y,ridge),(cx+side*w/2,y,eaves)],.022,8)
- for y in [cy-d/2,cy+d/2]:
-  b.mesh(glass,[(cx-w/2,y,eaves),(cx+w/2,y,eaves),(cx,y,ridge)],[(0,1,2)])
-  b.tube(iron,[(cx-w/2,y,eaves),(cx,y,ridge),(cx+w/2,y,eaves)],.035,9)
-b.tube(bronze,[(cx,cy-d/2-.12,ridge),(cx,cy+d/2+.12,ridge)],.035,9)
-for j in range(18):
- y=cy-d/2+j*d/17;b.tube(iron,[(cx,y,ridge),(cx,y,ridge+.22)],.014,6);b.ellipsoid(bronze,(cx,y,ridge+.24),(.025,.025,.045),8,5)
-# Double entrance doors and steps remain behind the building navigation boundary.
-for dx in [-.38,0,.38]:b.tube(bronze,[(cx+dx,cy-d/2-.02,.62),(cx+dx,cy-d/2-.02,2.3)],.022,8)
-for dx in [-.05,.05]:b.tube(bronze,[(cx+dx,cy-d/2-.07,1.25),(cx+dx,cy-d/2-.07,1.40)],.013,7)
-for j in range(3):b.box(stone,(cx,cy-d/2-.13-j*.15,.48-j*.16),(1.05,.33,.16))
+# Detailed walk-in conservatory is authored separately, sharing the same world coordinates.
+from greenhouse_garden import build as build_garden
+garden_objects=build_garden(stone,iron,bronze,glass,wood)
+cx,cy=3.0,3.4
 
 def leaf(pos,angle,length,width,mat):
  p=Vector(pos);a=Vector((math.cos(angle),math.sin(angle),.18));q=Vector((-math.sin(angle),math.cos(angle),0));
@@ -181,8 +147,6 @@ for i in range(110):
  a=random.random()*math.tau;r=random.uniform(6.65,7.5);x=r*math.cos(a);y=r*math.sin(a)
  if abs(y-ry)<.7:continue
  fern(x,y,.035,random.uniform(.6,1.2))
-for i in range(16):
- x=cx+random.uniform(-1.7,1.7);y=cy+random.uniform(-1.2,1.2);b.tube(terracotta,[(x,y,.04),(x,y,.36)],[.12,.17],12);fern(x,y,.36,random.uniform(1.1,1.7))
 for i in range(4200):
  a=random.random()*math.tau;r=random.uniform(5.8,7.5);x=r*math.cos(a);y=r*math.sin(a)
  if abs(y-ry)<.7:continue
@@ -200,7 +164,7 @@ for i in range(150):
  b.box(stone,(x,y,.16),(.31,.25,.28),a+math.pi/2)
  if i%5==0:b.box(stone,(x,y,.34),(.28,.28,.45))
 
-stage=b.objects('Mistwood')
+stage=b.objects('Mistwood')+garden_objects
 # Planar per-face UVs preserve real-world texel density on all textured batches.
 for obj in stage:
  if obj.data.materials[0] not in [stone,cliff,bark,soil]:continue

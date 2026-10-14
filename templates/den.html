@@ -396,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-feed-cookie" data-icon="cookie">饼干</button></div>
         </section>
         <section class="dock-panel" id="dock-actions" aria-labelledby="dock-actions-title" hidden><header><div><h2 id="dock-actions-title">一起动一动</h2><p>召唤它过来，看看它的小表情。</p></div><button type="button" class="dock-close" aria-label="收起一起动一动">✕</button></header>
-            <div id="cat-care" hidden><button class="action-btn" id="btn-cat-eat">去吃饭</button><button class="action-btn" id="btn-cat-home">回窝休息</button></div>
+            <div id="cat-care" hidden><button class="action-btn" id="btn-greenhouse">照料温室</button><button class="action-btn" id="btn-cat-eat">去吃饭</button><button class="action-btn" id="btn-cat-home">回窝休息</button></div>
             <div class="dock-grid"><button class="action-btn" id="btn-roam" aria-pressed="true">自由活动：开</button>
             <button class="action-btn" id="btn-recall">过来</button><button class="action-btn" id="btn-run">跑一跑</button>
             <button class="action-btn" id="btn-sniff">闻闻</button>
@@ -565,6 +565,25 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/head-look.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/den/cat-life.js?v={{ app_version }}"></script>
+    <link rel="stylesheet" href="/static/css/greenhouse.css?v={{ app_version }}">
+    <dialog id="greenhouse-dialog" aria-labelledby="greenhouse-title">
+      <form method="dialog"><button class="garden-close" aria-label="关闭温室面板">×</button></form>
+      <p class="garden-eyebrow">MISTWOOD · CONSERVATORY</p><h2 id="greenhouse-title">一方生长的小温室</h2>
+      <p>陪它闻闻叶子，给明天留一颗新芽。</p>
+      <div class="garden-plants">
+        <article><h3>猫草</h3><p id="garden-grass-status"></p><button type="button" data-water="grass">浇一点水</button><button type="button" data-visit="grass">叫猫咪来尝尝</button></article>
+        <article><h3>猫薄荷</h3><p id="garden-catnip-status"></p><button type="button" data-water="catnip">浇一点水</button><button type="button" data-visit="catnip">叫猫咪来闻闻</button></article>
+      </div>
+      <button type="button" data-visit="hammock">去吊床发一会儿呆</button>
+      <fieldset><legend>装扮温室 · 免费试用</legend>
+        <label><input type="checkbox" data-garden-style="night"> 星光夜花（夜晚显现）</label>
+        <label><input type="checkbox" data-garden-style="seasonal"> 四季猫草</label>
+        <label><input type="checkbox" data-garden-style="lace"> 蕾丝侧帘</label>
+        <label><input type="checkbox" data-garden-style="plush"> 吊床绒垫</label>
+      </fieldset>
+      <p class="garden-note" id="garden-feedback" aria-live="polite">浇水后下一个自然日长出新芽；猫咪每日互动也会让植物更茂密。进度保存在此浏览器的当前用户下。</p>
+    </dialog>
+    <script src="/static/js/den/greenhouse.js?v={{ app_version }}"></script>
     <script src="/static/js/den/cat-agent.js?v={{ app_version }}"></script>
     <aside class="cat-intent" id="cat-intent" hidden aria-live="polite"><small id="cat-intent-meta"></small><span id="cat-intent-text"></span><a href="/cat-agent-monitor" target="_blank" rel="noopener" style="display:block;margin-top:8px;pointer-events:auto;color:inherit">查看探索监控 ↗</a></aside>
     <script src="/static/js/den/island-music.js?v={{ app_version }}"></script>
@@ -965,7 +984,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let themeFireLight = null, themeFlame = null;   // tick 用引用缓存，避免每帧 getObjectByName
         const envTexCache = {};
         const disposeObjectTree = SelectedAssets.disposeTree;
-        let catHomeReady=false;
+        let catHomeReady=false, greenhouse=null;
         let themeEpoch = 0, modeledStage = false, waterfallFlow = null, waterfallViewInitialized = false;
         const SAKURA_NAV = {"radius": 3.2, "obstacles": [{"x": -2.1, "z": -1.5, "r": 0.55}, {"x": 2.25, "z": -1.2, "r": 0.38}, {"kind": "rect", "x": 0, "z": -2.65, "w": 3.7, "d": 0.26}, {"x": -2, "z": 0.15, "r": 0.18}, {"x": -1.75, "z": 0.6, "r": 0.13}], "interest_points": [{"name": "food", "x": -1.45, "z": 0.15}, {"name": "ball", "x": -1.2, "z": 0.6}, {"name": "rest", "x": 0.7, "z": 0.45}]};
         const SNOW_NAV = {"radius":3.2,"obstacles":[{"x":-2.0,"z":-1.55,"r":0.54},{"x":-0.85,"z":-2.35,"r":0.41},{"kind":"rect","x":2.2,"z":-1.2,"w":0.85,"d":0.25},{"x":2.65,"z":0.3,"r":0.43},{"x":2.7,"z":0.85,"r":0.3},{"x":-1.7,"z":0.65,"r":0.14}],"interest_points":[{"name":"ball","x":-1.0,"z":0.65},{"name":"rest","x":0.65,"z":0.4}]};
@@ -997,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', () => {
             Object.assign(sun.shadow.camera,{left:-shadowExtent,right:shadowExtent,top:shadowExtent,bottom:-shadowExtent});sun.shadow.camera.updateProjectionMatrix();
             currentTheme = name;
             islandMusic?.setTheme(name);
-            const epoch = ++themeEpoch; modeledStage = false;catHomeReady=false; ground.visible = true; rug.visible = true;
+            const epoch = ++themeEpoch; modeledStage = false;catHomeReady=false;greenhouse=null;document.getElementById('greenhouse-dialog').close(); ground.visible = true; rug.visible = true;
             waterfallFlow=null; // The tree disposer owns the material textures.
             disposeObjectTree(decorGroup);   // 显式释放 GPU 资源，防止反复切宠累积
             while (decorGroup.children.length) decorGroup.remove(decorGroup.children[0]);
@@ -1040,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     home.scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
                     decorGroup.add(home.scene);catHomeReady=true;
                 }catch(error){if(error.name!=='AbortError')console.warn('猫窝暂时无法加载',error);}
-                if(name==='room')for(const x of [2,4]){const light=new THREE.PointLight(0xFFD7A0,.45,4);light.position.set(x,1.6,-3.4);decorGroup.add(light);}
+                if(name==='room')greenhouse=new Greenhouse.View(THREE,gltf.scene,{scope:COMPANION_SCOPE});
                 try {
                     const toys=await assetLoader.glb('/static/models/petchat-toys-v1/cabinet.glb?v={{ app_version }}',assetTicket);
                     if(epoch!==themeEpoch){disposeObjectTree(toys.scene);return;}
@@ -1604,7 +1623,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setAnim('idle', 0);
             showBubble(spec.greet, 2600);
             if(id===3&&modeledStage)catAgent=new CatAgent.Controller({
-                model:petModel,locomotion,life:catLife,scope:COMPANION_SCOPE,telemetry:true,homeReady:catHomeReady,
+                model:petModel,locomotion,life:catLife,scope:COMPANION_SCOPE,telemetry:true,homeReady:catHomeReady,onComplete:goal=>greenhouse?.completed(goal),
                 animate(key){actionTransition=null;anim.state=key;anim.until=0;if(key==='sleep')playSleep();else playAction(key,1);},
                 onStatus(info){
                     document.getElementById('cat-intent').hidden=false;
@@ -1614,7 +1633,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             spawnBusy = false; showPetLoading(false);
-            document.getElementById('cat-care').hidden=!(id===3&&catHomeReady);
+            document.getElementById('cat-care').hidden=!(id===3&&modeledStage);
+            for(const button of ['btn-cat-eat','btn-cat-home'])document.getElementById(button).disabled=!catHomeReady;
             document.dispatchEvent(new Event('petchat:ready'));
             restoreDenHistory(id);
         }
@@ -2396,11 +2416,31 @@ document.addEventListener('DOMContentLoaded', () => {
             button.textContent='自由活动：'+(enabled?'开':'关');button.setAttribute('aria-pressed',String(enabled));
         }
         function movementBlocked() {
+            if(document.getElementById('greenhouse-dialog').open)return true;
             return document.hidden || (toyWorkshop?.held?.state==='held' && !(toyWorkshop.held.spec.id==='rattle' && toyWorkshop.rattlePath)) || ['held','flight'].includes(facePlay?.ball?.phase) || spawnBusy || !petModel || anim.birth < 1 || grabbed || dropping || bounceBack > 0 || (interactionBusy() && !facePlay?.guiding) ||
                 performing() || (chatBusy&&!dialogueRunner.active) || (voiceBusy&&!dialogueRunner.active) || breathActive || !gameOverlay.hidden || !gamesMask.hidden || !moodMask.hidden ||
                 (!dialogueRunner.active && !document.getElementById('den-chat').classList.contains('hidden')) ||
                 (!catAgent?.acting && !['idle','walk','trot','run','turnLeft','turnRight'].includes(anim.state)) || performance.now()<anim.until;
         }
+        const gardenScene=new URLSearchParams(location.search).get('scene');
+        const gardenDialog=document.getElementById('greenhouse-dialog');
+        function gardenRefresh(){
+            if(!greenhouse)return;const g=greenhouse.garden;g.rollover();greenhouse.refresh();
+            for(const [id,p] of Object.entries(g.state.plants)){
+                document.getElementById('garden-'+id+'-status').textContent=['初生叶丛','蓬勃生长','繁茂成簇'][p.growth]+(p.water?' · 已浇水，明天见新芽':' · 等你来照料');
+                gardenDialog.querySelector('[data-water="'+id+'"]').disabled=!!p.water;
+            }
+            for(const el of gardenDialog.querySelectorAll('[data-garden-style]'))el.checked=g.state.cosmetics[el.dataset.gardenStyle];
+        }
+        document.getElementById('btn-greenhouse').onclick=()=>{if(!greenhouse){toast('温室还在加载','info');return;}gardenRefresh();gardenDialog.showModal();};
+        for(const el of gardenDialog.querySelectorAll('[data-water]'))el.onclick=()=>{
+            const changed=greenhouse?.garden.water(el.dataset.water);gardenRefresh();
+            document.getElementById('garden-feedback').textContent=greenhouse?.garden.persisted===false?'已浇水，但浏览器存储不可用，刷新后可能丢失进度。':changed?'水已经浇好，下一个自然日会长出一层新芽。':'今天已经浇过水了，留一点期待给明天。';
+        };
+        for(const el of gardenDialog.querySelectorAll('[data-garden-style]'))el.onchange=()=>{greenhouse?.garden.cosmetic(el.dataset.gardenStyle,el.checked);greenhouse?.refresh();};
+        for(const el of gardenDialog.querySelectorAll('[data-visit]'))el.onclick=()=>{
+            gardenDialog.close();if(movementBlocked()||!catAgent?.requestVisit(el.dataset.visit))toast('请先结束当前互动并开启自由活动','info');
+        };
         for(const [id,action] of [['btn-cat-eat','eat'],['btn-cat-home','sleep']])document.getElementById(id).onclick=()=>{if(movementBlocked()){toast('请先结束当前互动','info');return;}if(!catAgent?.requestCare(action))toast('请先开启自由活动，并等待猫窝加载完成','info');};
         document.getElementById('btn-roam').addEventListener('click',()=>{
             if (!locomotion) return;locomotion.toggle(!locomotion.enabled);petState().roaming=locomotion.enabled;saveState();updateRoamingButton();
@@ -3436,6 +3476,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (now - timeOfDayChecked > 60000) { applyTimeOfDay(); timeOfDayChecked = now; }
             if(waterfallFlow)waterfallFlow.update(t);
+            greenhouse?.update(dt,petModel?.position,gardenScene);
             renderBudget.frame(frameDelta,now);
             islandMusic?.update(frameDelta,!!voiceUI?.isActive()||!!(denAudio&&!denAudio.paused)||!!window.speechSynthesis?.speaking);
             if(renderDialog.open&&now-renderStatusAt>1000){renderStatusAt=now;renderStats();}

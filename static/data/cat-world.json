@@ -99,5 +99,38 @@
       "eat",
       "sniff"
     ]
+  },
+  {
+    "id": "grass",
+    "name": "猫草花盆",
+    "x": 2.3,
+    "z": -2.55,
+    "yaw": -1.57079632679,
+    "actions": [
+      "nibble",
+      "sniff",
+      "observe"
+    ]
+  },
+  {
+    "id": "catnip",
+    "name": "猫薄荷花盆",
+    "x": 3.7,
+    "z": -2.55,
+    "yaw": 1.57079632679,
+    "actions": [
+      "sniff",
+      "observe"
+    ]
+  },
+  {
+    "id": "hammock",
+    "name": "温室吊床",
+    "x": 3,
+    "z": -4.22,
+    "yaw": 0,
+    "actions": [
+      "rest"
+    ]
   }
 ]
