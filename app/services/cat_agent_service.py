@@ -124,10 +124,26 @@ def monitor_record(owner, data):
     if not isinstance(candidates,list) or len(candidates)>len(TARGETS) or any(not isinstance(i,str) or i not in TARGETS for i in candidates):raise ValueError('候选地点错误')
     clean['candidates']=candidates
     clean['enabled']=snap.get('enabled') is True
+    for key,limit,width in [('route',64,2),('trail',32,4)]:
+        points=snap.get(key,[])
+        if not isinstance(points,list) or len(points)>limit:raise ValueError('路径点数量错误')
+        for point in points:
+            if not isinstance(point,list) or len(point) not in ((3,4) if width==4 else (width,)) or any(type(v) not in (int,float) or not math.isfinite(v) for v in point):raise ValueError('路径坐标错误')
+            if abs(point[0])>100 or abs(point[1])>100 or (width==4 and (not 0<=point[2]<=1e15 or (len(point)==4 and point[3] not in (0,1)))):raise ValueError('路径坐标越界')
+        if width==4 and any(points[i][2]<=points[i-1][2] for i in range(1,len(points))):raise ValueError('轨迹时间顺序错误')
+        clean[key]=points
     payload=json.dumps(clean,ensure_ascii=False);now=time.time();db=get_db()
     with db:
+        old=db.execute('SELECT snapshot FROM cat_monitor WHERE owner=? AND stream=?',(owner,stream)).fetchone()
+        trail=json.loads(old['snapshot']).get('trail',[]) if old else []
+        incoming=clean['trail']
+        if not incoming:incoming=[[clean['x'],clean['z'],int(now*1000)]]
+        for point in incoming:
+            if not trail or point[2]>trail[-1][2]:trail.append(point)
+        clean['trail']=trail[-600:]
+        payload=json.dumps(clean,ensure_ascii=False)
         db.execute('INSERT INTO cat_monitor VALUES (?,?,?,?) ON CONFLICT(owner,stream) DO UPDATE SET updated=excluded.updated,snapshot=excluded.snapshot',(owner,stream,now,payload))
-        if event:db.execute('INSERT INTO cat_monitor_events(owner,stream,updated,snapshot) VALUES (?,?,?,?)',(owner,stream,now,payload))
+        if event:db.execute('INSERT INTO cat_monitor_events(owner,stream,updated,snapshot) VALUES (?,?,?,?)',(owner,stream,now,json.dumps({k:v for k,v in clean.items() if k not in ('trail','route')},ensure_ascii=False)))
         db.execute('DELETE FROM cat_monitor_events WHERE owner=? AND id NOT IN (SELECT id FROM cat_monitor_events WHERE owner=? ORDER BY id DESC LIMIT 120)',(owner,owner))
         db.execute('DELETE FROM cat_monitor WHERE owner=? AND stream NOT IN (SELECT stream FROM cat_monitor WHERE owner=? ORDER BY updated DESC LIMIT 8)',(owner,owner))
     return {'ok':True}

@@ -15,6 +15,18 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(len(d['events']),1);self.assertNotIn('private',d['events'][0]['snapshot'])
         self.assertEqual(self.b.get('/api/cat-agent/monitor').json['events'],[])
         self.assertEqual(self.a.post('/api/cat-agent/telemetry',json={}).status_code,409)
+    def test_paths_are_bounded_deduplicated_and_isolated(self):
+        for batch in range(22):
+            points=[[i/1000,0,i+1,0] for i in range(batch*30,batch*30+32)]
+            self.assertEqual(self.send(snapshot={'trail':points,'route':[[0,1],[1,1]]}).status_code,200)
+        d=self.a.get('/api/cat-agent/monitor').json
+        trail=d['streams'][0]['snapshot']['trail']
+        self.assertEqual(len(trail),600);self.assertEqual(len({p[2] for p in trail}),600)
+        self.assertNotIn('trail',d['events'][0]['snapshot'])
+        self.assertEqual(d['streams'][0]['snapshot']['route'],[[0,1],[1,1]])
+        self.assertEqual(self.b.get('/api/cat-agent/monitor').json['streams'],[])
+        for data in [{'trail':[[0,0,2],[0,0,1]]},{'route':[[0,0]]*65},{'trail':[[0,0,1,7]]},{'route':[[float('nan'),0]]}]:
+            self.assertEqual(self.send(snapshot=data).status_code,400)
     def test_retention_heartbeat_and_validation(self):
         for i in range(125):self.send()
         self.send(event=False)

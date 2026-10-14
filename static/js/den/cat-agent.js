@@ -2,10 +2,20 @@
  'use strict';
  const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
  const words={observe:'看看周围',sniff:'闻闻新气味',rub:'蹭蹭脸',jump:'轻轻跳一下',groom:'整理毛发',stretch:'伸个懒腰',rest:'歇一会儿',eat:'吃点饭',sleep:'回窝睡一会儿'};
+ class Trace{
+  constructor(){this.points=[];this.lastSample=-Infinity;}
+  sample(p,t,breakPath=false){
+   if(breakPath)this.breakPending=true;
+   if(!Number.isFinite(p.x)||!Number.isFinite(p.z)||!Number.isFinite(t)||t-this.lastSample<200)return;
+   this.lastSample=t;const last=this.points.at(-1);
+   if(last&&Math.hypot(last[0]-p.x,last[1]-p.z)<.015)return;
+   this.points.push([+p.x.toFixed(3),+p.z.toFixed(3),Math.floor(t),this.breakPending?1:0]);this.breakPending=false;this.points=this.points.slice(-32);
+  }
+ }
  class Controller{
   constructor({model,locomotion,life,scope,animate,telemetry=false,homeReady=true,onStatus=()=>{},fetcher=(...args)=>fetch(...args),storage=globalThis.localStorage,now=()=>Date.now()}){
    Object.assign(this,{model,locomotion,life,scope,animate,onStatus,fetcher,storage,now});
-   this.homeReady=homeReady;this.hunger=.45;this.careUntil=0;this.lastNeedsSave=0;this.telemetry=telemetry;this.stream=globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`;this.events=[];this.lastTelemetry=0;this.perceived=[];this.reason='等待环境感知';
+   this.trace=new Trace();this.homeReady=homeReady;this.hunger=.45;this.careUntil=0;this.lastNeedsSave=0;this.telemetry=telemetry;this.stream=globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`;this.events=[];this.lastTelemetry=0;this.perceived=[];this.reason='等待环境感知';
    this.catalog=[];this.memory={};this.energy=.85;this.goal=null;this.phase='loading';this.disposed=false;this.epoch=0;this.next=0;this.pending=null;this.networkAfter=0;this.lastDecision=-Infinity;this.networkFailures=0;this.wasBlocked=false;this.cooldowns={};this.lastTarget=null;
    this.key='pait-cat-exploration:'+scope;
    try{const saved=JSON.parse(storage?.getItem(this.key)||'{}');for(const [id,m] of Object.entries(saved))if(m&&Number.isFinite(m.visits)&&m.visits>=0)this.memory[id]=m;}catch(e){}
@@ -15,7 +25,7 @@
   }
   get acting(){return !!this.goal&&['acting','aligning'].includes(this.phase);}
   status(text){this.text=text;this.emit(true);this.onStatus({text,phase:this.phase,source:this.source||'local',energy:this.energy,visited:Object.values(this.memory).filter(m=>m.visits>0).length,total:this.catalog.length});}
-  snapshot(){return {phase:this.disposed?'stopped':this.phase,text:this.text||'',reason:this.reason||'',source:this.source||'local',target:this.goal?.target||'',action:this.goal?.action||'',energy:this.energy,hunger:this.hunger,x:this.model.position.x,z:this.model.position.z,pathLength:this.locomotion.path.length,candidates:this.perceived,enabled:this.locomotion.enabled};}
+  snapshot(){this.trace.sample(this.model.position,this.now());return {trail:this.trace.points.map(p=>[...p]),route:this.locomotion.path.slice(0,64).map(p=>[+p.x.toFixed(3),+p.z.toFixed(3)]),phase:this.disposed?'stopped':this.phase,text:this.text||'',reason:this.reason||'',source:this.source||'local',target:this.goal?.target||'',action:this.goal?.action||'',energy:this.energy,hunger:this.hunger,x:this.model.position.x,z:this.model.position.z,pathLength:this.locomotion.path.length,candidates:this.perceived,enabled:this.locomotion.enabled};}
   emit(event=false){
    if(!this.telemetry||this.scopeLost)return;
    if(event){this.events.push(this.snapshot());this.events=this.events.slice(-12);}
@@ -101,7 +111,7 @@
    this.request('/api/cat-agent/report',{target:g.target,result,event:g.event},reportAbort.signal).then(d=>{if(!this.disposed&&!this.scopeLost)this.merge(d.memory);}).catch(()=>{}).finally(()=>clearTimeout(timer));
   }
   step(dt,blocked){
-   if(this.disposed||this.scopeLost||!this.catalog.length)return;this.emit();
+   if(this.disposed||this.scopeLost||!this.catalog.length)return;this.trace.sample(this.model.position,this.now(),blocked);this.emit();
    dt=Math.min(.05,Math.max(0,dt));this.energy=Math.max(.05,Math.min(1,this.energy-dt*.0007));this.hunger=Math.min(1,this.hunger+dt*.001);if(this.now()-this.lastNeedsSave>15000){this.saveNeeds();this.lastNeedsSave=this.now();}
    if(blocked||!this.locomotion.enabled||this.locomotion.owner==='command'){
     // CatLife's own wall approach uses command ownership; it is still the active task.
@@ -133,5 +143,5 @@
   }
   dispose(){this.saveNeeds();this.interrupt('');this.disposed=true;this.text='已离开猫咪小岛';this.emit(true);this.loadAbort?.abort();this.locomotion.autonomous=true;this.life.autonomous=true;}
  }
- return {Controller};
+ return {Controller,Trace};
 });
