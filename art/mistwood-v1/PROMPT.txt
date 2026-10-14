@@ -1,0 +1,8 @@
+雾林温室 / Mistwood Conservatory · 场景固定设计
+
+A grand realistic forest conservatory sanctuary on a broad floating limestone cliff island. Ancient irregular branching trees frame the rear left, an ornate weathered iron and glass Victorian conservatory stands on a stone plinth to the rear right. A broad gently arched limestone bridge crosses a shallow river that spills from both sides into long silver waterfalls. Clear central moss and flagstone courtyard for a small silver tabby cat to run and play. Weathered masonry, fern beds, grasses, rocks, timber benches, warm stone lanterns, understated natural materials. Distant cinematic mountain forest and valley mist, believable architectural scale and subdued photoreal color. Preserve clear walkable banks, wide bridge approaches and sightlines to the cat. No cartoon candy colors, no spherical tree canopies.
+
+设计参考 design-board.png；实际场景见 mistwood-studio.png 与 conservatory-detail.png。参考构图用于建立方向，具体桥梁尺寸、可走区域和实时模型以共享布局为准。
+白天背景：薄雾山谷与远方森林，不画前景岛屿。
+夜晚背景：月光蓝调山谷、森林和低雾，不画前景岛屿。
+材质：无方向光的风化石灰岩与苔藓落叶土壤无缝漫反射贴图。

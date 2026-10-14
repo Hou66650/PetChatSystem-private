@@ -1,0 +1,12 @@
+团子写实重建 v2
+
+来源：本任务生成的银灰虎斑参考图；Rodin Detail 单图重建底模 rodin-detail.glb。未使用 Poly Haven 外部模型。
+编辑工程：cat-studio.blend；浏览器资产：static/models/petchat-cat-v2/cat.glb。
+复现：Blender 5.2 --background --python scripts/blender/build_reference_cat.py，然后运行 validate_reference_cat.py。
+
+清理重建碎片、焊接几何接缝但保留 UV；2K 毛色贴图、非金属高粗糙度皮毛；实体短毛合批，14 根独立锥形胡须；抬起的长尾使用三节渐变权重。
+45 关节、35 动作来自现有四足伴侣动作库，重新适配猫咪的体型及接触面，并非猫科动作捕捉。眼睛闭合采用局部网格形变；头颈继续使用共享注视控制器。
+原图重建存在背部不可见区域推断及动画拓扑近似，不能视为逐像素一致或离线电影级毛发模拟。
+
+验证：真实导出 GLB 重导入的跑、坐、邀玩截图及地面高度；Node/Three 对全部 35 动作三阶段蒙皮检查；四宠物头颈控制回归；网页近景、表情和玩具入口。
+cat-studio/front/side/eyes/动作验证 PNG 都是实际三维模型渲染，reconstruction-reference.png 是概念参考。

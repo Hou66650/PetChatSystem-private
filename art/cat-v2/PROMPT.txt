@@ -1,0 +1,5 @@
+团子 · 写实银灰虎斑猫 / locked character brief
+
+A realistic adult silver-gray tabby domestic shorthair cat, natural feline anatomy and adult proportions, slim athletic shoulders, compact paws with distinct toes, upright triangular ears with subtle pink inner ear, yellow-green almond eyes, pink-brown nose, white muzzle, fine white whiskers, dense short silver fur with dark charcoal tabby stripes and the forehead M pattern. Long raised gently curved tail with dark rings. No collar, clothing, accessories or cartoon oversized head. Full body, all four paws visible and separated, clean neutral studio background, three-quarter view, soft diffuse illumination, sharp natural fur detail, consistent anatomy suitable for 3D reconstruction.
+
+制作顺序：reconstruction-reference.png 为外观依据；Rodin Detail 单图重建为底模；Blender 清理、蒙皮、细毛与胡须、眨眼和动作适配。参考图不是最终模型截图。

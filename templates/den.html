@@ -549,6 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/head-look.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/den/alpine-layout.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/mistwood-layout.js?v={{ app_version }}"></script>
     <script src="/static/js/den/sky-background.js?v={{ app_version }}"></script>
     <script src="/static/js/den/waterfall-flow.js?v={{ app_version }}"></script>
     <script>window.COMPANION_SCOPE={{ companion_scope | tojson }};</script>
@@ -586,10 +587,11 @@ document.addEventListener('DOMContentLoaded', () => {
                  greet: '嗷呜~ 帅气的我在等你一起玩呢！',
                  anims: { idle: 'idle_breathe', walk: 'motion_walk', trot: 'motion_trot', run: 'run', turnLeft:'turn_left', turnRight:'turn_right', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
                  theme: 'snow', themeName: '静静雪原' },
-            3: { name: '猫咪', glb: '/static/models/cat.glb', h: 0.72,
+            3: { name: '猫咪', glb: '/static/models/petchat-cat-v2/cat.glb?v={{ app_version }}', fallback: '/static/models/cat.glb', pbr: true, expressive: true, eyeRetraction: 0, h: 0.85,
                  greet: '喵~ 我的窝就是你的窝（才不让你走呢）。',
-                 anims: { walk: 'Walk', sniff: 'Idle_2_HeadLow', idle: 'Idle', happy: 'Jump_Loop', eat: 'Idle_Eating', petting: 'Idle', talk: 'Idle', sleep: 'Death', blinkL: 'Idle_HitReact_Left', blinkR: 'Idle_HitReact_Right' },
-                 theme: 'room', themeName: '温馨小窝' },
+                 anims: { idle: 'idle_breathe', walk: 'motion_walk', trot: 'motion_trot', run: 'run', turnLeft:'turn_left', turnRight:'turn_right', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
+                 legacyAnims: { walk: 'Walk', run: 'Run', sniff: 'Idle', idle: 'Idle', happy: 'Jump_Loop', eat: 'Idle_Eating', petting: 'Idle', talk: 'Idle', sleep: 'Death' },
+                 theme: 'room', themeName: '雾林温室' },
             4: { name: '德牧', glb: '/static/models/petchat-shepherd-v2/shepherd.glb?v={{ app_version }}', fallback: '/static/models/shepherd.glb', pbr: true, expressive: true, eyeRetraction: 0, h: 1.12,
                  greet: '我在这里。一起去山脊上看看吧！',
                  anims: { idle: 'idle_breathe', walk: 'motion_walk', trot: 'motion_trot', run: 'run', turnLeft:'turn_left', turnRight:'turn_right', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
@@ -672,6 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const ticket=++cameraMoveEpoch,from=camera.position.clone(),fromTarget=controls.target.clone();
             const target=close?petModel.position.clone().add(new THREE.Vector3(0,.55,0)):new THREE.Vector3(0,.65,0);
             const to=close?target.clone().add(new THREE.Vector3(1.25,.65,2.1)):
+                currentTheme==='room'?new THREE.Vector3(11,9,19):
                 currentTheme==='camp'?new THREE.Vector3(5.4,6.8,14):
                 currentTheme==='sakura'?new THREE.Vector3(2.4,4.4,10.8):new THREE.Vector3(3.5,3.8,8.4);
             const duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:650,start=performance.now();
@@ -815,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
             room: {     // 温馨小窝：木地板 + 纸箱 + 毛线球 + 串灯
                 rug: 0xF5C9A0,
                 ground: { grass: false, day: 0xC8A070, dusk: 0xB89060, night: 0x7A6E62 },
-                env: { kind: 'bubble', n: 10, rise: true, tiny: true },
+                env: { kind: 'bubble', n: 0, rise: true, tiny: true },
                 build(g) {
                     const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.9), M(0xC89858));
                     box.position.set(-2.1, 0.35, -1.3); box.rotation.y = 0.4; box.castShadow = true; box.receiveShadow = true; g.add(box);
@@ -948,7 +951,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const MODELED_STAGES = {
             sakura: {url:"/static/models/petchat-sakura-grand-v1/sakura.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('sakura',{...SAKURA_NAV,...SakuraRiverLayout})},
             snow: {url:"/static/models/petchat-toys-v1/snow.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('snow',SnowHavenLayout)},
-            camp: {url:"/static/models/petchat-shepherd-v1/alpine.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('camp',AlpineLayout)}
+            camp: {url:"/static/models/petchat-shepherd-v1/alpine.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('camp',AlpineLayout)},
+            room: {url:"/static/models/petchat-mistwood-v1/mistwood.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('room',MistwoodLayout)}
         };
         function applyTheme(name, assetTicket) {
             const t = THEMES[name], modeledSpec = MODELED_STAGES[name];
@@ -965,10 +969,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('btn-pet-view').hidden=false;document.getElementById('btn-stage-view').hidden=false;
             document.getElementById('btn-pet-view').textContent=`近看${SPECS[currentPetId].name}`;
             document.getElementById('btn-stage-view').textContent=name==='camp'?'营地全景':'小窝全景';
-            controls.maxDistance=name==='camp'?24:12;
+            controls.maxDistance=name==='room'?32:name==='camp'?24:12;
             if(name==='camp' && currentTheme!=='camp'){camera.position.set(5.4,6.8,14);controls.target.set(0,.65,0);}
-            if(name==='room' && currentTheme==='camp'){camera.position.set(3.7,3.2,6.3);controls.target.set(0,.8,0);}
-            const shadowExtent=name==='camp'?7:4;
+            if(name==='room' && currentTheme!=='room'){camera.position.set(11,9,19);controls.target.set(0,1.4,0);}
+            const shadowExtent=name==='room'?9:name==='camp'?7:4;
             Object.assign(sun.shadow.camera,{left:-shadowExtent,right:shadowExtent,top:shadowExtent,bottom:-shadowExtent});sun.shadow.camera.updateProjectionMatrix();
             currentTheme = name;
             const epoch = ++themeEpoch; modeledStage = false; ground.visible = true; rug.visible = true;
@@ -998,9 +1002,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!modeledSpec) return Promise.resolve();
             return assetLoader.glb(modeledSpec.url,assetTicket).then(async gltf => {
                 if (epoch !== themeEpoch) { disposeObjectTree(gltf.scene); return; }
-                gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+                gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = !o.material?.transparent; o.receiveShadow = true; } });
                 decorGroup.add(gltf.scene); modeledStage = true; ground.visible = false; rug.visible = false;
-                if(name==='sakura'||name==='camp')waterfallFlow=new WaterfallFlow.Controller(gltf.scene);
+                if(name==='sakura'||name==='camp'||name==='room')waterfallFlow=new WaterfallFlow.Controller(gltf.scene);
                 if (name === 'sakura') { const light = new THREE.PointLight(0xFFE0A3, .55, 3.5); light.position.set(2.25, .89, -1.2); decorGroup.add(light); }
                 if(name==='snow')for(const [x,z,h] of [[1.25,-1.12,1.0],[2.35,-.8,1],[0,-2.8,1]]){
                     const light=new THREE.PointLight(0xFFBF77,.30,2);light.position.set(x,h,z);decorGroup.add(light);
@@ -1008,6 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(name==='camp')for(const [x,y,z] of [[1.7,1.1,-1.8],[-1.4,3.6,-3.6],[0,.9,1.9]]){
                     const light=new THREE.PointLight(0xFFCF85,.38,3);light.position.set(x,y,z);decorGroup.add(light);
                 }
+                if(name==='room')for(const x of [2,4]){const light=new THREE.PointLight(0xFFD7A0,.45,4);light.position.set(x,1.6,-3.4);decorGroup.add(light);}
                 try {
                     const toys=await assetLoader.glb('/static/models/petchat-toys-v1/cabinet.glb?v={{ app_version }}',assetTicket);
                     if(epoch!==themeEpoch){disposeObjectTree(toys.scene);return;}
@@ -1031,14 +1036,12 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (h >= 9 && h < 17) { sky = 0xCDEBF7; fog = 0xCDEBF7; sunI = 0.95; }  // 白天
             else if (h >= 17 && h < 20) { sky = 0xFFC9A3; fog = 0xFFC9A3; sunI = 0.6; }  // 黄昏
             else { sky = 0x3E4A6B; fog = 0x3E4A6B; sunI = 0.35; }                        // 夜晚
-            if (currentTheme === 'room') sky = fog = 0xF5E8D0;
-            skyBackground.set(currentTheme === 'room' ? null : (h >= 6 && h < 20 ? 'day' : 'night'), sky,
-                currentTheme==='camp'?'/static/textures/alpine-sky-v1':currentTheme==='snow'?'/static/textures/snow-sky-v1':'/static/textures/cloud-sky-v1');
-            scene.fog = new THREE.Fog(fog, currentTheme==='camp'?20:9, currentTheme==='camp'?45:22);
+            skyBackground.set(h >= 6 && h < 20 ? 'day' : 'night', sky,
+                currentTheme==='room'?'/static/textures/mistwood-sky-v1':currentTheme==='camp'?'/static/textures/alpine-sky-v1':currentTheme==='snow'?'/static/textures/snow-sky-v1':'/static/textures/cloud-sky-v1');
+            scene.fog = new THREE.Fog(fog, currentTheme==='room'?28:currentTheme==='camp'?20:9, currentTheme==='room'?60:currentTheme==='camp'?45:22);
             sun.intensity = sunI;
             hemi.intensity = 0.5 + sunI * 0.4;
-            // room 主题光照覆盖（持久化，不被周期刷新重置）
-            if (currentTheme === 'room') { hemi.intensity = 0.45; sun.intensity = 0.55; }
+            renderer.toneMappingExposure=currentTheme==='room'?1.0:1.12;
             // 备用地面随昼夜明暗及主题配色变化。
             const gnd = (currentTheme && THEMES[currentTheme]) ? THEMES[currentTheme].ground : { grass: true, day: 0xe8e0d0, dusk: 0xc8c2b8, night: 0x8a8a96 };
             groundMat.map = null;
@@ -1435,8 +1438,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 catch (error) {
                     if(error.name==='AbortError'||!assetLoader.active(assetTicket))throw error;
                     if (!spec.fallback) throw error;
-                    gltf = await loadGlb(spec.fallback,assetTicket);spec.pbr=id!==4&&!!spec.expressive;
+                    gltf = await loadGlb(spec.fallback,assetTicket);spec.pbr=id!==4&&id!==3&&!!spec.expressive;
                     if(spec.expressive)spec.anims={...spec.anims,wave:'wave_paw'};
+                    if(spec.legacyAnims)spec.anims={...spec.legacyAnims};
                     spec.expressive=false;
                     toast('新模型暂时加载失败，已使用备用模型', 'info');
                 }

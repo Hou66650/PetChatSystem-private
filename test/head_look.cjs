@@ -4,7 +4,7 @@ vm.runInNewContext(fs.readFileSync('static/js/vendor/GLTFLoader.js','utf8'),{THR
 THREE.TextureLoader.prototype.load=function(url,onLoad){const t=new THREE.Texture();queueMicrotask(()=>onLoad(t));return t;};
 const parse=p=>new Promise((resolve,reject)=>{const b=fs.readFileSync(p);new THREE.GLTFLoader().parse(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'',resolve,reject);});
 (async()=>{
- for(const [breed,path] of [['shiba','petchat-shiba-v4/qiuqiu'],['husky','petchat-husky-v3/xueqiu'],['shepherd','petchat-shepherd-v2/shepherd']]){
+ for(const [breed,path] of [['cat','petchat-cat-v2/cat'],['shiba','petchat-shiba-v4/qiuqiu'],['husky','petchat-husky-v3/xueqiu'],['shepherd','petchat-shepherd-v2/shepherd']]){
   const gltf=await parse('static/models/'+path+'.glb'),model=new THREE.Group();model.add(gltf.scene);model.userData.height=1;
   const look=new Controller(THREE,model),base=look.head.quaternion.clone();assert(look.head&&look.neck,breed);
   const meshes=[];model.traverse(o=>{if(o.isSkinnedMesh)meshes.push(o);});
@@ -30,5 +30,5 @@ const parse=p=>new Promise((resolve,reject)=>{const b=fs.readFileSync(p);new THR
  const page=fs.readFileSync('templates/den.html','utf8');
  assert(page.indexOf('headLook?.beforeFrame();',page.indexOf('function tick()'))<page.indexOf('mixer.update(actionTransition'));
  assert(page.indexOf('headLook.update(poseDt')>page.indexOf('mixer.update(actionTransition'));
- console.log('PASS three actual rigs: visible head skin motion, directional limits, no drift, restoration, sleep/run priorities, pointer projection and frame ordering');
+ console.log('PASS four actual rigs: visible head skin motion, directional limits, no drift, restoration, sleep/run priorities, pointer projection and frame ordering');
 })().catch(e=>{console.error(e);process.exitCode=1;});

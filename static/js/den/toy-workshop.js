@@ -2,7 +2,7 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.ToyWorkshop=api;})(typeof window!=='undefined'?window:globalThis,function(){
  'use strict';
  const catalog=[{id:'ball',name:'彩纹球',icon:'●',hint:'抛出，让它叼回来',fetch:true},{id:'disc',name:'爪印飞盘',icon:'◉',hint:'低弧线旋转飞行',fetch:true},{id:'rope',name:'编织绳结',icon:'∞',hint:'拖着逗它，也能抛接',fetch:true},{id:'bone',name:'毛绒骨头',icon:'🦴',hint:'柔软的寻回玩具',fetch:true},{id:'duck',name:'小黄鸭',icon:'🐤',hint:'捏一捏，发出啾啾声',fetch:true},{id:'brush',name:'木梳刷',icon:'▥',hint:'沿宠物背部慢慢梳',fetch:false},{id:'rattle',name:'小摇铃',icon:'♫',hint:'左右摇动，引它跑来（可过桥）',fetch:false}];
- const positions={sakura:{x:.65,z:-1.93,w:1.12,d:.52},snow:{x:-.95,z:-1.2,w:1.12,d:.52},camp:{x:-2.65,z:-.45,w:1.12,d:.52}};
+ const positions={room:{x:-2.4,z:-1.2,w:1.12,d:.52},sakura:{x:.65,z:-1.93,w:1.12,d:.52},snow:{x:-.95,z:-1.2,w:1.12,d:.52},camp:{x:-2.65,z:-.45,w:1.12,d:.52}};
  function navigation(theme,base){const ball=theme==='snow'?{x:1.35,z:1.8}:{x:-1.75,z:.6};return {...base,obstacles:[...base.obstacles.filter(o=>Math.hypot(o.x-ball.x,o.z-ball.z)>.02),{kind:'rect',...positions[theme]}]};}
  class Controller {
   constructor(api){

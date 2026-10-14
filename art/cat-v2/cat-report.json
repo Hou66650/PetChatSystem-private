@@ -1,0 +1,12 @@
+{
+  "source": "rodin-detail.glb",
+  "blink_vertices": {
+    "L": 359,
+    "R": 338
+  },
+  "bones": 45,
+  "triangles": 153867,
+  "fur_strands": 15140,
+  "bytes": 14880044,
+  "whiskers": 14
+}

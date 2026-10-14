@@ -1,0 +1,9 @@
+雾林温室 v1
+
+编辑源：mistwood-studio.blend；脚本 scripts/blender/build_mistwood.py；浏览器 static/models/petchat-mistwood-v1/mistwood.glb。
+模型为本项目 Blender 脚本构建；参考图、石灰岩/林地贴图、昼夜山谷背景由本任务生成。没有采用研究过的 Poly Haven 松树，其几何与下载体积不适合此次实时预算。
+半径 7.8 米，深层悬崖、两岸流水、宽 3.5 米拱桥、铁艺玻璃温室、分叉树木、三维叶片簇、蕨类与林地植物、灯柱及长椅。
+布局唯一来源 static/js/den/mistwood-layout.js，Blender X/-Y 对应 Three X/Z。桥面采用相同正弦平方坡度，温室、树干、长椅、玩具柜、河流和悬崖均参与寻路避障。既有玩具柜功能继续使用。
+渲染采用材质合批，约 48 万三角面、19 个网格批次；精确值见 stage-report.json。GLB 内嵌贴图，背景 WebP。只加载被选中的宠物/场景/昼夜背景，切换释放旧资源；无额外后台预加载。
+水帘在网页使用共享 WaterfallFlow 着色器产生流动高光及下端透明衰减，Blender 静帧不显示运行时动画。树叶使用实体叶片，未使用昂贵毛发或体积云模拟。
+验证：实际 GLB 逐点射线测桥面与导航高度、猫咪体积可过桥、河流/建筑/边缘禁入、随机路径连续采样、选中加载与资源释放回归、网页昼夜及近景检查。
