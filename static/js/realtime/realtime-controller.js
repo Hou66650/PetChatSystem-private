@@ -144,7 +144,7 @@ class RealtimeController {
         this._node.port.onmessage = (e) => {
           const d = e.data;
           if (!d) return;
-          if (d.type === 'chunk') this._client && this._client.sendAudio(d.buffer);
+          if (d.type === 'chunk') this._captureChunk(d.buffer);
           else if (d.type === 'level') { this.lastLevel = d.level; this.onLevel(d.level); }
         };
         src.connect(this._node); // 不连 destination：避免把麦克风外放
@@ -159,22 +159,14 @@ class RealtimeController {
 
     this._setState('CONNECTING');
     if (!this._player) this._player = new PCMPlayer({ sampleRate: 24000 });
-    this._client = new RealtimeClient({
-      petId: this.petId,
-      petGender: this.petGender,
-      surface: this.surface,
-      player: this._player,
-      onEvent: (type, data) => this._onClientEvent(type, data),
-      onStatus: (status, info) => {
-        if (status === 'reconnecting') this._setState('RECONNECTING', info);
-      },
-      onMetrics: (m) => { this.metrics = Object.assign({}, m); this.onMetrics(this.metrics); },
-    });
+    this._client = this._makeClient();
 
     const client = this._client;
     try {
       await client.fetchSession();
       if(!current()) { client.close(); return; }
+      // Block raw capture before opening a speaker-mode socket, including its handshake.
+      this._speakerEnabled=!!client._session?.speakerEnabled;
       await client.connect(); // resolve 于 session.updated
     } catch (e) {
       if(!current()) return;
@@ -189,8 +181,69 @@ class RealtimeController {
                     t_session_ready_ms: this._client.metrics.t_session_ready_ms };
     this.metrics = Object.assign({}, this._client.metrics, ready);
     this.onMetrics(this.metrics);
+    this._enableSpeaker(client._session);
     this._setState('READY');
     this._startWatch();
+  }
+
+  _makeClient() {
+    return new RealtimeClient({
+      petId: this.petId,
+      petGender: this.petGender,
+      surface: this.surface,
+      player: this._player,
+      onEvent: (type, data) => this._onClientEvent(type, data),
+      onStatus: (status, info) => {
+        if (status === 'reconnecting') this._setState('RECONNECTING', info);
+      },
+      onMetrics: (m) => { this.metrics = Object.assign({}, m); this.onMetrics(this.metrics); },
+    });
+  }
+
+  _captureChunk(buffer) {
+    if(this.muted)return;
+    if(this._speakerEnabled){this._speakerGate?.push(buffer);return;}
+    this._client?.sendAudio(buffer);
+  }
+
+  _enableSpeaker(session) {
+    this._speakerEnabled=!!session?.speakerEnabled;
+    if(!this._speakerEnabled)return;
+    this._speakerCounter=0;
+    this._speakerGate=new SpeakerGate.Gate({
+      onStart:()=>{this._speakerSource=this._client?._session;this._client?.close();this._player?.interrupt();this._setState('USER_SPEAKING');},
+      onTurn:pcm=>this._speakerTurn(pcm),
+      onError:e=>{this.stop();this._setState('ERROR');this.onError({code:'speaker_failed',message:e.message||'声纹辨认暂不可用，请关闭声纹模式后重试'});}
+    });
+    this.opts.onSpeaker?.({kind:'uncertain',name:null});
+  }
+
+  async _speakerTurn(pcm) {
+    const generation=this._generation,epoch=this._speakerEpoch||0;
+    const current=()=>generation===this._generation&&epoch===(this._speakerEpoch||0)&&!this.muted;
+    this._setState('AI_THINKING');this.opts.onSpeaker?.({kind:'checking'});
+    const abort=new AbortController();this._speakerAbort=abort;
+    const timer=setTimeout(()=>abort.abort(),20000);
+    try{
+      const source=this._speakerSource;
+      const q=new URLSearchParams({petId:this.petId,surface:this.surface,gender:this.petGender||''});
+      const response=await fetch('/api/voiceprint/identify?'+q,{method:'POST',headers:{'Content-Type':'application/octet-stream','X-Profile-Scope':source.profileScope},body:pcm,signal:abort.signal});
+      const result=await response.json();if(!current())return;
+      if(!response.ok)throw Error(result.error||'声纹辨认失败');
+      this.speaker=result;this.opts.onSpeaker?.(result);
+      // A fresh conversation per utterance prevents one speaker inheriting another's transcript.
+      const client=this._makeClient();this._client=client;
+      if(source.expiresAt*1000<Date.now()+30000)await client.fetchSession();else client._session={...source,config:{...source.config}};
+      if(!current()){client.close();return;}
+      client._session.config.instructions=result.instructions;
+      client._turnId=++this._speakerCounter*100;
+      let connectTimer;
+      try{await Promise.race([client.connect(),new Promise((_,reject)=>{connectTimer=setTimeout(()=>reject(Error('语音连接超时，请重新开始通话')),10000);})]);}finally{clearTimeout(connectTimer);}
+      if(!current()){client.close();return;}
+      // Complete PCM turn plus trailing silence is sent only after session.updated.
+      for(let i=0;i<pcm.byteLength;i+=3200)client.sendAudio(pcm.slice(i,i+3200));
+      client.sendAudio(new Int16Array(16000).buffer);
+    }catch(e){if(current())throw e;}finally{clearTimeout(timer);if(this._speakerAbort===abort)this._speakerAbort=null;}
   }
 
   /** 由播放器/客户端事件驱动的状态观察。 */
@@ -279,17 +332,19 @@ class RealtimeController {
   /** 静音开关：Worklet 停止产出（麦克风保持打开，可随时恢复/插话）。 */
   setMuted(m) {
     this.muted = !!m;
+    if(this.muted&&this._speakerGate){this._speakerEpoch=(this._speakerEpoch||0)+1;this._speakerAbort?.abort();this._speakerGate.reset();}
     if (this._node) this._node.port.postMessage({ type: 'mute', value: this.muted });
   }
 
   /** 调试页合成注入：绕过麦克风直接把 PCM16 片喂给客户端。 */
   injectAudioChunk(arrayBuffer) {
-    this._client && this._client.sendAudio(arrayBuffer);
+    this._captureChunk(arrayBuffer);
   }
 
   /** 结束会话：销毁 WS、播放器、采集。 */
   stop() {
     ++this._generation;
+    this._speakerGate?.close();this._speakerGate=null;this._speakerAbort?.abort();
     if (this._watchTimer) { clearInterval(this._watchTimer); this._watchTimer = null; }
     if (this._client) { this._client.close(); this._client = null; }
     if (this._player) { this._player.destroy(); this._player = null; }

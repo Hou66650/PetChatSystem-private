@@ -357,6 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <link rel="stylesheet" href="{{ url_for('static', filename='css/den-ui.css') }}?v={{ app_version }}">
 <script defer src="{{ url_for('static', filename='js/den-ui.js') }}?v={{ app_version }}"></script>
 <link rel="stylesheet" href="{{ url_for('static',filename='css/face-play.css') }}?v={{ app_version }}">
+<link rel="stylesheet" href="/static/css/voiceprint.css?v={{ app_version }}">
 </head>
 <body class="theme">
     {% include '_navbar.html' %}
@@ -404,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-breath" data-icon="breath">呼吸</button>
             <button class="action-btn" id="btn-games" data-icon="gamepad">游戏中心</button>
             <button class="action-btn" id="btn-companion">陪伴档案</button>
-            <button class="action-btn" id="btn-music" data-icon="music">音乐</button><button class="action-btn" id="btn-toys">玩具柜</button><button class="action-btn" id="btn-render-settings">流畅度</button></div>
+            <button class="action-btn" id="btn-music" data-icon="music">音乐</button><button class="action-btn" id="btn-toys">玩具柜</button><button class="action-btn" id="btn-voiceprint">熟悉的声音</button><button class="action-btn" id="btn-render-settings">流畅度</button></div>
         </section>
 
 
@@ -551,6 +552,8 @@ document.addEventListener('DOMContentLoaded', () => {
     <script>window.COMPANION_SCOPE={{ companion_scope | tojson }};</script>
     <script src="/static/js/realtime/pcm-player.js?v={{ app_version }}"></script>
     <script src="/static/js/realtime/realtime-client.js?v={{ app_version }}"></script>
+<script src="/static/js/realtime/speaker-gate.js?v={{ app_version }}"></script>
+<script src="/static/js/realtime/voiceprint-ui.js?v={{ app_version }}"></script>
     <script src="/static/js/realtime/realtime-controller.js?v={{ app_version }}"></script>
     <script src="/static/js/realtime/realtime-ui.js?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/pet-profile.js') }}?v={{ app_version }}"></script>
@@ -3208,6 +3211,7 @@ document.addEventListener('DOMContentLoaded', () => {
             stop:stopVision,configure:options=>dv?.configure(options),calibrate:()=>dv?.calibrate(),
             cancelCommands:()=>{dialogueRunner.cancel('');endDialogueHold();}
         });
+        document.getElementById('btn-voiceprint').onclick=()=>VoiceprintUI.open();
         toyWorkshop=new ToyWorkshop.Controller({THREE,scene,canvas,camera,face:()=>facePlay,model:()=>petModel,locomotion:()=>locomotion,busy:()=>facePlay.a.busy(),cancelCommands:()=>{dialogueRunner.cancel('');endDialogueHold();},act:(key,ms)=>facePlay.a.act(key,ms),say:text=>showBubble(text,1800,true),dispose:disposeObjectTree,flightPoint:FacePlay.flightPoint});
         document.getElementById('btn-vision').addEventListener('click',()=>facePlay.panel.showModal());
         document.getElementById('btn-vision').setAttribute('aria-haspopup','dialog');

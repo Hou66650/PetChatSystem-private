@@ -86,5 +86,15 @@ async function test(name,fn){await fn();passed++;console.log('PASS',name);}
  await test('motion policy changes actual speed and rest interval',()=>{
   const {Controller}=require(root+'/static/js/den/pet-locomotion.js');const c=new Controller({navigation:{},model:{},speed:.4});c.setBehavior({speedScale:.8,idleSeconds:[14,22]});assert(Math.abs(c.speed-.32)<.001);assert.equal(c.wait,14);c.setBehavior(null);assert.equal(c.speed,.4);assert.equal(c.wait,4);
  });
+ await test('speaker mode skips personal archives and unfamiliar scene commands',async()=>{
+  let writes=0,archives=0,actions=0;
+  const x=uiSetup(async()=>{writes++;return {ok:true,json:async()=>({})};});
+  const u=new x.Class({getPet:()=>({id:1}),onRound:()=>archives++,onUserTranscript:()=>{actions++;return true;}});
+  await u.start();const c=x.controllers[0];c._speakerEnabled=true;c.speaker={kind:'unfamiliar'};
+  c.opts.onTranscripts({reset:true,turnId:1});c.opts.onTranscripts({done:true,turnId:1,userText:'坐下',assistantText:'你好'});
+  await u._saveQueue;assert.equal(writes,0);assert.equal(archives,0);assert.equal(actions,0);
+  c.speaker={kind:'familiar'};c.opts.onTranscripts({reset:true,turnId:2});c.opts.onTranscripts({done:true,turnId:2,userText:'坐下',assistantText:'好呀'});
+  await u._saveQueue;assert.equal(actions,1);assert.equal(writes,0);assert.equal(archives,0);u.stop();
+ });
  console.log(JSON.stringify({passed,failed:0}));
 })().catch(e=>{console.error(e);process.exit(1);});

@@ -268,6 +268,7 @@
         }
     </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-polish.css') }}?v={{ app_version }}">
+<link rel="stylesheet" href="/static/css/voiceprint.css?v={{ app_version }}">
 </head>
 <body>
     <!-- 聊天顶栏（同 _navbar 款式变体：logo 可点回首页） -->
@@ -341,6 +342,8 @@
     <script src="{{ url_for('static', filename='js/pet-profile.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/realtime/pcm-player.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/realtime/realtime-client.js') }}?v={{ app_version }}"></script>
+<script src="/static/js/realtime/speaker-gate.js?v={{ app_version }}"></script>
+<script src="/static/js/realtime/voiceprint-ui.js?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/realtime/realtime-controller.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/realtime/realtime-ui.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/pet-sounds.js') }}?v=1"></script>

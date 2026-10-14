@@ -60,11 +60,11 @@ def issue_realtime_token(ttl_seconds=600):
     return token, payload['exp']
 
 
-def build_instructions(pet_id, gender=None, surface='chat'):
+def build_instructions(pet_id, gender=None, surface='chat', private_context=True):
     from . import companion_service
     pet = pet_registry.get_pet(pet_id)
     text = (pet_registry.build_system_prompt(pet, gender) + VOICE_CONSTRAINTS
-            + companion_service.context(companion_service.owner_key(), pet_id))
+            + (companion_service.context(companion_service.owner_key(), pet_id) if private_context else ''))
     if surface == 'den':
         text += ('\n你在3D小窝里陪伴用户。明确动作请求会由系统另行执行，'
                  '可简短回应“好呀”，不要声称动作已经完成；不要朗读动作指令或JSON。')
@@ -90,8 +90,13 @@ def build_realtime_session(pet_id, gender=None, surface='chat'):
     ttl = int(cfg.get('GLM_REALTIME_TOKEN_TTL', 600))
     token, exp = issue_realtime_token(ttl)
     from . import companion_service
-    instructions = build_instructions(pet_id, gender, surface)
+    from . import voiceprint_service
+    speaker_enabled = voiceprint_service.enabled(companion_service.owner_key())
+    instructions = build_instructions(pet_id, gender, surface,private_context=not speaker_enabled)
+    if speaker_enabled:
+        instructions += voiceprint_service.instruction({'kind':'uncertain','name':None})
     return {
+        'speakerEnabled': speaker_enabled,
         'profileScope': companion_service.browser_scope(),
         'profileRevision': companion_service.settings(companion_service.owner_key())['revision'],
         'sessionId': str(uuid.uuid4()),

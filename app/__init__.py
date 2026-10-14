@@ -45,6 +45,8 @@ def create_app(config_object=Config):
     from .services import companion_service
     with app.app_context():
         companion_service.init_schema()
+        from .services import voiceprint_service
+        voiceprint_service.init_schema()
 
     @app.context_processor
     def _companion_scope():

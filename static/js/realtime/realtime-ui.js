@@ -42,6 +42,7 @@
     this._panel = null;
     this._aiText = '';
     this._injectStyle();
+    document.addEventListener?.('voiceprint-settings-open',()=>this.stop());
   }
 
   RealtimeUI.prototype._injectStyle = function () {
@@ -98,7 +99,9 @@
       '<span id="rt-lv"><span id="rt-lvbar"><i></i></span><span id="rt-lvdb">— dB</span></span></div>' +
       '<div id="rt-sub"><div id="rt-user">—</div><div id="rt-ai">开启后直接说话，说完自动回答</div></div>' +
       '<div id="rt-devrow"><label for="rt-dev">🎤 输入设备</label><select id="rt-dev"><option>正在识别…</option></select></div>' +
+      '<div id="rt-speaker" role="status" style="margin-top:8px"></div>' +
       '<div id="rt-actions">' +
+      '<button type="button" id="rt-voiceprint">声纹设置</button>' +
       '<button type="button" id="rt-mute">🔇 静音</button>' +
       '<button type="button" id="rt-sound-test">试听声音</button>' +
       '<button type="button" id="rt-stop" class="danger">■ 结束对话</button>' +
@@ -124,6 +127,7 @@
       p.querySelector('#rt-ai').textContent = '正在切换到 ' + (this.options[this.selectedIndex] || {}).textContent + ' …';
       self._restart(this.value);
     });
+    p.querySelector('#rt-voiceprint').onclick=()=>window.VoiceprintUI?.open();
     this._panel = p;
     return p;
   };
@@ -264,6 +268,7 @@
     panel.querySelector('#rt-ai').textContent = '正在开启…';
     panel.querySelector('#rt-metrics').textContent = '';
     panel.querySelector('#rt-memory').textContent = '';
+    panel.querySelector('#rt-speaker').textContent = '';
     panel.querySelector('#rt-notice').textContent = '';
     panel.querySelector('#rt-output').textContent = '';
     panel.querySelector('#rt-lvdb').textContent = '— dB';
@@ -274,6 +279,7 @@
       petGender: gender,
       surface: this.surface,
       micDeviceId: micId,
+      onSpeaker: function(info){if(!current())return;panel.querySelector('#rt-speaker').textContent=info.kind==='checking'?'正在本机辨认声音，请稍候…':info.kind==='familiar'?'听起来像 '+info.name+' · 亲近回应':info.kind==='unfamiliar'?'尚不熟悉的声音 · 礼貌回应':'声音不确定 · 中性回应';},
       onLevel: function (db) { if(current()) self._renderLevel(db); },
       onPlayback: function (info) {
         if(!current()) return;
@@ -316,18 +322,18 @@
           transcriptTurns.add(t.turnId);
           // Explicit scene commands act on finalized ASR, before reply/memory work.
           try {
-            if(self.onUserTranscript(t.userText,pet,turnContexts.get(t.turnId)) === true)
+            if(controller.speaker?.kind!=='unfamiliar' && self.onUserTranscript(t.userText,pet,turnContexts.get(t.turnId)) === true)
               handledActionTurns.add(t.turnId);
           } catch(e) { console.warn('onUserTranscript error', e); }
         }
         if (t.done) {
           // 一轮完整结束：增量字幕结算，交由页面写历史（一条用户 + 一条宠物）
           var context = turnContexts.get(t.turnId);
-          if (t.userText || t.assistantText) {
+          if (!controller._speakerEnabled && (t.userText || t.assistantText)) {
             try { self.onRound(t.userText || '', t.assistantText || '', pet); }
             catch (e) { console.warn('onRound error', e); }
           }
-          if(t.userText) {
+          if(t.userText && !controller._speakerEnabled) {
             var completedAt=performance.now();
             panel.querySelector('#rt-memory').textContent='正在整理这一轮的记忆'+(self.surface==='den'?'与动作':'')+'…';
             var revision=controller._client?controller._client._session.profileRevision:null;

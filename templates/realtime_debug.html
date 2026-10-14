@@ -37,6 +37,7 @@
   .hint { font-size:12px; color:#9a8878; line-height:1.6; }
   input[type=text] { font-size:14px; padding:7px 10px; border-radius:8px; border:1px solid var(--c-line); flex:1; min-width:220px; }
 </style>
+<link rel="stylesheet" href="/static/css/voiceprint.css?v={{ app_version }}">
 </head>
 <body>
 <h1>实时语音端到端调试页</h1>
@@ -85,6 +86,8 @@
 
 <script src="/static/js/realtime/pcm-player.js?v=2"></script>
 <script src="/static/js/realtime/realtime-client.js?v=2"></script>
+<script src="/static/js/realtime/speaker-gate.js?v={{ app_version }}"></script>
+<script src="/static/js/realtime/voiceprint-ui.js?v={{ app_version }}"></script>
 <script src="/static/js/realtime/realtime-controller.js?v=2"></script>
 <script>
 'use strict';
