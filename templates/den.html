@@ -921,10 +921,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const envTexCache = {};
         const disposeObjectTree = SelectedAssets.disposeTree;
         let themeEpoch = 0, modeledStage = false, waterfallFlow = null, waterfallViewInitialized = false;
-        const SAKURA_NAV = {"radius": 3.2, "obstacles": [{"x": -2.1, "z": -1.5, "r": 0.36}, {"x": 2.25, "z": -1.2, "r": 0.38}, {"kind": "rect", "x": 0, "z": -2.65, "w": 3.7, "d": 0.26}, {"x": -2, "z": 0.15, "r": 0.18}, {"x": -1.75, "z": 0.6, "r": 0.13}], "interest_points": [{"name": "food", "x": -1.45, "z": 0.15}, {"name": "ball", "x": -1.2, "z": 0.6}, {"name": "rest", "x": 0.7, "z": 0.45}]};
+        const SAKURA_NAV = {"radius": 3.2, "obstacles": [{"x": -2.1, "z": -1.5, "r": 0.55}, {"x": 2.25, "z": -1.2, "r": 0.38}, {"kind": "rect", "x": 0, "z": -2.65, "w": 3.7, "d": 0.26}, {"x": -2, "z": 0.15, "r": 0.18}, {"x": -1.75, "z": 0.6, "r": 0.13}], "interest_points": [{"name": "food", "x": -1.45, "z": 0.15}, {"name": "ball", "x": -1.2, "z": 0.6}, {"name": "rest", "x": 0.7, "z": 0.45}]};
         const SNOW_NAV = {"radius":3.2,"obstacles":[{"x":-2.0,"z":-1.55,"r":0.54},{"x":-0.85,"z":-2.35,"r":0.41},{"kind":"rect","x":2.2,"z":-1.2,"w":0.85,"d":0.25},{"x":2.65,"z":0.3,"r":0.43},{"x":2.7,"z":0.85,"r":0.3},{"x":-1.7,"z":0.65,"r":0.14}],"interest_points":[{"name":"ball","x":-1.0,"z":0.65},{"name":"rest","x":0.65,"z":0.4}]};
         const MODELED_STAGES = {
-            sakura: {url:"/static/models/petchat-toys-v1/sakura.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('sakura',{...SAKURA_NAV,...SakuraRiverLayout})},
+            sakura: {url:"/static/models/petchat-sakura-grand-v1/sakura.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('sakura',{...SAKURA_NAV,...SakuraRiverLayout})},
             snow: {url:"/static/models/petchat-toys-v1/snow.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('snow',SnowHavenLayout)}
         };
         function applyTheme(name, assetTicket) {
@@ -932,7 +932,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!t) return;
             if(name==='sakura' && !waterfallViewInitialized){
                 // Leave room beneath the island for both waterfalls on first entry.
-                camera.position.set(2.4,3.4,8.7);controls.target.set(0,.25,0);
+                camera.position.set(2.4,4.4,10.8);controls.target.set(-.3,1.1,0);
                 waterfallViewInitialized=true;
             }
             if(name==='snow' && currentTheme!=='snow'){
