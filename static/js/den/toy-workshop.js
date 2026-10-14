@@ -15,12 +15,14 @@
    this.quick=document.getElementById('toy-quick-open');this.quick.onclick=()=>this.open();
    this.menuCursor=document.getElementById('toy-menu-cursor');
    this.dialog.addEventListener('close',()=>this.menuHover(null));
-   document.addEventListener('fullscreenchange',()=>{if(this.ownsFullscreen&&!document.fullscreenElement){this.ownsFullscreen=false;if(this.immersive)this.cancel();}});
+   this.fullscreenButton=document.getElementById('scene-fullscreen');
+   this.fullscreenButton.onclick=()=>this.toggleFullscreen();
+   document.addEventListener('fullscreenchange',()=>{if(this.ownsFullscreen&&!document.fullscreenElement){this.ownsFullscreen=false;this.manualFullscreen=false;if(this.immersive)this.cancel();this.applyFullscreen(false);}});
    document.getElementById('toy-recall').onclick=()=>this.recall();
    document.getElementById('toy-cancel').onclick=()=>this.cancel();
    document.getElementById('toy-use').onclick=()=>this.use();
    for(const b of this.hud.querySelectorAll('[data-toy-mode]'))b.onclick=()=>{this.mode=b.dataset.toyMode;this.render();};
-   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&this.held){this.cancel();e.preventDefault();}});
+   document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(this.held){this.manualFullscreen=false;this.cancel();e.preventDefault();}else if(this.manualFullscreen){this.manualFullscreen=false;this.applyFullscreen(false);e.preventDefault();}}});
    this.ray=new api.THREE.Raycaster();this.makePreview();
   }
   makePreview(){const T=this.a.THREE;this.preview=new T.Group();this.preview.visible=false;this.preview.renderOrder=90;
@@ -38,20 +40,36 @@
   recall(){this.cancel();for(const r of this.records)this.restore(r);this.note('玩具已归位，岛上的球也回到原处。');}
   open(){this.cancel();this.render();this.dialog.showModal();}
   note(text){if(this.tip.textContent===text)return;this.tip.textContent=text;if(this.hud.hidden)this.a.face()?.note(text);document.getElementById('toy-status').textContent=text;}
+  animateViewport(){
+   const canvas=this.a?.canvas;
+   if(!canvas?.animate||typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+   this.viewportAnimation?.cancel();
+   // Composite only: resize projection once, never allocate a new WebGL buffer on each animation frame.
+   this.viewportAnimation=canvas.animate([{opacity:.78,transform:'scale(1.018)'},{opacity:1,transform:'scale(1)'}],{duration:360,easing:'cubic-bezier(.2,.75,.25,1)'});
+  }
+  toggleFullscreen(){this.manualFullscreen=!this.manualFullscreen;this.applyFullscreen(this.manualFullscreen||this.immersive);}
   immersiveMode(active){
    if(this.immersive===active)return;this.immersive=active;
    document.body?.classList.toggle('toy-immersive',active);
-   // Camera inference lacks browser user activation: viewport immersion still works there.
+   this.applyFullscreen(active||!!this.manualFullscreen);
+  }
+  applyFullscreen(active){
+   if(this.fullWanted===active)return;this.fullWanted=active;
+   document.body?.classList.toggle('scene-fullscreen',active);
+   if(this.fullscreenButton){this.fullscreenButton.textContent=active?'⤡ 退出全屏':'⤢ 全屏';this.fullscreenButton.setAttribute('aria-pressed',String(active));}
    if(active){
     const wrap=document.getElementById('den-wrap');
     if(!document.fullscreenElement&&document.fullscreenEnabled&&typeof navigator!=='undefined'&&navigator.userActivation?.isActive&&wrap?.requestFullscreen){
      try{Promise.resolve(wrap.requestFullscreen()).then(()=>{
       if(document.fullscreenElement!==wrap)return;
-      if(this.immersive)this.ownsFullscreen=true;
+      if(this.fullWanted){this.ownsFullscreen=true;this.animateViewport();}
       else document.exitFullscreen?.().catch(()=>{});
-     }).catch(()=>{});}catch(e){}
-    }
-   }else if(this.ownsFullscreen){this.ownsFullscreen=false;if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});}
+     }).catch(()=>this.animateViewport());}catch(e){this.animateViewport();}
+    }else this.animateViewport();
+   }else{
+    if(this.ownsFullscreen){this.ownsFullscreen=false;if(document.fullscreenElement){Promise.resolve(document.exitFullscreen?.()).catch(()=>{}).then(()=>this.animateViewport());return;}}
+    this.animateViewport();
+   }
   }
   render(){if(this.held?.state!=='held')this.grip?.clear();this.immersiveMode(this.held?.state==='held');if(!this.hud)return;this.hud.hidden=!this.held;document.getElementById('toy-held-name').textContent=this.held?this.held.spec.name:'';for(const b of this.hud.querySelectorAll('[data-toy-mode]')){b.setAttribute('aria-pressed',String(b.dataset.toyMode===this.mode));b.disabled=b.dataset.toyMode==='throw'&&!this.held?.spec.fetch;}for(const b of this.grid.querySelectorAll('[data-toy]'))b.disabled=!this.records.some(r=>r.spec.id===b.dataset.toy&&r.state==='available');}
   pick(x,y){this.root?.updateMatrixWorld(true);this.ray.setFromCamera(new this.a.THREE.Vector2(x/this.a.canvas.clientWidth*2-1,1-y/this.a.canvas.clientHeight*2),this.a.camera);
