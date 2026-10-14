@@ -81,7 +81,7 @@
   async plan(forced=null){
    const candidates=this.candidates();this.perceived=candidates.map(p=>p.id);this.reason='已按当前位置检查地点可达性；本地策略优先较少访问地点，低精力优先休息';if(!candidates.length){this.next=this.now()+12000;this.status('先等等，寻找可以安全到达的地方');return;}
    this.lastDecision=this.now();const epoch=++this.epoch;this.pending=new AbortController();const abort=this.pending;this.phase='planning';this.status('看看附近还有什么没探索过');
-   const urgent=forced||this.care(candidates);let plan=urgent||{...this.fallback(candidates),reason:this.reason};const timer=setTimeout(()=>abort.abort(),10000);
+   const urgent=forced||this.care(candidates);let plan=urgent||{...this.fallback(candidates),reason:this.reason};const timer=setTimeout(()=>abort.abort(),32000);
    try{if(!urgent&&this.now()>=this.networkAfter){const remote=await this.request('/api/cat-agent/decide',{candidates:candidates.map(p=>p.id),energy:this.energy,hunger:this.hunger},abort.signal);plan=remote;this.networkFailures=0;this.networkAfter=this.now()+Math.max(0,Math.min(300,Number(remote.retryAfter)||0))*1000;}}
    catch(e){if(this.scopeLost||epoch!==this.epoch||this.disposed)return;this.networkFailures=Math.min(4,this.networkFailures+1);const delay=Math.min(120,8*2**this.networkFailures);this.networkAfter=this.now()+delay*1000;plan.reason='网络请求失败，退避 '+delay+' 秒，继续本地探索';}
    finally{clearTimeout(timer);if(this.pending===abort)this.pending=null;}

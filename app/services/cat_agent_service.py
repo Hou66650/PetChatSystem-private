@@ -54,8 +54,9 @@ def decide(owner, data):
     ordered=sorted(candidates,key=lambda i:(
         rows.get(i,{}).get('result')=='blocked' and now-rows[i]['updated']<120,
         rows.get(i,{}).get('visits',0),rows.get(i,{}).get('updated',0)))
+    options={i:[a for a in TARGETS[i]['actions'] if a not in ('eat','sleep')] for i in ordered}
     target=next((i for i in ordered if 'rest' in TARGETS[i]['actions']),ordered[0]) if energy<.3 else ordered[0]
-    action='rest' if energy<.3 and 'rest' in TARGETS[target]['actions'] else TARGETS[target]['actions'][rows.get(target,{}).get('visits',0)%len(TARGETS[target]['actions'])]
+    action='rest' if energy<.3 and 'rest' in TARGETS[target]['actions'] else options[target][rows.get(target,{}).get('visits',0)%len(options[target])]
     source='local';reason='后台模型繁忙，使用本地访问记录排序'
     # One background call at a time, with an 8s minimum gap per app worker.
     # Local planning remains available during cooldown or provider outages.
@@ -68,18 +69,20 @@ def decide(owner, data):
                 try:
                     raw=current_app.extensions['llm'].plan_once([
                         {'role':'system','content':'你是一只在岛上探索的猫。根据精力和探索记录，选择可选地点和该地点支持的动作。优先新地点，疲倦时休息，近期受阻时换地点。只返回JSON {"target":"地点id","action":"动作"}。不得创造地点、坐标、工具或其他字段。'},
-                        {'role':'user','content':json.dumps({'energy':energy,'candidates':[TARGETS[i] for i in ordered],'memory':list(rows.values())},ensure_ascii=False)}])
+                        {'role':'user','content':json.dumps({'energy':energy,'candidates':[{'id':i,'name':TARGETS[i]['name'],'actions':options[i],'visits':rows.get(i,{}).get('visits',0),'lastResult':rows.get(i,{}).get('result','')} for i in ordered]},ensure_ascii=False)}])
                     result=json.loads(raw)
-                    if isinstance(result,dict) and result.get('target') in candidates and result.get('action') in TARGETS[result['target']]['actions']:
+                    if isinstance(result,dict) and result.get('target') in candidates and result.get('action') in options[result['target']]:
                         target,action=result['target'],result['action'];source='model';reason='模型从可到达地点与允许动作中选择，已通过白名单校验';gate['failures']=0;gate['reason']='等待 8 秒决策窗口，使用本地策略'
-                    else:raise ValueError('invalid plan')
+                    else:raise PlanningError('决策不在候选地点或动作白名单内',kind='invalid_plan')
                 except (LLMError,ValueError,TypeError,AttributeError) as error:
                     if isinstance(error,PlanningError) and error.kind=='busy':
                         delay=8;reason='对话正在使用模型，8 秒后可重试；继续本地探索'
                     else:
                         gate['failures']=min(4,gate.get('failures',0)+1)
                         delay=max(min(120,8*2**gate['failures']),getattr(error,'retry_after',0))
-                        label='模型限流' if isinstance(error,PlanningError) and error.kind=='rate_limit' else '模型请求失败或结果无效'
+                        kind=getattr(error,'kind','format' if isinstance(error,(ValueError,TypeError,AttributeError)) else 'unavailable')
+                        label={'rate_limit':'模型限流','timeout':'模型响应超时（读取上限 25 秒）','network':'模型网络连接失败','auth':'模型鉴权或访问权限失败','request':'模型请求参数或模型名称被拒绝','format':'模型返回格式不正确','empty':'模型未返回决策文本','truncated':'模型输出被截断','invalid_plan':'模型决策不在允许的地点或动作内'}.get(kind,'模型服务暂不可用')
+                        current_app.logger.warning('Cat planner fallback: kind=%s model=%s',kind,current_app.config.get('GLM_MODELS',['unknown'])[0])
                         reason=f'{label}，退避 {math.ceil(delay)} 秒；继续本地探索'
                     gate['next']=time.time()+delay;gate['reason']=reason
         finally:

@@ -54,6 +54,30 @@ class CatAgentTests(unittest.TestCase):
         catalog=self.a.get('/api/cat-agent').json['catalog']
         self.assertTrue({'grass','catnip','hammock'} <= {p['id'] for p in catalog})
 
+    def test_failure_reason_distinguishes_timeout_from_invalid_plan(self):
+        from app.llm.client import PlanningError
+        def timeout(_):raise PlanningError('timeout',kind='timeout')
+        self.model.plan_once=timeout
+        r=self.post('decide',{'candidates':['bridge']})
+        self.assertIn('响应超时',r.json['reason'])
+        self.assertNotIn('结果无效',r.json['reason'])
+        self.app.extensions['cat_agent_gate']['next']=0
+        self.model.plan_once=lambda _: '{"target":"ocean","action":"observe"}'
+        self.assertIn('不在允许',self.post('decide',{'candidates':['bridge']}).json['reason'])
+
+    def test_compact_prompt_does_not_offer_reserved_care_actions(self):
+        import json
+        def plan(messages):
+            payload=json.loads(messages[1]['content'])
+            self.assertNotIn('memory',payload)
+            for p in payload['candidates']:
+                self.assertNotIn('x',p)
+                self.assertNotIn('sleep',p['actions'])
+                self.assertNotIn('eat',p['actions'])
+            return '{"target":"food","action":"sniff"}'
+        self.model.plan_once=plan
+        self.assertEqual(self.post('decide',{'candidates':['food','home']}).json['source'],'model')
+
     def test_care_priority_and_validation(self):
         r=self.post('decide',{'candidates':['home','food','bridge'],'hunger':.9,'energy':.8})
         self.assertEqual(r.json['action'],'eat')
@@ -68,6 +92,31 @@ class CatAgentTests(unittest.TestCase):
         r=self.post('decide',{'candidates':['bridge','home'],'energy':.1})
         self.assertEqual(r.json['target'],'home');self.assertEqual(r.json['action'],'sleep')
 class PlannerTransportTests(unittest.TestCase):
+    def test_planning_transport_budget_and_typed_failures(self):
+        import requests
+        from unittest.mock import Mock
+        from app.llm.client import GLMClient, PlanningError
+        client=GLMClient('test-key','https://example.invalid',['test-model'])
+        response=Mock(status_code=200)
+        response.json.return_value={'choices':[{'finish_reason':'stop','message':{'content':'{"target":"bridge","action":"observe"}'}}]}
+        client.session.post=Mock(return_value=response)
+        self.assertIn('bridge',client.plan_once([]))
+        self.assertEqual(client.session.post.call_args.kwargs['timeout'],(3,25))
+        for code,kind in [(401,'auth'),(403,'auth'),(400,'request'),(503,'unavailable')]:
+            response.status_code=code
+            with self.assertRaises(PlanningError) as cm:client.plan_once([])
+            self.assertEqual(cm.exception.kind,kind)
+        response.status_code=200
+        for choice,kind in [({'finish_reason':'length','message':{'content':'{'}},'truncated'),({'message':{'content':''}},'empty'),({},'format')]:
+            response.json.return_value={'choices':[choice]}
+            with self.assertRaises(PlanningError) as cm:client.plan_once([])
+            self.assertEqual(cm.exception.kind,kind)
+        for exception,kind in [(requests.ReadTimeout(),'timeout'),(requests.ConnectionError(),'network')]:
+            client.session.post.side_effect=exception
+            with self.assertRaises(PlanningError) as cm:client.plan_once([])
+            self.assertEqual(cm.exception.kind,kind)
+        self.assertTrue(client._sem.acquire(blocking=False));client._sem.release()
+
     def test_busy_and_rate_limit_do_not_queue_or_retry(self):
         from app.llm.client import GLMClient
         from unittest.mock import Mock

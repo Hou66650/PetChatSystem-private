@@ -110,22 +110,34 @@ class GLMClient:
         return self._content(data)
 
     def plan_once(self, messages):
-        """Low-priority bounded background decision: no queue, retry or model fallback."""
+        """One bounded low-priority call; frontend allows 32s for connect + read."""
         if not self._sem.acquire(blocking=False):
             raise PlanningError('对话正在使用模型，探索使用本地策略',kind='busy',retry_after=8)
         try:
             response=self.session.post(f'{self.base_url}/chat/completions',json={
                 'model':self.models[0],'messages':messages,'temperature':.65,
-                'response_format':{'type':'json_object'},'thinking':{'type':'disabled'},'max_tokens':160},timeout=(3,7))
+                'response_format':{'type':'json_object'},'thinking':{'type':'disabled'},'max_tokens':160},timeout=(3,25))
             if response.status_code!=200:
                 retry_after=0
                 if response.status_code==429:
                     try:retry_after=max(0,min(300,float(response.headers.get('Retry-After',0))))
                     except (ValueError,TypeError):pass
-                raise PlanningError('后台探索模型暂不可用',kind='rate_limit' if response.status_code==429 else 'unavailable',retry_after=retry_after)
-            return self._content(response.json())
-        except (requests.RequestException,ValueError) as e:
-            raise LLMError('后台探索模型暂不可用') from e
+                kind='rate_limit' if response.status_code==429 else 'auth' if response.status_code in (401,403) else 'request' if 400<=response.status_code<500 else 'unavailable'
+                raise PlanningError('后台探索模型暂不可用',kind=kind,retry_after=retry_after)
+            try:
+                data=response.json();choice=data['choices'][0]
+                if choice.get('finish_reason')=='length':
+                    raise PlanningError('模型输出被截断',kind='truncated')
+                content=choice['message']['content']
+                if not isinstance(content,str) or not content.strip():
+                    raise PlanningError('模型未返回决策文本',kind='empty')
+                return content
+            except (ValueError,KeyError,IndexError,TypeError) as error:
+                raise PlanningError('模型响应结构异常',kind='format') from error
+        except requests.Timeout as error:
+            raise PlanningError('模型响应超时',kind='timeout') from error
+        except requests.RequestException as error:
+            raise PlanningError('模型网络连接失败',kind='network') from error
         finally:
             self._sem.release()
 
