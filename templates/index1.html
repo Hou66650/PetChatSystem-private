@@ -7,7 +7,7 @@
 {% block body %}
 <main class="island-home" data-version="{{ app_version }}">
  <canvas id="island-home-canvas" tabindex="0" aria-label="三维群岛：拖动旋转，滚轮或双指缩放。也可使用下方岛屿按钮选择。"></canvas>
- <header class="island-heading"><span class="island-eyebrow">YOUR LITTLE ARCHIPELAGO</span><h1>陪伴，自成一座岛。</h1><p>转动世界，找到今天想见的它。</p></header>
+ <header class="island-heading"><span class="island-eyebrow">ABOVE THE CLOUDS / 云海之上</span><h1>在云海尽头，<br>与你相遇。</h1><p>穿过山风与晨雾，抵达它等你的地方。</p></header>
  <div class="island-tools" aria-label="视角控制"><button id="island-overview" type="button">群岛全景</button><button id="island-rotate" type="button" aria-pressed="false">自动环绕</button><button id="island-zoom-in" aria-label="拉近视角" type="button">＋</button><button id="island-zoom-out" aria-label="拉远视角" type="button">－</button></div>
  <div class="island-world-labels" aria-label="空间中的岛屿"></div>
  <section class="island-console" aria-label="选择小岛">
@@ -20,6 +20,7 @@
   </div>
  </section>
  <p id="island-preview-status" role="status">正在展开云端群岛…</p>
+ <div class="island-vignette" aria-hidden="true"></div>
  <div class="island-flight" aria-hidden="true"></div>
 </main>
 {% endblock %}
@@ -27,5 +28,8 @@
 <script src="/static/js/vendor/three.min.js"></script>
 <script src="/static/js/vendor/GLTFLoader.js"></script>
 <script src="/static/js/vendor/OrbitControls.js"></script>
+<script src="/static/js/den/selected-assets.js?v={{ app_version }}"></script>
+<script src="/static/js/home-atmosphere.js?v={{ app_version }}"></script>
+<script src="/static/js/home-resident.js?v={{ app_version }}"></script>
 <script src="/static/js/island-home.js?v={{ app_version }}"></script>
 {% endblock %}
