@@ -1,0 +1,19 @@
+{
+  "name": "pait-island-desktop",
+  "version": "1.0.0",
+  "description": "派特岛 Windows 桌面传送门",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.js && node --check preload.js && node --check pet.js",
+    "postinstall": "node node_modules/electron/install.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^44.7.2"
+  },
+  "private": true
+}

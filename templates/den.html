@@ -396,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-feed-cookie" data-icon="cookie">饼干</button></div>
         </section>
         <section class="dock-panel" id="dock-actions" aria-labelledby="dock-actions-title" hidden><header><div><h2 id="dock-actions-title">一起动一动</h2><p>召唤它过来，看看它的小表情。</p></div><button type="button" class="dock-close" aria-label="收起一起动一动">✕</button></header>
-            <div id="cat-care" hidden><button class="action-btn" id="btn-greenhouse">照料温室</button><button class="action-btn" id="btn-cat-eat">去吃饭</button><button class="action-btn" id="btn-cat-home">回窝休息</button></div>
+            <button class="action-btn" id="btn-portals">双传送门</button><div id="cat-care" hidden><button class="action-btn" id="btn-greenhouse">照料温室</button><button class="action-btn" id="btn-cat-eat">去吃饭</button><button class="action-btn" id="btn-cat-home">回窝休息</button></div>
             <div class="dock-grid"><button class="action-btn" id="btn-roam" aria-pressed="true">自由活动：开</button>
             <button class="action-btn" id="btn-recall">过来</button><button class="action-btn" id="btn-run">跑一跑</button>
             <button class="action-btn" id="btn-sniff">闻闻</button>
@@ -583,6 +583,8 @@ document.addEventListener('DOMContentLoaded', () => {
       </fieldset>
       <p class="garden-note" id="garden-feedback" aria-live="polite">浇水后下一个自然日长出新芽；猫咪每日互动也会让植物更茂密。进度保存在此浏览器的当前用户下。</p>
     </dialog>
+    <link rel="stylesheet" href="/static/css/portal.css?v={{ app_version }}">
+    <script src="/static/js/den/portals.js?v={{ app_version }}"></script>
     <script src="/static/js/den/greenhouse.js?v={{ app_version }}"></script>
     <script src="/static/js/den/cat-agent.js?v={{ app_version }}"></script>
     <aside class="cat-intent" id="cat-intent" hidden aria-live="polite"><small id="cat-intent-meta"></small><span id="cat-intent-text"></span><a href="/cat-agent-monitor" target="_blank" rel="noopener" style="display:block;margin-top:8px;pointer-events:auto;color:inherit">查看探索监控 ↗</a></aside>
@@ -984,7 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let themeFireLight = null, themeFlame = null;   // tick 用引用缓存，避免每帧 getObjectByName
         const envTexCache = {};
         const disposeObjectTree = SelectedAssets.disposeTree;
-        let catHomeReady=false, greenhouse=null;
+        let catHomeReady=false, greenhouse=null, portals=null;
         let themeEpoch = 0, modeledStage = false, waterfallFlow = null, waterfallViewInitialized = false;
         const SAKURA_NAV = {"radius": 3.2, "obstacles": [{"x": -2.1, "z": -1.5, "r": 0.55}, {"x": 2.25, "z": -1.2, "r": 0.38}, {"kind": "rect", "x": 0, "z": -2.65, "w": 3.7, "d": 0.26}, {"x": -2, "z": 0.15, "r": 0.18}, {"x": -1.75, "z": 0.6, "r": 0.13}], "interest_points": [{"name": "food", "x": -1.45, "z": 0.15}, {"name": "ball", "x": -1.2, "z": 0.6}, {"name": "rest", "x": 0.7, "z": 0.45}]};
         const SNOW_NAV = {"radius":3.2,"obstacles":[{"x":-2.0,"z":-1.55,"r":0.54},{"x":-0.85,"z":-2.35,"r":0.41},{"kind":"rect","x":2.2,"z":-1.2,"w":0.85,"d":0.25},{"x":2.65,"z":0.3,"r":0.43},{"x":2.7,"z":0.85,"r":0.3},{"x":-1.7,"z":0.65,"r":0.14}],"interest_points":[{"name":"ball","x":-1.0,"z":0.65},{"name":"rest","x":0.65,"z":0.4}]};
@@ -1623,7 +1625,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setAnim('idle', 0);
             showBubble(spec.greet, 2600);
             if(id===3&&modeledStage)catAgent=new CatAgent.Controller({
-                model:petModel,locomotion,life:catLife,scope:COMPANION_SCOPE,telemetry:true,homeReady:catHomeReady,onComplete:goal=>greenhouse?.completed(goal),
+                model:petModel,locomotion,life:catLife,scope:COMPANION_SCOPE,telemetry:true,homeReady:catHomeReady,onComplete:goal=>{greenhouse?.completed(goal);if(goal.target==='portal_desktop'||goal.target==='portal_neighbor')portals?.curious(goal.target==='portal_desktop'?'desktop':'neighbor');},
                 animate(key){actionTransition=null;anim.state=key;anim.until=0;if(key==='sleep')playSleep();else playAction(key,1);},
                 onStatus(info){
                     document.getElementById('cat-intent').hidden=false;
@@ -1632,6 +1634,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
+            portals?.attach(locomotion.navigation,spec.theme);
             spawnBusy = false; showPetLoading(false);
             document.getElementById('cat-care').hidden=!(id===3&&modeledStage);
             for(const button of ['btn-cat-eat','btn-cat-home'])document.getElementById(button).disabled=!catHomeReady;
@@ -2400,6 +2403,7 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.addEventListener('pointercancel', () => {groundPress=null;});
         canvas.addEventListener('pointerup', e => {
             const press=groundPress; groundPress=null;
+            if(portals?.away)return;
             if (!press || press.id !== e.pointerId || press.travel > 8 || Math.hypot(e.clientX-press.x,e.clientY-press.y)>8 || performance.now()-press.time>700 || !petModel || spawnBusy || grabbed || dropping) return;
             const rect=canvas.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);
             raycaster.setFromCamera(pointer,camera);
@@ -2416,12 +2420,23 @@ document.addEventListener('DOMContentLoaded', () => {
             button.textContent='自由活动：'+(enabled?'开':'关');button.setAttribute('aria-pressed',String(enabled));
         }
         function movementBlocked() {
-            if(document.getElementById('greenhouse-dialog').open)return true;
+            if(document.getElementById('greenhouse-dialog').open||portals?.away||portals?.holding)return true;
             return document.hidden || (toyWorkshop?.held?.state==='held' && !(toyWorkshop.held.spec.id==='rattle' && toyWorkshop.rattlePath)) || ['held','flight'].includes(facePlay?.ball?.phase) || spawnBusy || !petModel || anim.birth < 1 || grabbed || dropping || bounceBack > 0 || (interactionBusy() && !facePlay?.guiding) ||
                 performing() || (chatBusy&&!dialogueRunner.active) || (voiceBusy&&!dialogueRunner.active) || breathActive || !gameOverlay.hidden || !gamesMask.hidden || !moodMask.hidden ||
                 (!dialogueRunner.active && !document.getElementById('den-chat').classList.contains('hidden')) ||
                 (!catAgent?.acting && !['idle','walk','trot','run','turnLeft','turnRight'].includes(anim.state)) || performance.now()<anim.until;
         }
+        portals=new PetPortals.Controller({THREE,scene,scope:COMPANION_SCOPE,
+            getPet:()=>({id:currentPetId,model:petModel}),
+            canInvite:()=>!spawnBusy&&petModel&&!grabbed&&!dropping&&!interactionBusy()&&!chatBusy&&!voiceBusy&&['idle','walk'].includes(anim.state)&&locomotion?.owner!=='command',
+            bubble:text=>{if(petModel)showBubble(text,4000,true);},
+            onApproach:(point)=>{if(!point||!locomotion)return;catAgent?.interrupt('想去看看传送门');setAnim('idle',0);locomotion.goTo(point,{gait:'walk'});},
+            onArrive:()=>{if(petModel){petModel.rotation.y=Math.PI;setAnim('wave',1800);}},
+            onReject:()=>{const rejectEpoch=locomotionEpoch;catAgent?.interrupt('这次留在岛上陪你');setAnim('shy',1600);setTimeout(()=>{if(rejectEpoch===locomotionEpoch&&locomotion&&!portals.away)locomotion.goTo(locomotion.navigation.nearest({x:0,z:0}),{gait:'walk'});},1800);},
+            onReturn:point=>{if(!petModel||!locomotion)return;catAgent?.interrupt('回到温室，记下这次旅行');const p=locomotion.navigation.nearest(point||{x:0,z:0});petModel.position.set(p.x,locomotion.navigation.surfaceHeight(p),p.z);petModel.visible=true;setAnim('happy',1600);showBubble('我回来啦，旅途已经记在观测台里！',3500,true);}
+        });
+        document.getElementById('btn-portals').onclick=()=>portals.open();
+        canvas.addEventListener('click',e=>{const rect=canvas.getBoundingClientRect(),p=new THREE.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),ray=new THREE.Raycaster();ray.setFromCamera(p,camera);const kind=portals.hit(ray);if(kind){e.stopImmediatePropagation();portals.open(kind);}},true);
         const gardenScene=new URLSearchParams(location.search).get('scene');
         const gardenDialog=document.getElementById('greenhouse-dialog');
         function gardenRefresh(){
@@ -3477,6 +3492,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (now - timeOfDayChecked > 60000) { applyTimeOfDay(); timeOfDayChecked = now; }
             if(waterfallFlow)waterfallFlow.update(t);
             greenhouse?.update(dt,petModel?.position,gardenScene);
+            portals?.update(dt);
             renderBudget.frame(frameDelta,now);
             islandMusic?.update(frameDelta,!!voiceUI?.isActive()||!!(denAudio&&!denAudio.paused)||!!window.speechSynthesis?.speaking);
             if(renderDialog.open&&now-renderStatusAt>1000){renderStatusAt=now;renderStats();}

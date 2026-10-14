@@ -1,7 +1,7 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.CatAgent=api;})(typeof window!=='undefined'?window:globalThis,function(){
  'use strict';
  const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
- const words={nibble:'尝尝猫草',observe:'看看周围',sniff:'闻闻新气味',rub:'蹭蹭脸',jump:'轻轻跳一下',groom:'整理毛发',stretch:'伸个懒腰',rest:'歇一会儿',eat:'吃点饭',sleep:'回窝睡一会儿'};
+ const words={paw:'好奇地扒扒门',nibble:'尝尝猫草',observe:'看看周围',sniff:'闻闻新气味',rub:'蹭蹭脸',jump:'轻轻跳一下',groom:'整理毛发',stretch:'伸个懒腰',rest:'歇一会儿',eat:'吃点饭',sleep:'回窝睡一会儿'};
  class Trace{
   constructor(){this.points=[];this.lastSample=-Infinity;}
   sample(p,t,breakPath=false){
@@ -132,6 +132,7 @@
     this.phase='acting';g.time=0;
     if(g.action==='rub'){if(!this.life.seekWall()){this.finish('blocked');return;}}
     else if(['jump','groom','stretch'].includes(g.action)){if(!this.life.begin(g.action)){this.finish('blocked');return;}}
+    else if(g.action==='paw')this.animate('wave');
     else if(g.target==='hammock')this.animate('sleep');
     else if(g.action==='nibble')this.animate('eat');
     else if(['eat','sleep'].includes(g.action))this.animate(g.action);

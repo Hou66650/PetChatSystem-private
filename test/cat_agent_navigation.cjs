@@ -15,5 +15,5 @@ const T=require('../static/js/vendor/three.min.js'),{Controller:Agent}=require('
    assert.equal(agent.goal,null,place.id+' finishes');assert.equal(agent.memory[place.id]?.visits,1,place.id+' completes');
  }
  assert.equal(completed.length,catalog.length);assert.equal(garden.state.plants.grass.growth,1);assert.equal(garden.state.plants.catnip.growth,1);
- agent.dispose();console.log('PASS continuous real navigation + CatLife: all twelve destinations and actions, every frame on walkable ground');
+ agent.dispose();console.log('PASS continuous real navigation + CatLife: all fourteen destinations and actions, every frame on walkable ground');
 })().catch(e=>{console.error(e);process.exitCode=1});

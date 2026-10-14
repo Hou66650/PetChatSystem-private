@@ -132,5 +132,25 @@
     "actions": [
       "rest"
     ]
+  },
+  {
+    "id": "portal_desktop",
+    "name": "现实传送门",
+    "x": 2.3,
+    "z": -0.75,
+    "yaw": -2.4,
+    "actions": [
+      "paw"
+    ]
+  },
+  {
+    "id": "portal_neighbor",
+    "name": "友邻传送门",
+    "x": 4.6,
+    "z": -0.75,
+    "yaw": 3.14159,
+    "actions": [
+      "paw"
+    ]
   }
 ]

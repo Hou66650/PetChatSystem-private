@@ -11,4 +11,6 @@ from .companion import bp as companion_bp
 from .voiceprint import bp as voiceprint_bp
 from .cat_agent import bp as cat_agent_bp
 
-ALL_BLUEPRINTS = (cat_agent_bp, voiceprint_bp, main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)
+from .portals import bp as portals_bp
+
+ALL_BLUEPRINTS = (portals_bp, cat_agent_bp, voiceprint_bp, main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)

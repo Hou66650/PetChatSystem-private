@@ -10,7 +10,7 @@ from ..llm.client import LLMError, PlanningError
 
 CATALOG = json.loads((Path(__file__).resolve().parents[2]/'static/data/cat-world.json').read_text(encoding='utf-8'))
 TARGETS = {p['id']:p for p in CATALOG}
-WORDS = {'nibble':'尝尝猫草','rub':'蹭蹭脸','observe':'看看周围','sniff':'闻闻新气味','rest':'歇一会儿','groom':'整理毛发','stretch':'伸个懒腰','jump':'轻轻跳一下','eat':'吃点饭','sleep':'回窝睡一会儿'}
+WORDS = {'paw':'好奇地扒扒门','nibble':'尝尝猫草','rub':'蹭蹭脸','observe':'看看周围','sniff':'闻闻新气味','rest':'歇一会儿','groom':'整理毛发','stretch':'伸个懒腰','jump':'轻轻跳一下','eat':'吃点饭','sleep':'回窝睡一会儿'}
 
 
 def init_schema():
