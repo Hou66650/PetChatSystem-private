@@ -558,6 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="/static/js/pet-sounds.js?v=1"></script>
     <script src="/static/js/den/render-budget.js?v={{ app_version }}"></script>
     <script src="/static/js/den/face-play.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/toy-grip.js?v={{ app_version }}"></script>
     <script src="/static/js/den/toy-workshop.js?v={{ app_version }}"></script>
     <script>
     /* ============================================================
@@ -3468,6 +3469,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 toyWorkshop?.update(dt,now);
                 facePlay?.update(dt,now);
+                toyWorkshop?.grip?.update(toyWorkshop.held);
                 const st = anim.state;
 
                 // 配饰跟随宠物位置（挂 scene 根，每帧同步坐标）

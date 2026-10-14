@@ -1,0 +1,16 @@
+const assert=require('node:assert/strict'),THREE=require('../static/js/vendor/three.min.js');
+const G=require('../static/js/den/toy-grip.js'),W=require('../static/js/den/toy-workshop.js');
+assert.deepEqual(Object.keys(G.poses).sort(),W.catalog.map(x=>x.id).sort());
+assert.equal(new Set(Object.keys(G.poses).map(G.svg)).size,7,'all grips have distinct drawings');
+let visible=false;global.document={body:{classList:{add(){visible=true;},remove(){visible=false;}}}};
+const camera=new THREE.PerspectiveCamera(42,1280/720,.1,100);camera.position.set(0,2,6);camera.lookAt(0,0,0);camera.updateMatrixWorld();
+const element={style:{},dataset:{},setAttribute(){},hidden:true};
+const grip=new G.Controller({THREE,element,camera,canvas:{clientWidth:1280,clientHeight:720}});
+const node=new THREE.Mesh(new THREE.BoxGeometry(.2,.5,.2));const record={state:'held',spec:{id:'rattle'},node};
+grip.update(record);assert(visible&&!element.hidden);assert.equal(element.dataset.grip,'rattle');const transform=element.style.transform;
+node.position.x=1;grip.update(record);assert.notEqual(element.style.transform,transform,'hand follows real model');
+assert(!element.style.transform.includes('NaN'));assert(parseFloat(element.style.width)>=56&&parseFloat(element.style.width)<=116);
+record.spec.id='ball';grip.update(record);assert.equal(element.dataset.grip,'ball');assert(element.innerHTML.includes(G.poses.ball.paths[0]));
+record.state='playing';grip.update(record);assert(element.hidden&&!visible,'throw clears the hand');
+record.state='held';grip.update(record);grip.update(null);assert(element.hidden&&!visible,'cancel clears hand');
+console.log('PASS seven distinct grips, model projection, bounded scale, switching and release/cancel cleanup');
