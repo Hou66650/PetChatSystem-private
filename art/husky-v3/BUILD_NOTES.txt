@@ -1,0 +1,29 @@
+Xueqiu / Husky v3 — reference-based companion
+
+Identity: existing Xueqiu blue-gray and white coat, icy blue eyes, blue collar and
+silver hexagonal pendant. The Shiba reference supplies finish quality only.
+PROMPT.txt records the fixed design brief. reconstruction-reference.png is the
+built-in imagegen output actually submitted for reconstruction, and rodin-detail.glb
+is the unrigged reconstruction source.
+
+Rebuild with Blender 5.2:
+  blender -b --python scripts/blender/build_reference_husky.py
+  blender -b --python scripts/blender/validate_reference_husky.py
+
+Blender welds geometric seams while preserving UVs, refines the surface, keeps
+the 2K source albedo and adds surface-colored batched mesh fur. The existing
+Husky master supplies 45 joints and 35 action clips. Anatomical skin regions,
+geodesic tail separation, sitting foot IK and weighted-surface ground correction
+are baked into the asset. Original fractional keys are replaced during baking.
+Both eyelids use local mesh morphs picked against actual reconstruction landmarks.
+
+Runtime model: static/models/petchat-husky-v3/xueqiu.glb.
+Editable Blender source: xueqiu-studio.blend. Studio/front/side images are actual
+model renders; run/sit/play-bow and eye images reimport the exported GLB.
+dog-report.json and pose-report.json contain measured counts and pose bounds.
+Node geometry validation samples all clips at three phases; this does not assert
+visual inspection of every animation frame. Browser validation uses actual textures.
+
+Existing snow island and interaction interfaces remain in use. Only the selected
+pet loads; the prior motion model remains a fallback. More > Near view is available
+for inspecting Xueqiu, with the stage view restoring the wider island framing.

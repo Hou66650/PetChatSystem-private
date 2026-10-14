@@ -1,0 +1,17 @@
+Xueqiu / Siberian Husky reference reconstruction
+
+Identity reference: art/husky-v2/neutral.png.
+Quality/style reference: art/shiba-v4/reconstruction-reference.png.
+Retain blue-gray and white double coat, symmetric husky mask, white forehead blaze,
+icy blue almond eyes, blue collar and silver hexagonal pendant. Refine the previous
+primitive anatomy into a handsome friendly husky, athletic longer body and legs,
+thick triangular upright ears, layered neck ruff and bushy upward-curving tail.
+Premium animated-feature 3D character with fine fur, detailed nose, subtle lips,
+ear fuzz and individual toes. No plastic surfaces. Do not copy the Shiba breed,
+orange coloring or gold tag from the quality reference.
+One full-body neutral standing dog, four separate visible paws, head aligned with
+torso, modest three-quarter front view. Plain light gray background, even neutral
+studio light, no ground/shadow/text/panels/additional props. Gently closed mouth.
+
+Generated using built-in imagegen; reconstruction-reference.png is the actual
+image-to-3D input for Rodin Detail. Blender refines and rigs that reconstruction.
