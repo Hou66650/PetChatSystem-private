@@ -267,6 +267,7 @@
             .pet-strip { padding: 8px 12px; }
         }
     </style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-polish.css') }}?v={{ app_version }}">
 </head>
 <body>
     <!-- 聊天顶栏（同 _navbar 款式变体：logo 可点回首页） -->
@@ -294,7 +295,7 @@
             <div class="chat-messages" id="chat-messages" aria-live="polite"></div>
             <div class="chat-input-bar">
                 <textarea class="chat-input" id="chat-input" rows="1"
-                          placeholder="和它聊点什么… （Enter 发送，Shift+Enter 换行）"
+                          placeholder="和它说说今天…" title="Enter 发送，Shift+Enter 换行"
                           aria-label="消息输入框"></textarea>
                 <button class="btn voice-btn" id="voice-btn" title="实时语音对话"
                         aria-label="开启实时语音对话">🎤<span class="v-label">实时语音</span></button>

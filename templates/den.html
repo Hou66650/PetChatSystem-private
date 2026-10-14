@@ -352,7 +352,10 @@ document.addEventListener('DOMContentLoaded', () => {
         el.insertAdjacentHTML('afterbegin', svg.replace('<svg', '<svg class="btn-icon"'));
     });
 });
-</script></head>
+</script><link rel="stylesheet" href="{{ url_for('static', filename='css/ui-polish.css') }}?v={{ app_version }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/den-ui.css') }}?v={{ app_version }}">
+<script defer src="{{ url_for('static', filename='js/den-ui.js') }}?v={{ app_version }}"></script>
+</head>
 <body class="theme">
     {% include '_navbar.html' %}
     <div id="den-wrap">
@@ -370,18 +373,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <div class="bubble-tip" id="bubble"></div>
 
-        <div class="action-bar">
-            <button class="action-btn" id="btn-voice" data-icon="voice">语音对话</button>
-            <button class="action-btn" id="btn-roam" aria-pressed="true">自由活动：开</button>
+        <nav class="action-bar glass-dock" aria-label="宠物互动">
+<button class="action-btn" id="btn-voice" data-icon="voice"><span class="dock-label">语音对话</span></button>
+<button class="action-btn" id="btn-pet" data-icon="pet"><span class="dock-label">摸摸</span></button>
+<button type="button" class="action-btn" data-dock-panel="dock-food" aria-controls="dock-food" aria-expanded="false" data-icon="cookie">喂食</button>
+<button type="button" class="action-btn" data-dock-panel="dock-actions" aria-controls="dock-actions" aria-expanded="false" data-icon="pet">动作</button>
+<button class="action-btn" id="btn-chat" aria-controls="den-chat" aria-expanded="false" data-icon="chat">聊天</button>
+<button type="button" class="action-btn" data-dock-panel="dock-more" aria-controls="dock-more" aria-expanded="false"><svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>更多</button>
+</nav>
+        <section class="dock-panel" id="dock-food" aria-labelledby="dock-food-title" hidden><header><div><h2 id="dock-food-title">开饭啦</h2><p>给今天的陪伴，加一点小奖励。</p></div><button type="button" class="dock-close" aria-label="收起开饭啦">✕</button></header>
+            <div class="dock-grid"><button class="action-btn" id="btn-feed-bone" data-icon="bone">骨头</button>
+            <button class="action-btn" id="btn-feed-fish" data-icon="fish">小鱼干</button>
+            <button class="action-btn" id="btn-feed-cookie" data-icon="cookie">饼干</button></div>
+        </section>
+        <section class="dock-panel" id="dock-actions" aria-labelledby="dock-actions-title" hidden><header><div><h2 id="dock-actions-title">一起动一动</h2><p>召唤它过来，看看它的小表情。</p></div><button type="button" class="dock-close" aria-label="收起一起动一动">✕</button></header>
+            <div class="dock-grid"><button class="action-btn" id="btn-roam" aria-pressed="true">自由活动：开</button>
             <button class="action-btn" id="btn-recall">过来</button>
             <button class="action-btn" id="btn-sniff">闻闻</button>
             <button class="action-btn" id="btn-rest">休息</button>
-            <button class="action-btn" id="btn-pet" data-icon="pet">摸摸</button>
-            <button class="action-btn" id="btn-shiba-acting" hidden>球球的小表情</button>
-            <button class="action-btn" id="btn-feed-bone" data-icon="bone">骨头</button>
-            <button class="action-btn" id="btn-feed-fish" data-icon="fish">小鱼干</button>
-            <button class="action-btn" id="btn-feed-cookie" data-icon="cookie">饼干</button>
-            <button class="action-btn" id="btn-dress" data-icon="dress">换装</button>
+            <button class="action-btn" id="btn-shiba-acting" hidden>球球的小表情</button></div>
+        </section>
+        <section class="dock-panel" id="dock-more" aria-labelledby="dock-more-title" hidden><header><div><h2 id="dock-more-title">小窝里的小乐趣</h2><p>玩耍、记录，或者一起安静一会。</p></div><button type="button" class="dock-close" aria-label="收起小窝里的小乐趣">✕</button></header>
+            <div class="dock-grid"><button class="action-btn" id="btn-dress" data-icon="dress">换装</button>
             <button class="action-btn" id="btn-photo" data-icon="photo">拍照</button>
             <button class="action-btn" id="btn-vision" data-icon="eye">眼神互动</button>
             <button class="action-btn" id="btn-tts">朗读：开</button>
@@ -389,9 +402,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-breath" data-icon="breath">呼吸</button>
             <button class="action-btn" id="btn-games" data-icon="gamepad">游戏中心</button>
             <button class="action-btn" id="btn-companion">陪伴档案</button>
-            <button class="action-btn" id="btn-chat" data-icon="chat">聊天</button>
-            <button class="action-btn" id="btn-music" data-icon="music">音乐</button>
-        </div>
+            <button class="action-btn" id="btn-music" data-icon="music">音乐</button></div>
+        </section>
+
 
         <dialog id="shiba-acting-dialog" aria-labelledby="shiba-acting-title" style="border:1px solid #dfcbbb;border-radius:22px;background:#fffaf3;color:#654b3c;padding:24px;max-width:min(420px,88vw);box-shadow:0 18px 70px #44302244;">
             <h3 id="shiba-acting-title" style="margin:0 0 6px">球球的小表情</h3>
@@ -2396,7 +2409,7 @@ document.addEventListener('DOMContentLoaded', () => {
             onState(state){
                 const active=!['ERROR','STOPPED','IDLE'].includes(state);
                 for(const id of ['btn-voice','chat-voice']){
-                    const b=document.getElementById(id);b.textContent=active?'结束语音':'语音对话';b.setAttribute('aria-pressed',String(active));
+                    const b=document.getElementById(id);(b.querySelector('.dock-label')||b).textContent=active?'结束语音':'语音对话';b.setAttribute('aria-pressed',String(active));
                 }
                 voiceBusy=['USER_SPEAKING','AI_THINKING','AI_SPEAKING'].includes(state);
                 if(active)stopDenSpeech();
@@ -2507,12 +2520,19 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-feed-cookie').addEventListener('click', () => doFeed('cookie'));
         document.getElementById('btn-dress').addEventListener('click', doDress);
         document.getElementById('btn-photo').addEventListener('click', doPhoto);
+        function setChatOpen(open) {
+            document.getElementById('den-chat').classList.toggle('hidden', !open);
+            document.getElementById('btn-chat').setAttribute('aria-expanded', String(open));
+            (open ? chatInput : document.getElementById('btn-chat')).focus();
+        }
         document.getElementById('btn-chat').addEventListener('click', () => {
-            document.getElementById('den-chat').classList.toggle('hidden');
-            chatInput.focus();
+            setChatOpen(document.getElementById('den-chat').classList.contains('hidden'));
         });
         document.getElementById('btn-chat-close').addEventListener('click', () => {
-            document.getElementById('den-chat').classList.add('hidden');
+            setChatOpen(false);
+        });
+        document.getElementById('den-chat').addEventListener('keydown', event => {
+            if (event.key === 'Escape') { event.preventDefault(); setChatOpen(false); }
         });
         const bgm = new Audio();
         bgm.loop = true; bgm.volume = 0.35;

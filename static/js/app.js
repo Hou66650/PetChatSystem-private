@@ -36,8 +36,17 @@ document.addEventListener('DOMContentLoaded', function () {
   if (burger && links) {
     burger.addEventListener('click', function () {
       links.classList.toggle('open');
+      burger.setAttribute('aria-expanded', String(links.classList.contains('open')));
       burger.setAttribute('aria-label',
         links.classList.contains('open') ? '关闭菜单' : '打开菜单');
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && links.classList.contains('open')) {
+        links.classList.remove('open');
+        burger.setAttribute('aria-expanded', 'false');
+        burger.setAttribute('aria-label', '打开菜单');
+        burger.focus();
+      }
     });
   }
 });

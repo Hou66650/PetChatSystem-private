@@ -1,0 +1,344 @@
+/* A single glass surface replaces twenty separately blurred pills. */
+#den-wrap {
+  --glass: #fffdf4ed;
+  --glass-line: #ffffffdd;
+  --glass-shadow: 0 14px 42px #363d3226, inset 0 1px 0 #fff, inset 0 -1px 0 #ffffff80;
+}
+#den-wrap .glass-dock, .dock-panel, #den-wrap .den-pets, #den-wrap .intimacy-panel {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-shadow);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  #den-wrap {
+    --glass: linear-gradient(135deg, #ffffffcf, #fffdf1ad 45%, #ffffffb8);
+  }
+  .glass-dock, .dock-panel {
+    backdrop-filter: blur(24px) saturate(1.3);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  }
+}
+#den-wrap .glass-dock {
+  width: 520px;
+  max-width: calc(100vw - 32px);
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+  padding: 8px;
+  border-radius: 28px;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  overflow: visible;
+  mask-image: none;
+  -webkit-mask-image: none;
+  z-index: 30;
+}
+#den-wrap .glass-dock .action-btn {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  height: 62px;
+  min-width: 0;
+  padding: 6px 2px;
+  font-size: 11px;
+  border-radius: 20px;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: #4d5748;
+  border: 1px solid transparent;
+}
+.glass-dock .btn-icon {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+.glass-dock .btn-icon {
+  stroke: #5d715e;
+}
+#den-wrap .glass-dock .action-btn:hover {
+  background: #ffffff80;
+  border-color: #ffffffb3;
+  transform: translateY(-2px);
+}
+#den-wrap .glass-dock .action-btn[aria-expanded="true"] {
+  background: #ffffffba;
+  border-color: #fff;
+  box-shadow: 0 2px 10px #41513d12;
+}
+#den-wrap .glass-dock #btn-voice {
+  background: linear-gradient(135deg,#d9e7d5dc,#edf3e7ca);
+  border-color: #ffffffb5;
+}
+#den-wrap .glass-dock #btn-voice[aria-pressed="true"] {
+  background: #f3d5c2;
+  border-color: #b17a55;
+}
+.dock-panel {
+  position: absolute;
+  z-index: 29;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100% - 200px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22px;
+  border-radius: 26px;
+}
+.dock-panel[hidden] {
+  display: none;
+}
+.dock-panel header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.dock-panel h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  color: #46543f;
+}
+.dock-panel p {
+  font-size: 11px;
+  margin: 5px 0 0;
+  color: #6b7163;
+}
+.dock-close {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid #ffffffc2;
+  background: #ffffff60;
+  color: #64715b;
+  cursor: pointer;
+}
+.dock-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 8px;
+}
+.dock-grid .action-btn {
+  justify-content: center;
+  min-height: 52px;
+  height: auto;
+  padding: 10px 8px;
+  border: 1px solid #ffffffb5;
+  background: #ffffff78;
+  border-radius: 15px;
+  font-size: 12px;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.dock-grid .action-btn .btn-icon {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+.dock-grid .action-btn[aria-pressed="true"] {
+  background: #e1edda;
+  border-color: #c5d7bb;
+}
+#dock-actions .dock-grid {
+  grid-template-columns: repeat(2,minmax(0,1fr));
+}
+#btn-shiba-acting {
+  grid-column: 1 / -1;
+}
+#den-wrap .den-pets {
+  top: 18px;
+  padding: 6px;
+  gap: 4px;
+  max-width: calc(100vw - 32px);
+}
+.den-pet-chip {
+  min-height: 44px;
+}
+.den-pet-chip.selected {
+  background: #ffffffa8;
+  color: #526b4d;
+}
+#den-wrap .intimacy-panel {
+  top: 18px;
+  left: 20px;
+  border-radius: 22px;
+  padding: 14px 18px;
+  max-width: 270px;
+}
+.intimacy-panel .bar {
+  height: 5px;
+  background: #dce4d8;
+}
+.intimacy-panel .bar > div {
+  background: linear-gradient(90deg,#92ad82,#d3c09a);
+}
+.intimacy-panel .hint {
+  max-width: 218px;
+  line-height: 1.6;
+}
+#den-wrap .den-chat {
+  top: 90px;
+  bottom: calc(112px + env(safe-area-inset-bottom,0px));
+  right: 20px;
+  border: 1px solid #fff;
+  border-radius: 24px;
+  background: #fffdf5f2;
+  box-shadow: var(--glass-shadow);
+}
+#den-wrap .den-chat header {
+  border-bottom: 1px solid #e0e4d880;
+}
+.den-chat #btn-chat-close {
+  min-width: 44px;
+  min-height: 44px;
+}
+.den-chat .ver-chip {
+  position: static !important;
+  margin-left: auto;
+}
+.den-chat .chat-chips button {
+  min-height: 32px;
+  background: #f3f4eb;
+  border-color: #e0e4d8;
+}
+.den-chat #chat-form {
+  gap: 8px;
+}
+.den-chat #chat-input {
+  border-radius: 14px;
+  min-height: 44px;
+}
+.den-chat #chat-send {
+  border-radius: 14px;
+  background: #49664f;
+  color: #fff;
+}
+.vision-box {
+  bottom: 112px;
+}
+body:has(.navbar nav.open) .navbar {
+  z-index: 160;
+}
+#den-wrap .den-chat.hidden {
+  visibility: hidden;
+}
+#den-wrap .den-chat header {
+  gap: 8px;
+}
+#chat-title {
+  flex: 1;
+}
+.den-chat #btn-chat-close {
+  order: 3;
+  background: #eef1e6;
+  border-radius: 50%;
+  color: #55614d;
+  flex: none;
+}
+.den-chat .ver-chip {
+  order: 2;
+}
+@media (max-width: 1100px) {
+  #den-wrap .intimacy-panel {
+    top: 88px;
+    max-width: 220px;
+  }
+  .intimacy-panel .hint {
+    display: none;
+  }
+}
+@media (max-width: 767px) {
+  #den-wrap .den-pets {
+    top: 12px;
+    width: max-content;
+    gap: 2px;
+  }
+  .den-pet-chip {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  .den-pet-chip img {
+    width: 26px;
+    height: 26px;
+  }
+  #den-wrap .intimacy-panel {
+    top: 78px;
+    left: 12px;
+    padding: 9px 13px;
+    min-width: 0;
+    max-width: 210px;
+  }
+  #den-wrap .intimacy-panel h4 {
+    font-size: 13px;
+  }
+  #den-wrap .glass-dock {
+    bottom: calc(12px + env(safe-area-inset-bottom,0px));
+    max-width: calc(100vw - 20px);
+    padding: 6px;
+    gap: 2px;
+    border-radius: 25px;
+  }
+  #den-wrap .glass-dock .action-btn {
+    height: 58px;
+    font-size: 10px;
+    gap: 5px;
+    border-radius: 18px;
+  }
+  .dock-panel {
+    bottom: calc(96px + env(safe-area-inset-bottom,0px));
+    max-width: calc(100vw - 24px);
+    padding: 18px;
+    max-height: calc(100% - 178px);
+  }
+  .dock-grid .action-btn {
+    font-size: 11px;
+    gap: 4px;
+    padding: 10px 5px;
+  }
+  #den-wrap .den-chat {
+    top: 76px;
+    right: 12px;
+    width: calc(100% - 24px);
+    bottom: calc(96px + env(safe-area-inset-bottom,0px));
+    z-index: 25;
+  }
+  .vision-box {
+    bottom: 96px;
+  }
+}
+@media (max-height: 500px) {
+  #den-wrap .intimacy-panel {
+    display: none;
+  }
+  .dock-panel {
+    max-height: calc(100% - 112px);
+  }
+  #den-wrap .den-chat {
+    top: 10px;
+  }
+  .dock-panel header {
+    margin-bottom: 8px;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  #den-wrap {
+    --glass: #fffdf4;
+  }
+  .glass-dock, .dock-panel {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #den-wrap .glass-dock .action-btn:hover {
+    transform: none;
+  }
+}

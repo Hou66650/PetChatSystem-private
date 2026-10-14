@@ -6,6 +6,7 @@
     <title>{% block title %}MPC 宠物聊天{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     {% block head %}{% endblock %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ui-polish.css') }}?v={{ app_version }}">
 </head>
 <body class="theme">
     {% include '_navbar.html' %}
