@@ -29,7 +29,7 @@ def status():
         if not isinstance(data,dict) or type(data.get('enabled')) is not bool:
             return jsonify(error='无效的启用状态'),400
         v.set_enabled(owner,data['enabled'])
-    return jsonify(enabled=v.enabled(owner),scope=c.browser_scope(),
+    return jsonify(enabled=v.enabled(owner),requestedEnabled=v.requested_enabled(owner),scope=c.browser_scope(),
                    ready=bool(importlib.util.find_spec('resemblyzer')),
                    profiles=[{'id':r['id'],'name':r['name']} for r in v.profiles(owner)])
 

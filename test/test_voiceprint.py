@@ -11,6 +11,19 @@ class VoiceprintTests(unittest.TestCase):
     setUp = CompanionTests.setUp
     tearDown = CompanionTests.tearDown
 
+    def test_enable_preference_persists_before_enrollment(self):
+        state=self.a.patch('/api/voiceprint',json={'enabled':True}).json
+        self.assertTrue(state['requestedEnabled'])
+        self.assertFalse(state['enabled'])
+        self.assertTrue(self.a.get('/api/voiceprint').json['requestedEnabled'])
+        self.assertFalse(self.b.get('/api/voiceprint').json['requestedEnabled'])
+        self.assertTrue(self.enroll().json['enabled'])
+        pid=self.a.get('/api/voiceprint').json['profiles'][0]['id']
+        state=self.a.delete('/api/voiceprint/'+pid).json
+        self.assertTrue(state['requestedEnabled']);self.assertFalse(state['enabled'])
+        state=self.a.patch('/api/voiceprint',json={'enabled':False}).json
+        self.assertFalse(state['requestedEnabled']);self.assertFalse(state['enabled'])
+
     def enroll(self, client=None, name='小林'):
         with patch.object(v,'samples',return_value=np.zeros(96000)), patch.object(v,'embeddings',return_value=np.tile([1.,0.,0.],(3,1))):
             return (client or self.a).post('/api/voiceprint/enroll?name='+name,data=b'00'*16000,content_type='application/octet-stream')

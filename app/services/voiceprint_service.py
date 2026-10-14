@@ -21,9 +21,13 @@ def profiles(owner):
     return get_db().execute('SELECT * FROM voiceprint_profiles WHERE owner=? ORDER BY rowid', (owner,)).fetchall()
 
 
-def enabled(owner):
+def requested_enabled(owner):
     row = get_db().execute('SELECT enabled FROM voiceprint_settings WHERE owner=?', (owner,)).fetchone()
-    return bool(row and row['enabled'] and profiles(owner))
+    return bool(row and row['enabled'])
+
+
+def enabled(owner):
+    return requested_enabled(owner) and bool(profiles(owner))
 
 
 def set_enabled(owner, value):
