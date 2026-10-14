@@ -184,12 +184,12 @@
         const point=flightPoint(b.from,{x:b.target.x,y,z:b.target.z},t,b.lift);b.mesh.position.set(point.x,point.y,point.z);
         if(b.item?.kind==='disc')b.mesh.rotation.y+=dt*9;
         if(t===1&&!b.fetch){b.phase='placed';this.reset();this.note('放好了，随时可以再拿起来。');return;}
-        if(t===1){b.phase='chase';this.a.act('idle',0);if(!loc.goTo(b.target)){this.reset();this.note('这次没有找到安全路线，再试一块空地吧。');}}
+        if(t===1){b.phase='chase';this.a.act('idle',0);if(!loc.goTo(b.target,{gait:'run'})){this.reset();this.note('这次没有找到安全路线，再试一块空地吧。');}}
       } else if(b.phase==='chase'&&Math.hypot(m.position.x-b.target.x,m.position.z-b.target.z)<.15){
         b.phase='pickup';b.at=now;this.a.act('noseLick',650);this.note('叼到啦，马上回来。');
       } else if(b.phase==='pickup'){
         b.mesh.position.lerp(this.a.mouth(),.2);
-        if(now-b.at>750){b.phase='return';this.a.act('idle',0);if(!loc.goTo(b.home)){this.reset();this.note('回程暂时被挡住了，这轮先结束，再换块空地吧。');}}
+        if(now-b.at>750){b.phase='return';this.a.act('idle',0);if(!loc.goTo(b.home,{gait:'trot'})){this.reset();this.note('回程暂时被挡住了，这轮先结束，再换块空地吧。');}}
       } else if(b.phase==='return'){
         b.mesh.position.copy(this.a.mouth());
         if(Math.hypot(m.position.x-b.home.x,m.position.z-b.home.z)<.15){b.phase='drop';b.at=now;b.from=b.mesh.position.clone();this.a.act('greet',1700);this.note((this.a.id()===2?'雪球':'球球')+'把'+(b.item?.label||'球')+'还给你：再来一次！');}

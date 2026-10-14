@@ -390,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </section>
         <section class="dock-panel" id="dock-actions" aria-labelledby="dock-actions-title" hidden><header><div><h2 id="dock-actions-title">一起动一动</h2><p>召唤它过来，看看它的小表情。</p></div><button type="button" class="dock-close" aria-label="收起一起动一动">✕</button></header>
             <div class="dock-grid"><button class="action-btn" id="btn-roam" aria-pressed="true">自由活动：开</button>
-            <button class="action-btn" id="btn-recall">过来</button>
+            <button class="action-btn" id="btn-recall">过来</button><button class="action-btn" id="btn-run">跑一跑</button>
             <button class="action-btn" id="btn-sniff">闻闻</button>
             <button class="action-btn" id="btn-rest">休息</button>
             <button class="action-btn" id="btn-shiba-acting" hidden>球球的小表情</button></div>
@@ -572,13 +572,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const PETS = {{ pets | tojson }};
         const MODELS = {{ models | tojson }};
         const SPECS = {
-            1: { name: '柴犬', glb: '/static/models/petchat-v3/qiuqiu.glb?v=1.5.0', fallback: '/static/models/petchat-v2/qiuqiu.glb', pbr: true, expressive: true, h: 0.95,
+            1: { name: '柴犬', glb: '/static/models/petchat-motion-v1/qiuqiu.glb?v=1.13.0', fallback: '/static/models/petchat-v2/qiuqiu.glb', pbr: true, expressive: true, h: 0.95,
                  greet: '汪！欢迎来到我的小窝，摸摸我吧！',
-                 anims: { idle: 'idle_breathe', walk: 'walk', trot: 'trot', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
+                 anims: { idle: 'idle_breathe', walk: 'motion_walk', trot: 'motion_trot', run: 'run', turnLeft:'turn_left', turnRight:'turn_right', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
                  theme: 'sakura', themeName: '樱花庭院' },
-            2: { name: '哈士奇', glb: '/static/models/petchat-husky-v2/xueqiu.glb?v=1.9.0', fallback: '/static/models/petchat-snow-v1/xueqiu.glb', pbr: true, expressive: true, eyeRetraction: .042, h: 1.05,
+            2: { name: '哈士奇', glb: '/static/models/petchat-motion-v1/xueqiu.glb?v=1.13.0', fallback: '/static/models/petchat-snow-v1/xueqiu.glb', pbr: true, expressive: true, eyeRetraction: .042, h: 1.05,
                  greet: '嗷呜~ 帅气的我在等你一起玩呢！',
-                 anims: { idle: 'idle_breathe', walk: 'walk', trot: 'trot', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
+                 anims: { idle: 'idle_breathe', walk: 'motion_walk', trot: 'motion_trot', run: 'run', turnLeft:'turn_left', turnRight:'turn_right', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
                  theme: 'snow', themeName: '静静雪原' },
             3: { name: '猫咪', glb: '/static/models/cat.glb', h: 0.72,
                  greet: '喵~ 我的窝就是你的窝（才不让你走呢）。',
@@ -1119,7 +1119,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!a) return;
             a.timeScale = timeScale;
             if (activeAction === a) return;
-            a.reset();
+            const moving=['walk','trot','run'];
+            const phase=moving.includes(key)&&activeAction&&moving.some(k=>actions[k]===activeAction)?activeAction.time/activeAction.getClip().duration:0;
+            a.reset();a.setEffectiveWeight(1);a.time=phase%1*a.getClip().duration;
             a.setLoop(THREE.LoopRepeat, Infinity);
             a.clampWhenFinished = false;
             if (activeAction) a.crossFadeFrom(activeAction, 0.25, false);
@@ -1450,6 +1452,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const faceTrack=t=>/^(eye_[LR]|lid_[LR])\./.test(t.name);
             for (const [key, wanted] of Object.entries(spec.anims)) {
                 let clip = gltf.animations.find((a) => clipShort(a.name) === wanted) ||
+                    gltf.animations.find(a=>clipShort(a.name)===({walk:'walk',trot:'trot'}[key])) ||
                     gltf.animations.find(a => clipShort(a.name) === ({idle:'Idle', walk:'Walk', eat:'Eating', petting:'Idle_2_HeadLow', sleep:'Death', sniff:'Idle_2_HeadLow'}[key]));
                 if (clip && spec.pbr) {
                     clip=clip.clone();
@@ -1498,6 +1501,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 bodyRadius:Math.hypot(box.max.x-box.min.x,box.max.z-box.min.z)*spec.h/origH/2+.015});
             locomotion = new PetLocomotion.Controller({navigation,model:petModel,speed:spec.pbr ? .34 : .46,
                 strideSpeed:spec.pbr ? .42 * spec.h / origH : .46,
+                gaits:actions.run?{walk:.348*spec.h/origH,trot:.682*spec.h/origH,run:1.0*spec.h/origH,turnLeft:1,turnRight:1}:null,
                 animate(key,speed) { anim.state = key; anim.until = 0; playAction(key,speed); },
                 rest(random) {
                     if(facePlay?.ball||facePlay?.guiding){anim.state='idle';anim.until=0;playAction('idle',1);return;}
@@ -1510,6 +1514,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const key = !calm && random < .35 && actions.sniff ? 'sniff' : (!calm && random < .55 && actions.stretch ? 'stretch' : 'idle');
                     anim.state = key; anim.until = key === 'idle' ? 0 : performance.now()+2500; playAction(key,1);
                 }});
+            document.getElementById('btn-run').hidden=!actions.run;
             locomotion.enabled = petState().roaming !== false; updateRoamingButton();
             // 配饰恢复
             const acc = petState().accessory || 0;
@@ -2303,13 +2308,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return document.hidden || toyWorkshop?.held?.state==='held' || ['held','flight'].includes(facePlay?.ball?.phase) || spawnBusy || !petModel || anim.birth < 1 || grabbed || dropping || bounceBack > 0 || (interactionBusy() && !facePlay?.guiding) ||
                 performing() || (chatBusy&&!dialogueRunner.active) || (voiceBusy&&!dialogueRunner.active) || breathActive || !gameOverlay.hidden || !gamesMask.hidden || !moodMask.hidden ||
                 (!dialogueRunner.active && !document.getElementById('den-chat').classList.contains('hidden')) ||
-                !['idle','walk','trot'].includes(anim.state) || performance.now()<anim.until;
+                !['idle','walk','trot','run','turnLeft','turnRight'].includes(anim.state) || performance.now()<anim.until;
         }
         document.getElementById('btn-roam').addEventListener('click',()=>{
             if (!locomotion) return;locomotion.toggle(!locomotion.enabled);petState().roaming=locomotion.enabled;saveState();updateRoamingButton();
         });
         document.getElementById('btn-recall').addEventListener('click',()=>{
             if (!locomotion || movementBlocked()) return;locomotion.goTo({x:0,z:.3});
+        });
+        document.getElementById('btn-run').addEventListener('click',()=>{
+            if(!locomotion||facePlay.a.busy())return;setAnim('idle',0);const route=locomotion.navigation.randomDestination(petModel.position);
+            if(route?.length){locomotion.goTo(route[route.length-1],{gait:'run'});showBubble('一起跑一跑！',1400,true);}
         });
         document.getElementById('btn-sniff').addEventListener('click',()=>{if (petModel && !interactionBusy()) setAnim(actions.sniff?'sniff':'petting',2400);});
         document.getElementById('btn-rest').addEventListener('click',()=>{if (petModel && !interactionBusy()) setAnim(actions.sit?'sit':'sleep',12000);});
@@ -2399,7 +2408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-shiba-acting').onclick=()=>{if(shibaExpression&&!spawnBusy)actingDialog.showModal();};
         window.__denExpression=()=>shibaExpression?{...shibaExpression.debug(),state:anim.state,clips:Object.keys(ShibaExpression.acts).filter(k=>actions[k])}:null;
         // Explicit user interactions override an old dialogue plan.
-        ['btn-pet','btn-feed-bone','btn-feed-fish','btn-feed-cookie','btn-roam','btn-recall','btn-rest','btn-sniff','btn-games','btn-breath','btn-vision'].forEach(id=>{
+        ['btn-pet','btn-feed-bone','btn-feed-fish','btn-feed-cookie','btn-roam','btn-recall','btn-run','btn-rest','btn-sniff','btn-games','btn-breath','btn-vision'].forEach(id=>{
             document.getElementById(id).addEventListener('click',()=>{toyWorkshop?.cancel();facePlay?.reset();dialogueRunner.cancel('');endDialogueHold();},true);
         });
         renderer.domElement.addEventListener('pointerdown',()=>{if(dialogueRunner.active||dialogueHeld||chatBusy){dialogueRunner.cancel('已转为手动互动');endDialogueHold();}},true);

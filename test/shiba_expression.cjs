@@ -4,12 +4,12 @@ const vm=require('node:vm');
 const E=require('../static/js/den/shiba-expression.js');
 const D=require('../static/js/den/dialogue-actions.js');
 const readGLB=path=>{const b=fs.readFileSync(path);assert.equal(b.toString('utf8',0,4),'glTF');return JSON.parse(b.toString('utf8',20,20+b.readUInt32LE(12)));};
-const glb=readGLB('static/models/petchat-v3/qiuqiu.glb');
+const glb=readGLB('static/models/petchat-motion-v1/qiuqiu.glb');
 const old=readGLB('static/models/petchat-v2/qiuqiu.glb');
 const clips=new Set(glb.animations.map(a=>a.name));
 for(const a of old.animations)assert.ok(clips.has(a.name),`Retained clip ${a.name}`);
 for(const a of Object.values(E.acts))assert.ok(clips.has(a.clip),`Exported clip ${a.clip}`);
-assert.equal(clips.size,32);assert.equal(glb.skins[0].joints.length,33);
+assert.equal(clips.size,35);assert.equal(glb.skins[0].joints.length,45);
 assert.ok(glb.meshes.some(m=>m.extras?.targetNames?.includes('Blink_L')));
 for(const mode of ['calm','natural','lively'])for(let i=0;i<100;i++){
     const next=E.idleChoice(i/100,mode,'curious');assert.notEqual(next,'curious');
@@ -31,4 +31,4 @@ const runner=new D.Runner({status(){},label:a=>a,isHeld:()=>false,begin(){},canc
 (async()=>{const task=runner.run(['curious','play_bow']);runner.cancel();resolveStep();await task;assert.ok(cancelled);assert.deepEqual(calls,['curious']);
 const page=await (await fetch('http://127.0.0.1:5002/den')).text();
 for(const match of page.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
-console.log('PASS: 32 clips, 33 bones, facial morphs, calm behavior, no eye drift, cancellation, rendered page syntax');})();
+console.log('PASS: 35 clips, 45 bones, facial morphs, calm behavior, no eye drift, cancellation, rendered page syntax');})();

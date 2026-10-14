@@ -1,0 +1,90 @@
+{
+  "qiuqiu": {
+    "bones_before": 33,
+    "bones_after": 45,
+    "weighted_vertices": {
+      "spine_front": 3328,
+      "spine_rear": 3091,
+      "neck_flex": 3593,
+      "tail_mid": 3662,
+      "shoulder_L": 742,
+      "shoulder_R": 720,
+      "hip_L": 1649,
+      "hip_R": 1744,
+      "toe_FL": 2133,
+      "toe_FR": 2131,
+      "toe_HL": 2183,
+      "toe_HR": 2185
+    },
+    "contact_error_m": {
+      "motion_walk": 3.1e-05,
+      "motion_trot": 3.7e-05,
+      "run": 4.1e-05
+    },
+    "gaits": {
+      "motion_walk": [
+        1.1,
+        0.26,
+        0.68,
+        0.055
+      ],
+      "motion_trot": [
+        0.8,
+        0.3,
+        0.55,
+        0.075
+      ],
+      "run": [
+        0.666667,
+        0.3,
+        0.45,
+        0.1
+      ]
+    },
+    "bytes": 4727948
+  },
+  "xueqiu": {
+    "bones_before": 33,
+    "bones_after": 45,
+    "weighted_vertices": {
+      "spine_front": 3682,
+      "spine_rear": 3164,
+      "neck_flex": 3479,
+      "tail_mid": 3291,
+      "shoulder_L": 802,
+      "shoulder_R": 785,
+      "hip_L": 2168,
+      "hip_R": 2424,
+      "toe_FL": 1151,
+      "toe_FR": 1150,
+      "toe_HL": 1304,
+      "toe_HR": 1306
+    },
+    "contact_error_m": {
+      "motion_walk": 3.7e-05,
+      "motion_trot": 3.9e-05,
+      "run": 3.6e-05
+    },
+    "gaits": {
+      "motion_walk": [
+        1.1,
+        0.26,
+        0.68,
+        0.055
+      ],
+      "motion_trot": [
+        0.8,
+        0.3,
+        0.55,
+        0.075
+      ],
+      "run": [
+        0.666667,
+        0.3,
+        0.45,
+        0.1
+      ]
+    },
+    "bytes": 4706972
+  }
+}
