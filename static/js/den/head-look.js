@@ -9,7 +9,8 @@
   point(now,interactivePoint){return now<this.until?null:interactivePoint||null;}
  }
  class Controller{
-  constructor(T,model){
+  constructor(T,model,{relaxBehind=false}={}){
+   this.relaxBehind=relaxBehind;
    this.T=T;this.model=model;this.elapsed=0;this.yaw=0;this.pitch=0;
    const bones=[];model.traverse(o=>{if(o.isBone&&!/^SOCKET_/i.test(o.name))bones.push(o);});
    this.head=bones.find(b=>/^head$/i.test(b.name))||bones.find(b=>/head/i.test(b.name));
@@ -36,7 +37,9 @@
    let yaw=Math.sin(this.elapsed*.55)*.09,pitch=Math.sin(this.elapsed*.37)*.035;
    if(target){
     this.direction.copy(target).sub(this.origin).applyQuaternion(this.modelQ.clone().invert());
-    if(this.direction.lengthSq()>.0001){yaw=Math.atan2(this.direction.x,this.direction.z);pitch=Math.atan2(this.direction.y,Math.hypot(this.direction.x,this.direction.z));}
+    if(this.direction.lengthSq()>.0001){yaw=Math.atan2(this.direction.x,this.direction.z);pitch=Math.atan2(this.direction.y,Math.hypot(this.direction.x,this.direction.z));
+     if(this.relaxBehind){const front=clamp((2.1-Math.abs(yaw))/.8,0,1);yaw*=front;pitch*=front;}
+    }
    }
    const quiet=blocked||['sleep','eat','sniff','yawn','shake','lieDown','sitDown','standUp','playBow','stretch','noseLick'].includes(state);
    const weight=quiet?0:['walk','trot','run','turnLeft','turnRight'].includes(state)?.22:['curious','alert','shy','affection','petting'].includes(state)?.25:1;

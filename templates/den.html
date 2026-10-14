@@ -560,6 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/head-look.js') }}?v={{ app_version }}"></script>
+    <script src="/static/js/den/cat-life.js?v={{ app_version }}"></script>
     <script src="/static/js/den/island-music.js?v={{ app_version }}"></script>
     <script src="/static/js/den/alpine-layout.js?v={{ app_version }}"></script>
     <script src="/static/js/den/mistwood-layout.js?v={{ app_version }}"></script>
@@ -1159,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ---------- 动画状态机（GLB AnimationMixer 驱动） ----------
         let petModel = null;
-        let facePlay = null, toyWorkshop = null, headLook = null;
+        let facePlay = null, toyWorkshop = null, headLook = null, catLife = null;
         const viewAttention = new PetHeadLook.ViewAttention();
         controls.addEventListener('change',()=>viewAttention.moved(performance.now()));
         let mixer = null, actions = {}, activeAction = null, facialBlinkAction = null, faceMode = "open";
@@ -1209,6 +1210,7 @@ document.addEventListener('DOMContentLoaded', () => {
             vis: petModel ? petModel.visible : null,
         });
         function setAnim(state, dur) {
+            if(state!=='idle'||catLife?.active||catLife?.approach)catLife?.cancel();
             if(state==='idle' && anim.state==='standUp' && actionTransition) return;
             if (window.__animLog) window.__animLog.push([Math.round(performance.now()), state, dur,
                 String(new Error().stack || '').split('\n')[2].trim().slice(0, 90)]);
@@ -1418,7 +1420,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
             const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
             facePlay?.reset();toyWorkshop?.clear();
-            headLook?.beforeFrame();headLook=null;
+            catLife?.cancel();catLife=null;headLook?.beforeFrame();headLook=null;
             dialogueRunner.cancel('');endDialogueHold();
             spawnBusy = true;
             const epoch = ++locomotionEpoch;
@@ -1548,7 +1550,7 @@ document.addEventListener('DOMContentLoaded', () => {
             g.rotation.y = 0.35;                 // 朝向镜头略侧，展示立体感
             petModel = g;
             petModel.userData = { pbr:!!spec.pbr, height: spec.h, headBone, mouthSocket: model.getObjectByName('SOCKET_mouth'), groundY: modeledStage ? .039 : 0, origH, animations: gltf.animations.map(a => clipShort(a.name)) };
-            headLook=new PetHeadLook.Controller(THREE,petModel);petModel.userData.headLook=!!headLook.head;
+            headLook=new PetHeadLook.Controller(THREE,petModel,{relaxBehind:id===3});petModel.userData.headLook=!!headLook.head;
             buildAccessories(model, headBone, neckBone, origH, spec);
             scene.add(petModel); petModel.position.y = petModel.userData.groundY; grabHomeY = petModel.userData.groundY;
             const navigation = new PetNavigation.Navigation({radius:3.2,
@@ -1559,9 +1561,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 gaits:actions.run?{walk:.348*spec.h/origH,trot:.682*spec.h/origH,run:1.0*spec.h/origH,turnLeft:1,turnRight:1}:null,
                 animate(key,speed) { anim.state = key; anim.until = 0; playAction(key,speed); },
                 rest(random) {
+                    if(catLife?.approach){anim.state='idle';anim.until=0;playAction('idle',1);return;}
                     if(facePlay?.ball||facePlay?.guiding){anim.state='idle';anim.until=0;playAction('idle',1);return;}
                     if(shibaExpression){
-                        const key=ShibaExpression.idleChoice(random,companionBehavior?.mode,lastShibaIdle);lastShibaIdle=key;
+                        const key=currentPetId===3?CatLife.idleChoice(random,lastShibaIdle):ShibaExpression.idleChoice(random,companionBehavior?.mode,lastShibaIdle);lastShibaIdle=key;
                         anim.state=key;anim.until=key==='idle'?0:performance.now()+(actions[key]?.getClip().duration||2.4)*1000;
                         playAction(key,1);return;
                     }
@@ -1569,6 +1572,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const key = !calm && random < .35 && actions.sniff ? 'sniff' : (!calm && random < .55 && actions.stretch ? 'stretch' : 'idle');
                     anim.state = key; anim.until = key === 'idle' ? 0 : performance.now()+2500; playAction(key,1);
                 }});
+            if(id===3)catLife=new CatLife.Controller(THREE,petModel,locomotion,{
+                // Conservatory west stone plinth; navigation rectangle is deliberately conservative.
+                walls:modeledStage?[{x:.8,z:-3.4,nx:-1,nz:0}]:[],
+                animate(key){anim.state=key;anim.until=0;playAction(key,1);}
+            });
             document.getElementById('btn-run').hidden=!actions.run;
             locomotion.enabled = petState().roaming !== false; updateRoamingButton();
             // 配饰恢复
@@ -3406,8 +3414,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             controls.update();
             camera.updateMatrixWorld(true);
-            facePlay?.beforeFrame();
+            catLife?.beforeFrame();
             headLook?.beforeFrame();
+            facePlay?.beforeFrame();
             if (petModel) {
                 // 保底：被捏住但视觉互动已停（切页/关闭/异常）→ 强制释放掉落（测试臂除外：无摄像头验证拎宠链路）
                 if (grabbed && (!dv || !dv.running) && !window.__gestureTestArmed) {
@@ -3500,7 +3509,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (anim.state === 'sleep' && anim.lastInteract > (anim.sleptAt || 0)) {
                     anim.state = 'idle'; playAction('idle', 1);   // 入睡后发生过新互动才唤醒（crossFade 翻身站起）
                 }
-                if (locomotion) locomotion.update(dt,movementBlocked());
+                const blocked=movementBlocked();
+                const catActing=catLife?.step(dt,blocked)||false;
+                if (locomotion) locomotion.update(dt,blocked||catActing);
                 if (facialBlinkAction) {
                     if (anim.state==='sleep' && faceMode!=='sleep') {
                         facialBlinkAction.reset();facialBlinkAction.setLoop(THREE.LoopOnce,1);facialBlinkAction.setEffectiveWeight(1);
@@ -3521,10 +3532,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(headLook){
                     const held=toyWorkshop?.held;
                     const point=viewAttention.point(now,facePlay?.attention);
-                    const target=held?.state==='held'?held.node.getWorldPosition(new THREE.Vector3()):
+                    let target=held?.state==='held'?held.node.getWorldPosition(new THREE.Vector3()):
                         point?headLook.screenTarget(point,camera,canvas.clientWidth,canvas.clientHeight):camera.position;
-                    headLook.update(poseDt,target,{state:anim.state,blocked:grabbed||dropping||!!actionTransition});
+                    if(catLife)target=catLife.attention(camera.position,(held?.state==='held'||point||now<viewAttention.until)?target:null);
+                    headLook.update(poseDt,target,{state:anim.state,blocked:grabbed||dropping||!!actionTransition||!!catLife?.active});
                 }
+                if(!grabbed&&!dropping)catLife?.pose(dt,anim.state,shibaExpression);
                 toyWorkshop?.grip?.update(toyWorkshop.held);
                 const st = anim.state;
 
