@@ -547,6 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/pet-locomotion.js') }}"></script>
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/den/head-look.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/den/alpine-layout.js?v={{ app_version }}"></script>
     <script src="/static/js/den/sky-background.js?v={{ app_version }}"></script>
     <script src="/static/js/den/waterfall-flow.js?v={{ app_version }}"></script>
@@ -1141,7 +1142,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ---------- 动画状态机（GLB AnimationMixer 驱动） ----------
         let petModel = null;
-        let facePlay = null, toyWorkshop = null;
+        let facePlay = null, toyWorkshop = null, headLook = null, pointerAttention = null;
         let mixer = null, actions = {}, activeAction = null, facialBlinkAction = null, faceMode = "open";
         let shibaExpression = null, lastShibaIdle = 'idle';
         let locomotion = null, locomotionEpoch = 0, actionTransition = null;
@@ -1398,6 +1399,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
             const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
             facePlay?.reset();toyWorkshop?.clear();
+            headLook?.beforeFrame();headLook=null;pointerAttention=null;
             dialogueRunner.cancel('');endDialogueHold();
             spawnBusy = true;
             const epoch = ++locomotionEpoch;
@@ -1513,9 +1515,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if(spec.expressive)shibaExpression=new ShibaExpression.Controller(model,{eyeRetraction:spec.eyeRetraction});
             document.getElementById('btn-shiba-acting').hidden=!shibaExpression;
 
-            let headBone = null, neckBone = null;
+            let headBone = model.getObjectByName('head'), neckBone = model.getObjectByName('neck');
             model.traverse((o) => {
-                if (o.isBone) {
+                if (o.isBone && !/^SOCKET_/i.test(o.name)) {
                     if (!headBone && /head/i.test(o.name)) headBone = o;
                     if (!neckBone && /neck/i.test(o.name)) neckBone = o;
                 }
@@ -1526,6 +1528,7 @@ document.addEventListener('DOMContentLoaded', () => {
             g.rotation.y = 0.35;                 // 朝向镜头略侧，展示立体感
             petModel = g;
             petModel.userData = { pbr:!!spec.pbr, height: spec.h, headBone, mouthSocket: model.getObjectByName('SOCKET_mouth'), groundY: modeledStage ? .039 : 0, origH, animations: gltf.animations.map(a => clipShort(a.name)) };
+            headLook=new PetHeadLook.Controller(THREE,petModel);petModel.userData.headLook=!!headLook.head;pointerAttention=null;
             buildAccessories(model, headBone, neckBone, origH, spec);
             scene.add(petModel); petModel.position.y = petModel.userData.groundY; grabHomeY = petModel.userData.groundY;
             const navigation = new PetNavigation.Navigation({radius:3.2,
@@ -2318,6 +2321,11 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.addEventListener('pointermove', e => {
             if (groundPress && groundPress.id === e.pointerId) groundPress.travel = Math.max(groundPress.travel,Math.hypot(e.clientX-groundPress.x,e.clientY-groundPress.y));
         });
+        canvas.addEventListener('pointermove',e=>{
+            if(e.buttons){pointerAttention=null;return;}
+            const rect=canvas.getBoundingClientRect();pointerAttention={x:e.clientX-rect.left,y:e.clientY-rect.top,t:performance.now()};
+        },true);
+        canvas.addEventListener('pointerleave',()=>{pointerAttention=null;});
         canvas.addEventListener('pointercancel', () => {groundPress=null;});
         canvas.addEventListener('pointerup', e => {
             const press=groundPress; groundPress=null;
@@ -3391,6 +3399,7 @@ document.addEventListener('DOMContentLoaded', () => {
             autoBlinkTick(now);
 
             facePlay?.beforeFrame();
+            headLook?.beforeFrame();
             if (petModel) {
                 // 保底：被捏住但视觉互动已停（切页/关闭/异常）→ 强制释放掉落（测试臂除外：无摄像头验证拎宠链路）
                 if (grabbed && (!dv || !dv.running) && !window.__gestureTestArmed) {
@@ -3501,6 +3510,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 toyWorkshop?.update(dt,now);
                 facePlay?.update(dt,now);
+                if(headLook){
+                    const held=toyWorkshop?.held;
+                    const point=facePlay?.attention||(pointerAttention&&now-pointerAttention.t<3500?pointerAttention:null);
+                    const target=held?.state==='held'?held.node.getWorldPosition(new THREE.Vector3()):
+                        point?headLook.screenTarget(point,camera,canvas.clientWidth,canvas.clientHeight):camera.position;
+                    headLook.update(poseDt,target,{state:anim.state,blocked:grabbed||dropping||!!actionTransition});
+                }
                 toyWorkshop?.grip?.update(toyWorkshop.held);
                 const st = anim.state;
 

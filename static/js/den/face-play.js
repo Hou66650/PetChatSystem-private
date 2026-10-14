@@ -200,6 +200,7 @@
       }
     }
     update(dt,now){
+      this.attention=null;
       this.bind();if(!this.model || (!this.cameraOn&&!this.pointerMode&&!this.tool&&!this.ball))return;
       this.updateBall(now,dt);
       if(this.a.busy()){this.hideHalo();this.touch.reset();this.releaseGuide();this.input=null;this.face=null;}
@@ -233,6 +234,7 @@
         }else{this.hideHalo();this.touch.sample(point,null,now);}
       }else{this.hideHalo();this.touch.reset();}
       if(!aim&&this.face&&now-this.face.t<600&&!this.a.busy())aim={x:this.face.x*this.a.canvas.clientWidth,y:this.face.y*this.a.canvas.clientHeight};
+      this.attention=aim;
       const head=this.project(this.a.head()),fade=1-Math.exp(-dt*7);
       const tx=aim?clamp((aim.x-head.x)/this.a.canvas.clientWidth*1.5,-.35,.35):0;
       const ty=aim?clamp((aim.y-head.y)/this.a.canvas.clientHeight,-.20,.20):0;
@@ -240,6 +242,7 @@
       this.look.r+=((this.face?clamp(this.face.roll,-.18,.18):0)-this.look.r)*fade;
       const T=this.a.THREE;
       for(const entry of this.bones){
+        if(!entry.eye&&this.a.model()?.userData.headLook)continue;
         entry.base=entry.bone.quaternion.clone();
         const amount=entry.eye?1.15:.5;
         const chin=this.poseTouch==='chin'?-.08:0;
