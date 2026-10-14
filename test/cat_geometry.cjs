@@ -5,7 +5,7 @@ vm.runInNewContext(fs.readFileSync('static/js/vendor/GLTFLoader.js','utf8'),{THR
 THREE.TextureLoader.prototype.load=function(url,onLoad){const t=new THREE.Texture();queueMicrotask(()=>onLoad(t));return t;};
 const parse=p=>new Promise((resolve,reject)=>{const b=fs.readFileSync(p);new THREE.GLTFLoader().parse(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'',resolve,reject);});
 (async()=>{
- const dog=await parse('static/models/petchat-cat-v2/cat.glb');
+ const dog=await parse('static/models/petchat-cat-v3/cat.glb');
  const meshes=[];dog.scene.traverse(o=>{if(o.isSkinnedMesh)meshes.push(o);});
  const mixer=new THREE.AnimationMixer(dog.scene),point=new THREE.Vector3();
  for(const clip of dog.animations){

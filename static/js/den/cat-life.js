@@ -6,7 +6,7 @@
  function idleChoice(r,previous){const pool=['idle','curious','ears','sniff','stretch','yawn','affection'].filter(k=>k!==previous);return pool[Math.min(pool.length-1,Math.floor(r*pool.length))];}
  class Controller{
   constructor(T,model,locomotion,{random=Math.random,animate=()=>{},walls=[]}={}){
-   Object.assign(this,{T,model,locomotion,random,animate,walls});this.elapsed=0;this.wait=9;this.active=null;this.approach=null;this.last=null;this.entries=[];
+   Object.assign(this,{T,model,locomotion,random,animate,walls});this.elapsed=0;this.wait=9;this.active=null;this.approach=null;this.last=null;this.entries=[];this.lookUntil=0;this.lookYaw=0;this.lookHeight=.6;this.lookAtCamera=false;
    model.traverse(b=>{if(b.isBone&&!/^SOCKET/.test(b.name))this.entries.push({bone:b,q:b.quaternion.clone(),p:b.position.clone(),applied:false,shifted:false});});
    this.byName=Object.fromEntries(this.entries.map(e=>[e.bone.name,e]));this.axis=new T.Vector3();this.q=new T.Quaternion();this.parentQ=new T.Quaternion();this.modelQ=new T.Quaternion();this.target=new T.Vector3();
   }
@@ -24,8 +24,8 @@
     if(!nav.segmentClear(p,end)||Math.abs(nav.surfaceHeight(p)-nav.surfaceHeight(end))>.025)return false;
     if(nav.bridges.some(b=>Math.abs(p.x-b.x)<b.w/2+nav.clearance&&Math.abs(p.z-b.z)<b.d/2+nav.clearance))return false;
    }
-   this.locomotion.interrupt(3);this.animate('idle');
-   this.active={kind,time:0,duration:kind==='jump'?1.65:kind==='rub'?4.2:3.6,start:{x:p.x,z:p.z},end};this.last=kind;return true;
+   this.locomotion.interrupt(3);this.animate(kind==='groom'?'sit':'idle');
+   this.active={kind,time:0,duration:kind==='jump'?1.65:kind==='rub'?5.4:kind==='groom'?7.2:4.6,side:this.random()<.5?-1:1,start:{x:p.x,z:p.z},end};this.last=kind;return true;
   }
   seekWall(){
    const nav=this.locomotion.navigation;
@@ -92,14 +92,16 @@
     return this.target.set(p.x+Math.sin(yaw)*2,height,p.z+Math.cos(yaw)*2);
    }
    if(explicit)return explicit;
-   if(this.elapsed%10<2.5)return camera;
-   const yaw=this.model.rotation.y+Math.sin(this.elapsed*.7)*.65;
-   return this.target.set(p.x+Math.sin(yaw)*2,p.y+.6+Math.sin(this.elapsed*.4)*.12,p.z+Math.cos(yaw)*2);
+   // Hold a focus between occasional changes instead of sweeping like a metronome.
+   if(this.elapsed>=this.lookUntil){this.lookUntil=this.elapsed+1.8+this.random()*3.6;this.lookYaw=(this.random()-.5)*1.25;this.lookHeight=.48+this.random()*.22;this.lookAtCamera=this.random()<.22;}
+   if(this.lookAtCamera&&camera)return camera;
+   const yaw=this.model.rotation.y+this.lookYaw;
+   return this.target.set(p.x+Math.sin(yaw)*2,p.y+this.lookHeight,p.z+Math.cos(yaw)*2);
   }
   rotate(name,axis,angle){
    const e=this.byName[name];if(!e||!angle)return;
    if(!e.applied){e.q.copy(e.bone.quaternion);e.applied=true;}
-   this.axis.set(...axis).applyQuaternion(this.modelQ);this.q.setFromAxisAngle(this.axis,angle);
+   this.axis.set(...axis).normalize().applyQuaternion(this.modelQ);this.q.setFromAxisAngle(this.axis,angle);
    e.bone.parent.getWorldQuaternion(this.parentQ);this.q.premultiply(this.parentQ.clone().invert()).multiply(this.parentQ);
    e.bone.quaternion.premultiply(this.q);e.bone.updateMatrixWorld(true);
   }
@@ -108,8 +110,8 @@
    const a=this.active,t=this.elapsed;
    if(!['sleep','eat'].includes(state)){
     this.rotate('tail_mid',[0,1,0],Math.sin(t*1.35)*.10);this.rotate('tail_tip',[1,0,0],Math.sin(t*1.8)*.12);
-    const ear=Math.max(0,Math.sin(t*1.9))**18*.12;
-    this.rotate('ear_L',[0,0,1],ear);this.rotate('ear_R',[0,0,1],-(Math.max(0,Math.sin(t*1.9+1))**18)*.10);
+    const ear=Math.max(0,Math.sin(t*1.17)*Math.sin(t*.43+.8))**12*.12;
+    this.rotate('ear_L',[0,0,1],ear);this.rotate('ear_R',[0,0,1],-(Math.max(0,Math.sin(t*1.41+1)*Math.sin(t*.37))**18)*.10);
    }
    this.eatBlend=(this.eatBlend||0)+((state==='eat'?1:0)-(this.eatBlend||0))*(1-Math.exp(-dt*6));
    if(this.eatBlend>.001){
@@ -122,19 +124,35 @@
    if(a.kind==='jump'){
     const air=clamp((a.time-.35)/.85,0,1),lift=Math.sin(Math.PI*air)*.32;
     this.model.position.y+=lift;
-    const tuck=Math.sin(Math.PI*air)*.48;
+    const crouch=smooth(a.time/.16)*(1-smooth((a.time-.18)/.17));
+    const landing=smooth((a.time-1.16)/.10)*(1-smooth((a.time-1.3)/.35));
+    this.rotate('spine_front',[1,0,0],.10*crouch-.07*landing);
+    this.rotate('spine_rear',[1,0,0],-.16*crouch+.09*landing);
+    const tuck=Math.sin(Math.PI*air)*.48+crouch*.12+landing*.09;
     for(const leg of ['FL','FR','HL','HR']){this.rotate(leg+'_upper',[1,0,0],(leg[0]==='F'?-.5:.6)*tuck);this.rotate(leg+'_lower',[1,0,0],-tuck);}
     this.rotate('spine',[1,0,0],Math.sin(air*Math.PI*2)*.09*envelope);
     this.rotate('neck',[1,0,0],-.12*envelope);
    }else if(a.kind==='rub'){
-    this.rotate('neck',[0,1,0],-.28*envelope);this.rotate('head',[0,0,1],.24*envelope);
-    this.rotate('spine_front',[0,1,0],Math.sin(a.time*5)*.065*envelope);
-    this.rotate('tail',[1,0,0],-.17*envelope);
+    // Cheek first, then shoulder, then release. The root stays inside the safe wall corridor.
+    const cheek=smooth(a.time/.7)*(1-smooth((a.time-2.4)/1.0));
+    const shoulder=smooth((a.time-1.8)/1.1)*(1-smooth((a.time-4.1)/1.3));
+    this.rotate('neck',[0,1,0],-.24*cheek);this.rotate('head',[0,0,1],.18*cheek);
+    this.rotate('spine_front',[0,1,0],-.09*shoulder);this.rotate('spine_rear',[0,1,0],.06*shoulder);
+    this.rotate('tail_tip',[1,0,0],-.13*envelope);
     if(expression)expression.update(dt,'affection',a.time/a.duration);
    }else if(a.kind==='groom'){
-    this.rotate('head',[1,0,0],(.28+Math.sin(a.time*7)*.06)*envelope);
-    this.rotate('FL_upper',[1,0,0],-.55*envelope);this.rotate('FL_lower',[1,0,0],-.45*envelope);
-    this.rotate('neck',[0,1,0],.16*envelope);
+    const side=a.side||1,leg=side<0?'FL':'FR';
+    const raised=smooth(a.time/.8)*(1-smooth((a.time-5.8)/1.4));
+    const cycle=Math.max(0,a.time-.9)%1.4;
+    // Three small licks, a pause, and a slow face wipe; alternate the raised paw.
+    const lick=a.time<4.6&&cycle<.85?Math.sin(cycle/.85*Math.PI*3)**2:0;
+    const wipe=smooth((a.time-4.6)/.55)*(1-smooth((a.time-5.5)/.7));
+    this.rotate('head',[.65,0,-.76],(.32+.055*lick-.12*wipe)*raised);
+    this.rotate(leg+'_upper',[1,0,0],(-.42-.16*wipe)*raised);this.rotate(leg+'_lower',[1,0,0],-1.65*raised);
+    this.rotate('neck',[.65,0,-.76],(.42-.18*wipe)*raised);
+    this.rotate(leg+'_foot',[1,0,0],.45*raised);
+    this.rotate('neck',[0,1,0],-.15*side*raised);this.rotate('head',[0,0,1],.07*side*wipe);
+    this.rotate('jaw',[1,0,0],.035*lick*raised);
    }else{
     this.rotate('spine_front',[1,0,0],.13*envelope);this.rotate('spine_rear',[1,0,0],-.10*envelope);
     this.rotate('neck',[1,0,0],.12*envelope);this.rotate('tail',[1,0,0],-.20*envelope);

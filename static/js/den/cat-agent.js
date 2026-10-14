@@ -90,7 +90,7 @@
    if(!place||!place.actions.includes(plan.action)||(!urgent&&['eat','sleep'].includes(plan.action))){plan=this.fallback(candidates);}
    const target=candidates.find(p=>p.id===plan.target),point=this.point(target);
    // Results are proposals. Revalidate against the live navigator before execution.
-   if(!this.locomotion.goTo(point,{gait:this.energy>.65?'trot':'walk'})){this.phase='idle';this.cooldowns[target.id]=this.now()+60000;this.next=this.now()+5000;this.reason='目标路线重新校验失败';this.status('路线受阻，稍后重新规划');return;}
+   if(!this.locomotion.goTo(point,{gait:this.energy>.65&&distance(this.model.position,point)>2?'trot':'walk'})){this.phase='idle';this.cooldowns[target.id]=this.now()+60000;this.next=this.now()+5000;this.reason='目标路线重新校验失败';this.status('路线受阻，稍后重新规划');return;}
    this.reason=plan.reason||'候选地点及动作已通过本地校验';this.locomotion.owner='agent';this.source=plan.source==='model'?'model':'local';
    this.goal={target:target.id,action:plan.action,point,time:0,event:globalThis.crypto?.randomUUID?.()||`${this.now()}-${Math.random()}`};
    this.lastTarget=target.id;this.phase='walking';this.next=this.lastDecision+8000;this.status('想去'+target.name+words[plan.action]);
@@ -134,16 +134,21 @@
     else if(['jump','groom','stretch'].includes(g.action)){if(!this.life.begin(g.action)){this.finish('blocked');return;}}
     else if(g.action==='paw')this.animate('wave');
     else if(g.target==='hammock')this.animate('sleep');
+    else if(g.action==='rest'){g.restStage='lower';this.animate('sitDown');}
     else if(g.action==='nibble')this.animate('eat');
     else if(['eat','sleep'].includes(g.action))this.animate(g.action);
     else this.animate(g.action==='sniff'?'sniff':g.action==='observe'?'curious':'idle');
     this.status('在'+place.name+words[g.action]);
    }else if(this.phase==='acting'){
+    if(g.action==='rest'&&g.target!=='hammock'){
+     if(g.restStage==='lower'&&g.time>=1.2){g.restStage='seated';this.animate('sit');}
+     if(g.restStage==='seated'&&g.time>=8){g.restStage='rise';this.animate('standUp');}
+    }
     if(g.action==='eat')this.hunger=Math.max(0,this.hunger-dt*.065);
     if(g.action==='sleep')this.energy=Math.min(1,this.energy+dt*.025);
     const gesture=['rub','jump','groom','stretch'].includes(g.action);
     if(gesture&&!this.life.active&&!this.life.approach&&g.time>.1)this.finish('completed');
-    else if(!gesture&&g.time>=(g.action==='sleep'?24:g.action==='eat'?10:g.action==='rest'?8:g.action==='nibble'?6:3.5))this.finish('completed');
+    else if(!gesture&&g.time>=(g.action==='sleep'?24:g.action==='eat'?10:g.action==='rest'?(g.target==='hammock'?8:9.5):g.action==='nibble'?6:3.5))this.finish('completed');
    }
   }
   dispose(){this.saveNeeds();this.interrupt('');this.disposed=true;this.text='已离开猫咪小岛';this.emit(true);this.loadAbort?.abort();this.locomotion.autonomous=true;this.life.autonomous=true;}

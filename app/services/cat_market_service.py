@@ -5,7 +5,7 @@ from ..db import get_db
 
 BASE='/static/models/petchat-cat-coats-v1/'
 CATALOG=[
- dict(id='tabby',name='雾林狸花',price=0,model='/static/models/petchat-cat-v2/cat.glb',description='原有狸花伙伴，细密虎纹与温柔的眼睛。',color='#958875'),
+ dict(id='tabby',name='雾林狸花',price=0,model='/static/models/petchat-cat-v3/cat.glb',description='原有狸花伙伴，细密虎纹与温柔的眼睛。',color='#958875'),
  dict(id='ginger',name='暖阳橘猫',price=120,model=BASE+'ginger.glb',description='暖橘虎纹、奶油色口鼻，像一小团阳光。',color='#d79b54'),
  dict(id='tuxedo',name='云朵奶牛',price=180,model=BASE+'tuxedo.glb',description='黑白花斑、白胸口和白袜，短毛清爽。',color='#637374'),
  dict(id='calico',name='秋日三花',price=220,model=BASE+'calico.glb',description='奶白底色上散落橘与墨色的不规则花斑。',color='#b5845f'),

@@ -5,7 +5,7 @@ const layout=require('../static/js/den/mistwood-layout');
 vm.runInNewContext(fs.readFileSync('static/js/vendor/GLTFLoader.js','utf8'),{THREE,console,TextDecoder,URL,Blob,self:{URL},setTimeout,clearTimeout});
 THREE.TextureLoader.prototype.load=function(url,cb){const t=new THREE.Texture();queueMicrotask(()=>cb(t));return t;};
 (async()=>{
- const bytes=fs.readFileSync('static/models/petchat-cat-v2/cat.glb');
+ const bytes=fs.readFileSync('static/models/petchat-cat-v3/cat.glb');
  const gltf=await new Promise((r,j)=>new THREE.GLTFLoader().parse(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'',r,j));
  const model=new THREE.Group();model.add(gltf.scene);
  const nav=new Navigation({...layout,bodyRadius:.619}),move=new Move({navigation:nav,model,animate(){},rest(){}});
@@ -23,7 +23,7 @@ THREE.TextureLoader.prototype.load=function(url,cb){const t=new THREE.Texture();
  move.enabled=false;cat.wait=0;frame();assert.equal(cat.active,null,'roaming off cancels autonomous actions');
  const look=new Look(THREE,model,{relaxBehind:true});model.rotation.y=0;
  for(let i=0;i<150;i++)look.update(1/60,new THREE.Vector3(-2,1,-3));assert(Math.abs(look.yaw)<.01,'behind camera releases head instead of clamping left');look.beforeFrame();
- cat.elapsed=5;move.path=[];const a=cat.attention(new THREE.Vector3(5,3,5),null).clone();cat.elapsed=8;const b=cat.attention(new THREE.Vector3(5,3,5),null).clone();assert(a.distanceTo(b)>.3);
+ cat.elapsed=5;cat.lookUntil=0;cat.random=()=>.4;move.path=[];const a=cat.attention(null,null).clone();cat.elapsed=5.5;assert(a.distanceTo(cat.attention(null,null))<.001,'holds gaze instead of constant scanning');cat.elapsed=12;cat.random=()=>.8;const b=cat.attention(null,null).clone();assert(a.distanceTo(b)>.3,'changes focus after dwell');
  const explicit=new THREE.Vector3(1,1,1);assert.equal(cat.attention(null,explicit),explicit);
  // Walking attention wins over persistent face/camera focus and looks beyond close waypoints.
  cat.active=null;move.velocity=.2;model.position.set(0,0,0);model.rotation.y=0;
@@ -40,6 +40,8 @@ THREE.TextureLoader.prototype.load=function(url,cb){const t=new THREE.Texture();
  // Restore in reverse layering order, without accumulating camera/behavior rotations.
  const head=cat.byName.head.bone,base=head.quaternion.clone();cat.active={kind:'groom',time:1,duration:3.6};
  for(let i=0;i<100;i++){cat.beforeFrame();look.beforeFrame();look.update(1/60,new THREE.Vector3(2,1,3));cat.pose(1/60,'idle');}
- cat.beforeFrame();look.beforeFrame();assert(base.angleTo(head.quaternion)<1e-6);
+ cat.beforeFrame();look.beforeFrame();assert(base.clone().normalize().angleTo(head.quaternion.clone().normalize())<1e-6,'additive poses restore rotation without drift');
+ move.enabled=true;cat.autonomous=false;
+ for(const side of [-1,1]){cat.begin('groom');cat.active.side=side;for(let i=0;i<440;i++)frame();assert.equal(cat.active,null,'groom sequence settles for either paw');}
  console.log('PASS actual cat rig: safe hop, bridge exclusion, wall route and alignment, pose restoration, cancellation, independent gaze and behind-camera relaxation');
 })().catch(e=>{console.error(e);process.exitCode=1;});

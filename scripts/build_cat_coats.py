@@ -5,7 +5,7 @@ import copy,io,json,struct
 from pathlib import Path
 import numpy as np
 from PIL import Image
-R=Path(__file__).resolve().parents[1];src=(R/'static/models/petchat-cat-v2/cat.glb').read_bytes()
+R=Path(__file__).resolve().parents[1];src=(R/'static/models/petchat-cat-v3/cat.glb').read_bytes()
 n=struct.unpack_from('<I',src,12)[0];base=json.loads(src[20:20+n]);binary=src[28+n:]
 out=R/'static/models/petchat-cat-coats-v1';out.mkdir(exist_ok=True)
 def read(j,b,index):
@@ -22,6 +22,7 @@ def append(j,b,arr,typ):
 for coat in ['ginger','tuxedo','calico','ragdoll']:
  j=copy.deepcopy(base);b=bytearray(binary)
  for mesh in j['meshes']:
+  if mesh['name']=='Brow_vibrissae':continue
   for prim in mesh['primitives']:
    attrs=prim['attributes'];p=read(j,b,attrs['POSITION']);x,y,z=p.T;fur=mesh['name']=='Reference_fur'
    if 'TEXCOORD_0' in attrs:
@@ -30,8 +31,8 @@ for coat in ['ginger','tuxedo','calico','ragdoll']:
    noise=.5+.22*np.sin(x*21+z*13+np.sin(y*16))+.18*np.sin(z*31-y*17+x*8)
    rgb=np.tile([.94,.91,.82],(len(p),1))
    if coat=='ginger':
-    stripe=(np.sin(z*43+y*17+np.sin(x*30)*1.5)>.54)&(y>.24)
-    rgb[:]=[.84,.52,.22];rgb[stripe]=[.49,.25,.09];rgb[(y<.13)|((z>.44)&(y<.79))]=[.96,.87,.67]
+    stripe=np.clip((np.sin(z*43+y*17+np.sin(x*30)*1.5)-.30)/.45,0,1)*np.clip((y-.20)/.07,0,1)
+    rgb[:]=np.array([.84,.56,.30])*(1-stripe[:,None])+np.array([.57,.32,.14])*stripe[:,None];rgb[(y<.13)|((z>.44)&(y<.79))]=[.96,.87,.67]
    elif coat=='tuxedo':
     mask=(noise>.51)&(y>.20);mask|=(y>.83)&(z>.30);rgb[mask]=[.055,.066,.075];rgb[(abs(x)<.042)&(z>.46)&(y<.94)]=[.95,.93,.86]
    elif coat=='calico':
@@ -40,7 +41,7 @@ for coat in ['ginger','tuxedo','calico','ragdoll']:
     mask=((z>.40)&(y>.73))|((y<.17))|((z<-.30)&(y>.55));rgb[mask]=[.32,.25,.23]
     rgb[(abs(x)<.06)&(z>.46)&(y<.9)]=[.94,.90,.80]
    # Keep fine shading from the source surface and the actual eyes/nose pigments.
-   detail=np.clip(.87+.17*original.mean(axis=1),.84,1.0);rgb*=detail[:,None]
+   detail=np.clip(.72+.30*original.mean(axis=1),.73,1.0);rgb*=detail[:,None]
    face=(z>.46)&(y>.76)&(y<.90)&(abs(x)>.045)&(abs(x)<.17)
    feature=face&(original.mean(axis=1)<.26)
    nose=(z>.52)&(y>.70)&(y<.79)&(abs(x)<.08)
