@@ -70,11 +70,28 @@
    return this.begin(kind);
   }
   attention(camera,explicit){
-   if(explicit)return explicit;
+   this.lookingAlongRoute=false;
    if(this.active)return null;
    const p=this.model.position,path=this.locomotion.path;
-   if(path.length)return this.target.set(path[0].x,p.y+.55,path[0].z);
-   // Brief eye contact, then independently scan; avoid permanently staring at the camera.
+   if(path.length||this.locomotion.velocity>.08){
+    // Follow a point ahead along the route, never a near waypoint behind the head.
+    // Persistent face/camera attention must not override travel attention.
+    this.lookingAlongRoute=true;
+    let from=p,remaining=1.2,aim=null;
+    for(const point of path){
+     const length=Math.hypot(point.x-from.x,point.z-from.z);
+     if(length>.001){const u=Math.min(1,remaining/length);aim={x:from.x+(point.x-from.x)*u,z:from.z+(point.z-from.z)*u};remaining-=length;if(remaining<=0)break;}
+     from=point;
+    }
+    const body=this.model.rotation.y;
+    const desired=aim&&Math.hypot(aim.x-p.x,aim.z-p.z)>.03?Math.atan2(aim.x-p.x,aim.z-p.z):body;
+    const relative=Math.atan2(Math.sin(desired-body),Math.cos(desired-body));
+    const yaw=body+clamp(relative,-.65,.65);
+    const head=this.byName.head?.bone;this.model.updateMatrixWorld(true);
+    const height=head?head.getWorldPosition(this.target).y:p.y+.6;
+    return this.target.set(p.x+Math.sin(yaw)*2,height,p.z+Math.cos(yaw)*2);
+   }
+   if(explicit)return explicit;
    if(this.elapsed%10<2.5)return camera;
    const yaw=this.model.rotation.y+Math.sin(this.elapsed*.7)*.65;
    return this.target.set(p.x+Math.sin(yaw)*2,p.y+.6+Math.sin(this.elapsed*.4)*.12,p.z+Math.cos(yaw)*2);

@@ -30,7 +30,7 @@
    this.screen.set(point.x/width*2-1,1-point.y/height*2);this.ray.setFromCamera(this.screen,camera);
    return this.ray.ray.intersectPlane(this.plane,this.projected);
   }
-  update(dt,target,{state='idle',blocked=false}={}){
+  update(dt,target,{state='idle',blocked=false,locomotionFocus=false}={}){
    if(!this.head)return;
    this.beforeFrame();dt=clamp(dt,0,.1);this.elapsed+=dt;this.model.updateMatrixWorld(true);
    this.head.getWorldPosition(this.origin);this.model.getWorldQuaternion(this.modelQ);
@@ -42,7 +42,7 @@
     }
    }
    const quiet=blocked||['sleep','eat','sniff','yawn','shake','lieDown','sitDown','standUp','playBow','stretch','noseLick'].includes(state);
-   const weight=quiet?0:['walk','trot','run','turnLeft','turnRight'].includes(state)?.22:['curious','alert','shy','affection','petting'].includes(state)?.25:1;
+   const weight=quiet?0:['walk','trot','run','turnLeft','turnRight'].includes(state)?(locomotionFocus ? .55 : .22):['curious','alert','shy','affection','petting'].includes(state)?.25:1;
    yaw=clamp(yaw,-.96,.96)*weight;pitch=clamp(pitch,-.42,.52)*weight;
    const fade=1-Math.exp(-dt*6);this.yaw+=(yaw-this.yaw)*fade;this.pitch+=(pitch-this.pitch)*fade;
    this.up.set(0,1,0).applyQuaternion(this.modelQ);this.right.set(1,0,0).applyQuaternion(this.modelQ);

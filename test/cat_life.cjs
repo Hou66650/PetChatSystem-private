@@ -25,6 +25,18 @@ THREE.TextureLoader.prototype.load=function(url,cb){const t=new THREE.Texture();
  for(let i=0;i<150;i++)look.update(1/60,new THREE.Vector3(-2,1,-3));assert(Math.abs(look.yaw)<.01,'behind camera releases head instead of clamping left');look.beforeFrame();
  cat.elapsed=5;move.path=[];const a=cat.attention(new THREE.Vector3(5,3,5),null).clone();cat.elapsed=8;const b=cat.attention(new THREE.Vector3(5,3,5),null).clone();assert(a.distanceTo(b)>.3);
  const explicit=new THREE.Vector3(1,1,1);assert.equal(cat.attention(null,explicit),explicit);
+ // Walking attention wins over persistent face/camera focus and looks beyond close waypoints.
+ cat.active=null;move.velocity=.2;model.position.set(0,0,0);model.rotation.y=0;
+ move.path=[{x:0,z:.01},{x:0,z:2}];const staleFace=new THREE.Vector3(-8,2,0);
+ const forward=cat.attention(new THREE.Vector3(8,4,10),staleFace).clone();assert(Math.abs(forward.x)<1e-6&&forward.z>1.5);assert(cat.lookingAlongRoute);
+ move.path=[{x:2,z:0}];const right=cat.attention(null,staleFace).clone();assert(right.x>.8&&right.z>1.5,'bounded anticipation of right turn');
+ move.path=[{x:-2,z:0}];const left=cat.attention(null,staleFace).clone();assert(left.x<-.8&&left.z>1.5);
+ for(const [target,sign] of [[right,1],[left,-1]]){
+  for(let i=0;i<120;i++){cat.beforeFrame();look.beforeFrame();look.update(1/60,target,{state:'walk',locomotionFocus:true});cat.pose(1/60,'walk');}
+  assert(look.yaw*sign>.2,'actual rig can anticipate both turn directions');
+ }
+ cat.beforeFrame();look.beforeFrame();model.rotation.y=Math.PI;move.path=[{x:0,z:-2}];const reversed=cat.attention(null,staleFace).clone();assert(reversed.z< -1.5,'head follows body reversal rather than a fixed world direction');
+ move.path=[];move.velocity=0;assert.equal(cat.attention(null,staleFace),staleFace,'idle restores interactive attention');model.rotation.y=0;
  // Restore in reverse layering order, without accumulating camera/behavior rotations.
  const head=cat.byName.head.bone,base=head.quaternion.clone();cat.active={kind:'groom',time:1,duration:3.6};
  for(let i=0;i<100;i++){cat.beforeFrame();look.beforeFrame();look.update(1/60,new THREE.Vector3(2,1,3));cat.pose(1/60,'idle');}

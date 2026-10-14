@@ -3565,7 +3565,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     let target=held?.state==='held'?held.node.getWorldPosition(new THREE.Vector3()):
                         point?headLook.screenTarget(point,camera,canvas.clientWidth,canvas.clientHeight):camera.position;
                     if(catLife)target=catLife.attention(camera.position,(held?.state==='held'||point||now<viewAttention.until)?target:null);
-                    headLook.update(poseDt,target,{state:anim.state,blocked:grabbed||dropping||!!actionTransition||!!catLife?.active});
+                    headLook.update(poseDt,target,{state:anim.state,locomotionFocus:!!catLife?.lookingAlongRoute,blocked:grabbed||dropping||!!actionTransition||!!catLife?.active});
                 }
                 if(!grabbed&&!dropping)catLife?.pose(dt,anim.state,shibaExpression);
                 toyWorkshop?.grip?.update(toyWorkshop.held);
