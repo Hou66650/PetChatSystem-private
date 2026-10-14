@@ -35,7 +35,8 @@ def index():
         'rating': pet_display_rating(pet),
     } for pet in pets]
     top_pet = max(cards, key=lambda c: c['rating']) if cards else None
-    return render_template('index1.html', pets=cards, top_pet=top_pet)
+    from ..services import cat_market_service, companion_service
+    return render_template('index1.html', pets=cards, top_pet=top_pet, cat_model=cat_market_service.appearance(companion_service.owner_key())['model'])
 
 
 @bp.route('/about')

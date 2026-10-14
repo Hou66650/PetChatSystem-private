@@ -49,6 +49,8 @@ def create_app(config_object=Config):
         companion_service.init_schema()
         from .services import portal_service
         portal_service.init_schema()
+        from .services import cat_market_service
+        cat_market_service.init_schema()
         from .services import voiceprint_service
         voiceprint_service.init_schema()
 

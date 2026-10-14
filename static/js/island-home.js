@@ -6,7 +6,7 @@
  try{renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'high-performance'});}catch(e){status.textContent='三维预览暂不可用，可用下方链接直接进入小窝。';return;}
  renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(42,1,.1,400);scene.fog=new THREE.Fog(0xa8bac1,48,220);
- const environment=new HomeAtmosphere.Environment(THREE,scene),resident=new HomeResident.Resident(THREE,SelectedAssets,root.dataset.version);
+ const environment=new HomeAtmosphere.Environment(THREE,scene),resident=new HomeResident.Resident(THREE,SelectedAssets,root.dataset.version,{room:root.dataset.catModel});
  scene.add(new THREE.HemisphereLight(0xe3eff5,0x627777,1.15));const sun=new THREE.DirectionalLight(0xffe0b6,2.3);sun.position.set(-35,32,-45);scene.add(sun);const rim=new THREE.DirectionalLight(0xb6e6ff,1);rim.position.set(20,10,-20);scene.add(rim);
  const controls=new THREE.OrbitControls(camera,canvas);controls.enableDamping=true;controls.dampingFactor=.075;controls.enablePan=false;controls.minDistance=11;controls.maxDistance=100;controls.minPolarAngle=.12;controls.maxPolarAngle=Math.PI*.49;controls.rotateSpeed=.6;controls.zoomSpeed=.8;controls.autoRotateSpeed=.35;
  const positions=[[-10,0,8],[10,1,5],[-9,1.5,-11],[11,-.5,-13]],loader=new THREE.GLTFLoader(),ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),projected=new THREE.Vector3();

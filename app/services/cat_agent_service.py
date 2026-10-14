@@ -101,6 +101,9 @@ def record(owner,data):
             db.execute('''INSERT INTO cat_exploration VALUES (?,?,?,?,?) ON CONFLICT(owner,target) DO UPDATE SET
                 visits=cat_exploration.visits+excluded.visits,result=excluded.result,updated=excluded.updated''',
                 (owner,target,int(result=='completed'),result,now))
+            if result=='completed':
+                from .cat_market_service import reward
+                reward(owner,'explore',event)
         db.execute('DELETE FROM cat_exploration_events WHERE owner=? AND created<?',(owner,now-7*86400))
     return memories(owner)
 

@@ -396,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-feed-cookie" data-icon="cookie">饼干</button></div>
         </section>
         <section class="dock-panel" id="dock-actions" aria-labelledby="dock-actions-title" hidden><header><div><h2 id="dock-actions-title">一起动一动</h2><p>召唤它过来，看看它的小表情。</p></div><button type="button" class="dock-close" aria-label="收起一起动一动">✕</button></header>
-            <button class="action-btn" id="btn-portals">双传送门</button><div id="cat-care" hidden><button class="action-btn" id="btn-greenhouse">照料温室</button><button class="action-btn" id="btn-cat-eat">去吃饭</button><button class="action-btn" id="btn-cat-home">回窝休息</button></div>
+            <button class="action-btn" id="btn-portals">双传送门</button><div id="cat-care" hidden><a class="action-btn" href="/cat-market" target="_blank" rel="noopener">猫咪外观市场</a><a class="action-btn" href="/cat-agent-monitor" target="_blank" rel="noopener">探索观测台</a><button class="action-btn" id="btn-greenhouse">照料温室</button><button class="action-btn" id="btn-cat-eat">去吃饭</button><button class="action-btn" id="btn-cat-home">回窝休息</button></div>
             <div class="dock-grid"><button class="action-btn" id="btn-roam" aria-pressed="true">自由活动：开</button>
             <button class="action-btn" id="btn-recall">过来</button><button class="action-btn" id="btn-run">跑一跑</button>
             <button class="action-btn" id="btn-sniff">闻闻</button>
@@ -630,7 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  greet: '嗷呜~ 帅气的我在等你一起玩呢！',
                  anims: { idle: 'idle_breathe', walk: 'motion_walk', trot: 'motion_trot', run: 'run', turnLeft:'turn_left', turnRight:'turn_right', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
                  theme: 'snow', themeName: '静静雪原' },
-            3: { name: '猫咪', glb: '/static/models/petchat-cat-v2/cat.glb?v={{ app_version }}', fallback: '/static/models/cat.glb', pbr: true, expressive: true, eyeRetraction: 0, h: 0.85,
+            3: { name: '猫咪', glb: {{ cat_appearance.model|tojson }}+'?v={{ app_version }}', fallback: '/static/models/cat.glb', pbr: true, expressive: true, eyeRetraction: 0, h: 0.85,
                  greet: '喵~ 我的窝就是你的窝（才不让你走呢）。',
                  anims: { idle: 'idle_breathe', walk: 'motion_walk', trot: 'motion_trot', run: 'run', turnLeft:'turn_left', turnRight:'turn_right', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
                  legacyAnims: { walk: 'Walk', run: 'Run', sniff: 'Idle', idle: 'Idle', happy: 'Jump_Loop', eat: 'Idle_Eating', petting: 'Idle', talk: 'Idle', sleep: 'Death' },
@@ -1452,9 +1452,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        async function spawnPet(id, fromRollback = false) {
+        async function spawnPet(id, fromRollback = false, force = false) {
             if (!SPECS[id]) { toast('这只宠物还不认识我们哦', 'error'); return; }
-            if (id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
+            if (!force && id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
             const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
             facePlay?.reset();toyWorkshop?.clear();
             catAgent?.dispose();catAgent=null;document.getElementById('cat-intent').hidden=true;document.getElementById('cat-care').hidden=true;
@@ -3742,6 +3742,16 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('orientationchange', onViewportChange);
 
         // ---------- 启动 ----------
+        let catAppearanceId={{ cat_appearance.id|tojson }}, checkingCatAppearance=false;
+        async function refreshCatAppearance(){
+            if(checkingCatAppearance||document.hidden||spawnBusy||interactionBusy())return;
+            checkingCatAppearance=true;
+            try{const r=await fetch('/api/cat-market',{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d.scope!==COMPANION_SCOPE||d.active===catAppearanceId)return;const coat=d.catalog.find(c=>c.id===d.active);if(!coat)return;catAppearanceId=d.active;SPECS[3].glb=coat.model+'?v={{ app_version }}';if(currentPetId===3)await spawnPet(3,false,true);}
+            catch(e){}finally{checkingCatAppearance=false;}
+        }
+        window.addEventListener('focus',refreshCatAppearance);
+        window.addEventListener('storage',e=>{if(e.key==='pait-cat-coat-change')void refreshCatAppearance();});
+        setInterval(()=>{if(currentPetId===3)void refreshCatAppearance();},15000);
         spawnPet(currentPetId);
         appendMsg('pet', SPECS[currentPetId].greet + ' 点点下面的按钮，或者直接点我！');
         resize();

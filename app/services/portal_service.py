@@ -40,7 +40,12 @@ def public_user_id(owner):
 
 
 def pet_spec(owner,pet):
-    if pet in PETS:return dict(PETS[pet],id=pet)
+    if pet in PETS:
+        spec=dict(PETS[pet],id=pet)
+        if pet=='3':
+            from .cat_market_service import appearance
+            coat=appearance(owner);spec.update(model=coat['model'],coat=coat['id'],coatName=coat['name'])
+        return spec
     row=get_db().execute('SELECT * FROM portal_custom_pets WHERE id=? AND owner=?',(pet,owner)).fetchone()
     if not row:raise PortalError('宠物不存在或不属于你',404)
     return dict(id=pet,name=row['name'],model=row['model'],height=row['height'],theme='room',stage=PETS['3']['stage'])
@@ -65,6 +70,8 @@ def finish(trip,reason='主人召回'):
     if changed and trip['status']=='active' and db.execute("SELECT 1 FROM portal_events WHERE trip=? AND kind!='position' LIMIT 1",(trip['id'],)).fetchone():
         item='迷你键帽' if trip['kind']=='desktop' else '友邻植物种子'
         db.execute('INSERT OR IGNORE INTO portal_rewards VALUES (?,?,?,?)',(trip['id'],trip['owner'],trip['pet'],item))
+        from .cat_market_service import reward
+        reward(trip['owner'],'journey',trip['id'])
 
 def expire():
     db=get_db();now=time.time()
