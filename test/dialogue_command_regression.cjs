@@ -4,7 +4,7 @@ const {parseCommands,Runner,allowed,baseActions,expressiveKeys}=require(root+'/s
 const source=n=>fs.readFileSync(root+'/static/js/realtime/'+n+'.js','utf8');
 const defer=()=>{let resolve;const promise=new Promise(r=>resolve=r);return{promise,resolve};};
 let passed=0;async function test(name,fn){await fn();passed++;console.log('PASS',name);}
-function setup(supported=baseActions){
+function setup(supported=baseActions,pet={id:1,name:'球球'}){
  const pending=defer(),elements=new Map(),executed=[],saved=[],transcripts=[];let writes=0,epoch=0;
  const panel={hidden:true,querySelector(k){if(!elements.has(k))elements.set(k,{textContent:'',style:{},className:''});return elements.get(k);}};
  const context=vm.createContext({window:{},console,performance,crypto,setTimeout,clearTimeout,setInterval,clearInterval,Map,Set,
@@ -14,15 +14,22 @@ function setup(supported=baseActions){
  vm.runInContext(source('realtime-client'),context);vm.runInContext(source('realtime-ui'),context);
  context.window.RealtimeUI.prototype._ensurePanel=()=>panel;
  const runner=new Runner({status(){},begin(){},cancel(){},finish(){},label:a=>a,execute:async a=>executed.push(a)});
- const ui=new context.window.RealtimeUI({surface:'den',getPet:()=>({id:1,name:'球球'}),
+ const ui=new context.window.RealtimeUI({surface:'den',getPet:()=>pet,
   onState:s=>{if(s==='USER_SPEAKING')runner.cancel();},onTurnStart:()=>({token:runner.serial,epoch}),
   onUserTranscript:(text,pet,turn)=>{transcripts.push(text);if(turn.token!==runner.serial||turn.epoch!==epoch)return false;const actions=parseCommands(text,[pet.name],supported);if(!actions.length)return false;runner.run(actions);return true;},
   onSaved:(data,pet,turn,latest)=>saved.push({data,latest})});
- const start=async()=>{await ui.start();const c=new context.window.RealtimeClient({petId:1,player:{append(){},interrupt:()=>0},onEvent:(t,d)=>ui.controller?._onClientEvent(t,d)});c._session={profileRevision:0,profileScope:'test',config:{}};c.updateInstructions=()=>{};ui.controller._client=c;return c;};
+ const start=async()=>{await ui.start();const c=new context.window.RealtimeClient({petId:pet.id,player:{append(){},interrupt:()=>0},onEvent:(t,d)=>ui.controller?._onClientEvent(t,d)});c._session={profileRevision:0,profileScope:'test',config:{}};c.updateInstructions=()=>{};ui.controller._client=c;return c;};
  const reply=()=>pending.resolve({ok:true,json:async()=>({profile:{revision:0,enabled:true},actions:['sit'],instructions:'updated'})});
  return {ui,runner,context,executed,saved,transcripts,start,reply,elements,writes:()=>writes,switchPet:()=>epoch++};
 }
 (async()=>{
+ await test('husky final ASR uses its own nickname and all expressive actions without duplicate replay',async()=>{
+  const x=setup(allowed,{id:2,name:'雪球'}),c=await x.start();
+  c._dispatch({type:'input_audio_buffer.speech_started'});c._dispatch({type:'input_audio_buffer.committed',item_id:'snow1'});
+  const asr={type:'conversation.item.input_audio_transcription.completed',item_id:'snow1',transcript:'雪球，先歪头，然后竖耳，挥爪两次，再摇尾，最后打哈欠'};
+  c._dispatch(asr);c._dispatch(asr);await new Promise(r=>setImmediate(r));
+  assert.deepEqual(x.executed,['curious','ears','wave','wave','greet','yawn']);assert.equal(x.writes(),0);x.ui.stop();
+ });
  await test('explicit Chinese commands and polite aliases map to executable clips',()=>{
   for(const [text,expected] of [['坐下',['sit']],['请你坐下来吧',['sit']],['休息',['lie_down']],['休息一下',['lie_down']],['趴下',['lie_down']],['起来',['stand']],['挥挥爪',['wave']],['闻闻',['sniff']],['自由活动',['wander']],['不要动',['stop']],['安静陪我',['quiet']],['球球，过来坐下',['come','sit']],['请先坐下，然后休息一下',['sit','lie_down']]])assert.deepEqual(parseCommands(text,['球球']),expected,text);
  });

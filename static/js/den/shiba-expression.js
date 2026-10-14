@@ -1,4 +1,4 @@
-/* Qiuqiu's facial layer is independent from locomotion and full-body clips. */
+/* Shared dog facial layer, fitted per model and independent from body clips. */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.ShibaExpression=api;})(typeof window!=='undefined'?window:globalThis,function(){
     'use strict';
     const acts={
@@ -23,7 +23,8 @@
         return 0;
     }
     class Controller {
-        constructor(model){
+        constructor(model,{eyeRetraction=.042}={}){
+            this.eyeRetraction=eyeRetraction;
             this.meshes=[];this.eyes=[];this.lids=[];this.elapsed=0;this.blinkAt=-10;this.amount=0;
             model.traverse(o=>{
                 if(o.morphTargetDictionary&&'Blink_L' in o.morphTargetDictionary)this.meshes.push(o);
@@ -43,7 +44,7 @@
                 m.morphTargetInfluences[m.morphTargetDictionary.Blink_L]=value;
                 m.morphTargetInfluences[m.morphTargetDictionary.Blink_R]=value;
             }
-            for(const e of this.eyes){e.bone.position.copy(e.position);e.bone.position.z-=.042*value;e.bone.scale.copy(e.scale);}
+            for(const e of this.eyes){e.bone.position.copy(e.position);e.bone.position.z-=this.eyeRetraction*value;e.bone.scale.copy(e.scale);}
             for(const b of this.lids)b.scale.setScalar(value>.62?1:.001);
         }
         debug(){return {meshes:this.meshes.length,closure:this.amount,eyes:this.eyes.length};}

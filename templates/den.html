@@ -555,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  greet: '汪！欢迎来到我的小窝，摸摸我吧！',
                  anims: { idle: 'idle_breathe', walk: 'walk', trot: 'trot', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
                  theme: 'sakura', themeName: '樱花庭院' },
-            2: { name: '哈士奇', glb: '/static/models/petchat-snow-v1/xueqiu.glb?v=20261013-3', fallback: '/static/models/husky.glb', pbr: true, h: 1.05,
+            2: { name: '哈士奇', glb: '/static/models/petchat-husky-v2/xueqiu.glb?v=1.9.0', fallback: '/static/models/petchat-snow-v1/xueqiu.glb', pbr: true, expressive: true, eyeRetraction: .042, h: 1.05,
                  greet: '嗷呜~ 帅气的我在等你一起玩呢！',
                  anims: { idle: 'idle_breathe', walk: 'walk', trot: 'trot', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
                  theme: 'snow', themeName: '静静雪原' },
@@ -997,7 +997,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // ---------- GLB 宠物（Quaternius CC0 动物包，本地 static/models，带骨骼动画） ----------
-        for(const [key,act] of Object.entries(ShibaExpression.acts))SPECS[1].anims[key]=act.clip;
+        for(const spec of Object.values(SPECS))if(spec.expressive)
+            for(const [key,act] of Object.entries(ShibaExpression.acts))spec.anims[key]=act.clip;
         const gltfLoader = new THREE.GLTFLoader();
         const assetLoader = new SelectedAssets.Loader(gltfLoader);
         const clipShort = (n) => n.replace(/^.*\|/, '');
@@ -1434,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             if (!actions.idle && gltf.animations[0]) actions.idle = mixer.clipAction(gltf.animations[0]);
-            if(spec.expressive)shibaExpression=new ShibaExpression.Controller(model);
+            if(spec.expressive)shibaExpression=new ShibaExpression.Controller(model,{eyeRetraction:spec.eyeRetraction});
             document.getElementById('btn-shiba-acting').hidden=!shibaExpression;
 
             let headBone = null, neckBone = null;
@@ -2745,6 +2746,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const spec = SPECS[currentPetId];
             const g = window.PetProfile ? PetProfile.label(PetProfile.get(currentPetId).gender) : '';
             document.getElementById('chat-title').textContent = `和${spec.displayName||spec.name}聊天` + (g ? `（${g}）` : '');
+            const actingTitle=`${spec.displayName||spec.name}的小表情`;
+            document.getElementById('btn-shiba-acting').textContent=actingTitle;
+            document.getElementById('shiba-acting-title').textContent=actingTitle;
         }
         window.addEventListener('storage', (e) => {   // 其他标签页改资料时同步（S1-09）
             if (e.key === 'petProfilesV1:'+window.COMPANION_SCOPE) updatePetTitles();

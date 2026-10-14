@@ -1,0 +1,24 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const E=require('../static/js/den/shiba-expression.js'),D=require('../static/js/den/dialogue-actions.js');
+const read=p=>{const b=fs.readFileSync(p);return JSON.parse(b.toString('utf8',20,20+b.readUInt32LE(12)))};
+const old=read('static/models/petchat-snow-v1/xueqiu.glb'),model=read('static/models/petchat-husky-v2/xueqiu.glb');
+const clips=new Set(model.animations.map(a=>a.name));assert.equal(clips.size,32);
+for(const a of old.animations)assert(clips.has(a.name),'Original animation retained: '+a.name);
+for(const a of Object.values(E.acts))assert(clips.has(a.clip),'New animation exported: '+a.clip);
+assert.equal(model.skins[0].joints.length,33);
+assert(model.meshes.some(m=>m.extras?.targetNames?.includes('Blink_L')));
+const source=fs.readFileSync('templates/den.html','utf8');
+const specs=vm.runInNewContext('('+source.match(/const SPECS = (\{[\s\S]*?\n        \});/)[1]+')');
+assert(specs[2].expressive);assert(specs[2].glb.includes('petchat-husky-v2'));
+assert(specs[2].fallback.includes('petchat-snow-v1'));
+const env=vm.createContext({SPECS:specs,ShibaExpression:E});
+vm.runInContext(source.slice(source.indexOf('for(const spec of Object.values(SPECS))'),source.indexOf('const gltfLoader =')),env);
+for(const act of Object.values(D.expressiveKeys))assert(clips.has(specs[2].anims[act]));
+assert.deepEqual(D.parseCommands('雪球，先歪头，再抖毛，最后摇尾',['雪球'],D.allowed),['curious','shake','greet']);
+assert.deepEqual(D.parseCommands('雪球，先歪头，再抖毛',['雪球'],D.baseActions),[],'Fallback cannot claim unavailable clips');
+// Production title function follows the selected pet and its saved nickname.
+const elements=new Map();const titleContext=vm.createContext({SPECS:specs,currentPetId:2,window:{},document:{getElementById(id){if(!elements.has(id))elements.set(id,{});return elements.get(id)}}});
+vm.runInContext(source.slice(source.indexOf('function updatePetTitles()'),source.indexOf("window.addEventListener('storage'")),titleContext);
+specs[2].displayName='雪球';vm.runInContext('updatePetTitles()',titleContext);assert.equal(elements.get('shiba-acting-title').textContent,'雪球的小表情');
+specs[2].displayName='小雪';vm.runInContext('updatePetTitles()',titleContext);assert.equal(elements.get('btn-shiba-acting').textContent,'小雪的小表情');
+console.log('PASS: husky 32 clips/33 bones, old animations retained, new expressions exported/mapped, fallback capabilities, current-pet panel title');

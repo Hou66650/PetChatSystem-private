@@ -9,7 +9,7 @@ const parse=path=>new Promise((resolve,reject)=>{const b=fs.readFileSync(path);n
  stage.scene.updateMatrixWorld(true);stage.scene.traverse(o=>{if(!o.isMesh)return;draws+=Math.max(1,o.geometry.groups.length);triangles+=o.geometry.index.count/3;for(const n of o.geometry.attributes.position.array)assert(Number.isFinite(n))});
  assert(draws<=20);assert(triangles<150000);assert(fs.statSync('static/models/petchat-snow-v2/snow.glb').size<5e6);
  const box=new THREE.Box3().setFromObject(stage.scene);assert(box.min.y<-.9&&box.max.y>2);assert(box.max.x<3.4&&box.min.x> -3.4);
- const pet=await parse('static/models/petchat-snow-v1/xueqiu.glb');pet.scene.updateMatrixWorld(true);
+ const pet=await parse('static/models/petchat-husky-v2/xueqiu.glb');pet.scene.updateMatrixWorld(true);
  const bounds=new THREE.Box3().setFromObject(pet.scene);
  const template=fs.readFileSync('templates/den.html','utf8');
  const spec=template.match(/2:\s*\{[^\n]+/)[0];const h=Number(spec.match(/h:\s*([.\d]+)/)[1]);
