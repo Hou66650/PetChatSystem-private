@@ -1,0 +1,15 @@
+Qiuqiu reference reconstruction — Shiba v4
+
+Reference identity: art/shiba-v3/expression-design.png.
+Preserve orange-peach coat, cream cheeks/chest/paws, white eyebrows, warm brown eyes,
+turquoise collar and gold paw medallion. Compact sturdy body, fluffy curled tail,
+upright triangular ears, gentle closed-mouth smile, individually shaped toes.
+Premium detailed animated-feature 3D character, soft dense double coat, refined
+wet nose, subtle lip line, inner ear fuzz. No plastic material or primitive shapes.
+One full-body neutral standing dog, four paws visible and separated, three-quarter
+front view, head aligned with torso, plain light gray background, no floor/shadow,
+no diagrams, text or extra props. Preserve the original friendly Qiuqiu identity.
+
+Image generated with built-in imagegen. Reconstruction input is the saved
+reconstruction-reference.png; Rodin Detail reconstructs this same reference.
+Blender adds the companion rig, facial morphs and surface-following mesh fur.

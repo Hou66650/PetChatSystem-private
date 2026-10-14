@@ -4,7 +4,7 @@ const vm=require('node:vm');
 const E=require('../static/js/den/shiba-expression.js');
 const D=require('../static/js/den/dialogue-actions.js');
 const readGLB=path=>{const b=fs.readFileSync(path);assert.equal(b.toString('utf8',0,4),'glTF');return JSON.parse(b.toString('utf8',20,20+b.readUInt32LE(12)));};
-const glb=readGLB('static/models/petchat-motion-v1/qiuqiu.glb');
+const glb=readGLB('static/models/petchat-shiba-v4/qiuqiu.glb');
 const old=readGLB('static/models/petchat-v2/qiuqiu.glb');
 const clips=new Set(glb.animations.map(a=>a.name));
 for(const a of old.animations)assert.ok(clips.has(a.name),`Retained clip ${a.name}`);

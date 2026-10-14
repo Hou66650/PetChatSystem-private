@@ -577,7 +577,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const PETS = {{ pets | tojson }};
         const MODELS = {{ models | tojson }};
         const SPECS = {
-            1: { name: '柴犬', glb: '/static/models/petchat-motion-v1/qiuqiu.glb?v=1.13.0', fallback: '/static/models/petchat-v2/qiuqiu.glb', pbr: true, expressive: true, h: 0.95,
+            1: { name: '柴犬', glb: '/static/models/petchat-shiba-v4/qiuqiu.glb?v={{ app_version }}', fallback: '/static/models/petchat-motion-v1/qiuqiu.glb', pbr: true, expressive: true, eyeRetraction: 0, h: 0.95,
                  greet: '汪！欢迎来到我的小窝，摸摸我吧！',
                  anims: { idle: 'idle_breathe', walk: 'motion_walk', trot: 'motion_trot', run: 'run', turnLeft:'turn_left', turnRight:'turn_right', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
                  theme: 'sakura', themeName: '樱花庭院' },
@@ -667,10 +667,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let cameraMoveEpoch=0;
         controls.addEventListener('start',()=>cameraMoveEpoch++);
         function frameAlpine(close){
-            if(currentTheme!=='camp'||!petModel)return;
+            if(!petModel)return;
             const ticket=++cameraMoveEpoch,from=camera.position.clone(),fromTarget=controls.target.clone();
             const target=close?petModel.position.clone().add(new THREE.Vector3(0,.55,0)):new THREE.Vector3(0,.65,0);
-            const to=close?target.clone().add(new THREE.Vector3(1.5,.9,2.5)):new THREE.Vector3(5.4,6.8,14);
+            const to=close?target.clone().add(new THREE.Vector3(1.25,.65,2.1)):
+                currentTheme==='camp'?new THREE.Vector3(5.4,6.8,14):
+                currentTheme==='sakura'?new THREE.Vector3(2.4,4.4,10.8):new THREE.Vector3(3.5,3.8,8.4);
             const duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:650,start=performance.now();
             const step=()=>{if(ticket!==cameraMoveEpoch)return;const t=duration?Math.min(1,(performance.now()-start)/duration):1,k=t*t*(3-2*t);
                 camera.position.lerpVectors(from,to,k);controls.target.lerpVectors(fromTarget,target,k);controls.update();if(t<1)requestAnimationFrame(step);};step();
@@ -959,7 +961,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 camera.position.set(3.5,3.8,8.4);controls.target.set(0,.35,0);
             }
             cameraMoveEpoch++;
-            document.getElementById('btn-pet-view').hidden=name!=='camp';document.getElementById('btn-stage-view').hidden=name!=='camp';
+            document.getElementById('btn-pet-view').hidden=false;document.getElementById('btn-stage-view').hidden=false;
+            document.getElementById('btn-pet-view').textContent=`近看${SPECS[currentPetId].name}`;
+            document.getElementById('btn-stage-view').textContent=name==='camp'?'营地全景':'小窝全景';
             controls.maxDistance=name==='camp'?24:12;
             if(name==='camp' && currentTheme!=='camp'){camera.position.set(5.4,6.8,14);controls.target.set(0,.65,0);}
             if(name==='room' && currentTheme==='camp'){camera.position.set(3.7,3.2,6.3);controls.target.set(0,.8,0);}

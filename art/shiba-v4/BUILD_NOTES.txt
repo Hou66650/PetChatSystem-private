@@ -1,0 +1,30 @@
+Qiuqiu / Shiba v4 — reference-based rebuild
+
+Visual source: reconstruction-reference.png, generated from Qiuqiu's existing
+expression-design board with the brief in PROMPT.txt. Rodin Detail produced the
+textured reconstruction in rodin-detail.glb. This source is kept for reproducibility.
+
+Build with Blender 5.2:
+  blender -b --python scripts/blender/build_reference_shiba.py
+  blender -b --python scripts/blender/validate_reference_shiba.py
+
+The builder welds geometric seams while retaining UVs, refines the reconstructed
+surface, preserves its 2K albedo and adds batched, surface-colored mesh fur.
+The Qiuqiu master rig retains 45 joints and 35 clips. Anatomy-specific skin weights,
+geodesic curled-tail partition, sitting foot IK and surface-based root clearance
+are baked into the exported GLB. Integer baking replaces old fractional keys.
+Face landmarks are picked from the actual reconstruction; both Blink morphs
+compress the full iris region with a feathered surrounding eyelid transition.
+
+Runtime asset: static/models/petchat-shiba-v4/qiuqiu.glb.
+Editable source: qiuqiu-studio.blend. Final model images: qiuqiu-studio.png,
+front.png and side.png. These are real Blender renders, not concept art.
+The pose and eye images are rendered after reimporting the shipped GLB.
+Ground-clearance checks cover run, sit_idle and play_bow samples; these do not
+claim visual inspection of every frame of every clip. Counts and bounds are
+recorded in dog-report.json and pose-report.json.
+
+The browser retains existing interaction interfaces and selected-only loading.
+More > Near view frames the currently selected companion; the stage view restores
+the wider island camera with the existing smooth/reduced-motion transition.
+Browser screenshot is local validation evidence, not a production asset.
