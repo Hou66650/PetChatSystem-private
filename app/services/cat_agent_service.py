@@ -20,6 +20,13 @@ def init_schema():
       result TEXT NOT NULL, updated REAL NOT NULL, PRIMARY KEY(owner,target));
     CREATE TABLE IF NOT EXISTS cat_exploration_events (
       owner TEXT NOT NULL, event TEXT NOT NULL, created REAL NOT NULL, PRIMARY KEY(owner,event));
+    CREATE TABLE IF NOT EXISTS cat_monitor (
+      owner TEXT NOT NULL, stream TEXT NOT NULL, updated REAL NOT NULL, snapshot TEXT NOT NULL,
+      PRIMARY KEY(owner,stream));
+    CREATE TABLE IF NOT EXISTS cat_monitor_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL, stream TEXT NOT NULL,
+      updated REAL NOT NULL, snapshot TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS cat_monitor_owner ON cat_monitor_events(owner,id);
     ''')
 
 
@@ -43,12 +50,13 @@ def decide(owner, data):
         rows.get(i,{}).get('visits',0),rows.get(i,{}).get('updated',0)))
     target=next((i for i in ordered if 'rest' in TARGETS[i]['actions']),ordered[0]) if energy<.3 else ordered[0]
     action='rest' if energy<.3 and 'rest' in TARGETS[target]['actions'] else TARGETS[target]['actions'][rows.get(target,{}).get('visits',0)%len(TARGETS[target]['actions'])]
-    source='local'
+    source='local';reason='后台模型繁忙，使用本地访问记录排序'
     # One background model call at a time and at most once per 90s per app worker.
     # Local planning remains available during cooldown or provider outages.
     gate=current_app.extensions['cat_agent_gate']
     if gate['lock'].acquire(blocking=False):
         try:
+            reason='模型决策额度冷却中，使用本地访问记录排序'
             if now>=gate['next']:
                 gate['next']=now+90
                 try:
@@ -57,12 +65,13 @@ def decide(owner, data):
                         {'role':'user','content':json.dumps({'energy':energy,'candidates':[TARGETS[i] for i in ordered],'memory':list(rows.values())},ensure_ascii=False)}])
                     result=json.loads(raw)
                     if isinstance(result,dict) and result.get('target') in candidates and result.get('action') in TARGETS[result['target']]['actions']:
-                        target,action=result['target'],result['action'];source='model'
+                        target,action=result['target'],result['action'];source='model';reason='模型从可到达地点与允许动作中选择，已通过白名单校验'
+                    else:reason='模型输出未通过校验，使用本地策略'
                 except (LLMError,ValueError,TypeError,AttributeError):
-                    pass
+                    reason='模型请求失败、超时或暂忙，使用本地策略'
         finally:
             gate['lock'].release()
-    return {'target':target,'action':action,'intent':'想去'+TARGETS[target]['name']+WORDS[action], 'source':source,'interval':35}
+    return {'target':target,'action':action,'intent':'想去'+TARGETS[target]['name']+WORDS[action], 'source':source,'interval':35,'reason':reason}
 
 
 def record(owner,data):
@@ -83,3 +92,37 @@ def record(owner,data):
 def install(app):
     app.extensions['cat_agent_gate']={'lock':threading.Lock(),'next':0}
     with app.app_context():init_schema()
+
+
+def monitor_record(owner, data):
+    stream=data.get('stream');snap=data.get('snapshot');event=data.get('event',False)
+    if not isinstance(stream,str) or not 8<=len(stream)<=80 or not isinstance(snap,dict) or type(event) is not bool:
+        raise ValueError('监控数据格式错误')
+    clean={}
+    for key,limit in [('phase',24),('text',160),('reason',220),('source',16),('target',40),('action',24)]:
+        value=snap.get(key,'')
+        if not isinstance(value,str) or len(value)>limit:raise ValueError('监控字段错误')
+        clean[key]=value
+    for key in ('energy','x','z','pathLength'):
+        value=snap.get(key,0)
+        if type(value) not in (int,float) or not math.isfinite(value) or abs(value)>10000:raise ValueError('监控数值错误')
+        clean[key]=value
+    candidates=snap.get('candidates',[])
+    if not isinstance(candidates,list) or len(candidates)>8 or any(not isinstance(i,str) or i not in TARGETS for i in candidates):raise ValueError('候选地点错误')
+    clean['candidates']=candidates
+    clean['enabled']=snap.get('enabled') is True
+    payload=json.dumps(clean,ensure_ascii=False);now=time.time();db=get_db()
+    with db:
+        db.execute('INSERT INTO cat_monitor VALUES (?,?,?,?) ON CONFLICT(owner,stream) DO UPDATE SET updated=excluded.updated,snapshot=excluded.snapshot',(owner,stream,now,payload))
+        if event:db.execute('INSERT INTO cat_monitor_events(owner,stream,updated,snapshot) VALUES (?,?,?,?)',(owner,stream,now,payload))
+        db.execute('DELETE FROM cat_monitor_events WHERE owner=? AND id NOT IN (SELECT id FROM cat_monitor_events WHERE owner=? ORDER BY id DESC LIMIT 120)',(owner,owner))
+        db.execute('DELETE FROM cat_monitor WHERE owner=? AND stream NOT IN (SELECT stream FROM cat_monitor WHERE owner=? ORDER BY updated DESC LIMIT 8)',(owner,owner))
+    return {'ok':True}
+
+
+def monitor_state(owner):
+    def rows(sql):
+        return [{**dict(r),'snapshot':json.loads(r['snapshot'])} for r in get_db().execute(sql,(owner,))]
+    return {'serverTime':time.time(),
+            'streams':rows('SELECT stream,updated,snapshot FROM cat_monitor WHERE owner=? ORDER BY updated DESC'),
+            'events':rows('SELECT id,stream,updated,snapshot FROM cat_monitor_events WHERE owner=? ORDER BY id DESC LIMIT 120')}

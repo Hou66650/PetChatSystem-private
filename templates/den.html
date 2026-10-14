@@ -565,7 +565,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/head-look.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/den/cat-life.js?v={{ app_version }}"></script>
     <script src="/static/js/den/cat-agent.js?v={{ app_version }}"></script>
-    <aside class="cat-intent" id="cat-intent" hidden aria-live="polite"><small id="cat-intent-meta"></small><span id="cat-intent-text"></span></aside>
+    <aside class="cat-intent" id="cat-intent" hidden aria-live="polite"><small id="cat-intent-meta"></small><span id="cat-intent-text"></span><a href="/cat-agent-monitor" target="_blank" rel="noopener" style="display:block;margin-top:8px;pointer-events:auto;color:inherit">查看探索监控 ↗</a></aside>
     <script src="/static/js/den/island-music.js?v={{ app_version }}"></script>
     <script src="/static/js/den/alpine-layout.js?v={{ app_version }}"></script>
     <script src="/static/js/den/mistwood-layout.js?v={{ app_version }}"></script>
@@ -1595,7 +1595,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setAnim('idle', 0);
             showBubble(spec.greet, 2600);
             if(id===3&&modeledStage)catAgent=new CatAgent.Controller({
-                model:petModel,locomotion,life:catLife,scope:COMPANION_SCOPE,
+                model:petModel,locomotion,life:catLife,scope:COMPANION_SCOPE,telemetry:true,
                 animate(key){anim.state=key;anim.until=0;playAction(key,1);},
                 onStatus(info){
                     document.getElementById('cat-intent').hidden=false;
