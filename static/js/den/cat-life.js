@@ -64,7 +64,7 @@
     return true;
    }
    this.wait-=dt;
-   if(this.wait>0||this.locomotion.owner==='command'||this.locomotion.velocity>.08||this.locomotion.path.length)return false;
+   if(this.autonomous===false||this.wait>0||this.locomotion.owner==='command'||this.locomotion.velocity>.08||this.locomotion.path.length)return false;
    this.wait=8;const pool=['jump','rub','groom','stretch'].filter(k=>k!==this.last),kind=pool[Math.min(pool.length-1,Math.floor(this.random()*pool.length))];
    if(kind==='rub'){this.seekWall();return false;}
    return this.begin(kind);

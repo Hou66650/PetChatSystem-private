@@ -326,6 +326,9 @@
             .vision-box { left: 8px; right: auto; bottom: 76px; width: 108px; }
             #vision-hand { font-size: 34px !important; }
         }
+    .cat-intent {position:fixed;left:20px;top:86px;z-index:20;max-width:270px;padding:12px 16px;border-radius:18px;background:rgba(255,255,255,.78);backdrop-filter:blur(16px);color:#38544b;font-size:13px;pointer-events:none;}
+    .cat-intent small{display:block;opacity:.7;margin-bottom:4px;}
+    body.toy-immersive .cat-intent,body.scene-fullscreen .cat-intent{display:none}
     </style>
 
 <script>
@@ -561,6 +564,8 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/head-look.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/den/cat-life.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/cat-agent.js?v={{ app_version }}"></script>
+    <aside class="cat-intent" id="cat-intent" hidden aria-live="polite"><small id="cat-intent-meta"></small><span id="cat-intent-text"></span></aside>
     <script src="/static/js/den/island-music.js?v={{ app_version }}"></script>
     <script src="/static/js/den/alpine-layout.js?v={{ app_version }}"></script>
     <script src="/static/js/den/mistwood-layout.js?v={{ app_version }}"></script>
@@ -1160,7 +1165,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ---------- 动画状态机（GLB AnimationMixer 驱动） ----------
         let petModel = null;
-        let facePlay = null, toyWorkshop = null, headLook = null, catLife = null;
+        let facePlay = null, toyWorkshop = null, headLook = null, catLife = null, catAgent = null;
         const viewAttention = new PetHeadLook.ViewAttention();
         controls.addEventListener('change',()=>viewAttention.moved(performance.now()));
         let mixer = null, actions = {}, activeAction = null, facialBlinkAction = null, faceMode = "open";
@@ -1210,6 +1215,7 @@ document.addEventListener('DOMContentLoaded', () => {
             vis: petModel ? petModel.visible : null,
         });
         function setAnim(state, dur) {
+            if(catAgent?.goal||catAgent?.pending)catAgent.interrupt();
             if(state!=='idle'||catLife?.active||catLife?.approach)catLife?.cancel();
             if(state==='idle' && anim.state==='standUp' && actionTransition) return;
             if (window.__animLog) window.__animLog.push([Math.round(performance.now()), state, dur,
@@ -1420,6 +1426,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
             const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
             facePlay?.reset();toyWorkshop?.clear();
+            catAgent?.dispose();catAgent=null;document.getElementById('cat-intent').hidden=true;
             catLife?.cancel();catLife=null;headLook?.beforeFrame();headLook=null;
             dialogueRunner.cancel('');endDialogueHold();
             spawnBusy = true;
@@ -1561,7 +1568,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gaits:actions.run?{walk:.348*spec.h/origH,trot:.682*spec.h/origH,run:1.0*spec.h/origH,turnLeft:1,turnRight:1}:null,
                 animate(key,speed) { anim.state = key; anim.until = 0; playAction(key,speed); },
                 rest(random) {
-                    if(catLife?.approach){anim.state='idle';anim.until=0;playAction('idle',1);return;}
+                    if(catLife?.approach||catAgent?.goal){anim.state='idle';anim.until=0;playAction('idle',1);return;}
                     if(facePlay?.ball||facePlay?.guiding){anim.state='idle';anim.until=0;playAction('idle',1);return;}
                     if(shibaExpression){
                         const key=currentPetId===3?CatLife.idleChoice(random,lastShibaIdle):ShibaExpression.idleChoice(random,companionBehavior?.mode,lastShibaIdle);lastShibaIdle=key;
@@ -1587,6 +1594,16 @@ document.addEventListener('DOMContentLoaded', () => {
             anim.birth = 0;
             setAnim('idle', 0);
             showBubble(spec.greet, 2600);
+            if(id===3&&modeledStage)catAgent=new CatAgent.Controller({
+                model:petModel,locomotion,life:catLife,scope:COMPANION_SCOPE,
+                animate(key){anim.state=key;anim.until=0;playAction(key,1);},
+                onStatus(info){
+                    document.getElementById('cat-intent').hidden=false;
+                    document.getElementById('cat-intent-meta').textContent='自主探索 · '+(info.source==='model'?'AI 决策':'本地策略')+' · '+info.visited+'/'+info.total+' 处';
+                    document.getElementById('cat-intent-text').textContent=info.text;
+                }
+            });
+
             spawnBusy = false; showPetLoading(false);
             document.dispatchEvent(new Event('petchat:ready'));
             restoreDenHistory(id);
@@ -2372,7 +2389,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return document.hidden || (toyWorkshop?.held?.state==='held' && !(toyWorkshop.held.spec.id==='rattle' && toyWorkshop.rattlePath)) || ['held','flight'].includes(facePlay?.ball?.phase) || spawnBusy || !petModel || anim.birth < 1 || grabbed || dropping || bounceBack > 0 || (interactionBusy() && !facePlay?.guiding) ||
                 performing() || (chatBusy&&!dialogueRunner.active) || (voiceBusy&&!dialogueRunner.active) || breathActive || !gameOverlay.hidden || !gamesMask.hidden || !moodMask.hidden ||
                 (!dialogueRunner.active && !document.getElementById('den-chat').classList.contains('hidden')) ||
-                !['idle','walk','trot','run','turnLeft','turnRight'].includes(anim.state) || performance.now()<anim.until;
+                (!catAgent?.acting && !['idle','walk','trot','run','turnLeft','turnRight'].includes(anim.state)) || performance.now()<anim.until;
         }
         document.getElementById('btn-roam').addEventListener('click',()=>{
             if (!locomotion) return;locomotion.toggle(!locomotion.enabled);petState().roaming=locomotion.enabled;saveState();updateRoamingButton();
@@ -3371,6 +3388,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 切到其他标签页立即停摄像头（隐私指示灯不该常亮）
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
+                catAgent?.interrupt('等你回来再探索');
                 if (window.speechSynthesis) speechSynthesis.cancel();   // 切页停止朗读
                 if (locomotion) locomotion.interrupt();
                 cancelPointerDrag();          // S1-11：页面隐藏取消进行中的喂食操作
@@ -3510,6 +3528,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     anim.state = 'idle'; playAction('idle', 1);   // 入睡后发生过新互动才唤醒（crossFade 翻身站起）
                 }
                 const blocked=movementBlocked();
+                catAgent?.step(dt,blocked);
                 const catActing=catLife?.step(dt,blocked)||false;
                 if (locomotion) locomotion.update(dt,blocked||catActing);
                 if (facialBlinkAction) {

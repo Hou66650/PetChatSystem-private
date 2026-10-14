@@ -38,7 +38,7 @@
             if (!this.enabled && this.owner!=='command') return;
             if (!this.path.length) {
                 this.velocity=0;this.wait-=dt;
-                if (this.wait<=0 && this.enabled) {this.path=this.navigation.randomDestination(this.model.position,this.random)||[];this.requestedGait=this.lively&&this.gaits.trot?'trot':'walk';this.owner='wander';this.wait=3;}
+                if (this.wait<=0 && this.enabled && this.autonomous!==false) {this.path=this.navigation.randomDestination(this.model.position,this.random)||[];this.requestedGait=this.lively&&this.gaits.trot?'trot':'walk';this.owner='wander';this.wait=3;}
                 if (!this.path.length) return;
             }
             const point=this.path[0], p=this.model.position, dx=point.x-p.x, dz=point.z-p.z, distance=Math.hypot(dx,dz);

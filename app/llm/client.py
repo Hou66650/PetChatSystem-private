@@ -102,6 +102,21 @@ class GLMClient:
         data = self._post('/chat/completions', payload)
         return self._content(data)
 
+    def plan_once(self, messages):
+        """Low-priority bounded background decision: no queue, retry or model fallback."""
+        if not self._sem.acquire(blocking=False):
+            raise LLMError('对话正在使用模型，探索使用本地策略')
+        try:
+            response=self.session.post(f'{self.base_url}/chat/completions',json={
+                'model':self.models[0],'messages':messages,'temperature':.65,
+                'response_format':{'type':'json_object'},'thinking':{'type':'disabled'},'max_tokens':160},timeout=(3,7))
+            if response.status_code!=200:raise LLMError('后台探索模型暂不可用')
+            return self._content(response.json())
+        except (requests.RequestException,ValueError) as e:
+            raise LLMError('后台探索模型暂不可用') from e
+        finally:
+            self._sem.release()
+
     def describe_image(self, image_bytes, mime='image/png', prompt=None):
         """视觉模型看图说话：头像动漫化管线的第一步（描述上传的照片）。"""
         prompt = prompt or (

@@ -42,6 +42,8 @@ def create_app(config_object=Config):
     )
 
     app.teardown_appcontext(close_db)
+    from .services import cat_agent_service
+    cat_agent_service.install(app)
     from .services import companion_service
     with app.app_context():
         companion_service.init_schema()

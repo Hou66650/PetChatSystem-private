@@ -1,0 +1,22 @@
+const assert=require('node:assert/strict');
+const {Controller}=require('../static/js/den/cat-agent');
+const catalog=require('../static/data/cat-world.json');
+const {Navigation}=require('../static/js/den/scene-navigation');
+const layout=require('../static/js/den/mistwood-layout');
+(async()=>{
+ const nav=new Navigation({...layout,bodyRadius:.619,obstacles:[...layout.obstacles,{x:-2.4,z:-1.2,w:1.12,d:.52}]});
+ let time=0,animation='',reports=0;
+ const model={position:{x:0,z:0}}, move={navigation:nav,enabled:true,path:[],owner:'idle',interrupt(){this.path=[];this.owner='interaction';},goTo(p){const r=nav.route(model.position,p);if(!r)return false;this.path=r;this.owner='command';return true;}};
+ const life={cancel(){this.active=null;this.approach=null;},begin(){this.active={};return true;},seekWall(){this.approach={};return true;}};
+ const fetcher=async(url,options)=>({ok:true,json:async()=>url==='/api/cat-agent'?{scope:'s',catalog,memory:[]}:url.endsWith('decide')?{scope:'s',target:'bridge',action:'observe',source:'model'}:(reports++,{scope:'s',memory:[]})});
+ const a=new Controller({model,locomotion:move,life,scope:'s',animate:k=>animation=k,fetcher,storage:null,now:()=>time});await a.ready;
+ assert.equal(a.candidates().length,8,'all catalog destinations reachable with cat body and cabinet');
+ time=5000;await a.plan();assert.equal(a.goal.target,'bridge');assert.equal(move.owner,'agent');
+ Object.assign(model.position,a.goal.point);move.path=[];move.owner='rest';a.step(.05,false);assert.equal(animation,'curious');
+ for(let i=0;i<72;i++)a.step(.05,false);assert.equal(a.memory.bridge.visits,1);assert.equal(a.goal,null);await Promise.resolve();assert.equal(reports,1);
+ await a.plan();move.owner='command';const path=move.path;a.step(.05,false);assert.equal(a.goal,null);assert.equal(move.path,path,'user route preserved');
+ let release;a.fetcher=()=>new Promise(resolve=>release=resolve);const planning=a.plan();a.interrupt();release({ok:true,json:async()=>({target:'bridge',action:'observe'})});await planning;assert.equal(a.goal,null,'late response cannot start movement');
+ a.fetcher=async()=>{throw Error('offline');};time=100000;await a.plan();assert(a.goal);assert.equal(a.source,'local');move.enabled=false;a.step(.05,false);assert.equal(a.goal,null);
+ a.energy=.1;assert.equal(a.fallback(catalog).action,'rest');a.dispose();assert.equal(move.autonomous,true);
+ console.log('PASS cat agent: 8 real navigation destinations, bridge exploration, completed memory, user priority, stale reply, offline fallback, roam toggle, rest');
+})().catch(e=>{console.error(e);process.exitCode=1});

@@ -9,5 +9,6 @@ from .realtime import bp as realtime_bp
 from .companion import bp as companion_bp
 
 from .voiceprint import bp as voiceprint_bp
+from .cat_agent import bp as cat_agent_bp
 
-ALL_BLUEPRINTS = (voiceprint_bp, main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)
+ALL_BLUEPRINTS = (cat_agent_bp, voiceprint_bp, main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)
