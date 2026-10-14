@@ -14,6 +14,7 @@
    this.quick=document.getElementById('toy-quick-open');this.quick.onclick=()=>this.open();
    this.menuCursor=document.getElementById('toy-menu-cursor');
    this.dialog.addEventListener('close',()=>this.menuHover(null));
+   document.addEventListener('fullscreenchange',()=>{if(this.ownsFullscreen&&!document.fullscreenElement){this.ownsFullscreen=false;if(this.immersive)this.cancel();}});
    document.getElementById('toy-recall').onclick=()=>this.recall();
    document.getElementById('toy-cancel').onclick=()=>this.cancel();
    document.getElementById('toy-use').onclick=()=>this.use();
@@ -36,7 +37,22 @@
   recall(){this.cancel();for(const r of this.records)this.restore(r);this.note('玩具已归位，岛上的球也回到原处。');}
   open(){this.cancel();this.render();this.dialog.showModal();}
   note(text){if(this.tip.textContent===text)return;this.tip.textContent=text;if(this.hud.hidden)this.a.face()?.note(text);document.getElementById('toy-status').textContent=text;}
-  render(){if(!this.hud)return;this.hud.hidden=!this.held;document.getElementById('toy-held-name').textContent=this.held?this.held.spec.name:'';for(const b of this.hud.querySelectorAll('[data-toy-mode]')){b.setAttribute('aria-pressed',String(b.dataset.toyMode===this.mode));b.disabled=b.dataset.toyMode==='throw'&&!this.held?.spec.fetch;}for(const b of this.grid.querySelectorAll('[data-toy]'))b.disabled=!this.records.some(r=>r.spec.id===b.dataset.toy&&r.state==='available');}
+  immersiveMode(active){
+   if(this.immersive===active)return;this.immersive=active;
+   document.body?.classList.toggle('toy-immersive',active);
+   // Camera inference lacks browser user activation: viewport immersion still works there.
+   if(active){
+    const wrap=document.getElementById('den-wrap');
+    if(!document.fullscreenElement&&document.fullscreenEnabled&&typeof navigator!=='undefined'&&navigator.userActivation?.isActive&&wrap?.requestFullscreen){
+     try{Promise.resolve(wrap.requestFullscreen()).then(()=>{
+      if(document.fullscreenElement!==wrap)return;
+      if(this.immersive)this.ownsFullscreen=true;
+      else document.exitFullscreen?.().catch(()=>{});
+     }).catch(()=>{});}catch(e){}
+    }
+   }else if(this.ownsFullscreen){this.ownsFullscreen=false;if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});}
+  }
+  render(){this.immersiveMode(this.held?.state==='held');if(!this.hud)return;this.hud.hidden=!this.held;document.getElementById('toy-held-name').textContent=this.held?this.held.spec.name:'';for(const b of this.hud.querySelectorAll('[data-toy-mode]')){b.setAttribute('aria-pressed',String(b.dataset.toyMode===this.mode));b.disabled=b.dataset.toyMode==='throw'&&!this.held?.spec.fetch;}for(const b of this.grid.querySelectorAll('[data-toy]'))b.disabled=!this.records.some(r=>r.spec.id===b.dataset.toy&&r.state==='available');}
   pick(x,y){this.root?.updateMatrixWorld(true);this.ray.setFromCamera(new this.a.THREE.Vector2(x/this.a.canvas.clientWidth*2-1,1-y/this.a.canvas.clientHeight*2),this.a.camera);
    const objects=this.records.filter(r=>r.state==='available').map(r=>r.node);const hits=this.ray.intersectObjects(objects,true),cabinetHit=this.root?this.ray.intersectObject(this.root,true)[0]:null;if(cabinetHit&&(!hits.length||cabinetHit.distance<hits[0].distance-.002))return 'cabinet';if(hits.length){let n=hits[0].object;while(n){const r=this.records.find(r=>r.node===n);if(r)return r;n=n.parent;}}
    if(cabinetHit)return 'cabinet';return null;}
@@ -105,9 +121,9 @@
    const now=performance.now(),key=Math.round(p.x*15)+':'+Math.round(p.z*15);if(this.target?.key===key&&now-this.target.at<250)return this.target;
    const valid=loc.navigation.isWalkable(p)&&!!loc.navigation.route(this.a.model().position,p);p.y=loc.navigation.surfaceHeight(p)+this.held.offset;this.target={point:p,valid,key,at:now};return this.target;}
   release(){const r=this.held;if(!r||r.state!=='held')return;const target=this.evaluateTarget();if(!target?.valid){this.cancel();this.note('这里不能落下，已放回拿起前的位置。请选择绿色落点。');return;}
-   if(r.spec.fetch){const f=this.a.face();f.ball.fetch=this.mode==='throw';f.ball.lift=this.mode==='throw'?(r.spec.id==='disc'?.32:.65):0;f.throwBall(target.point);if(!f.ball)return;r.state='playing';this.preview.visible=false;this.hud.hidden=true;}
+   if(r.spec.fetch){const f=this.a.face();f.ball.fetch=this.mode==='throw';f.ball.lift=this.mode==='throw'?(r.spec.id==='disc'?.32:.65):0;f.throwBall(target.point);if(!f.ball)return;r.state='playing';this.preview.visible=false;this.render();this.hud.hidden=true;}
    else{r.node.position.copy(target.point);this.finish(r,true);this.note('放好了，可以再次拿起。');}}
-  quickToss(target){const r=this.records.find(r=>r.spec.id==='ball'&&r.state==='available');if(!r||!this.take(r))return;this.a.face().throwBall(target);if(!this.a.face().ball)return;r.state='playing';this.hud.hidden=true;}
+  quickToss(target){const r=this.records.find(r=>r.spec.id==='ball'&&r.state==='available');if(!r||!this.take(r))return;this.a.face().throwBall(target);if(!this.a.face().ball)return;r.state='playing';this.render();this.hud.hidden=true;}
   stopRattle(){const loc=this.a.locomotion();if(this.rattlePath&&loc?.path===this.rattlePath){loc.interrupt();this.a.act('idle',0);}this.rattlePath=null;this.rattleTarget=null;}
   followRattle(){const target=this.evaluateTarget(),loc=this.a.locomotion();
    if(!target?.valid||!loc){this.stopRattle();this.note('请把摇铃移到可到达的空地，宠物会沿安全路线跑来。');return false;}

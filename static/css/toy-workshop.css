@@ -7,3 +7,12 @@
 #toy-menu-cursor{position:fixed;transform:translate(-50%,-140%);padding:8px 14px;border-radius:18px;background:#547645;color:white;font-size:13px;pointer-events:none;box-shadow:0 4px 15px #24452233}
 #toy-menu-cursor[hidden]{display:none}
 @media(max-width:767px){#toy-quick-open{right:12px;bottom:190px;min-width:112px;min-height:58px;font-size:15px}#toy-grid button{min-height:105px}}
+
+/* Holding a toy leaves only the scene and spatial interaction feedback visible. */
+body.toy-immersive{padding-top:0!important}
+body.toy-immersive>.navbar{display:none!important}
+body.toy-immersive #den-wrap{inset:0!important}
+body.toy-immersive #den-wrap>:not(#den-canvas):not(#vision-hand):not(#vision-pinch):not(#faceplay-halo):not(#faceplay-brush){visibility:hidden!important;pointer-events:none!important}
+body.toy-immersive #vision-hand-hint{display:none!important}
+body.toy-immersive #den-wrap button,body.toy-immersive #den-wrap a,body.toy-immersive #den-wrap input{visibility:hidden!important;pointer-events:none!important}
+#den-wrap:fullscreen{width:100%;height:100%;background:#edf1e8}
