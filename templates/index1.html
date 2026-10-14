@@ -1,50 +1,31 @@
 {% extends "layout.html" %}
-{% block title %}让陪伴，轻轻发生 · MPC 宠物聊天{% endblock %}
+{% block title %}云端群岛 · MPC 宠物聊天{% endblock %}
 {% block head %}
-<meta name="description" content="认识你的毛茸茸伙伴。聊聊天，摸摸头，走进属于你们的宠物小窝。">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}?v={{ app_version }}">
+<meta name="description" content="自由旋转云端群岛，走近四座小岛，找到今天想见的伙伴。">
+<link rel="stylesheet" href="/static/css/island-home.css?v={{ app_version }}">
 {% endblock %}
 {% block body %}
-<main class="home">
-  <section class="home-hero" aria-labelledby="home-title">
-    <div class="hero-copy">
-      <span class="eyebrow"><i aria-hidden="true"></i> 给日常，留一点柔软</span>
-      <h1 id="home-title">世界很大，<br>有它<span>陪你慢慢来。</span></h1>
-      <p class="hero-intro">把开心说给它听，也把疲惫放一放。<br>一声回应、一个歪头，都是陪伴的小事。</p>
-      <div class="hero-actions">
-        <a class="home-primary" href="{{ url_for('chat.den') }}">去小窝见见它 <span aria-hidden="true">↗</span></a>
-        <a class="home-secondary" href="#friends">认识小伙伴 <span aria-hidden="true">↓</span></a>
-      </div>
-      <div class="hero-note"><span aria-hidden="true">✦</span> 可以聊很多，也可以只是待一会儿</div>
-    </div>
-    <div class="hero-portrait">
-      <div class="portrait-label"><span>一只小狗的日常</span><span aria-hidden="true">✧</span></div>
-      <img class="hero-dog" src="{{ url_for('static', filename='images/home/qiuqiu.webp') }}" width="760" height="760" fetchpriority="high" alt="戴着薄荷绿项圈的柴犬球球，正笑着等你">
-      <div class="hello-note"><span aria-hidden="true">♡</span><div>你来啦。<small>今天也想听你说说话</small></div></div>
-      <a class="garden-note" href="{{ url_for('chat.den', pet=1) }}"><img src="{{ url_for('static', filename='images/home/garden.webp') }}" width="560" height="448" alt="樱花、木桥与银亮瀑布环绕的小岛"><span>我们的小小世界 <b aria-hidden="true">↗</b></span></a>
-    </div>
-  </section>
-  <section class="friends-section" id="friends" aria-labelledby="friends-title">
-    <div class="section-heading"><div><span class="eyebrow">MEET YOUR LITTLE FRIENDS</span><h2 id="friends-title">选一个，开始你们的故事。</h2></div><p>不同的小性格，一样认真地陪着你。</p></div>
-    <div class="friend-grid">
-      {% set notes = ['把小小的快乐，分享给你', '一起探索今天的新鲜事', '安安静静，也很亲近', '给平凡的一天加点可爱'] %}
-      {% for pet in pets %}
-      <article class="friend-card friend-{{ loop.index }}">
-        <a class="friend-main" href="{{ url_for('chat.den', pet=pet.id) }}" aria-label="去{{ pet.name }}的小窝">
-          <span class="friend-number">0{{ loop.index }} / 小伙伴</span>
-          <img src="{{ url_for('static', filename='images/' ~ pet.avatar) }}" alt="" width="96" height="96" loading="lazy">
-          <h3>{{ pet.name }} <span aria-hidden="true">↗</span></h3><p>{{ notes[loop.index0 % 4] }}</p>
-        </a>
-        <div class="friend-links"><a href="{{ url_for('chat.gpt', pet=pet.id) }}">陪它聊聊</a><a href="/remark?book_name={{ pet.name|urlencode }}" aria-label="查看{{ pet.name }}的评价">★ {{ pet.rating }} <span>评价</span></a></div>
-      </article>
-      {% endfor %}
-    </div>
-  </section>
-  <section class="little-moments" aria-labelledby="moments-title">
-    <div><span class="eyebrow">陪伴，不必很复杂</span><h2 id="moments-title">那些微小的瞬间，<br>也值得被好好收藏。</h2><a href="{{ url_for('main.about') }}">关于这个小世界 <span aria-hidden="true">↗</span></a></div>
-    <div class="moment"><span class="moment-icon" aria-hidden="true">♡</span><h3>说说今天</h3><p>打字或语音，让想说的话<br>都有一个温柔的落点。</p></div>
-    <div class="moment"><span class="moment-icon" aria-hidden="true">✧</span><h3>一起玩一会</h3><p>摸摸头、喂点零食，<br>看它认真回应的小模样。</p></div>
-    <div class="moment"><span class="moment-icon" aria-hidden="true">☼</span><h3>留一点时间给自己</h3><p>记录心情，缓缓呼吸，<br>让每一天多一点轻松。</p></div>
-  </section>
+<main class="island-home" data-version="{{ app_version }}">
+ <canvas id="island-home-canvas" tabindex="0" aria-label="三维群岛：拖动旋转，滚轮或双指缩放。也可使用下方岛屿按钮选择。"></canvas>
+ <header class="island-heading"><span class="island-eyebrow">YOUR LITTLE ARCHIPELAGO</span><h1>陪伴，自成一座岛。</h1><p>转动世界，找到今天想见的它。</p></header>
+ <div class="island-tools" aria-label="视角控制"><button id="island-overview" type="button">群岛全景</button><button id="island-rotate" type="button" aria-pressed="false">自动环绕</button><button id="island-zoom-in" aria-label="拉近视角" type="button">＋</button><button id="island-zoom-out" aria-label="拉远视角" type="button">－</button></div>
+ <div class="island-world-labels" aria-label="空间中的岛屿"></div>
+ <section class="island-console" aria-label="选择小岛">
+  <div class="island-selection"><div><span id="island-kicker">四座岛屿 · 一片属于你的世界</span><h2 id="island-name">先四处看看吧</h2><p id="island-description">拖动环绕 · 滚轮缩放 · 点击岛屿近看</p></div><a id="island-enter" href="/den?pet=1&enter=island">去见球球 <span>↗</span></a></div>
+  <div class="island-choices">
+  {% set islands = [(1,'sakura','樱花庭院','球球 · 柴犬','风吹过花瓣，它跑过桥来迎接你。'),(2,'snow','雪境木屋','雪球 · 哈士奇','踩着松软的雪，一起去找新的快乐。'),(3,'room','雾林温室','团子 · 猫咪','阳光落在叶子上，留一会儿给慵懒。'),(4,'camp','山岭营地','德牧','山风与远方，还有始终陪着你的它。')] %}
+  {% for id,theme,title,pet,description in islands %}
+  <a class="island-choice" data-theme="{{ theme }}" data-title="{{ title }}" data-pet="{{ pet }}" data-description="{{ description }}" href="{{ url_for('chat.den',pet=id,enter='island') }}"><i></i><span>{{ title }}<small>{{ pet }}</small></span><b aria-hidden="true">↗</b></a>
+  {% endfor %}
+  </div>
+ </section>
+ <p id="island-preview-status" role="status">正在展开云端群岛…</p>
+ <div class="island-flight" aria-hidden="true"></div>
 </main>
+{% endblock %}
+{% block script %}
+<script src="/static/js/vendor/three.min.js"></script>
+<script src="/static/js/vendor/GLTFLoader.js"></script>
+<script src="/static/js/vendor/OrbitControls.js"></script>
+<script src="/static/js/island-home.js?v={{ app_version }}"></script>
 {% endblock %}

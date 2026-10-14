@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>宠物小窝 · MPC 宠物聊天</title>
+    <link rel="stylesheet" href="/static/css/island-entry.css?v={{ app_version }}">
+    <script src="/static/js/island-entry.js?v={{ app_version }}" defer></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     <link rel="stylesheet" href="/static/css/toy-workshop.css?v={{ app_version }}">
     <style>
@@ -1577,6 +1579,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setAnim('idle', 0);
             showBubble(spec.greet, 2600);
             spawnBusy = false; showPetLoading(false);
+            document.dispatchEvent(new Event('petchat:ready'));
             restoreDenHistory(id);
         }
 
