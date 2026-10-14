@@ -14,5 +14,5 @@ const T=require('../static/js/vendor/three.min.js'),{Controller:Agent}=require('
    }
    assert.equal(agent.goal,null,place.id+' finishes');assert.equal(agent.memory[place.id]?.visits,1,place.id+' completes');
  }
- agent.dispose();console.log('PASS continuous real navigation + CatLife: all eight destinations and actions, every frame on walkable ground');
+ agent.dispose();console.log('PASS continuous real navigation + CatLife: all nine destinations and actions, every frame on walkable ground');
 })().catch(e=>{console.error(e);process.exitCode=1});

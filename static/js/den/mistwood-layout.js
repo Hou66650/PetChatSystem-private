@@ -30,6 +30,9 @@
     }
   ],
   "obstacles": [
+    {"kind":"rect","tag":"catHome","x":-4.4,"z":4.35,"w":0.19,"d":2.4},
+    {"kind":"rect","tag":"catHome","x":-1.6,"z":4.35,"w":0.19,"d":2.4},
+    {"kind":"rect","tag":"catHome","x":-3,"z":3.25,"w":2.8,"d":0.19},
     {
       "kind": "rect",
       "x": 3.0,

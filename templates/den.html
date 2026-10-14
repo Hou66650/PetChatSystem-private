@@ -396,6 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-feed-cookie" data-icon="cookie">饼干</button></div>
         </section>
         <section class="dock-panel" id="dock-actions" aria-labelledby="dock-actions-title" hidden><header><div><h2 id="dock-actions-title">一起动一动</h2><p>召唤它过来，看看它的小表情。</p></div><button type="button" class="dock-close" aria-label="收起一起动一动">✕</button></header>
+            <div id="cat-care" hidden><button class="action-btn" id="btn-cat-eat">去吃饭</button><button class="action-btn" id="btn-cat-home">回窝休息</button></div>
             <div class="dock-grid"><button class="action-btn" id="btn-roam" aria-pressed="true">自由活动：开</button>
             <button class="action-btn" id="btn-recall">过来</button><button class="action-btn" id="btn-run">跑一跑</button>
             <button class="action-btn" id="btn-sniff">闻闻</button>
@@ -964,6 +965,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let themeFireLight = null, themeFlame = null;   // tick 用引用缓存，避免每帧 getObjectByName
         const envTexCache = {};
         const disposeObjectTree = SelectedAssets.disposeTree;
+        let catHomeReady=false;
         let themeEpoch = 0, modeledStage = false, waterfallFlow = null, waterfallViewInitialized = false;
         const SAKURA_NAV = {"radius": 3.2, "obstacles": [{"x": -2.1, "z": -1.5, "r": 0.55}, {"x": 2.25, "z": -1.2, "r": 0.38}, {"kind": "rect", "x": 0, "z": -2.65, "w": 3.7, "d": 0.26}, {"x": -2, "z": 0.15, "r": 0.18}, {"x": -1.75, "z": 0.6, "r": 0.13}], "interest_points": [{"name": "food", "x": -1.45, "z": 0.15}, {"name": "ball", "x": -1.2, "z": 0.6}, {"name": "rest", "x": 0.7, "z": 0.45}]};
         const SNOW_NAV = {"radius":3.2,"obstacles":[{"x":-2.0,"z":-1.55,"r":0.54},{"x":-0.85,"z":-2.35,"r":0.41},{"kind":"rect","x":2.2,"z":-1.2,"w":0.85,"d":0.25},{"x":2.65,"z":0.3,"r":0.43},{"x":2.7,"z":0.85,"r":0.3},{"x":-1.7,"z":0.65,"r":0.14}],"interest_points":[{"name":"ball","x":-1.0,"z":0.65},{"name":"rest","x":0.65,"z":0.4}]};
@@ -995,7 +997,7 @@ document.addEventListener('DOMContentLoaded', () => {
             Object.assign(sun.shadow.camera,{left:-shadowExtent,right:shadowExtent,top:shadowExtent,bottom:-shadowExtent});sun.shadow.camera.updateProjectionMatrix();
             currentTheme = name;
             islandMusic?.setTheme(name);
-            const epoch = ++themeEpoch; modeledStage = false; ground.visible = true; rug.visible = true;
+            const epoch = ++themeEpoch; modeledStage = false;catHomeReady=false; ground.visible = true; rug.visible = true;
             waterfallFlow=null; // The tree disposer owns the material textures.
             disposeObjectTree(decorGroup);   // 显式释放 GPU 资源，防止反复切宠累积
             while (decorGroup.children.length) decorGroup.remove(decorGroup.children[0]);
@@ -1032,6 +1034,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(name==='camp')for(const [x,y,z] of [[1.7,1.1,-1.8],[-1.4,3.6,-3.6],[0,.9,1.9]]){
                     const light=new THREE.PointLight(0xFFCF85,.38,3);light.position.set(x,y,z);decorGroup.add(light);
                 }
+                if(name==='room')try{
+                    const home=await assetLoader.glb('/static/models/petchat-cat-home-v1/cat-home.glb?v={{ app_version }}',assetTicket);
+                    if(epoch!==themeEpoch){disposeObjectTree(home.scene);return;}
+                    home.scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+                    decorGroup.add(home.scene);catHomeReady=true;
+                }catch(error){if(error.name!=='AbortError')console.warn('猫窝暂时无法加载',error);}
                 if(name==='room')for(const x of [2,4]){const light=new THREE.PointLight(0xFFD7A0,.45,4);light.position.set(x,1.6,-3.4);decorGroup.add(light);}
                 try {
                     const toys=await assetLoader.glb('/static/models/petchat-toys-v1/cabinet.glb?v={{ app_version }}',assetTicket);
@@ -1426,7 +1434,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
             const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
             facePlay?.reset();toyWorkshop?.clear();
-            catAgent?.dispose();catAgent=null;document.getElementById('cat-intent').hidden=true;
+            catAgent?.dispose();catAgent=null;document.getElementById('cat-intent').hidden=true;document.getElementById('cat-care').hidden=true;
             catLife?.cancel();catLife=null;headLook?.beforeFrame();headLook=null;
             dialogueRunner.cancel('');endDialogueHold();
             spawnBusy = true;
@@ -1562,6 +1570,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scene.add(petModel); petModel.position.y = petModel.userData.groundY; grabHomeY = petModel.userData.groundY;
             const navigation = new PetNavigation.Navigation({radius:3.2,
                 ...(modeledStage ? MODELED_STAGES[spec.theme].navigation : {obstacles:PetNavigation.legacy[spec.theme]}),
+                obstacles:modeledStage?MODELED_STAGES[spec.theme].navigation.obstacles.filter(o=>catHomeReady||o.tag!=='catHome'):PetNavigation.legacy[spec.theme],
                 bodyRadius:Math.hypot(box.max.x-box.min.x,box.max.z-box.min.z)*spec.h/origH/2+.015});
             locomotion = new PetLocomotion.Controller({navigation,model:petModel,speed:spec.pbr ? .34 : .46,
                 strideSpeed:spec.pbr ? .42 * spec.h / origH : .46,
@@ -1595,8 +1604,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setAnim('idle', 0);
             showBubble(spec.greet, 2600);
             if(id===3&&modeledStage)catAgent=new CatAgent.Controller({
-                model:petModel,locomotion,life:catLife,scope:COMPANION_SCOPE,telemetry:true,
-                animate(key){anim.state=key;anim.until=0;playAction(key,1);},
+                model:petModel,locomotion,life:catLife,scope:COMPANION_SCOPE,telemetry:true,homeReady:catHomeReady,
+                animate(key){actionTransition=null;anim.state=key;anim.until=0;if(key==='sleep')playSleep();else playAction(key,1);},
                 onStatus(info){
                     document.getElementById('cat-intent').hidden=false;
                     document.getElementById('cat-intent-meta').textContent='自主探索 · '+(info.source==='model'?'AI 决策':'本地策略')+' · '+info.visited+'/'+info.total+' 处';
@@ -1605,6 +1614,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             spawnBusy = false; showPetLoading(false);
+            document.getElementById('cat-care').hidden=!(id===3&&catHomeReady);
             document.dispatchEvent(new Event('petchat:ready'));
             restoreDenHistory(id);
         }
@@ -2391,6 +2401,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 (!dialogueRunner.active && !document.getElementById('den-chat').classList.contains('hidden')) ||
                 (!catAgent?.acting && !['idle','walk','trot','run','turnLeft','turnRight'].includes(anim.state)) || performance.now()<anim.until;
         }
+        for(const [id,action] of [['btn-cat-eat','eat'],['btn-cat-home','sleep']])document.getElementById(id).onclick=()=>{if(movementBlocked()){toast('请先结束当前互动','info');return;}if(!catAgent?.requestCare(action))toast('请先开启自由活动，并等待猫窝加载完成','info');};
         document.getElementById('btn-roam').addEventListener('click',()=>{
             if (!locomotion) return;locomotion.toggle(!locomotion.enabled);petState().roaming=locomotion.enabled;saveState();updateRoamingButton();
         });

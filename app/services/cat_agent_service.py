@@ -10,7 +10,7 @@ from ..llm.client import LLMError
 
 CATALOG = json.loads((Path(__file__).resolve().parents[2]/'static/data/cat-world.json').read_text(encoding='utf-8'))
 TARGETS = {p['id']:p for p in CATALOG}
-WORDS = {'rub':'蹭蹭脸','observe':'看看周围','sniff':'闻闻新气味','rest':'歇一会儿','groom':'整理毛发','stretch':'伸个懒腰','jump':'轻轻跳一下'}
+WORDS = {'rub':'蹭蹭脸','observe':'看看周围','sniff':'闻闻新气味','rest':'歇一会儿','groom':'整理毛发','stretch':'伸个懒腰','jump':'轻轻跳一下','eat':'吃点饭','sleep':'回窝睡一会儿'}
 
 
 def init_schema():
@@ -42,6 +42,12 @@ def decide(owner, data):
     energy=data.get('energy',.8)
     if type(energy) not in (int,float) or not math.isfinite(energy) or not 0<=energy<=1:
         raise ValueError('精力值不正确')
+    hunger=data.get('hunger',0)
+    if type(hunger) not in (int,float) or not math.isfinite(hunger) or not 0<=hunger<=1:raise ValueError('饥饿值不正确')
+    care=('home','sleep','精力偏低，优先回窝休息') if energy<.3 and 'home' in candidates else ('food','eat','饥饿值较高，优先进食') if hunger>=.65 and 'food' in candidates else None
+    if care:
+        target,action,reason=care
+        return {'target':target,'action':action,'source':'local','reason':reason,'intent':reason,'interval':35}
     rows={r['target']:r for r in memories(owner)}
     # Penalize recently blocked or visited destinations, without permanently blacklisting them.
     now=time.time()
@@ -103,12 +109,12 @@ def monitor_record(owner, data):
         value=snap.get(key,'')
         if not isinstance(value,str) or len(value)>limit:raise ValueError('监控字段错误')
         clean[key]=value
-    for key in ('energy','x','z','pathLength'):
+    for key in ('energy','hunger','x','z','pathLength'):
         value=snap.get(key,0)
         if type(value) not in (int,float) or not math.isfinite(value) or abs(value)>10000:raise ValueError('监控数值错误')
         clean[key]=value
     candidates=snap.get('candidates',[])
-    if not isinstance(candidates,list) or len(candidates)>8 or any(not isinstance(i,str) or i not in TARGETS for i in candidates):raise ValueError('候选地点错误')
+    if not isinstance(candidates,list) or len(candidates)>len(TARGETS) or any(not isinstance(i,str) or i not in TARGETS for i in candidates):raise ValueError('候选地点错误')
     clean['candidates']=candidates
     clean['enabled']=snap.get('enabled') is True
     payload=json.dumps(clean,ensure_ascii=False);now=time.time();db=get_db()

@@ -26,13 +26,19 @@ class CatAgentTests(unittest.TestCase):
         def fail(m):raise LLMError('rate limit')
         self.model.plan_once=fail
         self.assertEqual(self.post('decide',data).json['source'],'local')
+    def test_care_priority_and_validation(self):
+        r=self.post('decide',{'candidates':['home','food','bridge'],'hunger':.9,'energy':.8})
+        self.assertEqual(r.json['action'],'eat')
+        r=self.post('decide',{'candidates':['home','food'],'hunger':.9,'energy':.1})
+        self.assertEqual(r.json['action'],'sleep')
+        self.assertEqual(self.post('decide',{'candidates':['food'],'hunger':2}).status_code,400)
     def test_memory_idempotence_and_isolation(self):
         data={'target':'bridge','result':'completed','event':'test-event-123'}
         self.assertEqual(self.post('report',data).status_code,200);self.post('report',data)
         self.assertEqual(self.a.get('/api/cat-agent').json['memory'][0]['visits'],1)
         self.assertEqual(self.b.get('/api/cat-agent').json['memory'],[])
         r=self.post('decide',{'candidates':['bridge','home'],'energy':.1})
-        self.assertEqual(r.json['target'],'home');self.assertEqual(r.json['action'],'rest')
+        self.assertEqual(r.json['target'],'home');self.assertEqual(r.json['action'],'sleep')
 class PlannerTransportTests(unittest.TestCase):
     def test_busy_and_rate_limit_do_not_queue_or_retry(self):
         from app.llm.client import GLMClient

@@ -7,10 +7,10 @@
  class Controller{
   constructor(T,model,locomotion,{random=Math.random,animate=()=>{},walls=[]}={}){
    Object.assign(this,{T,model,locomotion,random,animate,walls});this.elapsed=0;this.wait=9;this.active=null;this.approach=null;this.last=null;this.entries=[];
-   model.traverse(b=>{if(b.isBone&&!/^SOCKET/.test(b.name))this.entries.push({bone:b,q:b.quaternion.clone(),applied:false});});
+   model.traverse(b=>{if(b.isBone&&!/^SOCKET/.test(b.name))this.entries.push({bone:b,q:b.quaternion.clone(),p:b.position.clone(),applied:false,shifted:false});});
    this.byName=Object.fromEntries(this.entries.map(e=>[e.bone.name,e]));this.axis=new T.Vector3();this.q=new T.Quaternion();this.parentQ=new T.Quaternion();this.modelQ=new T.Quaternion();this.target=new T.Vector3();
   }
-  beforeFrame(){for(const e of this.entries)if(e.applied){e.bone.quaternion.copy(e.q);e.applied=false;}}
+  beforeFrame(){for(const e of this.entries){if(e.applied){e.bone.quaternion.copy(e.q);e.applied=false;}if(e.shifted){e.bone.position.copy(e.p);e.shifted=false;}}}
   cancel(preserveCommand=false){this.beforeFrame();if(this.active){this.model.position.y=this.locomotion.navigation.surfaceHeight(this.model.position);}
    if(!preserveCommand&&(this.approach||this.active))this.locomotion.interrupt(3);this.active=null;this.approach=null;this.wait=8+this.random()*6;
   }
@@ -93,6 +93,12 @@
     this.rotate('tail_mid',[0,1,0],Math.sin(t*1.35)*.10);this.rotate('tail_tip',[1,0,0],Math.sin(t*1.8)*.12);
     const ear=Math.max(0,Math.sin(t*1.9))**18*.12;
     this.rotate('ear_L',[0,0,1],ear);this.rotate('ear_R',[0,0,1],-(Math.max(0,Math.sin(t*1.9+1))**18)*.10);
+   }
+   this.eatBlend=(this.eatBlend||0)+((state==='eat'?1:0)-(this.eatBlend||0))*(1-Math.exp(-dt*6));
+   if(this.eatBlend>.001){
+    const blend=this.eatBlend,e=this.byName.neck;
+    if(e){e.p.copy(e.bone.position);e.shifted=true;e.bone.getWorldPosition(this.target);this.target.y-=.22*blend;e.bone.parent.worldToLocal(this.target);e.bone.position.copy(this.target);e.bone.updateMatrixWorld(true);}
+    this.rotate('neck',[1,0,0],.7*blend);this.rotate('head',[1,0,0],(.15+Math.sin(t*9)*.025)*blend);
    }
    if(!a)return;
    const envelope=Math.sin(Math.PI*clamp(a.time/a.duration,0,1))**2;
