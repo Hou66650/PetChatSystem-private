@@ -37,3 +37,22 @@ let moved=0,cancelled=0;w.held={state:'held'};w.move=()=>moved++;w.cancel=()=>ca
 w.hand({present:true,pinching:true,trackingLost:true});w.hand({present:true,pinching:true,releasing:true});assert.equal(moved,0);
 w.hand({present:false});assert.equal(cancelled,1);
 console.log('PASS pinch debounce, frozen release, dropout grace/cancel, hand identity, FPS-independent smoothing, screen edge, stop cleanup, tolerant targeting');
+
+// Modal card selection uses client coordinates, tolerates gaps, excludes disabled toys,
+// and consumes release so opening the cabinet cannot accidentally release a scene toy.
+const menu=Object.create(W.Controller.prototype);
+function card(id,left,disabled=false){return {dataset:{toy:id},disabled,textContent:id,classList:{toggle(){}},getBoundingClientRect:()=>({left,right:left+150,top:160,bottom:290})};}
+const cards=[card('ball',100),card('rattle',270),card('duck',440,true)];
+menu.a={canvas:{getBoundingClientRect:()=>({left:10,top:60})}};
+menu.grid={querySelectorAll:()=>cards};menu.menuCursor={hidden:true,style:{}};menu.dialog={open:true};
+assert.equal(menu.menuPick({x:90,y:110}),cards[0]);
+assert.equal(menu.menuPick({x:248,y:110}),cards[0],'small gap snaps to nearest card');
+assert.equal(menu.menuPick({x:270,y:110}),cards[1]);
+assert.equal(menu.menuPick({x:500,y:110}),null,'unavailable card cannot be selected');
+assert.equal(menu.menuPick({x:800,y:500}),null,'outside panel has no target');
+let picked=null,point=null;menu.takeKind=id=>{picked=id;menu.dialog.open=false;menu.held={state:'held'};};menu.move=p=>point=p;
+assert(menu.grab(false,null,'lost'));assert.equal(picked,null);
+assert(menu.grab(true,{pinchX:280,pinchY:120}));assert.equal(picked,'rattle');assert.deepEqual(point,{x:280,y:120});
+menu.hand({present:true,pinching:true,pinchX:300,pinchY:130});assert.deepEqual(point,{x:300,y:130});
+menu.quick={hidden:false,getBoundingClientRect:()=>({left:100,right:250,top:200,bottom:270})};assert(menu.quickHit(85,150));assert(!menu.quickHit(500,500));
+console.log('PASS large toy cards, canvas offsets, gap tolerance, disabled choices, modal grab ownership and carried handoff');

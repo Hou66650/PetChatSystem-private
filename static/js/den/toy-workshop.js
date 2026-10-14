@@ -11,6 +11,9 @@
    this.grid=document.getElementById('toy-grid');
    for(const item of catalog){const b=document.createElement('button');b.type='button';b.dataset.toy=item.id;b.innerHTML='<span aria-hidden="true">'+item.icon+'</span><strong>'+item.name+'</strong><small>'+item.hint+'</small>';b.onclick=()=>this.takeKind(item.id);this.grid.append(b);}
    document.getElementById('btn-toys').onclick=()=>this.open();
+   this.quick=document.getElementById('toy-quick-open');this.quick.onclick=()=>this.open();
+   this.menuCursor=document.getElementById('toy-menu-cursor');
+   this.dialog.addEventListener('close',()=>this.menuHover(null));
    document.getElementById('toy-recall').onclick=()=>this.recall();
    document.getElementById('toy-cancel').onclick=()=>this.cancel();
    document.getElementById('toy-use').onclick=()=>this.use();
@@ -37,7 +40,28 @@
   pick(x,y){this.root?.updateMatrixWorld(true);this.ray.setFromCamera(new this.a.THREE.Vector2(x/this.a.canvas.clientWidth*2-1,1-y/this.a.canvas.clientHeight*2),this.a.camera);
    const objects=this.records.filter(r=>r.state==='available').map(r=>r.node);const hits=this.ray.intersectObjects(objects,true),cabinetHit=this.root?this.ray.intersectObject(this.root,true)[0]:null;if(cabinetHit&&(!hits.length||cabinetHit.distance<hits[0].distance-.002))return 'cabinet';if(hits.length){let n=hits[0].object;while(n){const r=this.records.find(r=>r.node===n);if(r)return r;n=n.parent;}}
    if(cabinetHit)return 'cabinet';return null;}
+  menuHover(button){
+   this.menuSelection=button;
+   for(const b of this.grid?.querySelectorAll('[data-toy]')||[])b.classList.toggle('hand-hover',b===button);
+   if(this.menuCursor)this.menuCursor.hidden=!button;
+  }
+  menuPick(p){
+   const c=this.a.canvas.getBoundingClientRect(),x=p.x+c.left,y=p.y+c.top;
+   let best=null,score=Infinity;
+   for(const b of this.grid.querySelectorAll('[data-toy]')){
+    if(b.disabled)continue;const r=b.getBoundingClientRect();
+    const gap=Math.hypot(Math.max(r.left-x,0,x-r.right),Math.max(r.top-y,0,y-r.bottom));
+    if(gap>24)continue;
+    const d=Math.hypot(x-(r.left+r.right)/2,y-(r.top+r.bottom)/2);
+    if(d<score){score=d;best=b;}
+   }
+   this.menuHover(best);
+   if(this.menuCursor){this.menuCursor.style.left=x+'px';this.menuCursor.style.top=y+'px';}
+   return best;
+  }
+  quickHit(x,y){if(!this.quick||this.quick.hidden)return false;const c=this.a.canvas.getBoundingClientRect(),r=this.quick.getBoundingClientRect();return x+c.left>=r.left-18&&x+c.left<=r.right+18&&y+c.top>=r.top-18&&y+c.top<=r.bottom+18;}
   handPick(x,y){
+   if(this.quickHit(x,y))return 'cabinet';
    const direct=this.pick(x,y);if(direct)return direct;
    // Modest screen-space tolerance for camera jitter; mouse picking remains exact.
    for(const [dx,dy] of [[-12,0],[12,0],[0,-12],[0,12],[-8,-8],[8,-8],[-8,8],[8,8]]){
@@ -49,6 +73,7 @@
    if(!h.present)return '把手放回镜头，张开手指后再捏合';
    if(h.trackingLost)return '暂时看不到手 · 保持拿取，正在找回';
    if(h.quality===false)return '手靠近镜头一些，让整只手入镜';
+   if(this.dialog?.open)return this.menuSelection?this.menuSelection.textContent+' · 捏合拿起':'把手移到大卡片附近，再捏合';
    if(this.held)return h.releasing?'正在确认松手…':this.held.spec.name+(this.held.spec.fetch&&this.mode==='throw'?' · 已拿稳，张开手指抛出':' · 已拿稳，张开手指放下');
    const now=performance.now();
    if(now-(this.hoverAt||0)>100){this.hoverAt=now;this.hoverHit=this.handPick(h.pinchX??h.sx,h.pinchY??h.sy);}
@@ -68,8 +93,14 @@
   pointerMove(e){const p=this.coords(e);if(this.held&&this.held.state==='held'&&(this.pointerId===e.pointerId||this.pointerId==null)){this.consume(e);this.move(p);return true;}if(!this.held){const hit=this.pick(p.x,p.y);this.a.canvas.style.cursor=hit?'grab':'';}return false;}
   pointerUp(e){if(this.pointerId!==e.pointerId)return false;this.consume(e);this.move(this.coords(e));this.release();if(this.a.canvas.hasPointerCapture(e.pointerId))this.a.canvas.releasePointerCapture(e.pointerId);this.pointerId=null;return true;}
   move(p){this.point=p;this.a.face().input={...p,t:performance.now(),pinching:false};}
-  grab(on,pos,reason){if(!on&&this.held?.state==='held'){if(reason==='lost'||reason==='stop'||!pos)this.cancel();else{this.move({x:pos.pinchX??pos.sx,y:pos.pinchY??pos.sy});this.release();}return true;}if(!on||!pos)return false;const p={x:pos.pinchX??pos.sx,y:pos.pinchY??pos.sy},hit=this.handPick(p.x,p.y);if(!hit)return false;if(hit==='cabinet'){this.open();return true;}if(this.take(hit))this.move(p);return true;}
-  hand(h){if(h.trackingLost||h.releasing)return;if(this.held?.state==='held'){if(!h.present){this.cancel();return;}if(h.pinching)this.move({x:h.pinchX??h.sx,y:h.pinchY??h.sy});}}
+  grab(on,pos,reason){
+   if(this.dialog?.open){
+    if(on&&pos){const p={x:pos.pinchX??pos.sx,y:pos.pinchY??pos.sy},b=this.menuPick(p);if(b){this.takeKind(b.dataset.toy);if(this.held)this.move(p);}}
+    return true;
+   }
+   if(on&&pos&&this.held?.state==='held'){this.move({x:pos.pinchX??pos.sx,y:pos.pinchY??pos.sy});return true;}
+   if(!on&&this.held?.state==='held'){if(reason==='lost'||reason==='stop'||!pos)this.cancel();else{this.move({x:pos.pinchX??pos.sx,y:pos.pinchY??pos.sy});this.release();}return true;}if(!on||!pos)return false;const p={x:pos.pinchX??pos.sx,y:pos.pinchY??pos.sy},hit=this.handPick(p.x,p.y);if(!hit)return false;if(hit==='cabinet'){this.open();return true;}if(this.take(hit))this.move(p);return true;}
+  hand(h){if(this.dialog?.open){if(!h.present||h.trackingLost||h.releasing)this.menuHover(null);else this.menuPick({x:h.pinchX??h.sx,y:h.pinchY??h.sy});return;}if(h.trackingLost||h.releasing)return;if(this.held?.state==='held'){if(!h.present){this.cancel();return;}if(h.pinching)this.move({x:h.pinchX??h.sx,y:h.pinchY??h.sy});}}
   evaluateTarget(){if(!this.point||!this.held)return null;const f=this.a.face(),p=f.ground(this.point.x,this.point.y),loc=this.a.locomotion();if(!p||!loc)return null;
    const now=performance.now(),key=Math.round(p.x*15)+':'+Math.round(p.z*15);if(this.target?.key===key&&now-this.target.at<250)return this.target;
    const valid=loc.navigation.isWalkable(p)&&!!loc.navigation.route(this.a.model().position,p);p.y=loc.navigation.surfaceHeight(p)+this.held.offset;this.target={point:p,valid,key,at:now};return this.target;}
