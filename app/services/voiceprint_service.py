@@ -50,7 +50,11 @@ def samples(raw, minimum=1.8):
     speech = [f for f in frames if np.sqrt(np.mean(f*f)) > .006 and vad.is_speech((f*32767).astype('<i2').tobytes(),16000)]
     if len(speech)*.03 < minimum:
         raise ValueError('有效人声太短，请在安静环境连续说几句话')
-    return np.concatenate(speech)
+    # Match the encoder's training preprocessing for both enrollment and live speech.
+    # VAD has already validated speech; normalize only afterwards, never amplify silence.
+    from resemblyzer.audio import normalize_volume
+    from resemblyzer.hparams import audio_norm_target_dBFS
+    return normalize_volume(np.concatenate(speech), audio_norm_target_dBFS, increase_only=True)
 
 
 def embeddings(wav, enrollment=False):
@@ -86,23 +90,25 @@ def match(vector, rows):
     import numpy as np
     scores = sorted([(float(np.mean(np.asarray(json.loads(r['vectors'])) @ vector)),r['name']) for r in rows], reverse=True)
     if not scores:
-        return {'kind':'uncertain','name':None}
+        return {'kind':'uncertain','name':None,'reason':'no_profiles','message':'当前账号或浏览器没有录入声纹，请先录入。'}
     top,name = scores[0]
     # Deliberately leave a wide uncertainty band. Thresholds need real household calibration.
     if top >= .80 and (len(scores)==1 or top-scores[1][0] >= .08):
-        return {'kind':'familiar','name':name}
+        return {'kind':'familiar','name':name,'reason':'matched','similarity':round(top,3)}
     if top < .58:
-        return {'kind':'unfamiliar','name':None}
-    return {'kind':'uncertain','name':None}
+        return {'kind':'unfamiliar','name':None,'reason':'low_similarity','similarity':round(top,3),'message':'与已录入声音差异较大，请检查是否使用了相同麦克风。'}
+    ambiguous = top >= .80
+    return {'kind':'uncertain','name':None,'reason':'ambiguous' if ambiguous else 'below_threshold','similarity':round(top,3),
+            'message':'多位熟人的声音过于接近，暂不确定是谁。' if ambiguous else '相似度未达到可靠阈值，请连续说一句完整的话，或在当前麦克风下重新录入。'}
 
 
 def identify(owner, raw):
     if not enabled(owner):
-        return {'kind':'uncertain','name':None}
+        return {'kind':'uncertain','name':None,'reason':'disabled','message':'当前账号未开启声纹或没有录入；切换浏览器、游客会话或账号后需要检查设置。'}
     try:
         vector = embeddings(samples(raw))[0]
-    except ValueError:
-        return {'kind':'uncertain','name':None}
+    except ValueError as e:
+        return {'kind':'uncertain','name':None,'reason':'audio_quality','message':str(e)+'；建议连续说话3–6秒。'}
     return match(vector, profiles(owner))
 
 

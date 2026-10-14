@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <link rel="icon" type="image/png" href="/static/images/pait-island-icon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>宠物小窝 · MPC 宠物聊天</title>
+    <title>宠物小窝 · 派特岛</title>
     <link rel="stylesheet" href="/static/css/island-entry.css?v={{ app_version }}">
     <script src="/static/js/island-entry.js?v={{ app_version }}" defer></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
@@ -430,7 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <header>
                 <span id="chat-title">和小家伙聊天</span>
                 <button class="icon-btn" id="btn-chat-close" aria-label="收起聊天" style="width:28px;height:28px;">✕</button>
-                <span class="ver-chip" style="position:fixed;top:14px;right:16px;z-index:200;" title="MPC 宠物聊天 v{{ app_version }}">v{{ app_version }}</span>
+                <span class="ver-chip" style="position:fixed;top:14px;right:16px;z-index:200;" title="派特岛 v{{ app_version }}">v{{ app_version }}</span>
 </header>
             <div class="msgs" id="chat-msgs"></div>
             <div class="chat-chips" id="chat-chips">

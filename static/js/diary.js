@@ -202,7 +202,7 @@
         });
 
         var foot = document.createElement('p');
-        foot.textContent = 'MPC 宠物聊天 · 用陪伴传递温暖';
+        foot.textContent = '派特岛 · 用陪伴传递温暖';
         foot.setAttribute('style', 'margin-top:28px;font-size:12px;color:#a89a8a;text-align:center;');
         box.appendChild(foot);
 

@@ -71,4 +71,34 @@ class VoiceprintTests(unittest.TestCase):
                 v.set_enabled(owner_key(),False)
                 self.assertEqual(v.identify(owner_key(),bytes(64000))['kind'],'uncertain');encode.assert_not_called()
 
+    def test_trial_quality_reason_scope_and_no_ai_request(self):
+        scope=self.enroll().json['scope']
+        before=len(self.model.calls)
+        endpoint='/api/voiceprint/check'
+        headers={'X-Profile-Scope':scope}
+        self.assertEqual(self.b.post(endpoint,headers=headers,data=b'00',content_type='application/octet-stream').status_code,409)
+        r=self.a.post(endpoint,headers=headers,data=b'00',content_type='application/octet-stream')
+        self.assertEqual(r.json['reason'],'audio_quality')
+        self.assertIn('3–6',r.json['message'])
+        with patch.object(v,'samples',return_value=np.zeros(96000)),patch.object(v,'embeddings',return_value=np.array([[1.,0.,0.]])):
+            r=self.a.post(endpoint,headers=headers,data=b'00'*16000,content_type='application/octet-stream')
+        self.assertEqual(r.json['kind'],'familiar')
+        self.assertNotIn('vectors',r.json);self.assertNotIn('instructions',r.json)
+        self.assertEqual(before,len(self.model.calls))
+        self.assertEqual(self.b.post('/api/voiceprint/enroll?name=A',headers=headers,data=b'00',content_type='application/octet-stream').status_code,409)
+
+    def test_guest_scope_and_account_scope_explain_storage(self):
+        guest=self.app.test_client().get('/api/voiceprint').json
+        self.assertIn('游客',guest['storageHint'])
+        self.assertIn('当前账号',self.a.get('/api/voiceprint').json['storageHint'])
+        self.assertNotEqual(guest['scope'],self.a.get('/api/voiceprint').json['scope'])
+
+    def test_volume_normalization_after_voice_validation(self):
+        # Deterministic voiced frames isolate gain handling from VAD accuracy.
+        signal=np.sin(np.arange(16000*3)*.08)*.012
+        with patch('webrtcvad.Vad.is_speech',return_value=True):
+            a=v.samples((signal*32767).astype('<i2').tobytes())
+            b=v.samples((signal*2*32767).astype('<i2').tobytes())
+        self.assertAlmostEqual(float(np.sqrt(np.mean(a*a))),float(np.sqrt(np.mean(b*b))),places=4)
+
 if __name__=='__main__':unittest.main(verbosity=2)

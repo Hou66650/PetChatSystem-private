@@ -138,7 +138,7 @@
         var now = new Date();
         ctx.fillStyle = '#A89484';
         ctx.font = '30px ' + FONT_BODY;
-        ctx.fillText(now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日  ·  MPC 宠物聊天', cx, H - 130);
+        ctx.fillText(now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日  ·  派特岛', cx, H - 130);
         ctx.fillStyle = '#C4A98F';
         ctx.font = '26px ' + FONT_BODY;
         ctx.fillText('用陪伴传递温暖', cx, H - MARGIN + 20);

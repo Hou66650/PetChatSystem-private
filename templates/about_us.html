@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <link rel="icon" type="image/png" href="/static/images/pait-island-icon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>关于我们 · MPC 宠物聊天</title>
+    <title>关于我们 · 派特岛</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     <style>
         .about-tabs {
@@ -46,12 +47,12 @@
     {% include '_navbar.html' %}
     <div class="page-wrap" style="max-width: 760px;">
         <div class="card" style="text-align: center; padding: 40px 28px 24px;">
-            <img src="{{ url_for('static', filename='images/dog1.png') }}" alt="MPC 宠物聊天"
+            <img src="{{ url_for('static', filename='images/pait-island-icon.png') }}" alt="派特岛"
                  style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--c-primary);">
-            <h2 style="font-family: var(--font-round); margin: 16px 0 4px; font-size: 24px;">MPC 宠物聊天系统</h2>
+            <h2 style="font-family: var(--font-round); margin: 16px 0 4px; font-size: 24px;">派特岛</h2>
             <p style="margin: 0; color: #6F6055; font-weight: 600;">用陪伴传递温暖</p>
 
-            <div class="about-tabs" role="tablist" aria-label="关于 MPC">
+            <div class="about-tabs" role="tablist" aria-label="关于派特岛">
                 <button type="button" role="tab" id="tab-intro" aria-selected="true" aria-controls="panel-intro" data-tab="intro">了解我们</button>
                 <button type="button" role="tab" id="tab-join" aria-selected="false" aria-controls="panel-join" data-tab="join" tabindex="-1">加入我们</button>
                 <button type="button" role="tab" id="tab-feedback" aria-selected="false" aria-controls="panel-feedback" data-tab="feedback" tabindex="-1">建议与反馈</button>
@@ -60,7 +61,7 @@
 
         <div class="card mt-16 about-panel" role="tabpanel" id="panel-intro" aria-labelledby="tab-intro">
             <h3>🐾 我们做什么</h3>
-            <p>MPC 宠物聊天是一款情绪陪伴产品：四只性格各异的虚拟宠物随时陪你聊天、听你倾诉。</p>
+            <p>派特岛是一款情绪陪伴产品：四只性格各异的虚拟宠物随时陪你聊天、听你倾诉。</p>
             <ul>
                 <li><strong>球球（柴犬）</strong>——活泼元气，永远热情地回应你；</li>
                 <li><strong>雪球（哈士奇）</strong>——帅气直爽，陪你一起撒欢；</li>

@@ -30,6 +30,7 @@ def status():
             return jsonify(error='无效的启用状态'),400
         v.set_enabled(owner,data['enabled'])
     return jsonify(enabled=v.enabled(owner),requestedEnabled=v.requested_enabled(owner),scope=c.browser_scope(),
+                   storageHint=('声纹保存在当前游客会话；换浏览器、登录或切换访问地址后不会自动带入。建议先登录，再录入。' if owner.startswith('guest:') else '声纹保存在当前账号；请使用同一账号通话。'),
                    ready=bool(importlib.util.find_spec('resemblyzer')),
                    profiles=[{'id':r['id'],'name':r['name']} for r in v.profiles(owner)])
 
@@ -42,6 +43,9 @@ def audio():
 
 @bp.route('/api/voiceprint/enroll',methods=['POST'])
 def enroll():
+    scope=request.headers.get('X-Profile-Scope')
+    if scope and scope!=c.browser_scope():
+        return jsonify(error='账户已变化，请重新打开声纹设置后录入'),409
     name=request.args.get('name','').strip()
     if not re.fullmatch(r'[\w\u4e00-\u9fff ·-]{1,24}',name):
         return jsonify(error='称呼限24个字，请勿输入特殊符号'),400
@@ -52,6 +56,19 @@ def enroll():
     except (ImportError,RuntimeError,OSError):
         return jsonify(error='本地声纹模型暂不可用，请检查安装'),503
     return status()
+
+
+@bp.route('/api/voiceprint/check',methods=['POST'])
+def check():
+    """A local trial uses the same pipeline as calls, without opening an AI session."""
+    if request.headers.get('X-Profile-Scope')!=c.browser_scope():
+        return jsonify(error='账户已变化，请重新打开声纹设置'),409
+    try:
+        return jsonify(v.identify(c.owner_key(),audio()))
+    except ValueError as e:
+        return jsonify(error=str(e)),400
+    except (ImportError,RuntimeError,OSError):
+        return jsonify(error='本地声纹模型暂不可用'),503
 
 
 @bp.route('/api/voiceprint/<profile_id>',methods=['DELETE'])

@@ -279,7 +279,7 @@
       petGender: gender,
       surface: this.surface,
       micDeviceId: micId,
-      onSpeaker: function(info){if(!current())return;panel.querySelector('#rt-speaker').textContent=info.kind==='checking'?'正在本机辨认声音，请稍候…':info.kind==='familiar'?'听起来像 '+info.name+' · 亲近回应':info.kind==='unfamiliar'?'尚不熟悉的声音 · 礼貌回应':'声音不确定 · 中性回应';},
+      onSpeaker: function(info){if(!current())return;panel.querySelector('#rt-speaker').textContent=info.kind==='checking'?'正在本机辨认声音，请稍候…':info.kind==='familiar'?'听起来像 '+info.name+' · 亲近回应':info.kind==='unfamiliar'?'尚不熟悉的声音 · 礼貌回应':'声音不确定 · '+(info.message||'请连续说话3–6秒后再试');},
       onLevel: function (db) { if(current()) self._renderLevel(db); },
       onPlayback: function (info) {
         if(!current()) return;

@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <link rel="icon" type="image/png" href="/static/images/pait-island-icon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>和宠物聊天 · MPC 宠物聊天</title>
+    <title>和宠物聊天 · 派特岛</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     <style>
         /* ===== 聊天页专属样式（布局规范：设计文档 三.1） ===== */
@@ -274,14 +275,14 @@
     <!-- 聊天顶栏（同 _navbar 款式变体：logo 可点回首页） -->
     <header class="chat-nav">
         <a class="brand" href="/" aria-label="返回首页">
-            <img src="{{ url_for('static', filename='images/dog1.png') }}" alt="">
-            <span>MPC 宠物聊天</span>
+            <img src="{{ url_for('static', filename='images/pait-island-icon.png') }}" alt="">
+            <span>派特岛</span>
         </a>
         <span class="current-pet" id="current-pet-name">小家伙</span>
         <button type="button" id="btn-pet-profile" class="btn-link" style="border:0;background:transparent;color:#A89484;font:inherit;font-size:12px;cursor:pointer;padding:4px 6px;text-decoration:underline;">资料</button>
         <div class="spacer"></div>
         <button class="icon-btn" id="btn-diary" aria-label="我的日记" title="我的日记">📖<span class="btn-label">日记</span></button>
-        <span class="ver-chip" title="MPC 宠物聊天 v{{ app_version }}，更新日志见仓库 CHANGELOG.md">v{{ app_version }}</span>
+        <span class="ver-chip" title="派特岛 v{{ app_version }}，更新日志见仓库 CHANGELOG.md">v{{ app_version }}</span>
         <button class="icon-btn" id="btn-feedback" aria-label="宠物反馈" title="宠物反馈">⭐<span class="btn-label">反馈</span></button>
         <button class="icon-btn" id="btn-pdf" aria-label="导出聊天记录 PDF" title="导出 PDF">📄<span class="btn-label">PDF</span></button>
         <button class="icon-btn" id="btn-settings" aria-label="设置" title="设置">⚙️<span class="btn-label">设置</span></button>

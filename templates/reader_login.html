@@ -1,51 +1,21 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <link rel="icon" type="image/png" href="/static/images/pait-island-icon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>登录 · MPC 宠物聊天</title>
+    <title>登录 · 派特岛</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
-    <style>
-        body.theme {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--c-bg) var(--auth-bg-url, url("{{ url_for('static', filename='images/c.jpg') }}")) center / cover no-repeat;
-        }
-        body.theme::before {
-            content: '';
-            position: fixed; inset: 0;
-            backdrop-filter: saturate(.65) brightness(1.05);
-            -webkit-backdrop-filter: saturate(.65) brightness(1.05);
-            background: rgba(255, 248, 240, .58);
-        }
-        .login-card {
-            position: relative;
-            width: min(92vw, 360px);
-            background: var(--c-card);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border-radius: var(--radius-card);
-            box-shadow: var(--shadow-hover);
-            padding: 32px 28px;
-        }
-        .login-card h2 {
-            margin: 0 0 24px;
-            font-family: var(--font-round);
-            text-align: center;
-            font-size: 22px;
-        }
-        .form-tip { font-size: 13px; color: var(--c-danger); min-height: 20px; margin: 4px 0 8px; text-align: center; }
-        .login-links { display: flex; justify-content: space-between; margin-top: 16px; font-size: 14px; }
-    </style>
+    <link rel="stylesheet" href="/static/css/auth-island.css?v={{ app_version }}">
 </head>
-<body class="theme">
-    {% include '_navbar.html' %}
-    <div class="login-card">
-        <h2>🐾 欢迎回来</h2>
+<body class="theme auth-island">
+    <div class="auth-landscape" aria-hidden="true"></div><div class="auth-mist" aria-hidden="true"></div>
+    <header class="auth-top"><a class="auth-brand" href="/"><img src="/static/images/pait-island-icon.png" alt="">派特岛</a><a class="auth-back" href="/">探索云端群岛 ↗</a></header>
+    <main class="auth-layout"><section class="auth-story"><span class="auth-eyebrow">PAIT ISLAND · 心有栖所</span><h1>越过云海，<br>有人等你回来。</h1><p>把世界的喧嚣留在远方。<br>在这座小岛，与你的伙伴慢慢相识。</p><div class="auth-orbit"></div><p class="auth-caption">月光 · 云海 · 一份温柔的陪伴</p></section>
+    <div class="auth-card">
+        <span class="auth-eyebrow">WELCOME HOME</span><h2>欢迎回到派特岛</h2><p class="auth-subtitle">你的伙伴，正在云海另一端等你。</p>
         <form method="post" action="" novalidate>
-            <div class="form-tip">{{ error or '' }}</div>
+            <div class="form-tip" role="alert">{{ error or '' }}</div>
             <div class="field">
                 <label for="username">用户名</label>
                 <input class="input" type="text" id="username" name="username" size="30"
@@ -63,7 +33,8 @@
             <a href="{{ url_for('auth.register') }}">注册新账号</a>
         </div>
     </div>
+    </main>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/auth-background.js') }}"></script>
+
 </body>
 </html>
