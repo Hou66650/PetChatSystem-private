@@ -584,6 +584,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <p class="garden-note" id="garden-feedback" aria-live="polite">浇水后下一个自然日长出新芽；猫咪每日互动也会让植物更茂密。进度保存在此浏览器的当前用户下。</p>
     </dialog>
     <link rel="stylesheet" href="/static/css/portal.css?v={{ app_version }}">
+    <script src="/static/js/den/portal-pets.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/portal-visitors.js?v={{ app_version }}"></script>
     <script src="/static/js/den/portals.js?v={{ app_version }}"></script>
     <script src="/static/js/den/greenhouse.js?v={{ app_version }}"></script>
     <script src="/static/js/den/cat-agent.js?v={{ app_version }}"></script>
@@ -986,7 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let themeFireLight = null, themeFlame = null;   // tick 用引用缓存，避免每帧 getObjectByName
         const envTexCache = {};
         const disposeObjectTree = SelectedAssets.disposeTree;
-        let catHomeReady=false, greenhouse=null, portals=null;
+        let catHomeReady=false, greenhouse=null, portals=null, portalVisitors=null;
         let themeEpoch = 0, modeledStage = false, waterfallFlow = null, waterfallViewInitialized = false;
         const SAKURA_NAV = {"radius": 3.2, "obstacles": [{"x": -2.1, "z": -1.5, "r": 0.55}, {"x": 2.25, "z": -1.2, "r": 0.38}, {"kind": "rect", "x": 0, "z": -2.65, "w": 3.7, "d": 0.26}, {"x": -2, "z": 0.15, "r": 0.18}, {"x": -1.75, "z": 0.6, "r": 0.13}], "interest_points": [{"name": "food", "x": -1.45, "z": 0.15}, {"name": "ball", "x": -1.2, "z": 0.6}, {"name": "rest", "x": 0.7, "z": 0.45}]};
         const SNOW_NAV = {"radius":3.2,"obstacles":[{"x":-2.0,"z":-1.55,"r":0.54},{"x":-0.85,"z":-2.35,"r":0.41},{"kind":"rect","x":2.2,"z":-1.2,"w":0.85,"d":0.25},{"x":2.65,"z":0.3,"r":0.43},{"x":2.7,"z":0.85,"r":0.3},{"x":-1.7,"z":0.65,"r":0.14}],"interest_points":[{"name":"ball","x":-1.0,"z":0.65},{"name":"rest","x":0.65,"z":0.4}]};
@@ -1471,6 +1473,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelGestureAction('pet-switch');
             grabbed=false;dropping=false;bounceBack=0;
             if (petModel) {scene.remove(petModel);disposeObjectTree(petModel);petModel=null;}
+            portalVisitors?.clear();
             currentPetId = id;
             state.selectedPetId=id;saveState();
             companionBehavior=null;
@@ -1634,7 +1637,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
+            portalVisitors?.clear();
             portals?.attach(locomotion.navigation,spec.theme);
+            if(portals?.data)portalVisitors?.sync(portals.data.trips);
             spawnBusy = false; showPetLoading(false);
             document.getElementById('cat-care').hidden=!(id===3&&modeledStage);
             for(const button of ['btn-cat-eat','btn-cat-home'])document.getElementById(button).disabled=!catHomeReady;
@@ -2426,8 +2431,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 (!dialogueRunner.active && !document.getElementById('den-chat').classList.contains('hidden')) ||
                 (!catAgent?.acting && !['idle','walk','trot','run','turnLeft','turnRight'].includes(anim.state)) || performance.now()<anim.until;
         }
+        portalVisitors=new PortalVisitors.Visitors({THREE,scene,getPet:()=>({id:currentPetId}),getNavigation:()=>locomotion?.navigation,notify:text=>showBubble(text,3500,true)});
         portals=new PetPortals.Controller({THREE,scene,scope:COMPANION_SCOPE,
             getPet:()=>({id:currentPetId,model:petModel}),
+            onTrips:trips=>{if(!spawnBusy)portalVisitors.sync(trips);},
             canInvite:()=>!spawnBusy&&petModel&&!grabbed&&!dropping&&!interactionBusy()&&!chatBusy&&!voiceBusy&&['idle','walk'].includes(anim.state)&&locomotion?.owner!=='command',
             bubble:text=>{if(petModel)showBubble(text,4000,true);},
             onApproach:(point)=>{if(!point||!locomotion)return;catAgent?.interrupt('想去看看传送门');setAnim('idle',0);locomotion.goTo(point,{gait:'walk'});},
@@ -3493,6 +3500,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(waterfallFlow)waterfallFlow.update(t);
             greenhouse?.update(dt,petModel?.position,gardenScene);
             portals?.update(dt);
+            portalVisitors?.update(dt);
             renderBudget.frame(frameDelta,now);
             islandMusic?.update(frameDelta,!!voiceUI?.isActive()||!!(denAudio&&!denAudio.paused)||!!window.speechSynthesis?.speaking);
             if(renderDialog.open&&now-renderStatusAt>1000){renderStatusAt=now;renderStats();}
