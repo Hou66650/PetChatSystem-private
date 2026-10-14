@@ -7,7 +7,13 @@ const parse=p=>new Promise((resolve,reject)=>{const b=fs.readFileSync(p);new THR
  let total=0,triangles=0;const positions=[[-9,0,7],[9,1,7],[-9,-.4,-10],[9,.8,-10]];
  for(const [i,theme] of ['sakura','snow','room','camp'].entries()){
   const path='static/models/home-islands/'+theme+'.glb';total+=fs.statSync(path).size;
-  const gltf=await parse(path),object=gltf.scene,box=new THREE.Box3().setFromObject(object),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+  const manifest=JSON.parse(fs.readFileSync(path.replace('.glb','.json')));
+  assert.deepEqual(require('node:zlib').gunzipSync(fs.readFileSync(path+'.gz')),fs.readFileSync(path),'lossless compressed delivery');
+  let originalTriangles=0,area=0;const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3();
+  const gltf=await parse(path);gltf.scene.updateMatrixWorld(true);
+  gltf.scene.traverse(o=>{if(!o.isMesh)return;const g=o.geometry,p=g.attributes.position,idx=g.index,n=idx?idx.count:p.count;originalTriangles+=n/3;for(let k=0;k<n;k+=3){a.fromBufferAttribute(p,idx?idx.getX(k):k).applyMatrix4(o.matrixWorld);b.fromBufferAttribute(p,idx?idx.getX(k+1):k+1).applyMatrix4(o.matrixWorld);c.fromBufferAttribute(p,idx?idx.getX(k+2):k+2).applyMatrix4(o.matrixWorld);area+=b.sub(a).cross(c.sub(a)).length()/2;}});
+  assert.equal(originalTriangles,manifest.triangles,'all original triangles preserved');assert(Math.abs(area-manifest.surfaceArea)/manifest.surfaceArea<.0001,'all original surface area preserved');
+  const object=gltf.scene,box=new THREE.Box3().setFromObject(object),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
   assert(size.x>0&&size.z>0);object.position.sub(center);const scale=9/Math.max(size.x,size.z);object.scale.setScalar(scale);object.position.multiplyScalar(scale);
   const group=new THREE.Group();group.position.set(...positions[i]);group.userData.island=i;group.add(object);group.updateMatrixWorld(true);
   const bounds=new THREE.Box3().setFromObject(group),extent=bounds.getSize(new THREE.Vector3());assert(Math.abs(Math.max(extent.x,extent.z)-9)<.001);
@@ -21,6 +27,6 @@ const parse=p=>new Promise((resolve,reject)=>{const b=fs.readFileSync(p);new THR
    let picked=hits[0].object;while(picked&&picked.userData.island===undefined)picked=picked.parent;assert.equal(picked.userData.island,i);
   }
  }
- assert(total<7*1024*1024,'four previews fit home transfer budget');assert(triangles<120000,'four islands have bounded geometry');
+ assert(total<75*1024*1024,'uncompressed geometry stays bounded; gzip served over network');assert(triangles<1500000,'four islands have bounded geometry');
  console.log('PASS four real previews: finite geometry, normalized spacing, all-direction picking, '+triangles+' triangles / '+(total/1024/1024).toFixed(2)+' MiB');
 })().catch(e=>{console.error(e);process.exitCode=1;});

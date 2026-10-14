@@ -5,7 +5,8 @@
 templates/ 下的资产（templates/images、templates/css、templates/js），
 Flask 默认静态目录是 static/，所以需要显式代理。
 """
-from flask import Blueprint, redirect, render_template, send_from_directory, session, url_for
+from flask import Blueprint, abort, current_app, redirect, render_template, request, send_from_directory, session, url_for
+from pathlib import Path
 
 from ..config import Config
 from ..db import query_db
@@ -40,6 +41,21 @@ def index():
 @bp.route('/about')
 def about():
     return render_template('about_us.html')
+
+
+@bp.route('/static/models/home-islands/<theme>.glb')
+def home_island_model(theme):
+    """Lossless transfer compression keeps island geometry intact."""
+    if theme not in ('sakura', 'snow', 'camp', 'room'):
+        abort(404)
+    directory = Path(current_app.static_folder) / 'models' / 'home-islands'
+    compressed = request.accept_encodings['gzip'] > 0 and (directory / (theme + '.glb.gz')).is_file()
+    filename = theme + ('.glb.gz' if compressed else '.glb')
+    response = send_from_directory(directory, filename, mimetype='model/gltf-binary', max_age=3600)
+    response.vary.add('Accept-Encoding')
+    if compressed:
+        response.headers['Content-Encoding'] = 'gzip'
+    return response
 
 
 @bp.route('/logout')
