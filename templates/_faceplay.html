@@ -1,0 +1,29 @@
+<dialog id="faceplay-dialog" aria-labelledby="faceplay-title">
+  <header><div><span class="eyebrow">FACE TO FACE</span><h2 id="faceplay-title">面对面，陪它玩一会</h2></div><form method="dialog"><button class="dock-close" aria-label="关闭互动设置">✕</button></form></header>
+  <p>它会跟着你转头，也会回应你的手。先选喜欢的玩法，再开启摄像头。</p>
+  <div class="vision-options">
+    <label><input type="checkbox" data-vision-option="face"> 自然注视与眨眼 <small>它会注意你的移动和歪头</small></label>
+    <label><input type="checkbox" data-vision-option="hands"> 手势与自由触摸 <small>摸头、挠下巴、顺背毛和喂食</small></label>
+    <label><input type="checkbox" data-vision-option="gestures"> 挥手、比心等手势 <small>用它自己的小表情回应你</small></label>
+    <label><input type="checkbox" data-vision-option="lift"> 允许捏合拎起宠物 <small>默认关闭，避免不小心拎起来</small></label>
+    <label><input type="checkbox" data-vision-option="mirror"> 镜像控制 <small>像照镜子一样移动</small></label>
+    <label>手部活动灵敏度 <input aria-label="手部活动灵敏度" type="range" min="0.6" max="2.5" step="0.1" data-vision-option="sensitivity"><small>向右调，小幅移动也能覆盖更大范围</small></label>
+  </div>
+  <div class="vision-calibration"><button type="button" id="vision-calibrate">以当前手的位置为中心</button><button type="button" id="vision-reset-calibration">重置校准</button></div>
+  <p id="vision-settings-status" role="status">摄像头画面仅在本机处理。也可以先用鼠标体验触摸、梳毛和抛接球。</p>
+  <footer><button type="button" id="vision-pointer">鼠标 / 触屏体验</button><button type="button" id="vision-start">开启摄像头</button></footer>
+</dialog>
+<section id="faceplay-hud" aria-label="面对面互动工具" hidden>
+  <div class="faceplay-tools">
+    <button type="button" data-play-tool="touch" aria-pressed="true">自由触摸</button>
+    <button type="button" data-play-tool="brush" aria-pressed="false">梳毛刷</button>
+    <button type="button" data-play-tool="ball" aria-pressed="false">抛接球</button>
+    <button type="button" id="faceplay-toss" hidden>抛一个球</button>
+    <button type="button" id="faceplay-settings" aria-label="调整面对面互动设置">设置</button>
+    <button type="button" id="faceplay-exit">结束互动</button>
+  </div>
+  <p id="faceplay-tip" role="status">把手放进画面，慢慢靠近它。</p>
+</section>
+<div id="faceplay-halo" aria-hidden="true" hidden></div>
+
+<div id="faceplay-brush" aria-hidden="true" hidden><svg viewBox="0 0 60 90" fill="none"><rect x="23" y="43" width="14" height="42" rx="7" fill="#bd946e" stroke="#8e6e4d"/><rect x="7" y="4" width="46" height="51" rx="18" fill="#e8cba5" stroke="#8e6e4d" stroke-width="2"/><path d="M17 14v30M26 12v34M35 12v34M44 14v30" stroke="#f9f7ed" stroke-width="5" stroke-linecap="round"/></svg></div>

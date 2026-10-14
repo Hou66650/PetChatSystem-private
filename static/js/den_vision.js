@@ -168,12 +168,87 @@ class DenVision {
         this.gestures = new HandGestures();
         this._smooth = { x: 0, y: 0, px: 0, py: 0, ok: false };   // 虚拟手 + 捏合点平滑位置
         this._raf = null;
+        this.options = { face:true, hands:true, gestures:true, mirror:true, sensitivity:1.3, centerX:.5, centerY:.5 };
+        this.generation = 0;
+        this.worker = null;
+        this.pending = false;
+        this.starting = false;
+    }
+
+    configure(options = {}) {
+        this.options = {...this.options, ...options};
+        this.options.sensitivity = Math.min(2.5, Math.max(.6, Number(this.options.sensitivity) || 1.3));
+    }
+    calibrate() {
+        if (!this.handState.present || !this.lastRaw) return false;
+        this.configure({centerX:this.lastRaw.x, centerY:this.lastRaw.y});
+        this._smooth.ok = false;
+        return {centerX:this.lastRaw.x, centerY:this.lastRaw.y};
+    }
+    _point(x, y) {
+        const o=this.options, direction=o.mirror ? -1 : 1;
+        return {x:Math.max(0,Math.min(1,.5+direction*(x-o.centerX)*o.sensitivity))*this.canvasSize.w,
+                y:Math.max(0,Math.min(1,.5+(y-o.centerY)*o.sensitivity))*this.canvasSize.h};
+    }
+    async _models(epoch) {
+        // Worker keeps the 3D render thread responsive. Older browsers use a slower fallback.
+        if (typeof Worker !== 'undefined' && typeof createImageBitmap === 'function' && typeof OffscreenCanvas !== 'undefined') {
+            let worker;
+            try {
+                worker = new Worker('/static/js/den/vision-worker.js');
+                this.worker=worker;
+                await new Promise((resolve,reject)=>{
+                    const done=(error)=>{clearTimeout(this.initTimeout);this.initCancel=null;error?reject(error):resolve();};
+                    this.initCancel=()=>done(new Error('cancelled'));
+                    this.initTimeout=setTimeout(()=>done(new Error('Worker initialization timed out')),30000);
+                    worker.onmessage=({data})=>{if(data.type==='ready')done();else if(data.type==='error')done(new Error(data.message));};
+                    worker.onerror=()=>done(new Error('Worker unavailable'));
+                    worker.postMessage({type:'init',face:this.options.face,hands:this.options.hands});
+                });
+                if(epoch!==this.generation) {worker.terminate();return;}
+                worker.onmessage=({data})=>{
+                    clearTimeout(this.frameTimeout);this.pending=false;
+                    if(!this.running || epoch!==this.generation)return;
+                    if(data.type==='error'){this._runtimeError();return;}
+                    this._consume(data.ts,data.face,data.hand);
+                };
+                worker.onerror=()=>{if(epoch===this.generation)this._runtimeError();};
+                this.backend='worker'; return;
+            } catch(error) {
+                worker?.terminate();if(this.worker===worker)this.worker=null;
+                if(epoch!==this.generation) return;
+            }
+        }
+        const fileset=await FilesetResolver.forVisionTasks(WASM_PATH);
+        if(epoch!==this.generation)return;
+        const make=async(Task,path,extra)=>{
+            const model=await Task.createFromOptions(fileset,{baseOptions:{modelAssetPath:path,delegate:'CPU'},runningMode:'VIDEO',...extra});
+            if(epoch!==this.generation){model.close();return null;}return model;
+        };
+        if(this.options.face){const model=await make(FaceLandmarker,FACE_MODEL,{numFaces:1});if(epoch===this.generation)this.face=model;}
+        if(epoch!==this.generation)return;
+        if(this.options.hands){const model=await make(HandLandmarker,HAND_MODEL,{numHands:2});if(epoch===this.generation)this.hand=model;}
+        this.backend='main';
+    }
+    _runtimeError() {
+        if(++this._errStreak>=3){this.stop();this.onError('runtime',new Error('Inference failed'));}
+    }
+    _consume(ts, face, hand) {
+        try {
+            if(this.options.face)this._detectGaze(ts,face);
+            if(this.options.hands)this._detectHand(ts,hand);
+            this._errStreak=0;
+        } catch(error) {this._runtimeError();}
     }
 
     /* 启动：摄像头 → 模型 → 检测循环
        target：虚拟手/触摸判定所用主画布元素（坐标换算基准，勿传预览小窗） */
     async start(videoEl, callbacks = {}, target = null) {
         if (this.running) return true;
+        if (this.starting) return false;
+        this.starting=true;
+        const epoch=++this.generation;
+        for(const name of ['onBlink','onSnap','onFace']) this[name]=callbacks[name] || (()=>{});
         this.onGaze = callbacks.onGaze || this.onGaze;
         this.onHand = callbacks.onHand || this.onHand;
         this.onGrab = callbacks.onGrab || this.onGrab;
@@ -181,14 +256,17 @@ class DenVision {
         this.onError = callbacks.onError || this.onError;
         try {
             // 1) 摄像头（前置，低分辨率即可）
-            this.stream = await navigator.mediaDevices.getUserMedia({
+            const stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
                 audio: false,
             });
+            if(epoch!==this.generation){stream.getTracks().forEach(t=>t.stop());return false;}
+            this.stream=stream;
         } catch (e) {
-            this.onError('camera', e);
+            if(epoch===this.generation){this.starting=false;this.onError('camera', e);}
             return false;
         }
+        if(epoch!==this.generation){this.stream?.getTracks().forEach(t=>t.stop());this.stream=null;return false;}
         this.video = videoEl;
         try {
             videoEl.srcObject = this.stream;
@@ -199,50 +277,31 @@ class DenVision {
             ]);
         } catch (e) { /* 出错不阻断：摄像头无帧时循环会安全跳过 */ }
 
-        // 2) 模型（GPU 优先，失败回落 CPU）
-        try {
-            const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
-            const delegate = navigator.gpu ? 'GPU' : 'CPU';
-            try {
-                this.face = await FaceLandmarker.createFromOptions(fileset, {
-                    baseOptions: { modelAssetPath: FACE_MODEL, delegate },
-                    runningMode: 'VIDEO', numFaces: 1, outputFaceBlendshapes: false,
-                });
-                this.hand = await HandLandmarker.createFromOptions(fileset, {
-                    baseOptions: { modelAssetPath: HAND_MODEL, delegate },
-                    runningMode: 'VIDEO', numHands: 2,
-                });
-            } catch (e) {
-                // 个别机器 GPU 委托不兼容 → CPU 重试
-                this.face = await FaceLandmarker.createFromOptions(fileset, {
-                    baseOptions: { modelAssetPath: FACE_MODEL, delegate: 'CPU' },
-                    runningMode: 'VIDEO', numFaces: 1,
-                });
-                this.hand = await HandLandmarker.createFromOptions(fileset, {
-                    baseOptions: { modelAssetPath: HAND_MODEL, delegate: 'CPU' },
-                    runningMode: 'VIDEO', numHands: 2,
-                });
-            }
-        } catch (e) {
-            this.stop();
-            this.onError('model', e);
-            return false;
+        if(epoch!==this.generation)return false;
+        try { await this._models(epoch); }
+        catch(error){if(epoch===this.generation){this.stop();this.onError('model',error);}return false;}
+        if(epoch!==this.generation || !this.stream || !this.stream.getVideoTracks().some(t=>t.readyState==='live')) {
+            if(epoch===this.generation)this.stop();return false;
         }
-
-        // 模型加载期间可能已被 stop()（如切标签页触发 visibilitychange）——流已停则不发车
-        // （无轨道的空流放行：可能是测试注入，检测循环有 readyState 守卫兜底）
-        const tracks = this.stream ? this.stream.getTracks() : [];
-        const live = !tracks.length || tracks.some(t => t.readyState === 'live');
-        if (!live) { this.stop(); return false; }
+        this.starting=false;
         this.running = true;
         this.target = target || videoEl;
-        this.timer = setInterval(() => this._detect(), DETECT_MS);
+        this.timer = setInterval(() => this._detect(), this.backend==='worker'?DETECT_MS:180);
         this._followLoop();
         return true;
     }
 
     stop() {
+        ++this.generation;
+        this.starting=false;
         this.running = false;
+        this.initCancel?.();this.initCancel=null;
+        clearTimeout(this.initTimeout);clearTimeout(this.frameTimeout);
+        this.worker?.terminate();this.worker=null;this.pending=false;
+        this.face?.close();this.hand?.close();this.face=this.hand=null;
+        this.lastTs=-1;this._prevSnapRatio=undefined;this._eyesClosedFrames=0;
+        this.lastRaw=null;this.gestures=new HandGestures();
+        this.onFace?.({present:false});
         if (this.timer) { clearInterval(this.timer); this.timer = null; }
         if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
         if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null; }
@@ -275,24 +334,26 @@ class DenVision {
         if (v.currentTime === this.lastTs) return;      // 无新帧则跳过
         this.lastTs = v.currentTime;
         this._syncCanvasSize();
-        try {
-            this._detectGaze(ts);
-            this._detectHand(ts);
-            this._errStreak = 0;
-        } catch (e) {
-            // 推理异常（如 GPU 委托运行中失效）：连续多次则自动停止，避免每 100ms 报错
-            this._errStreak = (this._errStreak || 0) + 1;
-            if (this._errStreak >= 3) {
-                this.stop();
-                this.onError('runtime', e);
-            }
+        if(this.worker){
+            if(this.pending)return;
+            this.pending=true;
+            const worker=this.worker,epoch=this.generation;
+            createImageBitmap(v).then(image=>{
+                if(epoch!==this.generation || !this.running){image.close();return;}
+                this.frameTimeout=setTimeout(()=>{if(epoch===this.generation){this.stop();this.onError('runtime',new Error('Frame timed out'));}},5000);
+                try{worker.postMessage({type:'frame',image,ts},[image]);}catch(error){image.close();throw error;}
+            }).catch(()=>{if(epoch===this.generation){this.pending=false;this._runtimeError();}});
+        } else {
+            try {this._consume(ts,this.face?.detectForVideo(v,ts),this.hand?.detectForVideo(v,ts));}
+            catch(error){this._runtimeError();}
         }
     }
 
-    _detectGaze(ts) {
-        const res = this.face.detectForVideo(this.video, ts);
+    _detectGaze(ts, result) {
+        const res = result || {};
         const lm = res.faceLandmarks && res.faceLandmarks[0];
         let looking = false;
+        if(!lm){this._eyesClosedFrames=0;this.onFace?.({present:false});}
         if (lm && lm.length >= 478) {
             // 虹膜中心：468=右眼，473=左眼；眼角：33/133 右眼，362/263 左眼
             const gazeOf = (iris, o, i) => {
@@ -311,6 +372,8 @@ class DenVision {
             const faceW = Math.abs(lm[454].x - lm[234].x) || 1e-4;
             const yaw = (lm[1].x - faceCx) / faceW;
             const faceCenterX = faceCx;
+            const roll=Math.atan2(lm[263].y-lm[33].y,Math.abs(lm[263].x-lm[33].x));
+            this.onFace?.({present:true,x:(this.options.mirror?1-faceCx:faceCx),y:lm[1].y,roll,yaw,gaze,gazeY});
             // 注视屏幕 ≈ 视线水平+竖直都居中 + 头基本正对 + 人坐在画面中部
             looking = Math.abs(gaze) < 0.17 && Math.abs(gazeY) < 0.4 && Math.abs(yaw) < 0.25
                 && faceCenterX > 0.2 && faceCenterX < 0.8;
@@ -354,13 +417,13 @@ class DenVision {
         }
     }
 
-    _detectHand(ts) {
+    _detectHand(ts, result) {
         this._syncCanvasSize();
-        const res = this.hand.detectForVideo(this.video, ts);
+        const res = result || {};
         const allHands = (res.landmarks || []).filter((l) => l && l.length >= 21);
         // 趣味手势（作揖/比心/挥手/点赞）：事件驱动，内部带保持时长与冷却
         try {
-            this.gestures.update(allHands, ts).forEach((g) => this.onGesture && this.onGesture(g));
+            this.gestures.update(this.options.gestures?allHands.filter(l=>handMetrics(l).palm>=PALM_MIN):[], ts).forEach((g) => this.onGesture && this.onGesture(g));
         } catch (e) { /* 手势失败不影响基础视觉 */ }
         const lms = allHands[0];
         if (lms && lms.length >= 21) {
@@ -369,7 +432,8 @@ class DenVision {
             const palm = m.palm;
             // 掌长太小 = 手太远/不完整：不判手势（防噪声），但保留虚拟手位置反馈
             const quality = palm >= PALM_MIN;
-            const reaching = palm > HAND_REACH;
+            const reaching = palm > Math.min(HAND_REACH, .10);
+            this.lastRaw={x:mcp.x,y:mcp.y};
             // 捏合：按掌长归一化后滞后判定（张开≈1.0-1.6，捏合≈0.1-0.3）
             // 捏合判定：只看指尖距比值（食指弯曲姿态不影响——真捏合时食指就是弯的）；
             // 与握拳的区分交给收紧的阈值：拳 thumb-index tip ≈0.3-0.7掌长 > PINCH_ON
@@ -380,14 +444,14 @@ class DenVision {
             }
             // 捏合点 = 拇指尖与食指尖中点（拿食物用精确坐标；x 镜像与掌心一致）
             const thumbTip = lms[4], indexTip = lms[8];
-            const pinchX = (1 - (thumbTip.x + indexTip.x) / 2) * this.canvasSize.w;
-            const pinchY = ((thumbTip.y + indexTip.y) / 2) * this.canvasSize.h;
+            const mapped=this._point((thumbTip.x+indexTip.x)/2,(thumbTip.y+indexTip.y)/2);
+            const handPoint=this._point(mcp.x,mcp.y);
+            const pinchX=mapped.x,pinchY=mapped.y;
             // 捏合状态变化时通知（附捏合点；保留 sx/sy 兼容旧调用方）
             if (pinching !== this._pinching) {
                 this._pinching = pinching;
                 this.onGrab && this.onGrab(pinching, {
-                    sx: (1 - mcp.x) * this.canvasSize.w,
-                    sy: mcp.y * this.canvasSize.h,
+                    sx:handPoint.x, sy:handPoint.y,
                     pinchX, pinchY, palm,
                 });
             }
@@ -395,7 +459,7 @@ class DenVision {
             // 打响指检测：拇指尖(4)-中指尖(12)距离从很小→骤增（弹开动作，同样按掌长归一化）
             const midTip = lms[12];
             const snapDist = Math.hypot(lms[4].x - midTip.x, lms[4].y - midTip.y) / palm;
-            if (this._prevSnapRatio !== undefined) {
+            if (quality && this.options.gestures && this._prevSnapRatio !== undefined) {
                 const snapSpeed = snapDist - this._prevSnapRatio;
                 if (this._prevSnapRatio < 0.30 && snapSpeed > 0.22) {
                     const now = performance.now();
@@ -407,8 +471,7 @@ class DenVision {
             }
             this._prevSnapRatio = snapDist;
             // 归一化坐标 → 画布坐标（x 镜像，符合照镜子直觉）
-            const sx = (1 - mcp.x) * this.canvasSize.w;
-            const sy = mcp.y * this.canvasSize.h;
+            const sx=handPoint.x,sy=handPoint.y;
             const was = this.handState;
             this.handState = {
                 present: true, reaching, sx, sy, palm, pinching,
@@ -417,6 +480,7 @@ class DenVision {
             };
             if (was.present !== true || was.reaching !== reaching) this.onHand(this.handState);
         } else {
+            this._prevSnapRatio=undefined;this.lastRaw=null;
             // 手消失时释放捏合（无坐标：调用方只能按"取消"处理，不能当成功）
             if (this._pinching) {
                 this._pinching = false;
