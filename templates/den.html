@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-breath" data-icon="breath">呼吸</button>
             <button class="action-btn" id="btn-games" data-icon="gamepad">游戏中心</button>
             <button class="action-btn" id="btn-companion">陪伴档案</button>
-            <button class="action-btn" id="btn-music" data-icon="music">音乐</button><button class="action-btn" id="btn-toys">玩具柜</button><button class="action-btn" id="btn-voiceprint">熟悉的声音</button><button class="action-btn" id="btn-render-settings">流畅度</button></div>
+            <button class="action-btn" id="btn-music" data-icon="music">音乐</button><button class="action-btn" id="btn-toys">玩具柜</button><button class="action-btn" id="btn-voiceprint">熟悉的声音</button><button class="action-btn" id="btn-pet-view" hidden>近看德牧</button><button class="action-btn" id="btn-stage-view" hidden>营地全景</button><button class="action-btn" id="btn-render-settings">流畅度</button></div>
         </section>
 
 
@@ -547,6 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/pet-locomotion.js') }}"></script>
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
+    <script src="/static/js/den/alpine-layout.js?v={{ app_version }}"></script>
     <script src="/static/js/den/sky-background.js?v={{ app_version }}"></script>
     <script src="/static/js/den/waterfall-flow.js?v={{ app_version }}"></script>
     <script>window.COMPANION_SCOPE={{ companion_scope | tojson }};</script>
@@ -588,10 +589,10 @@ document.addEventListener('DOMContentLoaded', () => {
                  greet: '喵~ 我的窝就是你的窝（才不让你走呢）。',
                  anims: { walk: 'Walk', sniff: 'Idle_2_HeadLow', idle: 'Idle', happy: 'Jump_Loop', eat: 'Idle_Eating', petting: 'Idle', talk: 'Idle', sleep: 'Death', blinkL: 'Idle_HitReact_Left', blinkR: 'Idle_HitReact_Right' },
                  theme: 'room', themeName: '温馨小窝' },
-            4: { name: '德牧', glb: '/static/models/shepherd.glb', h: 1.08,
-                 greet: '汪！忠诚卫士报到，今天想玩点什么？',
-                 anims: { walk: 'Walk', sniff: 'Idle_2_HeadLow', idle: 'Idle', happy: 'Run_Jump', eat: 'Eating', petting: 'Idle_2_HeadLow', talk: 'Idle_2', sleep: 'Death', blinkL: 'Idle_HitReact_Left', blinkR: 'Idle_HitReact_Right' },
-                 theme: 'camp', themeName: '星空营地' },
+            4: { name: '德牧', glb: '/static/models/petchat-shepherd-v1/shepherd.glb?v={{ app_version }}', fallback: '/static/models/shepherd.glb', pbr: true, expressive: true, eyeRetraction: .025, h: 1.12,
+                 greet: '我在这里。一起去山脊上看看吧！',
+                 anims: { idle: 'idle_breathe', walk: 'motion_walk', trot: 'motion_trot', run: 'run', turnLeft:'turn_left', turnRight:'turn_right', happy: 'happy', eat: 'eat', petting: 'touch_head', talk: 'speak', sleep: 'sleep_loop', lieDown: 'lie_down', sit: 'sit_idle', sitDown: 'sit_down', standUp: 'stand_up', sniff: 'sniff', stretch: 'stretch', wave: 'wave_paw', blinkL: 'blink_L', blinkR: 'blink_R' },
+                 theme: 'camp', themeName: '云岭守望营地' },
         };
         const LEVELS = [
             [0, '初次见面'], [10, '有点熟悉'], [30, '心情不错'],
@@ -662,6 +663,20 @@ document.addEventListener('DOMContentLoaded', () => {
         controls.minDistance = 2.2;
         controls.maxDistance = 12;
         controls.maxPolarAngle = Math.PI / 2.05;
+
+        let cameraMoveEpoch=0;
+        controls.addEventListener('start',()=>cameraMoveEpoch++);
+        function frameAlpine(close){
+            if(currentTheme!=='camp'||!petModel)return;
+            const ticket=++cameraMoveEpoch,from=camera.position.clone(),fromTarget=controls.target.clone();
+            const target=close?petModel.position.clone().add(new THREE.Vector3(0,.55,0)):new THREE.Vector3(0,.65,0);
+            const to=close?target.clone().add(new THREE.Vector3(1.5,.9,2.5)):new THREE.Vector3(5.4,6.8,14);
+            const duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:650,start=performance.now();
+            const step=()=>{if(ticket!==cameraMoveEpoch)return;const t=duration?Math.min(1,(performance.now()-start)/duration):1,k=t*t*(3-2*t);
+                camera.position.lerpVectors(from,to,k);controls.target.lerpVectors(fromTarget,target,k);controls.update();if(t<1)requestAnimationFrame(step);};step();
+        }
+        document.getElementById('btn-pet-view').onclick=()=>frameAlpine(true);
+        document.getElementById('btn-stage-view').onclick=()=>frameAlpine(false);
 
         // 光照：三点卡通布光（主光/环境/轮廓光），Toon 材质下轮廓光会在剪影上切出干净的亮边
         const hemi = new THREE.HemisphereLight(0xfff4e0, 0xcbb59a, 0.5);
@@ -929,12 +944,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const SNOW_NAV = {"radius":3.2,"obstacles":[{"x":-2.0,"z":-1.55,"r":0.54},{"x":-0.85,"z":-2.35,"r":0.41},{"kind":"rect","x":2.2,"z":-1.2,"w":0.85,"d":0.25},{"x":2.65,"z":0.3,"r":0.43},{"x":2.7,"z":0.85,"r":0.3},{"x":-1.7,"z":0.65,"r":0.14}],"interest_points":[{"name":"ball","x":-1.0,"z":0.65},{"name":"rest","x":0.65,"z":0.4}]};
         const MODELED_STAGES = {
             sakura: {url:"/static/models/petchat-sakura-grand-v1/sakura.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('sakura',{...SAKURA_NAV,...SakuraRiverLayout})},
-            snow: {url:"/static/models/petchat-toys-v1/snow.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('snow',SnowHavenLayout)}
+            snow: {url:"/static/models/petchat-toys-v1/snow.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('snow',SnowHavenLayout)},
+            camp: {url:"/static/models/petchat-shepherd-v1/alpine.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('camp',AlpineLayout)}
         };
         function applyTheme(name, assetTicket) {
             const t = THEMES[name], modeledSpec = MODELED_STAGES[name];
             if (!t) return;
-            if(name==='sakura' && !waterfallViewInitialized){
+            if(name==='sakura' && (!waterfallViewInitialized || currentTheme==='camp')){
                 // Leave room beneath the island for both waterfalls on first entry.
                 camera.position.set(2.4,4.4,10.8);controls.target.set(-.3,1.1,0);
                 waterfallViewInitialized=true;
@@ -942,6 +958,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if(name==='snow' && currentTheme!=='snow'){
                 camera.position.set(3.5,3.8,8.4);controls.target.set(0,.35,0);
             }
+            cameraMoveEpoch++;
+            document.getElementById('btn-pet-view').hidden=name!=='camp';document.getElementById('btn-stage-view').hidden=name!=='camp';
+            controls.maxDistance=name==='camp'?24:12;
+            if(name==='camp' && currentTheme!=='camp'){camera.position.set(5.4,6.8,14);controls.target.set(0,.65,0);}
+            if(name==='room' && currentTheme==='camp'){camera.position.set(3.7,3.2,6.3);controls.target.set(0,.8,0);}
+            const shadowExtent=name==='camp'?7:4;
+            Object.assign(sun.shadow.camera,{left:-shadowExtent,right:shadowExtent,top:shadowExtent,bottom:-shadowExtent});sun.shadow.camera.updateProjectionMatrix();
             currentTheme = name;
             const epoch = ++themeEpoch; modeledStage = false; ground.visible = true; rug.visible = true;
             waterfallFlow=null; // The tree disposer owns the material textures.
@@ -972,10 +995,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (epoch !== themeEpoch) { disposeObjectTree(gltf.scene); return; }
                 gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
                 decorGroup.add(gltf.scene); modeledStage = true; ground.visible = false; rug.visible = false;
-                if(name==='sakura')waterfallFlow=new WaterfallFlow.Controller(gltf.scene);
+                if(name==='sakura'||name==='camp')waterfallFlow=new WaterfallFlow.Controller(gltf.scene);
                 if (name === 'sakura') { const light = new THREE.PointLight(0xFFE0A3, .55, 3.5); light.position.set(2.25, .89, -1.2); decorGroup.add(light); }
                 if(name==='snow')for(const [x,z,h] of [[1.25,-1.12,1.0],[2.35,-.8,1],[0,-2.8,1]]){
                     const light=new THREE.PointLight(0xFFBF77,.30,2);light.position.set(x,h,z);decorGroup.add(light);
+                }
+                if(name==='camp')for(const [x,y,z] of [[1.7,1.1,-1.8],[-1.4,3.6,-3.6],[0,.9,1.9]]){
+                    const light=new THREE.PointLight(0xFFCF85,.38,3);light.position.set(x,y,z);decorGroup.add(light);
                 }
                 try {
                     const toys=await assetLoader.glb('/static/models/petchat-toys-v1/cabinet.glb?v={{ app_version }}',assetTicket);
@@ -995,7 +1021,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let h = new Date().getHours();
             if (q === 'night') h = 22; else if (q === 'morning') h = 7;
             else if (q === 'day') h = 12; else if (q === 'dusk') h = 18;
-            if (currentTheme === 'camp') h = 22;
             let sky, fog, sunI;
             if (h >= 6 && h < 9) { sky = 0xFFE0C0; fog = 0xFFE0C0; sunI = 0.75; }        // 清晨
             else if (h >= 9 && h < 17) { sky = 0xCDEBF7; fog = 0xCDEBF7; sunI = 0.95; }  // 白天
@@ -1003,13 +1028,12 @@ document.addEventListener('DOMContentLoaded', () => {
             else { sky = 0x3E4A6B; fog = 0x3E4A6B; sunI = 0.35; }                        // 夜晚
             if (currentTheme === 'room') sky = fog = 0xF5E8D0;
             skyBackground.set(currentTheme === 'room' ? null : (h >= 6 && h < 20 ? 'day' : 'night'), sky,
-                currentTheme==='snow'?'/static/textures/snow-sky-v1':'/static/textures/cloud-sky-v1');
-            scene.fog = new THREE.Fog(fog, 9, 22);
+                currentTheme==='camp'?'/static/textures/alpine-sky-v1':currentTheme==='snow'?'/static/textures/snow-sky-v1':'/static/textures/cloud-sky-v1');
+            scene.fog = new THREE.Fog(fog, currentTheme==='camp'?20:9, currentTheme==='camp'?45:22);
             sun.intensity = sunI;
             hemi.intensity = 0.5 + sunI * 0.4;
             // room 主题光照覆盖（持久化，不被周期刷新重置）
             if (currentTheme === 'room') { hemi.intensity = 0.45; sun.intensity = 0.55; }
-            if (currentTheme === 'camp') { hemi.intensity = 0.35; sun.intensity = 0.25; }
             // 备用地面随昼夜明暗及主题配色变化。
             const gnd = (currentTheme && THEMES[currentTheme]) ? THEMES[currentTheme].ground : { grass: true, day: 0xe8e0d0, dusk: 0xc8c2b8, night: 0x8a8a96 };
             groundMat.map = null;
@@ -1405,7 +1429,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 catch (error) {
                     if(error.name==='AbortError'||!assetLoader.active(assetTicket))throw error;
                     if (!spec.fallback) throw error;
-                    gltf = await loadGlb(spec.fallback,assetTicket);spec.pbr=!!spec.expressive;
+                    gltf = await loadGlb(spec.fallback,assetTicket);spec.pbr=id!==4&&!!spec.expressive;
                     if(spec.expressive)spec.anims={...spec.anims,wave:'wave_paw'};
                     spec.expressive=false;
                     toast('新模型暂时加载失败，已使用备用模型', 'info');

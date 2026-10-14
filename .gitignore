@@ -19,6 +19,7 @@ art/**/source-inspection.json
 art/**/rig-analysis.json
 art/**/export-validation.json
 art/**/validation.json
+art/shepherd-v1/*-build.log
 
 # 手语数据集：视频/含人脸的派生物/授权材料不入库（只保留目录规范与清单）
 A-手语识别模块研发/sign_dataset/raw/
