@@ -1,9 +1,16 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const THREE=require('../static/js/vendor/three.min.js'),{Controller}=require('../static/js/den/head-look');
+const THREE=require('../static/js/vendor/three.min.js'),{Controller,ViewAttention}=require('../static/js/den/head-look');
 vm.runInNewContext(fs.readFileSync('static/js/vendor/GLTFLoader.js','utf8'),{THREE,console,TextDecoder,URL,Blob,self:{URL},setTimeout,clearTimeout});
 THREE.TextureLoader.prototype.load=function(url,onLoad){const t=new THREE.Texture();queueMicrotask(()=>onLoad(t));return t;};
 const parse=p=>new Promise((resolve,reject)=>{const b=fs.readFileSync(p);new THREE.GLTFLoader().parse(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'',resolve,reject);});
 (async()=>{
+ const attention=new ViewAttention(), interactive={x:20,y:30};
+ assert.equal(attention.point(0,null),null,'resting pets look toward camera');
+ attention.moved(100);
+ assert.equal(attention.point(200,interactive),null,'orbit wins over face/pointer attention');
+ attention.moved(1100);
+ assert.equal(attention.point(1500,interactive),null,'damping extends camera attention');
+ assert.equal(attention.point(2400,interactive),interactive,'explicit interaction resumes');
  for(const [breed,path] of [['cat','petchat-cat-v2/cat'],['shiba','petchat-shiba-v4/qiuqiu'],['husky','petchat-husky-v3/xueqiu'],['shepherd','petchat-shepherd-v2/shepherd']]){
   const gltf=await parse('static/models/'+path+'.glb'),model=new THREE.Group();model.add(gltf.scene);model.userData.height=1;
   const look=new Controller(THREE,model),base=look.head.quaternion.clone();assert(look.head&&look.neck,breed);
@@ -16,6 +23,11 @@ const parse=p=>new Promise((resolve,reject)=>{const b=fs.readFileSync(p);new THR
   const initial=sample();model.updateMatrixWorld(true);const origin=look.head.getWorldPosition(new THREE.Vector3()),target=origin.clone().add(new THREE.Vector3(3,1,2));
   for(let i=0;i<120;i++)look.update(1/60,target);
   assert(look.yaw>.7&&look.yaw<.97);assert(look.pitch>.15);assert(sample().distanceTo(initial)>.025,'head surface visibly follows '+breed);
+  const rightPose=sample();
+  for(let i=0;i<120;i++)look.update(1/60,origin.clone().add(new THREE.Vector3(-3,-1,2)));
+  assert(look.yaw<-.7&&look.pitch<-.15,'camera orbit tracks left and down '+breed);
+  assert(sample().distanceTo(rightPose)>.025,'actual skin follows both view directions '+breed);
+  for(let i=0;i<120;i++)look.update(1/60,target);
   const fixed=look.head.quaternion.clone();for(let i=0;i<600;i++)look.update(1/60,target);
   assert(fixed.angleTo(look.head.quaternion)<.001,'no cumulative twist');
   look.beforeFrame();assert(base.toArray().every((v,i)=>Math.abs(v-look.head.quaternion.toArray()[i])<1e-7),'restore animation baseline');
@@ -28,6 +40,9 @@ const parse=p=>new Promise((resolve,reject)=>{const b=fs.readFileSync(p);new THR
   const left=look.screenTarget({x:100,y:300},camera,600,600).clone(),right=look.screenTarget({x:500,y:300},camera,600,600).clone();assert(left.x<right.x,'screen attention projects across camera plane');
  }
  const page=fs.readFileSync('templates/den.html','utf8');
+ const tick=page.slice(page.indexOf('function tick()'));
+ assert(tick.indexOf('controls.update();')<tick.indexOf('headLook.update(poseDt'),'camera damping runs before head tracking');
+ assert(!page.includes('pointerAttention'),'passive hovering must not steal view tracking');
  assert(page.indexOf('headLook?.beforeFrame();',page.indexOf('function tick()'))<page.indexOf('mixer.update(actionTransition'));
  assert(page.indexOf('headLook.update(poseDt')>page.indexOf('mixer.update(actionTransition'));
  console.log('PASS four actual rigs: visible head skin motion, directional limits, no drift, restoration, sleep/run priorities, pointer projection and frame ordering');

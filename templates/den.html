@@ -1145,7 +1145,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ---------- 动画状态机（GLB AnimationMixer 驱动） ----------
         let petModel = null;
-        let facePlay = null, toyWorkshop = null, headLook = null, pointerAttention = null;
+        let facePlay = null, toyWorkshop = null, headLook = null;
+        const viewAttention = new PetHeadLook.ViewAttention();
+        controls.addEventListener('change',()=>viewAttention.moved(performance.now()));
         let mixer = null, actions = {}, activeAction = null, facialBlinkAction = null, faceMode = "open";
         let shibaExpression = null, lastShibaIdle = 'idle';
         let locomotion = null, locomotionEpoch = 0, actionTransition = null;
@@ -1402,7 +1404,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
             const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
             facePlay?.reset();toyWorkshop?.clear();
-            headLook?.beforeFrame();headLook=null;pointerAttention=null;
+            headLook?.beforeFrame();headLook=null;
             dialogueRunner.cancel('');endDialogueHold();
             spawnBusy = true;
             const epoch = ++locomotionEpoch;
@@ -1532,7 +1534,7 @@ document.addEventListener('DOMContentLoaded', () => {
             g.rotation.y = 0.35;                 // 朝向镜头略侧，展示立体感
             petModel = g;
             petModel.userData = { pbr:!!spec.pbr, height: spec.h, headBone, mouthSocket: model.getObjectByName('SOCKET_mouth'), groundY: modeledStage ? .039 : 0, origH, animations: gltf.animations.map(a => clipShort(a.name)) };
-            headLook=new PetHeadLook.Controller(THREE,petModel);petModel.userData.headLook=!!headLook.head;pointerAttention=null;
+            headLook=new PetHeadLook.Controller(THREE,petModel);petModel.userData.headLook=!!headLook.head;
             buildAccessories(model, headBone, neckBone, origH, spec);
             scene.add(petModel); petModel.position.y = petModel.userData.groundY; grabHomeY = petModel.userData.groundY;
             const navigation = new PetNavigation.Navigation({radius:3.2,
@@ -2325,11 +2327,6 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.addEventListener('pointermove', e => {
             if (groundPress && groundPress.id === e.pointerId) groundPress.travel = Math.max(groundPress.travel,Math.hypot(e.clientX-groundPress.x,e.clientY-groundPress.y));
         });
-        canvas.addEventListener('pointermove',e=>{
-            if(e.buttons){pointerAttention=null;return;}
-            const rect=canvas.getBoundingClientRect();pointerAttention={x:e.clientX-rect.left,y:e.clientY-rect.top,t:performance.now()};
-        },true);
-        canvas.addEventListener('pointerleave',()=>{pointerAttention=null;});
         canvas.addEventListener('pointercancel', () => {groundPress=null;});
         canvas.addEventListener('pointerup', e => {
             const press=groundPress; groundPress=null;
@@ -3402,6 +3399,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if(renderDialog.open&&now-renderStatusAt>1000){renderStatusAt=now;renderStats();}
             autoBlinkTick(now);
 
+            controls.update();
+            camera.updateMatrixWorld(true);
             facePlay?.beforeFrame();
             headLook?.beforeFrame();
             if (petModel) {
@@ -3516,7 +3515,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 facePlay?.update(dt,now);
                 if(headLook){
                     const held=toyWorkshop?.held;
-                    const point=facePlay?.attention||(pointerAttention&&now-pointerAttention.t<3500?pointerAttention:null);
+                    const point=viewAttention.point(now,facePlay?.attention);
                     const target=held?.state==='held'?held.node.getWorldPosition(new THREE.Vector3()):
                         point?headLook.screenTarget(point,camera,canvas.clientWidth,canvas.clientHeight):camera.position;
                     headLook.update(poseDt,target,{state:anim.state,blocked:grabbed||dropping||!!actionTransition});
@@ -3601,7 +3600,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         `play=${facePlay?.ball?.phase || "-"} route=${locomotion?.path.length || 0} blocked=${movementBlocked()}`;
                 }
             }
-            controls.update();
             renderer.render(scene, camera);
         }
 

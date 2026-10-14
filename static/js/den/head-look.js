@@ -2,6 +2,12 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.PetHeadLook=api;})(typeof window!=='undefined'?window:globalThis,function(){
  'use strict';
  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+ // Camera motion takes priority over stale face/pointer attention.
+ class ViewAttention{
+  constructor(){this.until=-Infinity;}
+  moved(now){this.until=now+1200;}
+  point(now,interactivePoint){return now<this.until?null:interactivePoint||null;}
+ }
  class Controller{
   constructor(T,model){
    this.T=T;this.model=model;this.elapsed=0;this.yaw=0;this.pitch=0;
@@ -47,5 +53,5 @@
    }
   }
  }
- return {Controller};
+ return {Controller,ViewAttention};
 });
