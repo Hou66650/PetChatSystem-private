@@ -1,3 +1,4 @@
+﻿$ErrorActionPreference = 'Stop'
 $projectRoot=Split-Path -Parent $PSScriptRoot
 $clientRoot=Join-Path $projectRoot 'desktop'
 $electronPath=Join-Path $clientRoot 'node_modules/electron/dist/electron.exe'

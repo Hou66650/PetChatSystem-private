@@ -1,4 +1,4 @@
-# Opt-in only. Return application category/control bounds, never titles or text.
+﻿# Opt-in only. Return application category/control bounds, never titles or text.
 Add-Type @'
 using System; using System.Runtime.InteropServices;
 public class PaitForeground {
