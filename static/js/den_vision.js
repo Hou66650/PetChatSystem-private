@@ -201,7 +201,7 @@ class DenVision {
                     const done=(error)=>{clearTimeout(this.initTimeout);this.initCancel=null;error?reject(error):resolve();};
                     this.initCancel=()=>done(new Error('cancelled'));
                     this.initTimeout=setTimeout(()=>done(new Error('Worker initialization timed out')),30000);
-                    worker.onmessage=({data})=>{if(data.type==='ready')done();else if(data.type==='error')done(new Error(data.message));};
+                    worker.onmessage=({data})=>{if(data.type==='ready'){this.delegate=data.delegate||'CPU';done();}else if(data.type==='error')done(new Error(data.message));};
                     worker.onerror=()=>done(new Error('Worker unavailable'));
                     worker.postMessage({type:'init',face:this.options.face,hands:this.options.hands});
                 });
@@ -221,14 +221,22 @@ class DenVision {
         }
         const fileset=await FilesetResolver.forVisionTasks(WASM_PATH);
         if(epoch!==this.generation)return;
+        const delegates=[];
         const make=async(Task,path,extra)=>{
-            const model=await Task.createFromOptions(fileset,{baseOptions:{modelAssetPath:path,delegate:'CPU'},runningMode:'VIDEO',...extra});
+            let model,gpuContext;
+            try {
+                const canvas=document.createElement('canvas');
+                gpuContext=canvas.getContext('webgl2',{powerPreference:'high-performance'});
+                if(!gpuContext)throw Error('GPU unavailable');
+                model=await Task.createFromOptions(fileset,{canvas,baseOptions:{modelAssetPath:path,delegate:'GPU'},runningMode:'VIDEO',...extra});
+                delegates.push('GPU');
+            } catch(error){gpuContext?.getExtension?.('WEBGL_lose_context')?.loseContext();if(epoch!==this.generation)return null;model=await Task.createFromOptions(fileset,{baseOptions:{modelAssetPath:path,delegate:'CPU'},runningMode:'VIDEO',...extra});delegates.push('CPU');}
             if(epoch!==this.generation){model.close();return null;}return model;
         };
         if(this.options.face){const model=await make(FaceLandmarker,FACE_MODEL,{numFaces:1});if(epoch===this.generation)this.face=model;}
         if(epoch!==this.generation)return;
         if(this.options.hands){const model=await make(HandLandmarker,HAND_MODEL,{numHands:2});if(epoch===this.generation)this.hand=model;}
-        this.backend='main';
+        this.delegate=[...new Set(delegates)].join(' + ');this.backend='main';
     }
     _runtimeError() {
         if(++this._errStreak>=3){this.stop();this.onError('runtime',new Error('Inference failed'));}

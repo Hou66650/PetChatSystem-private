@@ -7,10 +7,25 @@ self.onmessage = async ({data}) => {
     try {
       const {FilesetResolver, FaceLandmarker, HandLandmarker} = await tasks;
       const fileset = await FilesetResolver.forVisionTasks('/static/js/vendor/mediapipe');
-      const base = name => ({modelAssetPath: '/static/js/vendor/mediapipe/' + name + '_landmarker.task', delegate: 'CPU'});
-      if (data.face) face = await FaceLandmarker.createFromOptions(fileset, {baseOptions: base('face'), runningMode:'VIDEO', numFaces:1});
-      if (data.hands) hand = await HandLandmarker.createFromOptions(fileset, {baseOptions: base('hand'), runningMode:'VIDEO', numHands:2});
-      self.postMessage({type:'ready'});
+      const delegates=[];
+      async function create(Task,name,extra){
+        const modelAssetPath='/static/js/vendor/mediapipe/'+name+'_landmarker.task';
+        let gpuContext;
+        try {
+          const canvas=new OffscreenCanvas(640,480);
+          gpuContext=canvas.getContext('webgl2',{powerPreference:'high-performance'});
+          if(!gpuContext)throw Error('GPU context unavailable');
+          const model=await Task.createFromOptions(fileset,{canvas,baseOptions:{modelAssetPath,delegate:'GPU'},runningMode:'VIDEO',...extra});
+          delegates.push('GPU');return model;
+        } catch(error) {
+          gpuContext?.getExtension?.('WEBGL_lose_context')?.loseContext();
+          const model=await Task.createFromOptions(fileset,{baseOptions:{modelAssetPath,delegate:'CPU'},runningMode:'VIDEO',...extra});
+          delegates.push('CPU');return model;
+        }
+      }
+      if (data.face) face=await create(FaceLandmarker,'face',{numFaces:1});
+      if (data.hands) hand=await create(HandLandmarker,'hand',{numHands:2});
+      self.postMessage({type:'ready',delegate:[...new Set(delegates)].join(' + ')});
     } catch (error) { face?.close(); hand?.close(); self.postMessage({type:'error', message:String(error)}); }
   } else if (data.type === 'frame') {
     try {

@@ -403,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-breath" data-icon="breath">呼吸</button>
             <button class="action-btn" id="btn-games" data-icon="gamepad">游戏中心</button>
             <button class="action-btn" id="btn-companion">陪伴档案</button>
-            <button class="action-btn" id="btn-music" data-icon="music">音乐</button></div>
+            <button class="action-btn" id="btn-music" data-icon="music">音乐</button><button class="action-btn" id="btn-render-settings">流畅度</button></div>
         </section>
 
 
@@ -505,6 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <!-- 视觉互动：本地 WASM 推理，摄像头画面不上传 -->
         {% include '_faceplay.html' %}
+        {% include '_render_settings.html' %}
         <div class="vision-box hidden" id="vision-box">
             <video id="vision-cam" autoplay playsinline muted></video>
             <div class="vision-status" id="vision-status">启动中…</div>
@@ -553,6 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/pet-profile.js') }}?v={{ app_version }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/den_vision.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/pet-sounds.js?v=1"></script>
+    <script src="/static/js/den/render-budget.js?v={{ app_version }}"></script>
     <script src="/static/js/den/face-play.js?v={{ app_version }}"></script>
     <script>
     /* ============================================================
@@ -632,7 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ---------- 渲染基础 ----------
         const canvas = document.getElementById('den-canvas');
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });
         renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -675,11 +677,20 @@ document.addEventListener('DOMContentLoaded', () => {
             (qParam !== 'high' && ((navigator.deviceMemory && navigator.deviceMemory <= 4) ||
                 (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)));
         const PARTICLE_SCALE = lowPower ? 0.6 : 1;   // 粒子约减 40%
-        if (lowPower) {
-            renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.25));
-            sun.shadow.mapSize.set(1024, 1024);   // 阴影贴图 2048→1024
-            if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+        let savedQuality='auto';try{savedQuality=localStorage.getItem('mpc_render_quality')||'auto';}catch(e){}
+        const renderBudget=new RenderBudget.Controller(renderer,sun,{mode:qParam||savedQuality,low:lowPower});
+        const renderDialog=document.getElementById('render-dialog'),qualitySelect=document.getElementById('render-quality');
+        qualitySelect.value=renderBudget.policy.mode;
+        document.getElementById('btn-render-settings').onclick=()=>{renderDialog.showModal();renderStats();};
+        qualitySelect.onchange=()=>{renderBudget.setMode(qualitySelect.value);try{localStorage.setItem('mpc_render_quality',qualitySelect.value);}catch(e){}renderStats();};
+        function renderStats(){
+            const s=renderBudget.stats();
+            document.getElementById('render-summary').textContent=`${s.fps?s.fps.toFixed(0)+' FPS':'测量中'} · ${s.level} · 清晰度 ${s.ratio.toFixed(2)}×`;
+            document.getElementById('render-device').textContent=s.device;
+            document.getElementById('render-vision').textContent=dv?.running?`${dv.backend==='worker'?'后台线程':'主线程回退'} / ${dv.delegate||'CPU'}`:'未开启';
+            document.getElementById('render-advice').textContent=s.software?'当前使用软件渲染，请开启浏览器图形加速。':/Intel|UHD|Iris/i.test(s.device)?'当前使用 Intel 核显。如果电脑有独显，可按下方方法切换高性能显卡。':'页面已请求高性能 GPU；上方显示的是浏览器实际选择的设备。';
         }
+        let renderStatusAt=0;
 
         // 摄像头能力：HTTP/VPN 非安全上下文无法 getUserMedia —— 按钮保留但友好降级
         const cameraAvailable = Boolean(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
@@ -2110,6 +2121,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showBubble(`${SPECS[currentPetId].name}${names[ps.accessory]}`, 1800);
         }
         function doPhoto() {
+            renderer.shadowMap.needsUpdate=true;
             renderer.render(scene, camera);
             const a = document.createElement('a');
             a.download = `我的${SPECS[currentPetId].name}-${new Date().toISOString().slice(0, 10)}.png`;
@@ -3285,6 +3297,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cancelPointerDrag();          // S1-11：页面隐藏取消进行中的喂食操作
                 cancelGestureAction('page-hidden');
                 facePlay?.reset();
+                renderBudget.reset();
                 if (visionOn || dv?.starting) {
                     stopVision();
                     const b = document.getElementById('btn-vision');
@@ -3306,6 +3319,7 @@ document.addEventListener('DOMContentLoaded', () => {
         function tick() {
             requestAnimationFrame(tick);
             const frameDelta = clock.getDelta();
+            if(document.hidden){renderBudget.reset();return;}
             const dt = Math.min(frameDelta, 0.05);
             // Navigation keeps small physics steps; stationary pose transitions use elapsed time.
             const poseDt = Math.min(frameDelta, 0.5);
@@ -3314,6 +3328,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (now - timeOfDayChecked > 60000) { applyTimeOfDay(); timeOfDayChecked = now; }
             if(waterfallFlow)waterfallFlow.update(t);
+            renderBudget.frame(frameDelta,now);
+            if(renderDialog.open&&now-renderStatusAt>1000){renderStatusAt=now;renderStats();}
             autoBlinkTick(now);
 
             facePlay?.beforeFrame();
@@ -3501,7 +3517,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         `anim=${anim.state}/${activeAction ? activeAction.getClip().name : '-'} | ` +
                         `grab=${grabbed} drop=${dropping} gest=${gestureAction ? gestureAction.type : '-'} | ` +
                         `hand=${dv && dv.handState.present ? (dv.handState.pinching ? 'pinch' : 'ok') : 'no'} | ` +
-                        `fps=${(1 / Math.max(dt, 0.001)).toFixed(0)} int=${ps.intimacy} | ` +
+                        `fps=${(1 / Math.max(frameDelta, 0.001)).toFixed(0)} draws=${renderer.info.render.calls} triangles=${renderer.info.render.triangles} GPU=${renderBudget.device} | ` +
                         `play=${facePlay?.ball?.phase || "-"} route=${locomotion?.path.length || 0} blocked=${movementBlocked()}`;
                 }
             }
@@ -3521,6 +3537,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // S1-11/S1-12：旋转/缩放窗口 → 取消进行中的喂食操作并重算托盘命中矩形
         function onViewportChange() {
+            renderBudget.apply();
             cancelPointerDrag();
             cancelGestureAction('viewport-change');
             refreshTrayRects();

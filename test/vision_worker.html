@@ -1,5 +1,5 @@
 <!doctype html><html lang="zh"><meta charset="UTF-8"><title>离线视觉 Worker 验收</title><h1>离线视觉 Worker 验收</h1><p>只处理本页绘制的空白测试画面，不访问摄像头。</p><button id="face">仅脸部模型</button><button id="hands">仅手部模型</button><button id="both">脸部和手部模型</button><pre id="result" role="status">等待开始</pre><canvas width="640" height="480" id="image"></canvas><script>
-let worker;
+let worker,delegate;
 for(const button of document.querySelectorAll('button'))button.onclick=async()=>{
  worker?.terminate();document.querySelectorAll('button').forEach(b=>b.disabled=true);
  const result=document.getElementById('result');result.textContent='加载识别模型…';
@@ -7,9 +7,10 @@ for(const button of document.querySelectorAll('button'))button.onclick=async()=>
  worker.onerror=e=>{result.textContent='ERROR: '+e.message;document.querySelectorAll('button').forEach(b=>b.disabled=false);};
  worker.onmessage=async({data})=>{
   if(data.type==='ready'){
+   delegate=data.delegate;
    const canvas=document.getElementById('image'),ctx=canvas.getContext('2d');ctx.fillStyle='#faf9f4';ctx.fillRect(0,0,640,480);
    const image=await createImageBitmap(canvas);worker.postMessage({type:'frame',image,ts:performance.now()},[image]);
-  } else {result.textContent=JSON.stringify({mode:button.id,...data},null,2);worker.terminate();document.querySelectorAll('button').forEach(b=>b.disabled=false);}
+  } else {result.textContent=JSON.stringify({mode:button.id,delegate,...data},null,2);worker.terminate();document.querySelectorAll('button').forEach(b=>b.disabled=false);}
  };
  worker.postMessage({type:'init',face:button.id!=='hands',hands:button.id!=='face'});
 };

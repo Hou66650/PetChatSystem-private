@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const {Policy,Controller}=require('../static/js/den/render-budget.js');
+const p=new Policy();
+for(let i=0;i<20;i++)p.sample(1/20);assert.equal(p.level,0,'startup has a grace period');
+for(let i=0;i<220;i++)p.sample(1/20);assert.equal(p.level,2,'sustained slow frames reduce cost');
+for(let i=0;i<180;i++)p.sample(1/60);assert.equal(p.level,2,'short fast burst cannot oscillate quality');
+for(let i=0;i<2100;i++)p.sample(1/60);assert.equal(p.level,0,'sustained recovery restores quality');
+p.setMode('high');for(let i=0;i<300;i++)p.sample(.1);assert.equal(p.level,0,'manual detail is respected');
+p.setMode('low');for(let i=0;i<2000;i++)p.sample(1/60);assert.equal(p.level,2);
+p.setMode('invalid');assert.equal(p.mode,'auto');p.reset();assert.equal(p.frames,0);
+let disposed=0,ratio=1;
+const renderer={domElement:{clientWidth:3840,clientHeight:2160},shadowMap:{},info:{render:{calls:50,triangles:190000}},getContext:()=>({RENDERER:1,getExtension:()=>null,getParameter:()=> 'ANGLE Intel UHD'}),setPixelRatio:r=>ratio=r,getPixelRatio:()=>ratio,setSize(){}};
+const sun={shadow:{mapSize:{x:2048,set(x,y){this.x=x;this.y=y;}},map:{dispose(){disposed++}}}};
+const c=new Controller(renderer,sun);
+assert.equal(disposed,1);assert.equal(sun.shadow.mapSize.x,1024);assert(ratio*ratio*3840*2160<=2400001,'4K is bounded by the pixel budget');
+assert.equal(renderer.shadowMap.autoUpdate,false);c.frame(.016,0);renderer.shadowMap.needsUpdate=false;c.frame(.016,10);assert.equal(renderer.shadowMap.needsUpdate,false);c.frame(.016,60);assert.equal(renderer.shadowMap.needsUpdate,true);
+c.setMode('low');assert.equal(sun.shadow.mapSize.x,512);assert.equal(c.stats().device,'ANGLE Intel UHD');
+console.log('PASS adaptive recovery/hysteresis, manual modes, 4K pixel budget, shadow throttling/disposal, accurate renderer diagnostics');

@@ -52,6 +52,15 @@ const video=()=>({srcObject:null,readyState:2,currentTime:1,clientWidth:640,clie
   const pending=d.start(video());await flush();const s=d.stream;d.stop();resolveModel(late);
   assert.equal(await pending,false);assert.equal(late.closed,1);assert.equal(s.track.stops,1);assert.equal(d.running,false);
  });
+ await check('main-thread fallback requests GPU and reports the selected delegate',async()=>{
+  const h=harness({document:{createElement:()=>({getContext:()=>({})})}}),d=new h.D();d.configure({hands:false});
+  assert.equal(await d.start(video()),true);assert.equal(h.requested[0].baseOptions.delegate,'GPU');assert.equal(d.delegate,'GPU');d.stop();assert.equal(h.models[0].closed,1);
+ });
+ await check('GPU initialization failure releases context and falls back to CPU',async()=>{
+  const attempts=[];let lost=0,closed=0;
+  const h=harness({document:{createElement:()=>({getContext:()=>({getExtension:()=>({loseContext(){lost++;}})})})},FaceLandmarker:{createFromOptions:async(f,o)=>{attempts.push(o.baseOptions.delegate);if(o.baseOptions.delegate==='GPU')throw Error('driver unavailable');return {close(){closed++;}};}}}),d=new h.D();d.configure({hands:false});
+  assert.equal(await d.start(video()),true);assert.deepEqual(attempts,['GPU','CPU']);assert.equal(lost,1);assert.equal(d.delegate,'CPU');d.stop();assert.equal(closed,1);
+ });
  await check('mirror and calibration map a comfortable hand center to the canvas center',()=>{
   const {D}=harness(),d=new D();d.canvasSize={w:800,h:600};d.handState.present=true;d.lastRaw={x:.3,y:.6};
   d.calibrate();assert.equal(d._point(.3,.6).x,400);assert.equal(d._point(.3,.6).y,300);

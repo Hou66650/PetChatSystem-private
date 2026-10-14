@@ -1,0 +1,10 @@
+<dialog id="render-dialog" aria-labelledby="render-title" class="render-dialog">
+  <form method="dialog"><button class="action-btn" aria-label="关闭流畅度设置">✕</button></form>
+  <h2 id="render-title">让小窝更流畅</h2>
+  <p>自动模式会根据帧率调整清晰度和阴影，保留宠物与小岛模型细节。</p>
+  <label for="render-quality">画面偏好</label>
+  <select id="render-quality"><option value="auto">自动平衡（推荐）</option><option value="high">优先细腻</option><option value="low">优先流畅</option></select>
+  <dl><dt>当前画面</dt><dd id="render-summary">正在测量…</dd><dt>实际渲染设备</dt><dd id="render-device">正在检测…</dd><dt>摄像头识别</dt><dd id="render-vision">未开启</dd></dl>
+  <p id="render-advice"></p>
+  <details><summary>显卡切换方法</summary><p>Chrome 设置 → 系统 → 开启图形加速。Windows 设置 → 系统 → 显示 → 图形，为 Chrome 选择「高性能」显卡。保存后需要重启 Chrome 才会生效。</p></details>
+</dialog>
