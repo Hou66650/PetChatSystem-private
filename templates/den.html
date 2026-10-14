@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>宠物小窝 · MPC 宠物聊天</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <link rel="stylesheet" href="/static/css/toy-workshop.css?v={{ app_version }}">
     <style>
         html, body { height: 100%; }
         body.theme { padding-top: var(--nav-h); margin: 0; overflow: hidden; background: var(--c-bg); }
@@ -403,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-breath" data-icon="breath">呼吸</button>
             <button class="action-btn" id="btn-games" data-icon="gamepad">游戏中心</button>
             <button class="action-btn" id="btn-companion">陪伴档案</button>
-            <button class="action-btn" id="btn-music" data-icon="music">音乐</button><button class="action-btn" id="btn-render-settings">流畅度</button></div>
+            <button class="action-btn" id="btn-music" data-icon="music">音乐</button><button class="action-btn" id="btn-toys">玩具柜</button><button class="action-btn" id="btn-render-settings">流畅度</button></div>
         </section>
 
 
@@ -506,6 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <!-- 视觉互动：本地 WASM 推理，摄像头画面不上传 -->
         {% include '_faceplay.html' %}
         {% include '_render_settings.html' %}
+        {% include '_toy_workshop.html' %}
         <div class="vision-box hidden" id="vision-box">
             <video id="vision-cam" autoplay playsinline muted></video>
             <div class="vision-status" id="vision-status">启动中…</div>
@@ -556,6 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="/static/js/pet-sounds.js?v=1"></script>
     <script src="/static/js/den/render-budget.js?v={{ app_version }}"></script>
     <script src="/static/js/den/face-play.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/toy-workshop.js?v={{ app_version }}"></script>
     <script>
     /* ============================================================
        3D 宠物小窝 —— Quaternius CC0 骨骼动画 GLB 模型 + 交互系统
@@ -921,8 +924,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const SAKURA_NAV = {"radius": 3.2, "obstacles": [{"x": -2.1, "z": -1.5, "r": 0.36}, {"x": 2.25, "z": -1.2, "r": 0.38}, {"kind": "rect", "x": 0, "z": -2.65, "w": 3.7, "d": 0.26}, {"x": -2, "z": 0.15, "r": 0.18}, {"x": -1.75, "z": 0.6, "r": 0.13}], "interest_points": [{"name": "food", "x": -1.45, "z": 0.15}, {"name": "ball", "x": -1.2, "z": 0.6}, {"name": "rest", "x": 0.7, "z": 0.45}]};
         const SNOW_NAV = {"radius":3.2,"obstacles":[{"x":-2.0,"z":-1.55,"r":0.54},{"x":-0.85,"z":-2.35,"r":0.41},{"kind":"rect","x":2.2,"z":-1.2,"w":0.85,"d":0.25},{"x":2.65,"z":0.3,"r":0.43},{"x":2.7,"z":0.85,"r":0.3},{"x":-1.7,"z":0.65,"r":0.14}],"interest_points":[{"name":"ball","x":-1.0,"z":0.65},{"name":"rest","x":0.65,"z":0.4}]};
         const MODELED_STAGES = {
-            sakura: {url:"/static/models/petchat-waterfalls-v1/sakura.glb?v=1.7.2", navigation:{...SAKURA_NAV,...SakuraRiverLayout}},
-            snow: {url:"/static/models/petchat-snow-v2/snow.glb?v=1.8.0", navigation:SnowHavenLayout}
+            sakura: {url:"/static/models/petchat-toys-v1/sakura.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('sakura',{...SAKURA_NAV,...SakuraRiverLayout})},
+            snow: {url:"/static/models/petchat-toys-v1/snow.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('snow',SnowHavenLayout)}
         };
         function applyTheme(name, assetTicket) {
             const t = THEMES[name], modeledSpec = MODELED_STAGES[name];
@@ -961,7 +964,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 envSprites.push(sp);
             }
             if (!modeledSpec) return Promise.resolve();
-            return assetLoader.glb(modeledSpec.url,assetTicket).then(gltf => {
+            return assetLoader.glb(modeledSpec.url,assetTicket).then(async gltf => {
                 if (epoch !== themeEpoch) { disposeObjectTree(gltf.scene); return; }
                 gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
                 decorGroup.add(gltf.scene); modeledStage = true; ground.visible = false; rug.visible = false;
@@ -970,6 +973,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(name==='snow')for(const [x,z,h] of [[1.25,-1.12,1.0],[2.35,-.8,1],[0,-2.8,1]]){
                     const light=new THREE.PointLight(0xFFBF77,.30,2);light.position.set(x,h,z);decorGroup.add(light);
                 }
+                try {
+                    const toys=await assetLoader.glb('/static/models/petchat-toys-v1/cabinet.glb?v={{ app_version }}',assetTicket);
+                    if(epoch!==themeEpoch){disposeObjectTree(toys.scene);return;}
+                    toyWorkshop.attach(toys.scene,gltf.scene,name);
+                } catch(error){if(error.name!=='AbortError')console.warn('玩具柜暂时无法加载',error);}
+
             }).catch(error => {
                 if(error.name==='AbortError')return;
                 if (epoch === themeEpoch) { t.build(decorGroup); console.warn('庭院资产加载失败，使用原布景', error); }
@@ -1100,7 +1109,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ---------- 动画状态机（GLB AnimationMixer 驱动） ----------
         let petModel = null;
-        let facePlay = null;
+        let facePlay = null, toyWorkshop = null;
         let mixer = null, actions = {}, activeAction = null, facialBlinkAction = null, faceMode = "open";
         let shibaExpression = null, lastShibaIdle = 'idle';
         let locomotion = null, locomotionEpoch = 0, actionTransition = null;
@@ -1354,7 +1363,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!SPECS[id]) { toast('这只宠物还不认识我们哦', 'error'); return; }
             if (id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
             const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
-            facePlay?.reset();
+            facePlay?.reset();toyWorkshop?.clear();
             dialogueRunner.cancel('');endDialogueHold();
             spawnBusy = true;
             const epoch = ++locomotionEpoch;
@@ -2291,7 +2300,7 @@ document.addEventListener('DOMContentLoaded', () => {
             button.textContent='自由活动：'+(enabled?'开':'关');button.setAttribute('aria-pressed',String(enabled));
         }
         function movementBlocked() {
-            return document.hidden || ['held','flight'].includes(facePlay?.ball?.phase) || spawnBusy || !petModel || anim.birth < 1 || grabbed || dropping || bounceBack > 0 || (interactionBusy() && !facePlay?.guiding) ||
+            return document.hidden || toyWorkshop?.held?.state==='held' || ['held','flight'].includes(facePlay?.ball?.phase) || spawnBusy || !petModel || anim.birth < 1 || grabbed || dropping || bounceBack > 0 || (interactionBusy() && !facePlay?.guiding) ||
                 performing() || (chatBusy&&!dialogueRunner.active) || (voiceBusy&&!dialogueRunner.active) || breathActive || !gameOverlay.hidden || !gamesMask.hidden || !moodMask.hidden ||
                 (!dialogueRunner.active && !document.getElementById('den-chat').classList.contains('hidden')) ||
                 !['idle','walk','trot'].includes(anim.state) || performance.now()<anim.until;
@@ -2391,7 +2400,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.__denExpression=()=>shibaExpression?{...shibaExpression.debug(),state:anim.state,clips:Object.keys(ShibaExpression.acts).filter(k=>actions[k])}:null;
         // Explicit user interactions override an old dialogue plan.
         ['btn-pet','btn-feed-bone','btn-feed-fish','btn-feed-cookie','btn-roam','btn-recall','btn-rest','btn-sniff','btn-games','btn-breath','btn-vision'].forEach(id=>{
-            document.getElementById(id).addEventListener('click',()=>{facePlay?.reset();dialogueRunner.cancel('');endDialogueHold();},true);
+            document.getElementById(id).addEventListener('click',()=>{toyWorkshop?.cancel();facePlay?.reset();dialogueRunner.cancel('');endDialogueHold();},true);
         });
         renderer.domElement.addEventListener('pointerdown',()=>{if(dialogueRunner.active||dialogueHeld||chatBusy){dialogueRunner.cancel('已转为手动互动');endDialogueHold();}},true);
         window.__denDialogue={run:plan=>dialogueRunner.run(plan),cancel:()=>dialogueRunner.cancel('已停止'),debug:()=>({active:dialogueRunner.active,held:dialogueHeld,status:dialogueRunner.message,log:dialogueRunner.log,transition:actionTransition?{clip:actionTransition.action.getClip().name,time:actionTransition.action.time,duration:actionTransition.action.getClip().duration}:null})};
@@ -3089,6 +3098,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (vStatus) vStatus.innerHTML = txt.split('|').map(s => s.includes('中') ? `<b>${s}</b>` : s).join('<br>');
         }
         function stopVision() {
+            toyWorkshop?.cancel();
             ++visionAttempt;
             facePlay?.camera(false);
             document.getElementById('vision-start').disabled=false;
@@ -3104,6 +3114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // 视觉回调（顶层定义：真实摄像头与 __denGestureDebug 注入共用同一条仲裁链路）
         function handleVisionGrab(pinching, pos, reason) {
+            if(toyWorkshop?.grab(pinching,pos,reason))return;
             if(pinching && facePlay?.a.busy())return;
             if(facePlay?.grab(pinching,pos,reason))return;
             if (pinching && pos) {
@@ -3114,7 +3125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         let vhLastWrite = null;   // DOM 写入节流：位置/状态真变化才写样式
         function handleVisionHand(h) {
-            facePlay?.hand(h);
+            facePlay?.hand(h);toyWorkshop?.hand(h);
             const pinchEl = document.getElementById('vision-pinch');
             lastHandMirror = h;   // 状态栏镜像：真实检测与调试注入一致
             if (h.present) {
@@ -3173,16 +3184,17 @@ document.addEventListener('DOMContentLoaded', () => {
             visionRenderStatus();
         }
         facePlay=new FacePlay.Controller({
-            THREE,scene,canvas,camera,
+            THREE,scene,canvas,camera,toys:()=>toyWorkshop,
             foodActive:()=>Boolean(foodDrag?.dragging||gestureAction?.type==='food'),
             model:()=>petModel,id:()=>currentPetId,locomotion:()=>locomotion,head:petHeadPos,mouth:petMouthWorld,
-            busy:()=>document.hidden||facePlay?.panel.open||actingDialog.open||spawnBusy||!petModel||anim.birth<1||grabbed||dropping||performing()||dialogueRunner.active||chatBusy||voiceBusy||breathActive||!gameOverlay.hidden||!gamesMask.hidden||!moodMask.hidden||!document.getElementById('den-chat').classList.contains('hidden'),
+            busy:()=>document.hidden||toyWorkshop?.dialog.open||renderDialog.open||facePlay?.panel.open||actingDialog.open||spawnBusy||!petModel||anim.birth<1||grabbed||dropping||performing()||dialogueRunner.active||chatBusy||voiceBusy||breathActive||!gameOverlay.hidden||!gamesMask.hidden||!moodMask.hidden||!document.getElementById('den-chat').classList.contains('hidden'),
             act:(key,duration)=>setAnim(actions[key]?key:(key==='idle'?'idle':'petting'),duration),
             say:text=>showBubble(text,1800,true),reward:()=>rewardIntimacy('hand'),
             cancelStarting:()=>{if(dv?.starting)stopVision();},
             stop:stopVision,configure:options=>dv?.configure(options),calibrate:()=>dv?.calibrate(),
             cancelCommands:()=>{dialogueRunner.cancel('');endDialogueHold();}
         });
+        toyWorkshop=new ToyWorkshop.Controller({THREE,scene,canvas,camera,face:()=>facePlay,model:()=>petModel,locomotion:()=>locomotion,busy:()=>facePlay.a.busy(),cancelCommands:()=>{dialogueRunner.cancel('');endDialogueHold();},act:(key,ms)=>facePlay.a.act(key,ms),say:text=>showBubble(text,1800,true),dispose:disposeObjectTree,flightPoint:FacePlay.flightPoint});
         document.getElementById('btn-vision').addEventListener('click',()=>facePlay.panel.showModal());
         document.getElementById('btn-vision').setAttribute('aria-haspopup','dialog');
         document.getElementById('vision-start').addEventListener('click', async function () {
@@ -3206,7 +3218,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 onSnap() {
                     // 打响指 → 宠物被惊到：跳起 + 星星 + 气泡 + 短暂缩一下（表演中不打扰）
-                    if (!petModel || grabbed || performing() || facePlay?.ball) return;
+                    if (!petModel || grabbed || performing() || facePlay?.ball || toyWorkshop?.held) return;
                     setAnim(shibaExpression?'surprise':'happy', 1300);
                     burst('star', 5);
                     showBubble(`${SPECS[currentPetId].name}竖起耳朵：咦，手指动得好快！`, 2000);
@@ -3288,7 +3300,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else handSec = 0;
             }, 500);
         });
-        window.addEventListener('pagehide', () => { stopVision(); facePlay?.reset(); });
+        window.addEventListener('pagehide', () => { toyWorkshop?.cancel();stopVision(); facePlay?.reset(); });
         // 切到其他标签页立即停摄像头（隐私指示灯不该常亮）
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
@@ -3296,7 +3308,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (locomotion) locomotion.interrupt();
                 cancelPointerDrag();          // S1-11：页面隐藏取消进行中的喂食操作
                 cancelGestureAction('page-hidden');
-                facePlay?.reset();
+                toyWorkshop?.cancel();facePlay?.reset();
                 renderBudget.reset();
                 if (visionOn || dv?.starting) {
                     stopVision();
@@ -3441,6 +3453,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const ground=locomotion.navigation.surfaceHeight(petModel.position);
                     petModel.userData.groundY=ground;grabHomeY=ground;petModel.position.y=ground;
                 }
+                toyWorkshop?.update(dt,now);
                 facePlay?.update(dt,now);
                 const st = anim.state;
 

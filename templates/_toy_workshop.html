@@ -1,0 +1,11 @@
+<dialog id="toy-dialog" aria-labelledby="toy-title" class="toy-dialog">
+ <header><div><span class="eyebrow">LITTLE PLAYROOM</span><h2 id="toy-title">今天，想玩哪一个？</h2></div><form method="dialog"><button class="dock-close" aria-label="关闭玩具柜">✕</button></form></header>
+ <p>岛上的球和柜格里的玩具都可以直接拿起。选一个，移动到空地，看清绿色落点再松手。</p>
+ <div id="toy-grid"></div><p id="toy-status" role="status">正在准备当前小岛的玩具…</p>
+ <button type="button" id="toy-recall">全部收好 · 道具归位</button>
+</dialog>
+<section id="toy-held" aria-label="手里的玩具" hidden>
+ <div><strong id="toy-held-name"></strong><span>拖向空地，松手操作</span></div>
+ <div class="toy-held-actions"><button type="button" data-toy-mode="throw" aria-pressed="true">抛出</button><button type="button" data-toy-mode="place" aria-pressed="false">放下</button><button type="button" id="toy-use">逗逗它 / 捏一捏</button><button type="button" id="toy-cancel">归还 · Esc</button></div>
+ <p id="toy-target" role="status">绿色可以落下，红色不可投放。</p>
+</section>

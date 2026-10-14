@@ -1,0 +1,15 @@
+{
+  "snow": {
+    "detached_vertices": 271,
+    "bytes": 4847808
+  },
+  "sakura": {
+    "detached_vertices": 231,
+    "bytes": 15409328
+  },
+  "cabinet": {
+    "meshes": 8,
+    "triangles": 21696,
+    "bytes": 1284088
+  }
+}

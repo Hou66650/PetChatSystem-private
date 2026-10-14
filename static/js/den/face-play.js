@@ -9,6 +9,7 @@
     for(const key of ['centerX','centerY'])out[key]=clamp(Number(value[key])||.5,.05,.95);
     out.sensitivity=clamp(Number(value.sensitivity)||1.3,.6,2.5);return out;
   }
+  function flightPoint(from,to,t,lift=.65){return {x:from.x+(to.x-from.x)*t,y:from.y+(to.y-from.y)*t+Math.sin(Math.PI*t)*lift,z:from.z+(to.z-from.z)*t};}
   function zoneAt(point,zones){
     let best=null,score=1;
     for(const zone of zones){const d=Math.hypot((point.x-zone.x)/zone.rx,(point.y-zone.y)/zone.ry);if(d<score){score=d;best=zone;}}
@@ -61,29 +62,31 @@
       document.getElementById('faceplay-exit').onclick=()=>{api.stop();this.pointerMode=false;this.reset();this.render();};
       document.getElementById('faceplay-settings').onclick=()=>this.panel.showModal();
       for(const button of this.hud.querySelectorAll('[data-play-tool]'))button.onclick=()=>{
-        this.reset();this.mode=button.dataset.playTool;this.render();
+        api.toys?.()?.cancel();this.reset();this.mode=button.dataset.playTool;this.render();
         this.note(this.mode==='ball'?'在空地按住并拖动，松手抛球；摄像头模式捏合拿球，松开投出。':this.mode==='brush'?'用刷子沿背部缓缓移动。':'触碰头顶、下巴或背部，试试不同速度。');
       };
       document.getElementById('faceplay-toss').onclick=()=>{
         const loc=api.locomotion(),m=api.model();if(!loc||!m||api.busy())return;
         const path=loc.navigation.randomDestination(m.position);
-        if(path?.length){this.holdBall();this.throwBall(path[path.length-1]);}
+        if(path?.length){if(api.toys?.()){api.toys().quickToss(path[path.length-1]);}else{this.holdBall();this.throwBall(path[path.length-1]);}}
       };
       const canvas=api.canvas;
       canvas.addEventListener('pointerdown',event=>{
+        if(api.toys?.()?.pointerDown(event))return;
         if(!this.pointerMode||!event.isPrimary||event.button!==0)return;
         event.preventDefault();event.stopImmediatePropagation();api.cancelCommands();this.pressed=event.pointerId;canvas.setPointerCapture(event.pointerId);
-        this.pointer(event);if(this.mode==='ball')this.holdBall();
+        this.pointer(event);if(this.mode==='ball'){if(api.toys?.()){api.toys().startDefault(event);}else this.holdBall();}
       },true);
-      canvas.addEventListener('pointermove',event=>{if(this.pointerMode&&event.pointerId===this.pressed){event.preventDefault();event.stopImmediatePropagation();this.pointer(event);}},true);
+      canvas.addEventListener('pointermove',event=>{if(api.toys?.()?.pointerMove(event))return;if(this.pointerMode&&event.pointerId===this.pressed){event.preventDefault();event.stopImmediatePropagation();this.pointer(event);}},true);
       canvas.addEventListener('pointerup',event=>{
+        if(api.toys?.()?.pointerUp(event))return;
         if(!this.pointerMode||event.pointerId!==this.pressed)return;
         event.preventDefault();event.stopImmediatePropagation();this.pointer(event);
         if(this.ball?.phase==='held')this.throwBall(this.ground(this.input.x,this.input.y));
         this.pressed=null;this.input=null;this.touch.reset();this.hideHalo();
         if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);
       },true);
-      canvas.addEventListener('pointercancel',()=>{this.pressed=null;this.reset();},true);
+      canvas.addEventListener('pointercancel',()=>{api.toys?.()?.cancel();this.pressed=null;this.reset();},true);
       this.render();
     }
     persist(){try{localStorage.setItem('mpc_faceplay_v1',JSON.stringify(this.options));}catch(e){}}
@@ -102,7 +105,7 @@
       this.input={x:h.sx,y:h.sy,t:performance.now(),pinching:h.pinching};
     }
     grab(on,pos,reason){
-      if(this.mode!=='ball')return false;
+      if(this.a.toys?.()||this.mode!=='ball')return false;
       if(on&&pos)this.holdBall();
       else if(this.ball?.phase==='held'){
         if(reason==='lost'||reason==='stop'||!pos)this.reset();
@@ -122,9 +125,9 @@
       }
     }
     project(world){const p=world.clone().project(this.a.camera);return {x:(p.x*.5+.5)*this.a.canvas.clientWidth,y:(-.5*p.y+.5)*this.a.canvas.clientHeight};}
-    ground(x,y){
+    ground(x,y,height=0){
       const T=this.a.THREE,r=new T.Raycaster();r.setFromCamera(new T.Vector2(x/this.a.canvas.clientWidth*2-1,1-y/this.a.canvas.clientHeight*2),this.a.camera);
-      return r.ray.intersectPlane(new T.Plane(new T.Vector3(0,1,0),0),new T.Vector3());
+      return r.ray.intersectPlane(new T.Plane(new T.Vector3(0,1,0),-height),new T.Vector3());
     }
     zones(){
       const m=this.a.model();if(!m)return [];
@@ -149,15 +152,15 @@
     reset(keepPointer=false){
       if(!keepPointer && this.pressed!=null){const c=this.a.canvas;if(c?.hasPointerCapture(this.pressed))c.releasePointerCapture(this.pressed);this.pressed=null;}
       this.beforeFrame();this.releaseGuide();this.touch.reset();this.input=null;this.face=null;this.hideHalo();
-      if(this.ball){this.a.scene.remove(this.ball.mesh);this.ball.mesh.geometry.dispose();this.ball.mesh.material.dispose();this.ball=null;this.a.locomotion()?.interrupt();}
+      if(this.ball){const b=this.ball;this.ball=null;if(b.item)b.item.release(['drop','placed'].includes(b.phase));else{this.a.scene.remove(b.mesh);b.mesh.geometry.dispose();b.mesh.material.dispose();}this.a.locomotion()?.interrupt();}
       this.look={x:0,y:0,r:0};this.poseTouch=null;
     }
-    holdBall(){
+    holdBall(item=null){
       if(this.a.busy()||!this.a.model())return;
       this.reset(true);const T=this.a.THREE;
-      const mesh=new T.Mesh(new T.SphereGeometry(.105,16,12),new T.MeshStandardMaterial({color:0xeaa975,roughness:.65}));
-      mesh.position.copy(this.a.mouth());this.a.scene.add(mesh);
-      this.ball={mesh,phase:'held',home:this.a.model().position.clone(),started:performance.now()};
+      const mesh=item?.mesh||new T.Mesh(new T.SphereGeometry(.105,16,12),new T.MeshStandardMaterial({color:0xeaa975,roughness:.65}));
+      if(!item){mesh.position.copy(this.a.mouth());this.a.scene.add(mesh);}
+      this.ball={mesh,item,phase:'held',home:this.a.model().position.clone(),started:performance.now(),offset:item?.offset||.11,lift:item?.kind==='disc'?.32:.65,duration:item?.kind==='disc'?900:700,fetch:true};
       this.a.locomotion()?.interrupt(2.5);this.note('拿稳啦，向空地松手。');
     }
     throwBall(target){
@@ -167,7 +170,7 @@
       }
       b.started=performance.now();
       b.from=b.mesh.position.clone();b.target={x:target.x,z:target.z};b.phase='flight';b.at=performance.now();
-      this.a.act('idle',0);this.note('接球啦！它会绕开河流，把球叼回来。');
+      this.a.act('idle',0);this.note(b.fetch?'接好'+(b.item?.label||'球')+'！它会绕开河流，把玩具叼回来。':'正在放下，落地后可以再次拿起。');
     }
     updateBall(now,dt=.02){
       const b=this.ball,m=this.a.model(),loc=this.a.locomotion();if(!b||!m||!loc)return;
@@ -175,10 +178,12 @@
       if(b.elapsed>45||this.a.busy()){const timeout=b.elapsed>45;this.reset();if(timeout)this.note('先歇一下，换块近一点的空地再来。');return;}
       const T=this.a.THREE;
       if(b.phase==='held'){
-        if(this.input){const p=this.ground(this.input.x,this.input.y);if(p){p.y=1.1;b.mesh.position.lerp(p,.25);}}
+        if(this.input){const p=this.ground(this.input.x,this.input.y,1.1);if(p){b.mesh.position.lerp(p,.25);}}
       } else if(b.phase==='flight'){
-        const t=clamp((now-b.at)/700,0,1),y=loc.navigation.surfaceHeight(b.target)+.11;
-        b.mesh.position.lerpVectors(b.from,new T.Vector3(b.target.x,y,b.target.z),t);b.mesh.position.y+=Math.sin(t*Math.PI)*.65;
+        const t=clamp((now-b.at)/(b.duration||700),0,1),y=loc.navigation.surfaceHeight(b.target)+(b.offset||.11);
+        const point=flightPoint(b.from,{x:b.target.x,y,z:b.target.z},t,b.lift);b.mesh.position.set(point.x,point.y,point.z);
+        if(b.item?.kind==='disc')b.mesh.rotation.y+=dt*9;
+        if(t===1&&!b.fetch){b.phase='placed';this.reset();this.note('放好了，随时可以再拿起来。');return;}
         if(t===1){b.phase='chase';this.a.act('idle',0);if(!loc.goTo(b.target)){this.reset();this.note('这次没有找到安全路线，再试一块空地吧。');}}
       } else if(b.phase==='chase'&&Math.hypot(m.position.x-b.target.x,m.position.z-b.target.z)<.15){
         b.phase='pickup';b.at=now;this.a.act('noseLick',650);this.note('叼到啦，马上回来。');
@@ -187,9 +192,9 @@
         if(now-b.at>750){b.phase='return';this.a.act('idle',0);if(!loc.goTo(b.home)){this.reset();this.note('回程暂时被挡住了，这轮先结束，再换块空地吧。');}}
       } else if(b.phase==='return'){
         b.mesh.position.copy(this.a.mouth());
-        if(Math.hypot(m.position.x-b.home.x,m.position.z-b.home.z)<.15){b.phase='drop';b.at=now;b.from=b.mesh.position.clone();this.a.act('greet',1700);this.note(this.a.id()===2?'雪球得意地把球还给你：再来一次！':'球球把球轻轻放下，等你夸夸它。');}
+        if(Math.hypot(m.position.x-b.home.x,m.position.z-b.home.z)<.15){b.phase='drop';b.at=now;b.from=b.mesh.position.clone();this.a.act('greet',1700);this.note((this.a.id()===2?'雪球':'球球')+'把'+(b.item?.label||'球')+'还给你：再来一次！');}
       } else if(b.phase==='drop'){
-        const t=clamp((now-b.at)/350,0,1);b.mesh.position.y=b.from.y+(loc.navigation.surfaceHeight(m.position)+.11-b.from.y)*t;
+        const t=clamp((now-b.at)/350,0,1);b.mesh.position.y=b.from.y+(loc.navigation.surfaceHeight(m.position)+(b.offset||.11)-b.from.y)*t;
         if(now-b.at>1800)this.reset();
       }
     }
@@ -218,7 +223,7 @@
           this.halo.hidden=false;this.halo.style.left=zone.x+'px';this.halo.style.top=zone.y+'px';
           this.halo.style.width=zone.rx*2+'px';this.halo.style.height=zone.ry*2+'px';
           this.halo.textContent=this.mode==='brush'?'梳梳毛':zone.label;
-          if(this.brush){this.brush.hidden=this.mode!=='brush';this.brush.style.left=point.x+'px';this.brush.style.top=point.y+'px';}
+          if(this.brush){this.brush.hidden=this.mode!=='brush'||this.a.toys?.()?.held?.spec.id==='brush';this.brush.style.left=point.x+'px';this.brush.style.top=point.y+'px';}
           if(sample.enter){this.a.act(zone.id==='back'?'petting':'affection',2000);this.note(zone.label+' · 缓缓移动，停一停它还会蹭你。');}
           if(sample.nuzzle){this.a.act('affection',2200);this.a.say(this.a.id()===2?'别停嘛，再挠一下！':'它轻轻蹭了蹭你的手。');}
           if(sample.reward)this.a.reward();
@@ -242,5 +247,5 @@
       }
     }
   }
-  return {settings,zoneAt,Touch,Controller};
+  return {settings,zoneAt,flightPoint,Touch,Controller};
 });
