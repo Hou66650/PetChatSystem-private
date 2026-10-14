@@ -26,6 +26,25 @@ class CatAgentTests(unittest.TestCase):
         def fail(m):raise LLMError('rate limit')
         self.model.plan_once=fail
         self.assertEqual(self.post('decide',data).json['source'],'local')
+    def test_eight_second_gate_and_adaptive_backoff(self):
+        from unittest.mock import patch
+        from app.llm.client import PlanningError
+        calls=[]
+        def ok(messages):calls.append(messages);return '{"target":"bridge","action":"observe"}'
+        self.model.plan_once=ok;data={'candidates':['bridge']}
+        with patch('app.services.cat_agent_service.time.time',return_value=1000) as clock:
+            self.assertEqual(self.post('decide',data).json['source'],'model')
+            clock.return_value=1007
+            self.assertEqual(self.post('decide',data).json['source'],'local');self.assertEqual(len(calls),1)
+            clock.return_value=1008
+            self.assertEqual(self.post('decide',data).json['source'],'model');self.assertEqual(len(calls),2)
+            def limited(m):raise PlanningError('limited',kind='rate_limit',retry_after=45)
+            self.model.plan_once=limited;clock.return_value=1016
+            result=self.post('decide',data).json
+            self.assertEqual(result['retryAfter'],45);self.assertIn('限流',result['reason'])
+            clock.return_value=1061;self.model.plan_once=ok
+            self.assertEqual(self.post('decide',data).json['source'],'model')
+            self.assertEqual(self.app.extensions['cat_agent_gate']['failures'],0)
     def test_care_priority_and_validation(self):
         r=self.post('decide',{'candidates':['home','food','bridge'],'hunger':.9,'energy':.8})
         self.assertEqual(r.json['action'],'eat')

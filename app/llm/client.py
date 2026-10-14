@@ -18,6 +18,13 @@ class LLMError(RuntimeError):
     """LLM 调用失败（重试耗尽、鉴权失败或返回格式异常）。"""
 
 
+class PlanningError(LLMError):
+    def __init__(self, message, kind='unavailable', retry_after=0):
+        super().__init__(message)
+        self.kind=kind
+        self.retry_after=retry_after
+
+
 class GLMClient:
     def __init__(self, api_key, base_url, models,
                  vision_model='glm-4v-flash', image_model='cogview-3-flash',
@@ -105,12 +112,17 @@ class GLMClient:
     def plan_once(self, messages):
         """Low-priority bounded background decision: no queue, retry or model fallback."""
         if not self._sem.acquire(blocking=False):
-            raise LLMError('对话正在使用模型，探索使用本地策略')
+            raise PlanningError('对话正在使用模型，探索使用本地策略',kind='busy',retry_after=8)
         try:
             response=self.session.post(f'{self.base_url}/chat/completions',json={
                 'model':self.models[0],'messages':messages,'temperature':.65,
                 'response_format':{'type':'json_object'},'thinking':{'type':'disabled'},'max_tokens':160},timeout=(3,7))
-            if response.status_code!=200:raise LLMError('后台探索模型暂不可用')
+            if response.status_code!=200:
+                retry_after=0
+                if response.status_code==429:
+                    try:retry_after=max(0,min(300,float(response.headers.get('Retry-After',0))))
+                    except (ValueError,TypeError):pass
+                raise PlanningError('后台探索模型暂不可用',kind='rate_limit' if response.status_code==429 else 'unavailable',retry_after=retry_after)
             return self._content(response.json())
         except (requests.RequestException,ValueError) as e:
             raise LLMError('后台探索模型暂不可用') from e

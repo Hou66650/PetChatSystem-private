@@ -6,7 +6,7 @@
   constructor({model,locomotion,life,scope,animate,telemetry=false,homeReady=true,onStatus=()=>{},fetcher=(...args)=>fetch(...args),storage=globalThis.localStorage,now=()=>Date.now()}){
    Object.assign(this,{model,locomotion,life,scope,animate,onStatus,fetcher,storage,now});
    this.homeReady=homeReady;this.hunger=.45;this.careUntil=0;this.lastNeedsSave=0;this.telemetry=telemetry;this.stream=globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`;this.events=[];this.lastTelemetry=0;this.perceived=[];this.reason='等待环境感知';
-   this.catalog=[];this.memory={};this.energy=.85;this.goal=null;this.phase='loading';this.disposed=false;this.epoch=0;this.next=0;this.pending=null;this.networkAfter=0;this.cooldowns={};this.lastTarget=null;
+   this.catalog=[];this.memory={};this.energy=.85;this.goal=null;this.phase='loading';this.disposed=false;this.epoch=0;this.next=0;this.pending=null;this.networkAfter=0;this.lastDecision=-Infinity;this.networkFailures=0;this.wasBlocked=false;this.cooldowns={};this.lastTarget=null;
    this.key='pait-cat-exploration:'+scope;
    try{const saved=JSON.parse(storage?.getItem(this.key)||'{}');for(const [id,m] of Object.entries(saved))if(m&&Number.isFinite(m.visits)&&m.visits>=0)this.memory[id]=m;}catch(e){}
    try{const n=JSON.parse(storage?.getItem(this.key+':needs')||'{}');if(Number.isFinite(n.energy))this.energy=Math.max(.1,Math.min(1,n.energy));if(Number.isFinite(n.hunger))this.hunger=Math.max(0,Math.min(1,n.hunger));}catch(e){}
@@ -69,10 +69,10 @@
   }
   async plan(forced=null){
    const candidates=this.candidates();this.perceived=candidates.map(p=>p.id);this.reason='已按当前位置检查地点可达性；本地策略优先较少访问地点，低精力优先休息';if(!candidates.length){this.next=this.now()+12000;this.status('先等等，寻找可以安全到达的地方');return;}
-   const epoch=++this.epoch;this.pending=new AbortController();const abort=this.pending;this.phase='planning';this.status('看看附近还有什么没探索过');
+   this.lastDecision=this.now();const epoch=++this.epoch;this.pending=new AbortController();const abort=this.pending;this.phase='planning';this.status('看看附近还有什么没探索过');
    const urgent=forced||this.care(candidates);let plan=urgent||{...this.fallback(candidates),reason:this.reason};const timer=setTimeout(()=>abort.abort(),10000);
-   try{if(!urgent&&this.now()>=this.networkAfter){const remote=await this.request('/api/cat-agent/decide',{candidates:candidates.map(p=>p.id),energy:this.energy,hunger:this.hunger},abort.signal);plan=remote;}}
-   catch(e){if(this.scopeLost)return;this.networkAfter=this.now()+90000;plan.reason='网络或模型请求失败，切换本地探索策略';}
+   try{if(!urgent&&this.now()>=this.networkAfter){const remote=await this.request('/api/cat-agent/decide',{candidates:candidates.map(p=>p.id),energy:this.energy,hunger:this.hunger},abort.signal);plan=remote;this.networkFailures=0;this.networkAfter=this.now()+Math.max(0,Math.min(300,Number(remote.retryAfter)||0))*1000;}}
+   catch(e){if(this.scopeLost||epoch!==this.epoch||this.disposed)return;this.networkFailures=Math.min(4,this.networkFailures+1);const delay=Math.min(120,8*2**this.networkFailures);this.networkAfter=this.now()+delay*1000;plan.reason='网络请求失败，退避 '+delay+' 秒，继续本地探索';}
    finally{clearTimeout(timer);if(this.pending===abort)this.pending=null;}
    if(this.disposed||this.scopeLost||epoch!==this.epoch||!this.locomotion.enabled)return;
    const place=candidates.find(p=>p.id===plan.target);
@@ -82,12 +82,12 @@
    if(!this.locomotion.goTo(point,{gait:this.energy>.65?'trot':'walk'})){this.phase='idle';this.cooldowns[target.id]=this.now()+60000;this.next=this.now()+5000;this.reason='目标路线重新校验失败';this.status('路线受阻，稍后重新规划');return;}
    this.reason=plan.reason||'候选地点及动作已通过本地校验';this.locomotion.owner='agent';this.source=plan.source==='model'?'model':'local';
    this.goal={target:target.id,action:plan.action,point,time:0,event:globalThis.crypto?.randomUUID?.()||`${this.now()}-${Math.random()}`};
-   this.lastTarget=target.id;this.phase='walking';this.next=this.now()+35000;this.status('想去'+target.name+words[plan.action]);
+   this.lastTarget=target.id;this.phase='walking';this.next=this.lastDecision+8000;this.status('想去'+target.name+words[plan.action]);
   }
   interrupt(text='先陪你，探索等一会儿'){
    ++this.epoch;this.pending?.abort();this.pending=null;
    if(this.goal){const external=this.locomotion.owner==='command'&&this.locomotion.path!==this.life.approach?.path;if(!external)this.animate('idle');if(this.locomotion.owner==='agent')this.locomotion.interrupt(3);this.life.cancel(external);}
-   this.goal=null;this.phase='idle';this.next=Math.max(this.next,this.now()+6000);this.status(text);
+   this.goal=null;this.phase='idle';this.next=Math.max(this.lastDecision+8000,this.now()+500);this.status(text);
   }
   finish(result){
    const g=this.goal;if(!g)return;this.reason=result==='completed'?'目标动作完成，更新地点访问记录':'执行受阻或超时，目标进入短暂冷却';
@@ -106,8 +106,9 @@
    if(blocked||!this.locomotion.enabled||this.locomotion.owner==='command'){
     // CatLife's own wall approach uses command ownership; it is still the active task.
     const ownWall=this.acting&&this.goal.action==='rub'&&this.life.approach&&this.locomotion.path===this.life.approach.path;
-    if(!ownWall||blocked||!this.locomotion.enabled){if(this.goal||this.pending)this.interrupt(!this.locomotion.enabled?'自由活动已关闭':'先陪你，探索等一会儿');return;}
+    if(!ownWall||blocked||!this.locomotion.enabled){this.wasBlocked=true;if(this.goal||this.pending)this.interrupt(!this.locomotion.enabled?'自由活动已关闭':'先陪你，探索等一会儿');return;}
    }
+   if(this.wasBlocked){this.wasBlocked=false;this.next=Math.max(this.lastDecision+8000,this.now()+500);}
    if(!this.goal){if(!this.pending&&this.now()>=this.next&&this.locomotion.owner!=='command')void this.plan();return;}
    const g=this.goal;g.time+=dt;
    if(g.time>100){this.finish('blocked');return;}

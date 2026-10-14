@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from flask import current_app
 from ..db import get_db
-from ..llm.client import LLMError
+from ..llm.client import LLMError, PlanningError
 
 CATALOG = json.loads((Path(__file__).resolve().parents[2]/'static/data/cat-world.json').read_text(encoding='utf-8'))
 TARGETS = {p['id']:p for p in CATALOG}
@@ -47,7 +47,7 @@ def decide(owner, data):
     care=('home','sleep','精力偏低，优先回窝休息') if energy<.3 and 'home' in candidates else ('food','eat','饥饿值较高，优先进食') if hunger>=.65 and 'food' in candidates else None
     if care:
         target,action,reason=care
-        return {'target':target,'action':action,'source':'local','reason':reason,'intent':reason,'interval':35}
+        return {'target':target,'action':action,'source':'local','reason':reason,'intent':reason,'interval':8}
     rows={r['target']:r for r in memories(owner)}
     # Penalize recently blocked or visited destinations, without permanently blacklisting them.
     now=time.time()
@@ -57,27 +57,34 @@ def decide(owner, data):
     target=next((i for i in ordered if 'rest' in TARGETS[i]['actions']),ordered[0]) if energy<.3 else ordered[0]
     action='rest' if energy<.3 and 'rest' in TARGETS[target]['actions'] else TARGETS[target]['actions'][rows.get(target,{}).get('visits',0)%len(TARGETS[target]['actions'])]
     source='local';reason='后台模型繁忙，使用本地访问记录排序'
-    # One background model call at a time and at most once per 90s per app worker.
+    # One background call at a time, with an 8s minimum gap per app worker.
     # Local planning remains available during cooldown or provider outages.
     gate=current_app.extensions['cat_agent_gate']
     if gate['lock'].acquire(blocking=False):
         try:
-            reason='模型决策额度冷却中，使用本地访问记录排序'
+            reason=gate.get('reason','等待下一次决策窗口，使用本地访问记录排序')
             if now>=gate['next']:
-                gate['next']=now+90
+                gate['next']=now+8
                 try:
                     raw=current_app.extensions['llm'].plan_once([
                         {'role':'system','content':'你是一只在岛上探索的猫。根据精力和探索记录，选择可选地点和该地点支持的动作。优先新地点，疲倦时休息，近期受阻时换地点。只返回JSON {"target":"地点id","action":"动作"}。不得创造地点、坐标、工具或其他字段。'},
                         {'role':'user','content':json.dumps({'energy':energy,'candidates':[TARGETS[i] for i in ordered],'memory':list(rows.values())},ensure_ascii=False)}])
                     result=json.loads(raw)
                     if isinstance(result,dict) and result.get('target') in candidates and result.get('action') in TARGETS[result['target']]['actions']:
-                        target,action=result['target'],result['action'];source='model';reason='模型从可到达地点与允许动作中选择，已通过白名单校验'
-                    else:reason='模型输出未通过校验，使用本地策略'
-                except (LLMError,ValueError,TypeError,AttributeError):
-                    reason='模型请求失败、超时或暂忙，使用本地策略'
+                        target,action=result['target'],result['action'];source='model';reason='模型从可到达地点与允许动作中选择，已通过白名单校验';gate['failures']=0;gate['reason']='等待 8 秒决策窗口，使用本地策略'
+                    else:raise ValueError('invalid plan')
+                except (LLMError,ValueError,TypeError,AttributeError) as error:
+                    if isinstance(error,PlanningError) and error.kind=='busy':
+                        delay=8;reason='对话正在使用模型，8 秒后可重试；继续本地探索'
+                    else:
+                        gate['failures']=min(4,gate.get('failures',0)+1)
+                        delay=max(min(120,8*2**gate['failures']),getattr(error,'retry_after',0))
+                        label='模型限流' if isinstance(error,PlanningError) and error.kind=='rate_limit' else '模型请求失败或结果无效'
+                        reason=f'{label}，退避 {math.ceil(delay)} 秒；继续本地探索'
+                    gate['next']=time.time()+delay;gate['reason']=reason
         finally:
             gate['lock'].release()
-    return {'target':target,'action':action,'intent':'想去'+TARGETS[target]['name']+WORDS[action], 'source':source,'interval':35,'reason':reason}
+    return {'target':target,'action':action,'intent':'想去'+TARGETS[target]['name']+WORDS[action], 'source':source,'interval':8,'reason':reason,'retryAfter':max(0,math.ceil(gate['next']-time.time()))}
 
 
 def record(owner,data):
@@ -96,7 +103,7 @@ def record(owner,data):
 
 
 def install(app):
-    app.extensions['cat_agent_gate']={'lock':threading.Lock(),'next':0}
+    app.extensions['cat_agent_gate']={'lock':threading.Lock(),'next':0,'failures':0}
     with app.app_context():init_schema()
 
 
