@@ -1,7 +1,7 @@
 <link rel="stylesheet" href="/static/css/farm.css?v={{ app_version }}">
 <script id="farm-layout-data" type="application/json">{{ farm_layout | tojson }}</script>
 <dialog id="farm-dialog" aria-labelledby="farm-title">
-  <header class="farm-heading"><div><span class="farm-kicker">PAIT ISLAND · THE GROWING GARDEN</span><h2 id="farm-title">把日子，种成一座花园</h2><p>花开后装盆，果实收进仓库，幼树在岛上扎根。</p></div><button type="button" id="farm-close" aria-label="关闭花园">×</button></header>
+  <header class="farm-heading"><div><span class="farm-kicker">PAIT ISLAND · THE GROWING GARDEN</span><h2 id="farm-title">把日子，种成一座花园</h2><p>花可地栽或装盆，果实收进仓库，幼树在岛上扎根。</p></div><button type="button" id="farm-close" aria-label="关闭花园">×</button></header>
   <div class="farm-toolbar"><span id="farm-wallet"></span><button id="farm-focus" type="button">近看农场 ↗</button><button id="farm-refresh" type="button">刷新生长</button></div>
   <p id="farm-feedback" role="status" aria-live="polite">正在读取花园…</p>
   <div id="farm-welcome"></div>
@@ -9,8 +9,11 @@
   <section id="farm-beds" class="farm-grid"></section>
   <section id="farm-stock" class="farm-grid" hidden></section>
   <section id="farm-shop" class="farm-grid" hidden></section>
-  <section id="farm-guide" hidden><p>三种植物，各有 10 个不同的地上生长模型。这里可近看任一阶段，不会改变种植进度。</p><div class="farm-guide-controls"><label>植物 <select id="farm-preview-species"><option value="cosmos">波斯菊</option><option value="pumpkin">小南瓜</option><option value="birch">白桦</option></select></label><label>阶段 <input id="farm-preview-stage" type="range" min="1" max="10" value="10"></label><span id="farm-preview-name"></span></div><div id="farm-preview-wrap"><canvas id="farm-preview" aria-label="植物生长模型，可拖动旋转"></canvas></div><p class="farm-note">拖动旋转 · 滚轮缩放。游戏生长时间经过缩短，阶段比例按模型实际尺寸保留。</p></section>
+  <section id="farm-guide" hidden><p data-guide-only>三种植物，各有 10 个不同的地上生长模型。这里可近看任一阶段，不会改变种植进度。</p><div id="farm-detail" hidden><button id="farm-detail-back" type="button">← 所有种植床</button><h3 id="farm-detail-title"></h3><p id="farm-detail-status"></p><progress id="farm-detail-growth" max="1" aria-label="这株植物的生长进度"></progress><div id="farm-detail-actions" class="farm-actions"></div></div><div class="farm-guide-controls" data-guide-only><label>植物 <select id="farm-preview-species"><option value="cosmos">波斯菊</option><option value="pumpkin">小南瓜</option><option value="birch">白桦</option></select></label><label>阶段 <input id="farm-preview-stage" type="range" min="1" max="10" value="10"></label><span id="farm-preview-name"></span></div><div id="farm-preview-wrap"><canvas id="farm-preview" aria-label="植物生长模型，可拖动旋转"></canvas></div><p class="farm-note">拖动旋转 · 滚轮缩放。显示当前植物实际阶段，账号中的种植和摆放会一直保留。</p></section>
   <footer class="farm-note">离线仍会生长，不会枯萎。每天浇一次水可以稍微加快生长，成熟后可随时收获。</footer>
 </dialog>
 <div id="farm-hover" hidden></div>
+<aside id="farm-direct" hidden aria-label="园艺操作"><p id="farm-direct-hint" role="status"></p><progress id="farm-care-meter" max="1" value="0" aria-label="按住照料进度"></progress><div><button id="farm-rotate-left" type="button">↶ 旋转</button><button id="farm-rotate-right" type="button">旋转 ↷</button><button id="farm-direct-cancel" type="button">放回 / 取消</button></div></aside>
 <script src="/static/js/den/farm-garden.js?v={{ app_version }}"></script>
+<script src="/static/js/den/farm-placement.js?v={{ app_version }}"></script>
+<script src="/static/js/den/farm-interaction.js?v={{ app_version }}"></script>

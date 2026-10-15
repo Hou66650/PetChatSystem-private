@@ -23,9 +23,10 @@ def snapshot(owner):
         if row is not None:
             growth=farm.growth(row,now);species=farm.SPECIES[row['species']]
             plant=dict(name=species['name'],stage=growth['stage'],stageName=species['stages'][growth['stage']-1],
-                       ready=growth['ready'],wateredToday=row['water_day']==farm.wallet.day())
+                       ready=growth['ready'],wateredToday=row['water_day']==farm.wallet.day(),fertilizedToday=row['fertilizer_day']==farm.wallet.day())
         beds.append(dict(id=key,name=farm.bed_name(key),plant=plant))
     decor=[dict(slot=r['slot'],place=farm.SLOTS[r['slot']]['name'],plant=farm.SPECIES[r['species']]['name']) for r in db.execute('SELECT * FROM farm_decor WHERE owner=? ORDER BY slot',(owner,))]
+    decor.extend(dict(slot=r['id'],place=('土栽' if r['container']=='soil' else '花盆')+f"（{r['x']:.1f}, {r['z']:.1f}）",plant=farm.SPECIES[r['species']]['name']) for r in farm.arrangements(db,owner))
     events=[dict(r) for r in db.execute('SELECT id,created,kind,summary FROM farm_events WHERE owner=? AND created>? ORDER BY id DESC LIMIT 6',(owner,now-86400))]
     facts=dict(scene='雾林温室与云畔种植园',beds=beds,decorations=decor,recentChanges=events,
                boundaries='猫只在步道观察、嗅闻；种植床与河流不可进入。购买、播种、浇水、收获和摆放由主人操作。')
