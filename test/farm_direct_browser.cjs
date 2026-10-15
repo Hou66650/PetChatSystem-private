@@ -17,10 +17,25 @@ app.whenReady().then(async()=>{
   await run(`document.querySelector('#farm-detail-actions button').click()`);await until('farm.data.beds[0].plant && !!farm.previewObject&&!farm.busy');
   assert(await run(`farm.previewKey==='cosmos-01'`));await shot('pait-garden-single-plant.png');
   await run('farm.dialog.close()');const tool=await run('project(-7.95,.28,2.03)');await click(tool);await until(`farm.mode==='care'&&farm.toolKind==='water'`);
+  const middle=await run('THREE.MOUSE.DOLLY');
+  const pan=async()=>{
+   const before=await run('({position:camera.position.toArray(),target:controls.target.toArray(),distance:camera.position.distanceTo(controls.target)})');
+   assert(await run('controls.mouseButtons.MIDDLE===THREE.MOUSE.PAN'));
+   w.webContents.sendInputEvent({type:'mouseDown',x:700,y:500,button:'middle',clickCount:1});await pause(100);
+   w.webContents.sendInputEvent({type:'mouseMove',x:780,y:540,button:'middle'});await pause(1100);
+   assert(await run('farm.panning&&!farm.pressed&&farm.careTime===0'));
+   w.webContents.sendInputEvent({type:'mouseUp',x:780,y:540,button:'middle',clickCount:1});await pause(100);
+   assert(await run('!farm.panning'));
+   const after=await run('({target:controls.target.toArray(),distance:camera.position.distanceTo(controls.target)})');
+   assert(Math.hypot(...after.target.map((v,i)=>v-before.target[i]))>.1,'middle drag pans');assert(Math.abs(after.distance-before.distance)<.001,'middle drag does not zoom');
+   await run(`camera.position.fromArray(${JSON.stringify(before.position)});controls.target.fromArray(${JSON.stringify(before.target)});controls.update()`);
+  };
+  await pan();assert(await run('!farm.data.beds[0].plant.watered'));
   await mouse('mouseMove',bed);await mouse('mouseDown',bed);await pause(450);await shot('pait-garden-watering.png');await pause(900);await mouse('mouseUp',bed);await until('farm.data.beds[0].plant.watered&&!farm.busy');
   await run(`farm.cancelDirect();farm.inspect('bed-1');[...document.querySelectorAll('#farm-detail-actions button')].find(b=>b.textContent.startsWith('拿肥料')).click()`);
+  await pan();assert(await run('!farm.data.beds[0].plant.fertilized'));
   await mouse('mouseMove',bed);await mouse('mouseDown',bed);await pause(1400);await mouse('mouseUp',bed);await until('farm.data.beds[0].plant.fertilized&&!farm.busy');
-  assert.equal(await run('farm.data.inventory.fertilizer'),2);
+  assert.equal(await run('farm.data.inventory.fertilizer'),2);await run('farm.cancelDirect()');assert.equal(await run('controls.mouseButtons.MIDDLE'),middle,'original middle binding restored');
   await run(`farm.cancelDirect();fetch('/fixture-mature',{method:'POST'}).then(()=>farm.refresh())`);await until('farm.data.beds[0].plant.ready&&!farm.refreshing');
   await run(`farm.inspect('bed-1')`);await until(`farm.previewKey==='cosmos-10'&&!!farm.previewObject`);
   await run(`[...document.querySelectorAll('#farm-detail-actions button')].find(b=>b.textContent==='直接栽入土壤').click();faceIsland()`);await until('!!farm.ghost');

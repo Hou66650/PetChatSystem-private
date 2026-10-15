@@ -10,12 +10,14 @@
    document.getElementById('farm-rotate-left').onclick=()=>this.rotate(-Math.PI/12);document.getElementById('farm-rotate-right').onclick=()=>this.rotate(Math.PI/12);
    document.getElementById('farm-detail-back').onclick=()=>this.open();
    this.captureDown=e=>{
-    if(!this.a.active()||this.dialog.open||e.button!==0||e.altKey)return;
+    if(!this.a.active()||this.dialog.open)return;
+    if(this.mode==='care'&&e.button===1){this.panning=true;this.pressed=false;this.careTime=0;this.hint.textContent='中键拖动调整位置 · 松开后左键照料';return;}
+    if(e.button!==0||e.altKey||this.panning)return;
     if(!this.mode)return;
     e.preventDefault();e.stopImmediatePropagation();this.ignoreClick=performance.now()+500;this.pressed=true;this.pressAt={x:e.clientX,y:e.clientY};this.careTime=0;this.careBed=null;this.point(e,false);
    };
-   this.captureUp=e=>{if(!this.pressed)return;e.stopImmediatePropagation();this.pressed=false;this.ignoreClick=performance.now()+500;if(this.mode==='place'&&Math.hypot(e.clientX-this.pressAt.x,e.clientY-this.pressAt.y)<8)void this.confirmPlacement();this.careTime=0;};
-   this.cancelPointer=()=>{this.pressed=false;this.careTime=0;};this.leaveHandler=()=>{this.cancelPointer();this.hoverBed=null;};
+   this.captureUp=e=>{if(e.button===1&&this.panning){this.panning=false;this.careTime=0;this.hint.textContent='左键按住照料 · 中键拖动调整位置';return;}if(e.button!==0||!this.pressed)return;e.stopImmediatePropagation();this.pressed=false;this.ignoreClick=performance.now()+500;if(this.mode==='place'&&Math.hypot(e.clientX-this.pressAt.x,e.clientY-this.pressAt.y)<8)void this.confirmPlacement();this.careTime=0;};
+   this.cancelPointer=()=>{this.pressed=false;this.panning=false;this.careTime=0;};this.leaveHandler=()=>{this.cancelPointer();this.hoverBed=null;};
    this.keyHandler=e=>{if(this.dialog.open||!this.mode)return;if(e.key==='Escape'){e.preventDefault();this.cancelDirect();}if(['q','Q','e','E'].includes(e.key)){e.preventDefault();this.rotate(e.key.toLowerCase()==='q'?-Math.PI/12:Math.PI/12);}};
    api.canvas.addEventListener('pointerdown',this.captureDown,true);api.canvas.addEventListener('pointerleave',this.leaveHandler);window.addEventListener('pointerup',this.captureUp,true);window.addEventListener('pointercancel',this.cancelPointer);window.addEventListener('blur',this.cancelPointer);window.addEventListener('keydown',this.keyHandler);
    this.initTools();
@@ -80,7 +82,7 @@
   }
   takeTool(kind,bed){
    if(this.busy||this.scopeLost||!this.data||this.data.guest)return;this.cancelDirect();if(!this.toolModels.has(kind)){this.note('工具还在准备，请稍后再试。');return;}
-   this.mode='care';this.toolKind=kind;this.dialog.close();this.hud.hidden=false;this.hud.dataset.mode='care';document.getElementById('farm-direct-cancel').textContent='放回 · Esc';this.showRotation(false);this.meter.hidden=false;this.meter.value=0;this.hint.textContent=(kind==='water'?'洒水壶':'肥料罐')+' · 对准种植床按住鼠标';
+   this.mode='care';this.toolKind=kind;const controls=this.a.controls;if(controls){this.savedControls={middle:controls.mouseButtons.MIDDLE,pan:controls.enablePan};controls.mouseButtons.MIDDLE=this.T.MOUSE.PAN;controls.enablePan=true;}this.dialog.close();this.hud.hidden=false;this.hud.dataset.mode='care';document.getElementById('farm-direct-cancel').textContent='放回 · Esc';this.showRotation(false);this.meter.hidden=false;this.meter.value=0;this.hint.textContent=(kind==='water'?'洒水壶':'肥料罐')+' · 左键照料 / 中键拖动';
    const b=this.data.beds.find(b=>b.id===bed);if(b){this.hoverBed=b.id;this.toolTarget.set(b.x-.3,.95,b.z);this.a.focus?.();}else this.toolTarget.copy(this.toolModels.get(kind).position).add(new this.T.Vector3(0,.8,0));
    this.makeParticles();
   }
@@ -130,7 +132,7 @@
   }
   rayPoint(e,height=.035){const r=this.a.canvas.getBoundingClientRect(),ray=new this.T.Raycaster();ray.setFromCamera(new this.T.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),this.a.camera);return {ray,point:ray.ray.intersectPlane(new this.T.Plane(new this.T.Vector3(0,1,0),-height),new this.T.Vector3())};}
   point(e,click){
-   if(this.disposed||!this.a.active()||this.dialog.open){this.hover.hidden=true;return;}if(e.altKey||click&&performance.now()<(this.ignoreClick||0))return;
+   if(this.disposed||!this.a.active()||this.dialog.open){this.hover.hidden=true;return;}if(this.panning||e.altKey||click&&performance.now()<(this.ignoreClick||0))return;
    const {ray,point}=this.rayPoint(e,this.mode==='care'?.23:.035);if(!point)return;
    if(this.mode==='place'){this.hover.hidden=true;if(!this.busy)this.updatePlacement(point);if(click){e.stopImmediatePropagation();void this.confirmPlacement();}return;}
    if(this.mode==='care'){this.hover.hidden=true;const bed=this.layout.beds.find(b=>Math.abs(point.x-b.x)<b.w/2+.15&&Math.abs(point.z-b.z)<b.d/2+.15);this.hoverBed=bed?.id;this.toolTarget.set(point.x-.4,.95,point.z);if(click)e.stopImmediatePropagation();return;}
@@ -149,7 +151,7 @@
    const model=this.toolModels.get(this.toolKind);model.position.lerp(this.toolTarget,1-Math.exp(-dt*18));
    const bed=this.data?.beds.find(b=>b.id===this.hoverBed),p=bed?.plant;
    const eligible=p&&!p.ready&&(this.toolKind==='water'?!p.watered:!p.fertilized&&this.data.inventory.fertilizer>0);
-   const active=this.pressed&&eligible&&!this.busy;
+   const active=this.pressed&&!this.panning&&eligible&&!this.busy;
    model.rotation.z+=( (active?-.65:0)-model.rotation.z)*(1-Math.exp(-dt*12));
    if(this.careBed!==bed?.id){this.careTime=0;this.careBed=bed?.id;}
    if(active){this.careTime+=Math.min(dt,.05);this.hint.textContent=(this.toolKind==='water'?'正在浇水':'正在施肥')+' · 松开可停止';if(this.careTime>=1){this.pressed=false;this.careTime=0;void this.act(this.toolKind,{bed:bed.id,plant:p.id});}}
@@ -158,6 +160,7 @@
    if(active){this.particles.material.color.set(this.toolKind==='water'?0xa9e5ec:0xc7a66e);model.updateMatrixWorld(true);const start=model.localToWorld(new this.T.Vector3(.56,.48,0));for(let i=0;i<64;i++){const t=(now*.0018+i/64)%1,spread=.12*Math.sin(i*18.3);this.particleMatrix.position.set(start.x+(bed.x-start.x)*t+spread*t,start.y+(.23-start.y)*t*t,start.z+(bed.z-start.z)*t+Math.cos(i*13)*.12*t);this.particleMatrix.scale.setScalar(this.toolKind==='water'?.7:1);this.particleMatrix.updateMatrix();this.particles.setMatrixAt(i,this.particleMatrix.matrix);}this.particles.instanceMatrix.needsUpdate=true;}
   }
   cancelDirect(){
+   if(this.savedControls&&this.a.controls){this.a.controls.mouseButtons.MIDDLE=this.savedControls.middle;this.a.controls.enablePan=this.savedControls.pan;this.savedControls=null;}this.panning=false;
    ++this.toolEpoch;this.mode=null;this.pressed=false;this.careTime=0;this.pendingLanding=null;this.retryPlacement=null;this.placement=null;this.placementKey=null;this.targetPoint=null;if(this.hud)this.hud.hidden=true;if(this.particles)this.particles.visible=false;
    if(this.ghost){this.root.remove(this.ghost);this.ghostMaterials.forEach(m=>m.dispose());this.ring.geometry.dispose();this.ring.material.dispose();this.ghost=null;}
    for(const [kind,m] of this.toolModels||[]){const t=TOOLS[kind];m.position.set(t.x,.035,t.z);m.rotation.set(0,0,0);}
