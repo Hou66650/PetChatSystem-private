@@ -12,7 +12,7 @@ const layout=require('../static/js/den/mistwood-layout');
  const a=new Controller({model,locomotion:move,life,scope:'s',animate:k=>animation=k,fetcher,storage:null,now:()=>time});await a.ready;
  assert.equal(a.candidates().length,catalog.length,'all catalog destinations reachable with cat body and cabinet');
  time=5000;await a.plan({target:'bridge',action:'observe'});assert.equal(a.goal.target,'bridge');assert.equal(move.owner,'agent');
- Object.assign(model.position,a.goal.point);move.path=[];move.owner='rest';a.step(.05,false);a.step(.05,false);assert.equal(animation,'curious');
+ Object.assign(model.position,a.goal.point);move.path=[];move.owner='rest';a.step(.05,false);a.step(.05,false);assert.equal(animation,'curious');for(let i=0;i<20;i++)a.step(.05,false);
  for(let i=0;i<72;i++)a.step(.05,false);assert.equal(a.memory.bridge.visits,1);assert.equal(a.goal,null);await new Promise(r=>setImmediate(r));assert.equal(reports,1);
  await a.plan();move.owner='command';const path=move.path;a.step(.05,false);assert.equal(a.goal,null);assert.equal(move.path,path,'user route preserved');
 

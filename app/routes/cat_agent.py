@@ -58,7 +58,8 @@ def story_art_start():
     data = request.get_json(silent=True)
     if not isinstance(data, dict) or not isinstance(data.get('refresh', False), bool):
         return jsonify(error='请求格式错误'), 400
-    payload, code = art.start(companion.owner_key(), current_app.extensions['llm'], data.get('refresh', False))
+    owner = companion.owner_key()
+    payload, code = art.start(owner, current_app.extensions['llm'], data.get('refresh', False), context=art.story_context(owner))
     return jsonify(**payload, scope=companion.browser_scope()), code
 
 @bp.get('/api/cat-agent/story-art')

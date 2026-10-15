@@ -25,7 +25,7 @@
     if(nav.bridges.some(b=>Math.abs(p.x-b.x)<b.w/2+nav.clearance&&Math.abs(p.z-b.z)<b.d/2+nav.clearance))return false;
    }
    this.locomotion.interrupt(3);this.animate(kind==='groom'?'sit':'idle');
-   this.active={kind,time:0,duration:kind==='jump'?1.65:kind==='rub'?5.4:kind==='groom'?7.2:4.6,side:this.random()<.5?-1:1,start:{x:p.x,z:p.z},end};this.last=kind;return true;
+   this.active={kind,time:0,duration:kind==='mouthClean'?1.5:kind==='jump'?1.65:kind==='rub'?5.4:kind==='groom'?7.2:4.6,side:this.random()<.5?-1:1,start:{x:p.x,z:p.z},end};this.last=kind;return true;
   }
   seekWall(){
    const nav=this.locomotion.navigation;
@@ -132,6 +132,10 @@
     for(const leg of ['FL','FR','HL','HR']){this.rotate(leg+'_upper',[1,0,0],(leg[0]==='F'?-.5:.6)*tuck);this.rotate(leg+'_lower',[1,0,0],-tuck);}
     this.rotate('spine',[1,0,0],Math.sin(air*Math.PI*2)*.09*envelope);
     this.rotate('neck',[1,0,0],-.12*envelope);
+   }else if(a.kind==='mouthClean'){
+    this.rotate('head',[1,0,0],-.08*envelope);
+    this.rotate('jaw',[1,0,0],.055*Math.sin(a.time*12)**2*envelope);
+    this.rotate('neck',[0,1,0],.055*Math.sin(a.time*5)*envelope);
    }else if(a.kind==='rub'){
     // Cheek first, then shoulder, then release. The root stays inside the safe wall corridor.
     const cheek=smooth(a.time/.7)*(1-smooth((a.time-2.4)/1.0));

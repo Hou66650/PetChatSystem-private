@@ -132,18 +132,20 @@
     const ownWall=this.acting&&this.goal.action==='rub'&&this.life.approach&&this.locomotion.path===this.life.approach.path;
     if(!ownWall||blocked||!this.locomotion.enabled){this.wasBlocked=true;if(this.goal||this.pending)this.interrupt(!this.locomotion.enabled?'自由活动已关闭':'先陪你，探索等一会儿');return;}
    }
-   if(this.wasBlocked){this.wasBlocked=false;this.next=Math.max(this.lastDecision+8000,this.now()+500);}
-   if(!this.goal&&this.now()>=this.socialAfter){this.socialAfter=this.now()+120000+(1-(this.relationship?.()?.personality?.sociability||.5))*90000;const r=this.relationship?.()||{};if(r.familiarity>=.15&&this.energy>.4&&this.hunger<.65&&this.social?.(r)){this.next=this.now()+15000;return;}}
+   if(this.wasBlocked){this.wasBlocked=false;this.next=Math.max(this.lastDecision+8000,this.now()+(this.socialWaiting?10000:500));if(this.socialWaiting){this.socialWaiting=false;this.reason='主动邀请后短暂等待回应；无人回应便继续探索，不扣相处关系';this.status('在你身边等一会儿，要一起玩吗？');}}
+   if(!this.goal&&this.now()>=this.socialAfter){this.socialAfter=this.now()+120000+(1-(this.relationship?.()?.personality?.sociability||.5))*90000;const r=this.relationship?.()||{};if(r.familiarity>=.15&&this.energy>.4&&this.hunger<.65&&this.social?.(r)){this.socialWaiting=true;this.next=this.now()+15000;return;}}
    if(!this.goal){if(!this.pending&&this.now()>=this.next&&this.locomotion.owner!=='command')void this.plan();return;}
    const g=this.goal;g.time+=dt;
    if(this.phase==='walking'){if(distance(this.model.position,g.lastPosition||this.model.position)>.03){g.lastPosition={x:this.model.position.x,z:this.model.position.z};g.progress=0;}else g.progress=(g.progress||0)+dt;if(g.progress>8){this.finish('blocked');return;}}
    if(g.time>100){this.finish('blocked');return;}
    if(this.phase==='walking'&&!this.locomotion.path.length){
     if(distance(this.model.position,g.point)>.2){this.finish('blocked');return;}
-    this.phase='aligning';g.time=0;this.locomotion.interrupt(30);
+    this.phase='aligning';g.time=0;this.locomotion.interrupt(30);this.animate('idle');this.status('到了，先停下来看看周围');
    }else if(this.phase==='aligning'){
     if((g.action==='eat'&&!this.canEat())||(g.action==='drink'&&!this.canDrink())){this.finish('blocked');return;}
     const place=this.catalog.find(p=>p.id===g.target);if(Number.isFinite(place.yaw)&&this.model.rotation){const angle=Math.atan2(Math.sin(place.yaw-this.model.rotation.y),Math.cos(place.yaw-this.model.rotation.y));this.model.rotation.y+=Math.max(-dt*2,Math.min(dt*2,angle));if(Math.abs(angle)>.04)return;}
+    if(!g.arrival){g.arrival=true;g.time=0;this.animate(['eat','drink','nibble','rub'].includes(g.action)?'sniff':'curious');this.status('在'+place.name+'闻闻、确认周围');return;}
+    if(g.time<.9)return;
     this.phase='acting';g.time=0;
     if(g.action==='rub'){if(!this.life.seekWall()){this.finish('blocked');return;}}
     else if(['jump','groom','stretch'].includes(g.action)){if(!this.life.begin(g.action)){this.finish('blocked');return;}}
@@ -155,6 +157,12 @@
     else this.animate(g.action==='sniff'?'sniff':g.action==='observe'?'curious':'idle');
     this.status('在'+place.name+words[g.action]);
    }else if(this.phase==='acting'){
+    if(g.recovery){
+     if(g.recovery==='wake'&&g.time>=1.5){g.recovery='stretch';g.time=0;if(!this.life.begin('stretch')){this.finish('completed');return;}this.status('睡醒了，慢慢伸个懒腰');}
+     else if(g.recovery==='stretch'&&!this.life.active&&g.time>.1)this.finish('completed');
+     else if(g.recovery==='clean'&&g.time>=1.6)this.finish('completed');
+     return;
+    }
     if(g.action==='rest'&&g.target!=='hammock'){
      if(g.restStage==='lower'&&g.time>=1.2){g.restStage='seated';this.animate('sit');}
      if(g.restStage==='seated'&&g.time>=8){g.restStage='rise';this.animate('standUp');}
@@ -164,7 +172,11 @@
     if(g.action==='sleep')this.energy=Math.min(1,this.energy+dt*.025);
     const gesture=['rub','jump','groom','stretch'].includes(g.action);
     if(gesture&&!this.life.active&&!this.life.approach&&g.time>.1)this.finish('completed');
-    else if(!gesture&&g.time>=(g.action==='sleep'?24:g.action==='eat'?10:g.action==='drink'?6:g.action==='rest'?(g.target==='hammock'?8:9.5):g.action==='nibble'?6:3.5))this.finish('completed');
+    else if(!gesture&&g.time>=(g.action==='sleep'?24:g.action==='eat'?10:g.action==='drink'?6:g.action==='rest'?(g.target==='hammock'?8:9.5):g.action==='nibble'?6:3.5)){
+     if(g.action==='sleep'){g.recovery='wake';g.time=0;this.animate('standUp');this.status('休息好了，慢慢起身');}
+     else if(['eat','drink','nibble'].includes(g.action)){g.recovery='clean';g.time=0;this.life.begin('mouthClean');this.status('吃喝好了，舔舔嘴边');}
+     else this.finish('completed');
+    }
    }
   }
   dispose(){this.adviceAbort?.abort();this.saveNeeds();this.interrupt('');this.disposed=true;this.text='已离开猫咪小岛';this.emit(true);this.loadAbort?.abort();this.locomotion.autonomous=true;this.life.autonomous=true;}

@@ -94,7 +94,7 @@ class Config:
     # --- 版本管理（强制）：每次改动必须升版本并记 CHANGELOG.md ----------------
     # 修复→补丁位 / 新功能→次版本位 / 破坏性→主版本位；
     # 用 scripts/bump_version.py 升号（自动校验 CHANGELOG 已记账），提交打同名 tag。
-    APP_VERSION = os.environ.get('APP_VERSION', '1.40.1')
+    APP_VERSION = os.environ.get('APP_VERSION', '1.41.0')
 
     # --- 真实宠物叫声（v1.0.0）：petId → 物种，决定叫声库目录 ---------------
     # 1 柴犬 / 2 哈士奇 / 4 德牧 = 狗；3 猫咪 = 猫。与前端 pet-sounds.js 保持一致。

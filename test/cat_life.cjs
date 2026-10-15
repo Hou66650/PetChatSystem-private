@@ -18,7 +18,7 @@ THREE.TextureLoader.prototype.load=function(url,cb){const t=new THREE.Texture();
  assert(cat.seekWall());for(let i=0;i<2100&&cat.approach;i++)frame();assert.equal(cat.active?.kind,'rub','navigate and align to actual conservatory wall');
  cat.cancel();assert.equal(cat.active,null);assert.equal(cat.approach,null);
  model.position.set(0,0,0);
- for(const kind of ['groom','stretch','rub']){assert(cat.begin(kind));for(let i=0;i<90;i++)frame();model.traverse(o=>{if(o.isBone)assert(o.quaternion.toArray().every(Number.isFinite));});frame(true);assert.equal(cat.active,null);}
+ for(const kind of ['groom','stretch','rub','mouthClean']){assert(cat.begin(kind));for(let i=0;i<90;i++)frame();model.traverse(o=>{if(o.isBone)assert(o.quaternion.toArray().every(Number.isFinite));});frame(true);assert.equal(cat.active,null);}
  cat.begin('groom');assert(move.goTo({x:-1,z:-1}));const command=move.path;cat.step(1/60,false);assert.equal(cat.active,null);assert.equal(move.path,command,'external command keeps its route');
  move.enabled=false;cat.wait=0;frame();assert.equal(cat.active,null,'roaming off cancels autonomous actions');
  const look=new Look(THREE,model,{relaxBehind:true});model.rotation.y=0;

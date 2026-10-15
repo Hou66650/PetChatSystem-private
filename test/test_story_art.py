@@ -5,6 +5,23 @@ from app.services import story_art_service as art
 class StoryArtTests(unittest.TestCase):
  setUp=Base.setUp
  tearDown=Base.tearDown
+ def test_context_tracks_facts_and_appearance(self):
+  from app.db import get_db
+  from app.services import cat_market_service as market,cat_relationship_service as relation
+  with self.app.app_context():
+   owner='user:1'
+   before=art.story_context(owner)
+   self.assertIn('不表现未发生',before['scenes'][0])
+   relation.record(owner,{'kind':'play','target':'disc','event':'test-play-0001'})
+   with get_db() as db:
+    market.ensure(owner)
+    db.execute("UPDATE cat_wallets SET active='ginger' WHERE owner=?",(owner,))
+   after=art.story_context(owner)
+   self.assertEqual(after['coat'],'ginger')
+   self.assertIn('暖橘',after['appearance'])
+   self.assertTrue(any('玩具' in s for s in after['scenes']))
+   self.assertFalse(any('休息' in s for s in after['scenes']))
+   self.assertNotEqual(before['story'],after['story'])
  def test_generation_scope_cache_and_errors(self):
   with art._lock:art._jobs.clear()
   calls=[]
