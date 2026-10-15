@@ -80,7 +80,7 @@
   }
   takeTool(kind,bed){
    if(this.busy||this.scopeLost||!this.data||this.data.guest)return;this.cancelDirect();if(!this.toolModels.has(kind)){this.note('工具还在准备，请稍后再试。');return;}
-   this.mode='care';this.toolKind=kind;this.dialog.close();this.hud.hidden=false;this.hud.dataset.mode='care';this.showRotation(false);this.meter.hidden=false;this.meter.value=0;this.hint.textContent=(kind==='water'?'洒水壶':'肥料罐')+'已拿起 · 对准种植床按住鼠标照料 · Esc 放回';
+   this.mode='care';this.toolKind=kind;this.dialog.close();this.hud.hidden=false;this.hud.dataset.mode='care';document.getElementById('farm-direct-cancel').textContent='放回 · Esc';this.showRotation(false);this.meter.hidden=false;this.meter.value=0;this.hint.textContent=(kind==='water'?'洒水壶':'肥料罐')+' · 对准种植床按住鼠标';
    const b=this.data.beds.find(b=>b.id===bed);if(b){this.hoverBed=b.id;this.toolTarget.set(b.x-.3,.95,b.z);this.a.focus?.();}else this.toolTarget.copy(this.toolModels.get(kind).position).add(new this.T.Vector3(0,.8,0));
    this.makeParticles();
   }
@@ -89,7 +89,7 @@
   }
   showRotation(on){for(const id of ['farm-rotate-left','farm-rotate-right'])document.getElementById(id).hidden=!on;}
   async beginPlacement(spec){
-   if(this.busy||this.scopeLost||this.data?.guest)return;this.cancelDirect();this.mode='place';this.placement={...spec,yaw:spec.yaw||0,x:spec.x??0,z:spec.z??0};this.placementKey=FarmGarden.modelKey(spec.species,10,false);this.dialog.close();this.hud.hidden=false;this.hud.dataset.mode='place';this.showRotation(true);this.meter.hidden=true;this.hint.textContent='正在准备落点预览…';
+   if(this.busy||this.scopeLost||this.data?.guest)return;this.cancelDirect();this.mode='place';this.placement={...spec,yaw:spec.yaw||0,x:spec.x??0,z:spec.z??0};this.placementKey=FarmGarden.modelKey(spec.species,10,false);this.dialog.close();this.hud.hidden=false;this.hud.dataset.mode='place';document.getElementById('farm-direct-cancel').textContent='取消 · Esc';this.showRotation(true);this.meter.hidden=true;this.hint.textContent='正在准备落点预览…';
    const epoch=++this.toolEpoch,progress=window.PaitLoading?.start('正在准备摆放预览');
    try{
     const model=await this.asset(this.placementKey),pot=spec.container==='pot'?await this.asset('flowerpot'):null;if(this.disposed||epoch!==this.toolEpoch){progress?.done();return;}
