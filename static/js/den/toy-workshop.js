@@ -35,7 +35,7 @@
    root.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});this.render();this.note('七种玩具已就位，也可以直接拿起岛上的球。');
   }
   restore(r){r.parent.add(r.node);r.node.position.copy(r.position);r.node.quaternion.copy(r.quaternion);r.node.scale.copy(r.scale);r.state='available';r.stored=true;}
-  clear(){this.cancel();for(const r of this.records)this.restore(r);if(this.root){this.a.scene.remove(this.root);this.a.dispose(this.root);}this.root=null;this.records=[];this.dialog.close();this.render();}
+  clear(){this.cancel();for(const r of this.records){this.restore(r);this.resetSupply(r);}if(this.root){this.a.scene.remove(this.root);this.a.dispose(this.root);}this.root=null;this.records=[];this.dialog.close();this.render();}
   cancel(){if(this.pointerId!=null&&this.a.canvas.hasPointerCapture(this.pointerId))this.a.canvas.releasePointerCapture(this.pointerId);this.a.canvas.style.cursor='';this.a.face()?.reset();if(this.held)this.finish(this.held,false);this.pointerId=null;this.preview.visible=false;this.target=null;this.render();}
   recall(){this.cancel();for(const r of this.records)this.restore(r);this.note('玩具已归位，岛上的球也回到原处。');}
   open(){this.cancel();this.render();this.dialog.showModal();}
@@ -114,7 +114,9 @@
    if(now-(this.hoverAt||0)>100){this.hoverAt=now;this.hoverHit=this.handPick(h.pinchX??h.sx,h.pinchY??h.sy);}
    return this.hoverHit==='cabinet'?'玩具柜 · 捏合打开':this.hoverHit?this.hoverHit.spec.name+' · 拇指食指捏合拿起':'准星对准玩具 · 捏合拿起';
   }
-  takeKind(kind){const r=this.records.find(r=>r.spec.id===kind&&r.state==='available');if(!r){this.note('这个玩具还没准备好。');return;}this.dialog.close();if(this.take(r)){this.pointerId=null;this.move(this.a.face().project(this.a.model().position));this.note('已拿起'+r.spec.name+'。在空地按住移动，绿色落点松手生效；Esc 归还。');}}
+  resetSupply(r){if(!r.supplyMaterials)return;for(const [node,original] of r.supplyMaterials){for(const material of (Array.isArray(node.material)?node.material:[node.material]))material.dispose();node.material=original;}r.supplyMaterials=null;r.spec=r.originalSpec;}
+  takeSupply(item){const r=this.records.find(r=>r.spec.id===item.effect&&r.state==='available');if(!r)return false;this.takeKind(item.effect);if(this.held!==r)return false;r.originalSpec=r.spec;r.spec={...r.spec,name:item.name};r.supplyMaterials=[];let i=0;r.node.traverse(node=>{if(!node.isMesh)return;r.supplyMaterials.push([node,node.material]);const colors=item.id==='star_ball'?[0x86b9a6,0xffefbe]:[0xb5a9cb,0xe4dced];const tint=m=>{const c=m.clone();c.color.setHex(colors[i++%colors.length]);return c;};node.material=Array.isArray(node.material)?node.material.map(tint):tint(node.material);});this.render();this.note('已拿起'+item.name+'，沿用原来的拿取与抛接方式。');return true;}
+  takeKind(kind){const r=this.records.find(r=>r.spec.id===kind&&r.state==='available');if(!r){this.note('这个玩具还没准备好。');return;}this.resetSupply(r);this.dialog.close();if(this.take(r)){this.pointerId=null;this.move(this.a.face().project(this.a.model().position));this.note('已拿起'+r.spec.name+'。在空地按住移动，绿色落点松手生效；Esc 归还。');}}
   take(r){if(this.a.busy())return false;this.cancel();this.point=null;this.lastPoint=null;this.shakeDistance=0;this.shakeAt=0;this.a.cancelCommands();const f=this.a.face();r.before={stored:r.stored,position:r.node.getWorldPosition(new this.a.THREE.Vector3()),quaternion:r.node.getWorldQuaternion(new this.a.THREE.Quaternion())};this.a.scene.attach(r.node);r.state='held';this.held=r;this.mode=r.spec.fetch?'throw':'place';
    f.pointerMode=!f.cameraOn;f.mode=r.spec.id==='brush'?'brush':'touch';f.render();
    if(r.spec.fetch)f.holdBall({mesh:r.node,offset:r.offset,kind:r.spec.id,label:r.spec.name,release:complete=>this.finish(r,complete)});

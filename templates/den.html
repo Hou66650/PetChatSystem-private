@@ -404,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-shiba-acting" hidden>球球的小表情</button></div>
         </section>
         <section class="dock-panel" id="dock-more" aria-labelledby="dock-more-title" hidden><header><div><h2 id="dock-more-title">小窝里的小乐趣</h2><p>玩耍、记录，或者一起安静一会。</p></div><button type="button" class="dock-close" aria-label="收起小窝里的小乐趣">✕</button></header>
-            <div class="dock-grid"><button class="action-btn" id="btn-dress" data-icon="dress">换装</button>
+            <div class="dock-grid"><a class="action-btn" href="/supplies" target="_blank" rel="noopener">派特补给站 / 我的物品</a><button class="action-btn" id="btn-dress" data-icon="dress">换装</button>
             <button class="action-btn" id="btn-photo" data-icon="photo">拍照</button>
             <button class="action-btn" id="btn-vision" data-icon="eye">面对面互动</button>
             <button class="action-btn" id="btn-tts">朗读：开</button>
@@ -564,6 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/head-look.js') }}?v={{ app_version }}"></script>
+    <script src="/static/js/den/supply-delivery.js?v={{ app_version }}"></script>
     <script src="/static/js/den/cat-life.js?v={{ app_version }}"></script>
     <link rel="stylesheet" href="/static/css/greenhouse.css?v={{ app_version }}">
     <dialog id="greenhouse-dialog" aria-labelledby="greenhouse-title">
@@ -1197,6 +1198,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // ---------- 动画状态机（GLB AnimationMixer 驱动） ----------
         let petModel = null;
         let facePlay = null, toyWorkshop = null, headLook = null, catLife = null, catAgent = null;
+        let supplyCare=null, supplyDelivery=null;
         const viewAttention = new PetHeadLook.ViewAttention();
         controls.addEventListener('change',()=>viewAttention.moved(performance.now()));
         let mixer = null, actions = {}, activeAction = null, facialBlinkAction = null, faceMode = "open";
@@ -2425,6 +2427,7 @@ document.addEventListener('DOMContentLoaded', () => {
             button.textContent='自由活动：'+(enabled?'开':'关');button.setAttribute('aria-pressed',String(enabled));
         }
         function movementBlocked() {
+            if(supplyCare?.phase==='using')return true;
             if(document.getElementById('greenhouse-dialog').open||portals?.away||portals?.holding)return true;
             return document.hidden || (toyWorkshop?.held?.state==='held' && !(toyWorkshop.held.spec.id==='rattle' && toyWorkshop.rattlePath)) || ['held','flight'].includes(facePlay?.ball?.phase) || spawnBusy || !petModel || anim.birth < 1 || grabbed || dropping || bounceBack > 0 || (interactionBusy() && !facePlay?.guiding) ||
                 performing() || (chatBusy&&!dialogueRunner.active) || (voiceBusy&&!dialogueRunner.active) || breathActive || !gameOverlay.hidden || !gamesMask.hidden || !moodMask.hidden ||
@@ -2463,6 +2466,45 @@ document.addEventListener('DOMContentLoaded', () => {
         for(const el of gardenDialog.querySelectorAll('[data-visit]'))el.onclick=()=>{
             gardenDialog.close();if(movementBlocked()||!catAgent?.requestVisit(el.dataset.visit))toast('请先结束当前互动并开启自由活动','info');
         };
+        function finishSupplyCare(done,preserveAction=false){
+            const care=supplyCare;if(!care)return;supplyCare=null;
+            if(care.bowl){scene.remove(care.bowl);SelectedAssets.disposeTree(care.bowl);}
+            if(care.model===petModel){if(!preserveAction&&(done||care.phase==='using'&&anim.state==='eat'))setAnim('idle',0);if(done&&catAgent){if(care.item.effect!=='drink')catAgent.hunger=Math.max(0,catAgent.hunger-(care.item.id==='dinner'?.5:care.item.effect==='snack'?.15:.35));catAgent.saveNeeds();catAgent.text=care.item.effect==='drink'?'刚刚喝了清水':'刚刚享用了'+care.item.name;catAgent.reason='主人送来了日常补给';catAgent.source='local';catAgent.emit(true);}}
+            care.resolve(done);
+        }
+        supplyDelivery=new SupplyDelivery.Controller({scope:COMPANION_SCOPE,pet:()=>currentPetId,
+            ready:()=>!!petModel&&!spawnBusy&&!supplyCare&&!movementBlocked()&&!toyWorkshop?.held&&!portals?.away,
+            note:text=>toast(text,'info',2600),
+            use:delivery=>{
+                catAgent?.interrupt('先看看主人送来的补给');catLife?.cancel();
+                if(delivery.item.kind==='toy')return Promise.resolve(!!toyWorkshop?.takeSupply(delivery.item));
+                const model=petModel,nav=locomotion?.navigation;
+                let target=currentPetId===3&&catHomeReady?nav?.nearest({x:.8,z:4.3}):nav?.nearest({x:model.position.x+Math.sin(model.rotation.y)*.55,z:model.position.z+Math.cos(model.rotation.y)*.55});
+                if(!target||!locomotion.goTo(target,{gait:'walk'}))return Promise.resolve(false);
+                return new Promise(resolve=>{supplyCare={model,item:delivery.item,phase:'walking',time:0,startedAt:Date.now(),resolve,target};showBubble('给你准备了'+delivery.item.name,2200,true);});
+            }
+        });
+        window.addEventListener('pagehide',()=>{supplyDelivery?.dispose();finishSupplyCare(false);});
+        function updateSupplyCare(dt){
+            const care=supplyCare;if(!care)return;
+            if(interactionBusy()||performing()){finishSupplyCare(false,true);return;}
+            if(Date.now()-care.startedAt>80000||care.model!==petModel||spawnBusy||portals?.away||grabbed||dropping||toyWorkshop?.held){finishSupplyCare(false);return;}
+            care.time+=dt;if(care.time>45){finishSupplyCare(false);return;}
+            if(care.phase==='walking'&&!locomotion.path.length){
+                if(Math.hypot(petModel.position.x-care.target.x,petModel.position.z-care.target.z)>.25){finishSupplyCare(false);return;}
+                care.phase='using';care.time=0;catAgent?.interrupt();locomotion.interrupt(10);setAnim('eat',0);
+                care.bowl=SupplyDelivery.bowl(THREE,care.item.effect==='drink');scene.add(care.bowl);
+            }
+            if(care.phase==='using'){
+                if(anim.state!=='eat'){finishSupplyCare(false);return;}
+                const mouth=petModel.getObjectByName('SOCKET_mouth'),pos=mouth?mouth.getWorldPosition(new THREE.Vector3()):petModel.position.clone();
+                // A raised serving dish meets the muzzle; its stem reaches the island surface.
+                if(care.bowl&&!care.placed&&care.time>.5){care.bowl.position.copy(pos);care.bowl.position.y=Math.max(navHeight(pos)+.03,pos.y-.10);const height=care.bowl.position.y-navHeight(pos);if(height>.04){const stand=new THREE.Mesh(new THREE.CylinderGeometry(.07,.12,height,20),new THREE.MeshStandardMaterial({color:0x899f8a,roughness:.7}));stand.position.y=-height/2;care.bowl.add(stand);}care.placed=true;}
+                if(care.bowl)care.bowl.visible=!!care.placed;
+                if(care.time>=(care.item.effect==='snack'?3:6))finishSupplyCare(true);
+            }
+        }
+        function navHeight(p){return locomotion?.navigation.surfaceHeight(p)||0;}
         for(const [id,action] of [['btn-cat-eat','eat'],['btn-cat-home','sleep']])document.getElementById(id).onclick=()=>{if(movementBlocked()){toast('请先结束当前互动','info');return;}if(!catAgent?.requestCare(action))toast('请先开启自由活动，并等待猫窝加载完成','info');};
         document.getElementById('btn-roam').addEventListener('click',()=>{
             if (!locomotion) return;locomotion.toggle(!locomotion.enabled);petState().roaming=locomotion.enabled;saveState();updateRoamingButton();
@@ -3603,6 +3645,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (anim.state === 'sleep' && anim.lastInteract > (anim.sleptAt || 0)) {
                     anim.state = 'idle'; playAction('idle', 1);   // 入睡后发生过新互动才唤醒（crossFade 翻身站起）
                 }
+                updateSupplyCare(dt);
                 const blocked=movementBlocked();
                 catAgent?.step(dt,blocked);
                 const catActing=catLife?.step(dt,blocked)||false;

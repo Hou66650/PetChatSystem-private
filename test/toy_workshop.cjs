@@ -51,6 +51,12 @@ const camera=new THREE.PerspectiveCamera(45,1,.1,50);camera.position.set(0,4,5);
 w.a.camera=camera;w.a.canvas.clientWidth=500;w.a.canvas.clientHeight=500;w.ray=new THREE.Raycaster();assert.equal(w.pick(250,250),r,'ray picks the real prop');
 let cabinetDisposed=0;w.root=new THREE.Group();scene.add(w.root);w.a.dispose=root=>{assert.equal(root,w.root);cabinetDisposed++;};w.dialog={close(){}};w.clear();assert.equal(cabinetDisposed,1);assert.equal(node.parent,parent);assert.equal(disposed,0);assert.equal(w.records.length,0);w.clear();assert.equal(cabinetDisposed,1);
 console.log('PASS brush placement, real ray picking, scene switch restores props and releases cabinet once');
+// Supply variants clone shared materials and restore them before a free toy is selected.
+const original=node.material;r.spec=W.catalog[0];w.records=[r];r.state='available';w.dialog={close(){}};
+const savedTake=w.takeKind;w.takeKind=function(kind){this.resetSupply(r);this.held=r;};
+assert(w.takeSupply({id:'star_ball',name:'星光弹力球',effect:'ball'}));assert.notEqual(node.material,original);assert.equal(original.color.getHex(),0xffffff);
+let cloneDisposed=0;node.material.addEventListener('dispose',()=>cloneDisposed++);w.resetSupply(r);assert.equal(node.material,original);assert.equal(r.spec.name,'彩纹球');assert.equal(cloneDisposed,1);w.takeKind=savedTake;w.held=null;
+console.log('PASS purchased toy style: shared material isolation, original free toy and disposal');
 
 // A held rattle uses the real river router, including the bridge, rather than a straight chase.
 const riverBase={...JSON.parse(fs.readFileSync('templates/den.html','utf8').match(/const SAKURA_NAV = (\{[^\n]+\});/)[1]),...require('../static/js/den/sakura-river-layout.js')};
@@ -77,7 +83,7 @@ console.log('PASS rattle run follows bridge, safe retargeting, invalid water, ca
 // Run the real page guard: holding other toys still blocks wandering; a rattle route can move.
 const vm=require('node:vm'),page=fs.readFileSync('templates/den.html','utf8');
 const guard=page.match(/function movementBlocked\(\) \{([\s\S]*?)\n        \}/)[1];
-const env={document:{hidden:false,getElementById:()=>({classList:{contains:()=>true}})},toyWorkshop:{held:{state:'held',spec:{id:'rattle'}},rattlePath:[{}]},facePlay:{},spawnBusy:false,petModel:{},anim:{birth:1,state:'run',until:0},grabbed:false,dropping:false,bounceBack:0,interactionBusy:()=>false,performing:()=>false,chatBusy:false,voiceBusy:false,dialogueRunner:{active:false},breathActive:false,gameOverlay:{hidden:true},gamesMask:{hidden:true},moodMask:{hidden:true},performance:{now:()=>5000}};
+const env={portals:null,catAgent:null,supplyCare:null,document:{hidden:false,getElementById:()=>({classList:{contains:()=>true}})},toyWorkshop:{held:{state:'held',spec:{id:'rattle'}},rattlePath:[{}]},facePlay:{},spawnBusy:false,petModel:{},anim:{birth:1,state:'run',until:0},grabbed:false,dropping:false,bounceBack:0,interactionBusy:()=>false,performing:()=>false,chatBusy:false,voiceBusy:false,dialogueRunner:{active:false},breathActive:false,gameOverlay:{hidden:true},gamesMask:{hidden:true},moodMask:{hidden:true},performance:{now:()=>5000}};
 const blocked=()=>vm.runInNewContext('(function(){'+guard+'})()',env);
 assert.equal(blocked(),false);env.toyWorkshop.rattlePath=null;assert.equal(blocked(),true);
 env.toyWorkshop.rattlePath=[{}];env.toyWorkshop.held.spec.id='brush';assert.equal(blocked(),true);

@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% block title %}派特补给站 · 把日子过得软乎乎{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/css/supplies.css?v={{ app_version }}">{% endblock %}
+{% block body %}<main class="supply-shop">
+<header class="supply-hero"><div><span class="supply-eyebrow">PAIT ISLAND / LITTLE DAILY JOYS</span><h1>把日子，<br>过得软乎乎。</h1><p>一碗饭，一口水，一件舍不得放下的小玩具。<br>给云海另一端的伙伴，带点好东西。</p><a href="/">回到派特岛 ↗</a></div><aside class="supply-wallet"><span>我的岛屿代币</span><strong id="supply-balance">—</strong><small>与猫咪外观市场共用钱包</small><button id="supply-coins" disabled>领取今日 30 枚</button><a href="/cat-market">看看猫咪外观 ↗</a></aside></header>
+<section class="supply-gift"><div><strong>今天的饭，我们准备好了。</strong><p>每天可领 3 份基础口粮，清水一直免费。离线不扣亲密度。</p></div><button id="supply-daily" disabled>领取今日口粮</button></section>
+<div class="supply-toolbar"><nav aria-label="商品分类"><button data-filter="all" aria-pressed="true">全部好物</button><button data-filter="food">食物</button><button data-filter="water">饮水</button><button data-filter="toy">玩具</button><button data-filter="owned">我的物品</button></nav><label>送给 <select id="supply-pet"><option value="3">猫咪 · 雾林温室</option><option value="1">柴犬 · 樱花庭院</option><option value="2">哈士奇 · 雪境木屋</option><option value="4">德牧 · 山岭营地</option></select></label></div>
+<p id="supply-status" role="status" aria-live="polite">正在整理货架…</p><button id="supply-retry" hidden>重试未确认的操作</button><a id="supply-login" href="/reader_login" hidden>登录后领取免费补给、购买与使用 ↗</a>
+<section id="supply-shelves" class="supply-shelves" aria-label="商品货架"></section>
+<section class="supply-orders"><div><span class="supply-eyebrow">PACKED WITH LOVE</span><h2>送往小岛的小包裹</h2><p>进入对应宠物的小岛后自动使用。食物在送出时预留一份，未开始使用可取消退回。</p></div><div id="supply-deliveries"></div></section>
+<footer class="supply-note">食物按份消耗 · 玩具永久拥有 · 原有玩具继续免费<br>虚拟代币不可充值、提现或转赠。这里不会替换宠物的身份和记忆。</footer>
+<dialog id="supply-confirm"><form method="dialog"><button class="supply-close" aria-label="关闭">×</button></form><small>为它挑选的一点小幸福</small><h2 id="supply-confirm-title"></h2><p id="supply-confirm-description"></p><label id="supply-quantity-label">数量 <input id="supply-quantity" type="number" min="1" max="20" value="1"></label><p id="supply-total"></p><button id="supply-confirm-buy" class="supply-primary">确认购买</button><p id="supply-confirm-status" role="status"></p></dialog>
+</main>{% endblock %}
+{% block script %}<script>window.SUPPLY_SCOPE={{ scope|tojson }};</script><script src="/static/js/supplies.js?v={{ app_version }}"></script>{% endblock %}

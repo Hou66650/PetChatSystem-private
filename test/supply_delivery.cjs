@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+(async()=>{let pet=3,used=0,fail=true,claims=0;const item={id:'package',pet:'3',item:{id:'water'}};
+ const context={module:{exports:{}},crypto:require('node:crypto').webcrypto,document:{hidden:false},AbortController,setInterval:()=>1,clearInterval(){},setTimeout,clearTimeout,fetch:async(url,options)=>{const d=JSON.parse(options.body);if(url.endsWith('claim')){claims++;return {ok:true,json:async()=>({scope:'owner',delivery:item})};}assert.equal(d.delivery,'package');if(fail){fail=false;throw Error('lost response');}return {ok:true,json:async()=>({scope:'owner',delivery:null})};}};
+ vm.runInNewContext(fs.readFileSync('static/js/den/supply-delivery.js','utf8'),context);
+ const c=new context.module.exports.Controller({scope:'owner',ready:()=>true,pet:()=>pet,use:async()=>{used++;return true;},note(){}});
+ await c.poll();await c.poll();assert.equal(used,1,'ack retry does not repeat feeding');assert.equal(claims,2);assert.equal(c.finished.size,0);
+ context.document.hidden=true;await c.poll();assert.equal(claims,2,'hidden island does not claim');context.document.hidden=false;
+ context.fetch=async()=>({ok:true,json:async()=>{pet=1;return {scope:'owner',delivery:item};}});await c.poll();assert.equal(used,1,'pet change during claim defers delivery');
+ context.fetch=async()=>({ok:true,json:async()=>({scope:'other',delivery:item})});await c.poll();assert(c.lost);assert.equal(used,1,'account mismatch never applies delivery');c.dispose();console.log('PASS supply delivery: retry, hidden page, selected pet, account isolation, cleanup');
+})().catch(e=>{console.error(e);process.exitCode=1;});
