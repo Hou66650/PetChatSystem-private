@@ -1,3 +1,24 @@
 .cat-companion{position:fixed;left:18px;top:calc(var(--nav-h,64px) + 88px);z-index:220;max-width:min(360px,calc(100vw - 36px));font-size:14px}.cat-companion button,.cat-markers button,.cat-story button{border:1px solid #d5e4d5;border-radius:16px;background:#fffff2ec;color:#315448;padding:10px 14px;cursor:pointer}.cat-guide{background:#fffff2e8;color:#315448;border-radius:18px;margin-top:10px;padding:10px;line-height:1.8}.cat-guide:empty{display:none}.cat-guide button{font-size:12px;margin-left:8px}.cat-markers{position:fixed;inset:0;pointer-events:none;z-index:210}.cat-markers button{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;white-space:nowrap;box-shadow:0 3px 20px #153c3433}.cat-story{max-width:460px;width:calc(100vw - 40px);box-sizing:border-box;border:1px solid #b9ccbf;border-radius:28px;padding:28px;background:#fffdf3;color:#315448;line-height:1.8}.cat-story::backdrop{background:#102f395e;backdrop-filter:blur(5px)}.cat-story .cat-close{float:right}.cat-story a{color:#315448}.cat-story details{margin-top:20px}.cat-sync{font-size:12px}.toy-immersive .cat-companion,.toy-immersive .cat-markers{display:none}
 
 .cat-companion .cat-intent{position:static!important;max-width:none;margin-top:10px;box-sizing:border-box;pointer-events:auto}.cat-companion #cat-intent-meta{display:none}.cat-companion .cat-intent[hidden]{display:none}.cat-life-mode #intimacy-panel>div:not(#ip-companion){display:none}.cat-life-mode .glass-dock>[data-dock-panel="dock-food"],.cat-life-mode .glass-dock>[data-dock-panel="dock-actions"],.cat-life-mode .glass-dock>#btn-pet{display:none}.cat-call-button,.cat-backup{display:none}.cat-life-mode .cat-call-button,.cat-life-mode .cat-backup{display:inline-flex}.scene-fullscreen .cat-companion{top:76px}.cat-story{max-height:calc(100dvh - 40px);overflow:auto}
+
+/* Keep the companion controls in the same flow as the pet name. */
+.cat-companion{position:relative;inset:auto;max-width:none;font-size:12px;z-index:auto}
+.cat-companion[hidden],.cat-menu[hidden]{display:none!important}
+.cat-companion-standalone{position:fixed;left:18px;top:calc(var(--nav-h,64px) + 18px);width:240px}
+.cat-life-mode #den-wrap #intimacy-panel{width:252px;max-width:calc(100vw - 32px);min-width:0;box-sizing:border-box;padding:14px 16px;border-radius:22px}
+.cat-life-mode #ip-name{display:flex;align-items:center;gap:8px}
+.cat-life-mode #ip-name-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat-life-mode #btn-profile{flex-shrink:0}
+.cat-companion .cat-intent{background:none;backdrop-filter:none;border:0;border-radius:0;box-shadow:none;padding:0;margin:9px 0 0;font-size:12px;line-height:1.6;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cat-companion .cat-menu-toggle{display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 0 0;margin-top:8px;border:0;border-top:1px solid #31544820;border-radius:0;background:none;font-size:12px}
+.cat-menu-toggle span{transition:transform .18s ease}
+.cat-menu-toggle[aria-expanded="true"] span{transform:rotate(180deg)}
+.cat-menu{display:grid;gap:8px;margin-top:10px;max-height:min(340px,45dvh);overflow:auto}
+.cat-menu>button{text-align:left;font-size:12px;padding:9px 12px;border-radius:12px}
+.cat-menu>a{font-size:12px;padding:5px 2px;text-decoration:none}
+.cat-menu .cat-guide{margin:0;padding:8px;font-size:12px}
+.cat-guide button{padding:4px 6px;margin:4px 0 0}
+.scene-fullscreen .cat-companion{top:auto}
+@media(max-width:767px){.cat-life-mode #den-wrap #intimacy-panel{left:12px;top:66px;width:224px;padding:12px 14px}}
+@media(prefers-reduced-motion:reduce){.cat-menu-toggle span{transition:none}}
