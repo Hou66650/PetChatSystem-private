@@ -561,6 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/snow-haven-layout.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/selected-assets.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/den/pet-model-bounds.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/pet-grounding.js?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/scene-navigation.js') }}?v=1.7.0"></script>
     <script src="{{ url_for('static', filename='js/den/pet-locomotion.js') }}"></script>
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
@@ -1212,7 +1213,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ---------- 动画状态机（GLB AnimationMixer 驱动） ----------
         let petModel = null;
-        let facePlay = null, toyWorkshop = null, headLook = null, catLife = null, catAgent = null;
+        let facePlay = null, toyWorkshop = null, headLook = null, catLife = null, catAgent = null, petGrounding = null;
         let supplyCare=null, supplyDelivery=null;
         const viewAttention = new PetHeadLook.ViewAttention();
         controls.addEventListener('change',()=>viewAttention.moved(performance.now()));
@@ -1471,6 +1472,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
             facePlay?.reset();toyWorkshop?.clear();
             catAgent?.dispose();catAgent=null;document.getElementById('cat-intent').hidden=true;document.getElementById('cat-care').hidden=true;
+            petGrounding?.beforeFrame();petGrounding=null;
             catLife?.cancel();catLife=null;headLook?.beforeFrame();headLook=null;
             dialogueRunner.cancel('');endDialogueHold();
             spawnBusy = true;
@@ -1614,7 +1616,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const navigation = new PetNavigation.Navigation({radius:3.2,
                 ...(modeledStage ? MODELED_STAGES[spec.theme].navigation : {obstacles:PetNavigation.legacy[spec.theme]}),
                 obstacles:modeledStage?MODELED_STAGES[spec.theme].navigation.obstacles.filter(o=>catHomeReady||o.tag!=='catHome'):PetNavigation.legacy[spec.theme],
+                surfaces:modeledStage?(MODELED_STAGES[spec.theme].navigation.surfaces||[]).filter(s=>catHomeReady||s.tag!=='catHome'):[],
                 bodyRadius:Math.hypot(box.max.x-box.min.x,box.max.z-box.min.z)*spec.h/origH/2+.015});
+            if(id===3)petGrounding=new PetGrounding.Controller(THREE,petModel,model,navigation);
             locomotion = new PetLocomotion.Controller({navigation,model:petModel,speed:spec.pbr ? .34 : .46,
                 strideSpeed:spec.pbr ? .42 * spec.h / origH : .46,
                 gaits:actions.run?{walk:.348*spec.h/origH,trot:.682*spec.h/origH,run:1.0*spec.h/origH,turnLeft:1,turnRight:1}:null,
@@ -3623,6 +3627,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             controls.update();
             camera.updateMatrixWorld(true);
+            petGrounding?.beforeFrame();
             catLife?.beforeFrame();
             headLook?.beforeFrame();
             facePlay?.beforeFrame();
@@ -3749,6 +3754,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     headLook.update(poseDt,target,{state:anim.state,locomotionFocus:!!catLife?.lookingAlongRoute,blocked:grabbed||dropping||!!actionTransition||!!catLife?.active});
                 }
                 if(!grabbed&&!dropping)catLife?.pose(dt,anim.state,shibaExpression);
+                petGrounding?.update(dt,{state:anim.state,airborne:!modeledStage||grabbed||dropping||bounceBack>0||anim.birth<1||catLife?.active?.kind==='jump'||['happy','surprise'].includes(anim.state)});
                 toyWorkshop?.grip?.update(toyWorkshop.held);
                 const st = anim.state;
 

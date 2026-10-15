@@ -50,8 +50,16 @@
                 const t=(p.z-b.z)/b.d+.5;
                 height=Math.max(height,b.base+b.rise*Math.sin(Math.PI*t)**2);
             }
-            for(const s of this.surfaces)if(Math.abs(p.x-s.x)<=s.w/2&&p.z<=s.front&&p.z>=s.back){
-                height=Math.max(height,s.base+s.rise*Math.max(0,Math.min(1,(s.front-p.z)/s.ramp)));
+            for(const s of this.surfaces){
+                if(s.kind==='ellipsoid'){
+                    const q=((p.x-s.x)/(s.w/2))**2+((p.z-s.z)/(s.d/2))**2;
+                    if(q<1)height=Math.max(height,s.base+s.rise*Math.sqrt(1-q));
+                }else if(s.kind==='threshold'){
+                    const edge=Math.min(s.w/2-Math.abs(p.x-s.x),s.d/2-Math.abs(p.z-s.z));
+                    if(edge>0)height=Math.max(height,s.base+s.rise*Math.min(1,edge/s.edge));
+                }else if(Math.abs(p.x-s.x)<=s.w/2&&p.z<=s.front&&p.z>=s.back){
+                    height=Math.max(height,s.base+s.rise*Math.max(0,Math.min(1,(s.front-p.z)/s.ramp)));
+                }
             }
             return height;
         }

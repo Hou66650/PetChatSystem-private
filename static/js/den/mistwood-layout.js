@@ -2,7 +2,11 @@
 (function(root){
  const layout = {
   "radius": 7.8,
-  "surfaces": [{"x":3,"w":2.2,"front":-3.05,"back":-4.75,"base":0.035,"rise":0.49,"ramp":0.70}],
+  "surfaces": [
+    {"x":3,"w":2.2,"front":-3.05,"back":-4.75,"base":0.035,"rise":0.49,"ramp":0.70},
+    {"kind":"ellipsoid","tag":"catHome","x":-3,"z":4.62,"w":2.08,"d":1.52,"base":0.065,"rise":0.065},
+    {"kind":"threshold","tag":"catHome","x":-3,"z":5.65,"w":2.38,"d":0.36,"base":0.035,"rise":0.030,"edge":0.025}
+  ],
   "rug": {
     "x": 0,
     "z": 0,
