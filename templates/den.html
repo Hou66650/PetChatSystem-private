@@ -2495,9 +2495,15 @@ document.addEventListener('DOMContentLoaded', () => {
             onTrips:trips=>{if(!spawnBusy)portalVisitors.sync(trips);},
             canInvite:()=>!spawnBusy&&petModel&&!grabbed&&!dropping&&!interactionBusy()&&!chatBusy&&!voiceBusy&&['idle','walk'].includes(anim.state)&&locomotion?.owner!=='command',
             bubble:text=>{if(petModel)showBubble(text,4000,true);},
-            onApproach:(point)=>{if(!point||!locomotion)return;catAgent?.interrupt('想去看看传送门');setAnim('idle',0);locomotion.goTo(point,{gait:'walk'});},
+            onApproach:async(point,kind)=>{
+                if(!point||!locomotion||!petModel||spawnBusy)throw Error('宠物还在加载，请稍后再点传送门');
+                if(grabbed||dropping||interactionBusy()||breathActive||!gameOverlay.hidden||!gamesMask.hidden||!moodMask.hidden)throw Error('请先结束当前互动，再点传送门');
+                document.querySelectorAll('.bowl-panel[open],.cat-story[open],#greenhouse-dialog[open]').forEach(panel=>panel.close());
+                await dialogueRunner.run(['portal_'+kind]);
+                if(!portals.holding)throw Error(dialogueRunner.message||'走近传送门被打断，请再次点击传送门');
+            },
             onArrive:()=>{if(petModel){petModel.rotation.y=Math.PI;setAnim('wave',1800);}},
-            onReject:()=>{const rejectEpoch=locomotionEpoch;catAgent?.interrupt('这次留在岛上陪你');setAnim('shy',1600);setTimeout(()=>{if(rejectEpoch===locomotionEpoch&&locomotion&&!portals.away)locomotion.goTo(locomotion.navigation.nearest({x:0,z:0}),{gait:'walk'});},1800);},
+            onReject:()=>{dialogueRunner.cancel('这次先不去');const rejectEpoch=locomotionEpoch;catAgent?.interrupt('这次留在岛上陪你');setAnim('shy',1600);setTimeout(()=>{if(rejectEpoch===locomotionEpoch&&locomotion&&!portals.away&&!portals.intent&&!dialogueRunner.active)locomotion.goTo(locomotion.navigation.nearest({x:0,z:0}),{gait:'walk'});},1800);},
             onReturn:point=>{if(!petModel||!locomotion)return;catAgent?.interrupt('回到温室，记下这次旅行');const p=locomotion.navigation.nearest(point||{x:0,z:0});petModel.position.set(p.x,locomotion.navigation.surfaceHeight(p),p.z);petModel.visible=true;setAnim('happy',1600);showBubble('我回来啦，旅途已经记在观测台里！',3500,true);}
         });
         document.getElementById('btn-portals').onclick=()=>portals.open();
@@ -2606,8 +2612,10 @@ document.addEventListener('DOMContentLoaded', () => {
             dialogueHeld=false;
         }
         const dialogueRunner=new DialogueActions.Runner({
+            // Portal buttons share command ownership, without adding travel to AI/chat actions.
+            actions:new Set([...DialogueActions.allowed,'portal_desktop','portal_neighbor']),
             status(message){document.getElementById('dialogue-status').textContent=message;},
-            label:a=>actionLabels[a],
+            label:a=>a==='portal_desktop'?'正在走向现实传送门':a==='portal_neighbor'?'正在走向友邻传送门':actionLabels[a],
             isHeld:()=>dialogueHeld,
             begin(){finishSupplyCare(false);toyWorkshop?.cancel();facePlay?.reset();catAgent?.interrupt();if(!dialogueHeld)dialogueRestoreRoam=locomotion?locomotion.enabled:true;dialogueHeld=true;if(locomotion){locomotion.interrupt();locomotion.enabled=false;}clearTimeout(chainTimer);performingUntil=0;},
             cancel(){if(locomotion)locomotion.interrupt();endDialogueHold();if(petModel)setAnim('idle',0);},
@@ -2616,7 +2624,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 await actionWait(()=>petModel&&!spawnBusy&&anim.birth>=1&&!grabbed&&!dropping&&!interactionBusy()&&!breathActive&&gameOverlay.hidden,current);
                 if(!locomotion)throw Error('宠物还没有准备好');
                 await standForDialogue(current);
-                if(action==='come'){
+                if(action==='portal_desktop'||action==='portal_neighbor'){
+                    const kind=action.slice(7),point=portals.view?.positions[kind];
+                    if(portals.intent!==kind||portals.away||!point)throw Error('传送目标已变化，请重新选择');
+                    if(!portals.holding){
+                        if(movementBlocked())throw Error('请先结束当前互动，再点传送门');
+                        if(!locomotion.goTo(point,{gait:'walk'}))throw Error('暂时找不到通往门口的安全路线，请换个位置再试');
+                        await actionWait(()=>portals.holding||!locomotion.path.length,current,60000);
+                        if(!portals.holding)throw Error('走近传送门被打断，请再次点击传送门');
+                    }
+                }else if(action==='come'){
                     const point=currentPetId===3?catNearView():locomotion.navigation.nearest({x:0,z:1.15});
                     if(!point||!locomotion.goTo(point))throw Error('前面暂时走不过去');
                     await actionWait(()=>!locomotion.path.length,current,30000);

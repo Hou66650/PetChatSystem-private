@@ -10,7 +10,7 @@
   cancel(reason='已停止'){this.serial++;if(this.active||this.adapter.isHeld?.())this.adapter.cancel();this.active=false;this.status(reason);}
   status(message){this.message=message;this.log.push(message);this.log=this.log.slice(-20);this.adapter.status(message);}
   async run(plan){
-   this.cancel('');const commands=Array.isArray(plan)?plan.filter(a=>typeof a==='string'&&allowed.has(a)):[];
+   this.cancel('');const commands=Array.isArray(plan)?plan.filter(a=>typeof a==='string'&&(this.adapter.actions||allowed).has(a)):[];
    if(commands.length>MAX_ACTIONS){this.status('一次最多做'+MAX_ACTIONS+'个动作，请分两次告诉我');return;}
    if(!commands.length)return;
    const token=this.serial;this.active=true;this.adapter.begin();
