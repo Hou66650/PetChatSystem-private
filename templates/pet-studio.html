@@ -38,7 +38,7 @@
    <div class="studio-actions"><button id="studio-save">保存说明</button><button id="studio-approve" hidden>确认外貌，等待动作适配</button><button id="studio-delete" class="studio-delete">删除档案</button></div>
    <p id="studio-next" class="studio-hint"></p>
    <section id="studio-adaptation" class="studio-adaptation" hidden>
-    <h3>让它动起来</h3><p>已有标准猫骨骼时复用动作；无骨骼的站立猫可以尝试模板蒙皮。草稿仍需要你逐项检查，不会直接替换岛上的伙伴。</p>
+    <h3>让它动起来</h3><p>已有标准猫骨骼时复用动作；无骨骼的站立猫可以尝试模板蒙皮。草稿仍需要你逐项检查，不会直接替换岛上的伙伴。</p><p class="studio-hint">混元生成的外貌模型通常不含骨骼，这不代表生成失败。四脚站立模型请选择「无骨骼站立猫 · 模板蒙皮草稿」；坐卧、蜷缩模型需要先在 Blender 中调整姿态。此步骤不重新调用云端生成。</p>
     <label>适配方式<select id="studio-adapt-mode"><option value="auto">兼容骨骼 · 保留原蒙皮</option><option value="template-skin">无骨骼站立猫 · 模板蒙皮草稿</option></select></label>
     <label>模板蒙皮时的朝向校正<select id="studio-adapt-forward"><option value="-Y">保持默认朝向</option><option value="+Y">旋转 180°</option><option value="+X">旋转 90°</option><option value="-X">旋转 -90°</option></select></label>
     <button id="studio-adapt-start">开始本机 Blender 适配</button><p id="studio-adapt-status" role="status"></p><ul id="studio-adapt-report"></ul>

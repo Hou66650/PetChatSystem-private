@@ -40,5 +40,13 @@ try{
  fs.writeFileSync(path.join(result,'studio-desktop.png'),(await w.webContents.capturePage()).toPNG());
  w.setContentSize(390,844);await new Promise(r=>setTimeout(r,500));assert(await run(`document.documentElement.scrollWidth<=innerWidth`));
  fs.writeFileSync(path.join(result,'studio-mobile.png'),(await w.webContents.capturePage()).toPNG());
+ // A failed unrigged cloud model must not revert to compatible-rig mode.
+ await run(`row.adaptation={id:'failed-rig',status:'needs_manual',report:{mode:'auto',error:'未发现骨骼：请选择模板蒙皮'}};row.assets=['front'];document.getElementById('studio-save').click()`);
+ await wait(`document.getElementById('studio-adapt-status').textContent.includes('不需要重新云端生成')`);
+ assert.equal(await run(`document.getElementById('studio-adapt-mode').value`),'template-skin');
+ await run(`document.getElementById('studio-adapt-mode').value='auto';document.getElementById('studio-adapt-mode').dispatchEvent(new Event('change'));document.getElementById('studio-save').click()`);
+ await new Promise(r=>setTimeout(r,150));assert.equal(await run(`document.getElementById('studio-adapt-mode').value`),'auto','explicit user choice survives repaint');
+ await run(`row.id='other-cat';row.generation=null;row.adaptation={status:'needs_manual',report:{mode:'template-skin'}};document.getElementById('studio-save').click()`);
+ await new Promise(r=>setTimeout(r,150));assert.equal(await run(`document.getElementById('studio-adapt-mode').value`),'template-skin','choice cannot leak between cats');
  assert.deepEqual(errors,[]);console.log('PASS: consent, paid-click guard, glass progress, real GLB rendering, 12 action controls, review gate, equip, mobile bounds');app.exit(0);
 }catch(e){console.error(e,errors);app.exit(1);}});
