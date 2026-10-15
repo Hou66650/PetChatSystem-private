@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block title %}把它带到岛上 · 派特岛{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/css/pet-studio.css?v={{ app_version }}">{% endblock %}
+{% block body %}
+<main class="pet-studio">
+ <header><a href="/">← 回到云端群岛</a><span>PAIT ISLAND / A PLACE FOR YOUR COMPANION</span><h1>让熟悉的它，<br>在这里有一个家。</h1><p>从一张照片开始，慢慢找回它独有的模样。</p></header>
+ <p id="studio-message" role="status" aria-live="polite"></p>
+ <a id="studio-login" href="/reader_login" hidden>登录后创建私人宠物档案 ↗</a>
+ <div class="studio-layout">
+  <aside><h2>我的伙伴</h2><div id="studio-list"></div><form id="studio-create"><label>它的名字<input name="name" maxlength="30" required placeholder="例如：橘子"></label><fieldset><legend>以哪种方式开始？</legend><label><input type="radio" name="mode" value="companion" checked> 它正在我身边</label><label><input type="radio" name="mode" value="memory"> 为想念的它留一个位置</label></fieldset><button type="submit">创建档案 ＋</button></form><small>档案和素材仅自己可见。当前先支持猫咪，可随时删除。纪念档案不会自动公开或允许串门。</small></aside>
+  <section id="studio-detail" hidden>
+   <div class="studio-title"><div><small id="studio-mode"></small><h2 id="studio-name"></h2></div><span id="studio-status"></span></div>
+   <ol class="studio-steps"><li>01 收集模样</li><li>02 生成与核对</li><li>03 动作适配</li></ol>
+   <p id="studio-guidance"></p>
+   <div class="studio-photos" id="studio-photos"></div>
+   <p class="studio-hint">JPG / PNG，每张不超过 8 MB。照片会去除 EXIF 信息；补充侧面与背面有助于减少猜测。更换参考照会移除旧模型预览。</p>
+   <button id="studio-prepare">保存素材，准备生成</button>
+   <a id="studio-download">下载素材包 ↗</a>
+   <div class="studio-notice"><strong>素材先安放好，生成可以稍后继续。</strong><p>云端生成暂未开放：混元账户目前返回额度不足。保存素材不会上传腾讯云、不会扣费，也不会自动开始生成。</p></div>
+   <details><summary>已有生成模型？导入并核对外貌</summary><p>导入 Blender 导出的自包含 GLB（最多 30 MB）。此处仅预览外貌，尚未通过动作验收的模型不会替换岛上的猫咪。</p><input id="studio-model" type="file" accept=".glb" aria-label="导入 GLB 模型"></details>
+   <div id="studio-preview-wrap" hidden><canvas id="studio-preview" aria-label="拖动旋转模型，滚轮缩放"></canvas><p id="studio-preview-note">拖动旋转 · 滚轮缩放</p></div>
+   <label class="studio-notes">想保留的特征 / 需要修正的地方<textarea id="studio-notes" maxlength="1000" rows="3" placeholder="例如：左耳有一小块白毛，尾巴尖是深色的。"></textarea></label>
+   <div class="studio-actions"><button id="studio-save">保存说明</button><button id="studio-approve" hidden>确认外貌，等待动作适配</button><button id="studio-delete" class="studio-delete">删除档案</button></div>
+   <p id="studio-next" class="studio-hint"></p>
+  </section>
+  <section id="studio-empty"><div class="studio-orbit">✦</div><h2>每一只，都值得被记住。</h2><p>先为它留一个名字，再放上熟悉的照片。<br>不用一次准备完，档案会替你保存进度。</p></section>
+ </div>
+</main>
+{% endblock %}
+{% block script %}<script>window.PET_STUDIO_SCOPE={{ scope|tojson }};</script><script src="/static/js/vendor/three.min.js"></script><script src="/static/js/vendor/GLTFLoader.js"></script><script src="/static/js/vendor/OrbitControls.js"></script><script src="/static/js/pet-studio.js?v={{ app_version }}"></script>{% endblock %}

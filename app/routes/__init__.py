@@ -16,5 +16,6 @@ from .portals import bp as portals_bp
 from .cat_market import bp as cat_market_bp
 
 from .supplies import bp as supplies_bp
+from .pet_studio import bp as pet_studio_bp
 
-ALL_BLUEPRINTS = (supplies_bp, cat_market_bp, portals_bp, cat_agent_bp, voiceprint_bp, main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)
+ALL_BLUEPRINTS = (pet_studio_bp, supplies_bp, cat_market_bp, portals_bp, cat_agent_bp, voiceprint_bp, main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)

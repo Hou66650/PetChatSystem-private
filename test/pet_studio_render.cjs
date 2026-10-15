@@ -1,0 +1,21 @@
+const {app,BrowserWindow}=require('electron'),fs=require('fs'),path=require('path'),os=require('os'),assert=require('assert'),{pathToFileURL}=require('url');
+const root=path.resolve(__dirname,'..'),temp=fs.mkdtempSync(path.join(os.tmpdir(),'pet-studio-ui-'));
+app.setPath('userData',path.join(temp,'profile'));
+app.disableHardwareAcceleration();
+const url=p=>pathToFileURL(path.join(root,p)).href;
+let template=fs.readFileSync(path.join(root,'templates/pet-studio.html'),'utf8');
+let body=template.split('{% block body %}')[1].split('{% endblock %}')[0];
+const fake={id:'testcat',name:'橘子',mode:'companion',status:'draft',notes:'左耳有一撮白毛',assets:[],updated:1};
+fs.writeFileSync(path.join(temp,'index.html'),`<meta charset="utf-8"><style>body{margin:0;font-family:Arial,sans-serif}</style><link rel="stylesheet" href="${url('static/css/pet-studio.css')}">${body}<script>window.PET_STUDIO_SCOPE='test';window.row=${JSON.stringify(fake)};window.nativeFetch=window.fetch;window.fetch=async(url,options)=>url.startsWith('blob:')?nativeFetch(url):url.endsWith('/assets/model')?nativeFetch(${JSON.stringify(url("static/models/petchat-cat-v3/cat.glb"))}):({ok:true,json:async()=>{if(url.endsWith('/notes'))row.notes=JSON.parse(options.body).notes;return {tasks:[row],scope:'test',generationAvailable:false}}});</script><script src="${url('static/js/vendor/three.min.js')}"></script><script src="${url('static/js/vendor/GLTFLoader.js')}"></script><script src="${url('static/js/vendor/OrbitControls.js')}"></script><script src="${url('static/js/pet-studio.js')}"></script>`);
+app.whenReady().then(async()=>{const w=new BrowserWindow({show:false,width:1300,height:1100,webPreferences:{offscreen:true,sandbox:true}});try{
+ await w.loadFile(path.join(temp,'index.html'));const run=s=>w.webContents.executeJavaScript(s);
+ assert(await run(`document.querySelectorAll('.studio-photo').length===5`));
+ assert(await run(`document.getElementById('studio-name').textContent==='橘子'`));
+ await run(`document.getElementById('studio-notes').value='尾尖是白色';document.getElementById('studio-save').click()`);
+ await new Promise(r=>setTimeout(r,100));assert.equal(await run('row.notes'),'尾尖是白色');
+ await new Promise(r=>setTimeout(r,400));fs.writeFileSync(path.join(os.tmpdir(),'pait-pet-studio-desktop.png'),(await w.webContents.capturePage()).toPNG());
+ await run(`row.assets=['model'];row.status='review';document.querySelector('.studio-choice').click()`);for(let n=0;n<100;n++){await new Promise(r=>setTimeout(r,100));if(await run(`!document.getElementById('studio-preview-note').textContent.includes('正在加载')`))break;}console.log(await run(`document.getElementById('studio-preview-note').textContent`));assert(await run(`document.getElementById('studio-preview-note').textContent.includes('外貌预览不代表')`));w.setContentSize(390,844);await new Promise(r=>setTimeout(r,150));
+ assert(await run(`document.documentElement.scrollWidth<=innerWidth`));
+ fs.writeFileSync(path.join(os.tmpdir(),'pait-pet-studio-mobile.png'),(await w.webContents.capturePage()).toPNG());
+ console.log('PASS desktop/mobile bounds, photo slots, saved correction notes, no network use');app.exit(0);
+}catch(e){console.error(e);app.exit(1);}});

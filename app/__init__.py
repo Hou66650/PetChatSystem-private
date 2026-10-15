@@ -55,6 +55,8 @@ def create_app(config_object=Config):
         supply_service.init_schema()
         from .services import voiceprint_service
         voiceprint_service.init_schema()
+        from .routes.pet_studio import init_schema as init_pet_studio
+        init_pet_studio()
 
     @app.context_processor
     def _companion_scope():
