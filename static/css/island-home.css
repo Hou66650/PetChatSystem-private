@@ -9,3 +9,18 @@ body:has(.island-home){overflow:hidden}.island-home{position:fixed;inset:var(--n
 .island-intro{position:absolute;top:8%;left:5.5%;width:min(540px,89%);z-index:5;pointer-events:none}.island-intro .island-heading{position:static}.island-shortcuts{position:relative;display:flex;gap:10px;flex-wrap:wrap;margin-top:22px;pointer-events:auto}.island-shortcuts a{color:#edf4e9;text-decoration:none;background:#244841cc;border:1px solid #bdd0be66;border-radius:22px;padding:11px 17px;backdrop-filter:blur(12px);font-size:12px}.island-shortcuts a:hover{background:#547c6a}.island-shortcuts a:focus-visible{outline:2px solid #ead4a4;outline-offset:3px}@media(max-width:700px){.island-intro{top:5%;left:7%;width:86%}.island-shortcuts{gap:6px;margin-top:18px}.island-shortcuts a{font-size:10px;padding:8px 11px}}
 
 @media(max-height:600px){.island-intro{top:20px}.island-intro h1{font-size:clamp(25px,5vh,36px);line-height:1.25;margin:12px 0}.island-shortcuts{margin-top:12px}}
+
+/* Focused preview: one compact utility menu above, one flowing dock below. */
+.island-shortcut-menu{pointer-events:auto}.island-shortcut-menu>summary{display:none}
+.island-home.is-focused .island-intro{top:30px;left:4%;width:min(270px,calc(100% - 160px))}
+.island-home.is-focused .island-heading{display:none}
+.island-home.is-focused .island-shortcut-menu>summary{display:flex;align-items:center;justify-content:space-between;gap:24px;width:fit-content;cursor:pointer;list-style:none;color:#f5f5e7;background:#203b48bd;border:1px solid #ffffff45;border-radius:16px;padding:11px 16px;font-size:12px;backdrop-filter:blur(16px)}
+.island-shortcut-menu>summary::-webkit-details-marker{display:none}.island-shortcut-menu>summary:focus-visible{outline:2px solid #ead4a4;outline-offset:3px}
+.island-home.is-focused .island-shortcuts{margin-top:10px;display:grid;gap:6px;padding:10px;border-radius:18px;border:1px solid #ffffff45;background:#203b48e8;backdrop-filter:blur(20px);max-height:min(260px,calc(100dvh - 320px));overflow-y:auto}
+.island-home.is-focused .island-shortcuts a{border:0;background:transparent;border-radius:10px;padding:11px 12px;line-height:1.5}.island-home.is-focused .island-shortcuts a:hover{background:#ffffff18}
+.island-selection{position:relative;left:auto;bottom:auto;display:none;width:fit-content;max-width:min(600px,100%);box-sizing:border-box;margin:0 0 22px;gap:24px;padding:18px 22px;border:1px solid #ffffff38;border-radius:20px;background:linear-gradient(120deg,#203b48c7,#34525c9c);backdrop-filter:blur(18px);text-shadow:none}
+.island-home.is-focused .island-selection{display:flex;align-items:center;justify-content:space-between}
+.island-selection>div{min-width:0}.island-selection h2{font-size:30px;margin:8px 0;letter-spacing:4px}.island-selection p{max-width:320px}.island-selection #island-enter{flex-shrink:0;border-radius:12px;gap:16px}
+.island-home.is-entering .island-intro{opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
+@media(max-width:700px){.island-home.is-focused .island-intro{top:20px}.island-selection{width:100%;max-width:none;margin-bottom:14px;padding:14px 16px;gap:12px}.island-selection h2{font-size:23px;letter-spacing:2px}.island-selection p{max-width:230px}.island-selection #island-enter{padding:12px;gap:8px}.island-home.is-focused .island-shortcut-menu>summary{padding:9px 13px;font-size:11px}}
+@media(max-height:500px){.island-home.is-focused .island-intro,.island-tools{top:12px}.island-selection{padding:10px 14px;margin-bottom:10px}.island-selection h2{font-size:22px;margin:4px 0}.island-selection p{display:none}.island-choice{padding-top:8px;padding-bottom:8px}.island-home.is-focused .island-shortcuts{max-height:calc(100dvh - 180px)}}
