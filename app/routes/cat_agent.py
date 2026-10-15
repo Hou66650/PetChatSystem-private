@@ -1,5 +1,5 @@
 from urllib.parse import urlsplit
-from flask import Blueprint,jsonify,request,render_template
+from flask import Blueprint,jsonify,request,render_template,current_app
 from ..services import cat_agent_service as agent, companion_service as companion
 
 from ..services import cat_relationship_service as relationship
@@ -50,3 +50,18 @@ def monitor_data():
 @bp.get("/api/cat-agent/relationship")
 def relationship_state():
     return jsonify(**relationship.state(companion.owner_key()),scope=companion.browser_scope())
+
+
+@bp.post('/api/cat-agent/story-art')
+def story_art_start():
+    from ..services import story_art_service as art
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not isinstance(data.get('refresh', False), bool):
+        return jsonify(error='请求格式错误'), 400
+    payload, code = art.start(companion.owner_key(), current_app.extensions['llm'], data.get('refresh', False))
+    return jsonify(**payload, scope=companion.browser_scope()), code
+
+@bp.get('/api/cat-agent/story-art')
+def story_art_status():
+    from ..services import story_art_service as art
+    return jsonify(**art.snapshot(companion.owner_key()), scope=companion.browser_scope())
