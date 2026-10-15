@@ -383,6 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="bubble-tip" id="bubble"></div>
 
         <nav class="action-bar glass-dock" aria-label="宠物互动">
+<button class="action-btn cat-call-button" type="button" onclick="document.getElementById('btn-recall').click()">叫它过来</button>
 <button class="action-btn" id="btn-voice" data-icon="voice"><span class="dock-label">语音对话</span></button>
 <button class="action-btn" id="btn-pet" data-icon="pet"><span class="dock-label">摸摸</span></button>
 <button type="button" class="action-btn" data-dock-panel="dock-food" aria-controls="dock-food" aria-expanded="false" data-icon="cookie">喂食</button>
@@ -404,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-shiba-acting" hidden>球球的小表情</button></div>
         </section>
         <section class="dock-panel" id="dock-more" aria-labelledby="dock-more-title" hidden><header><div><h2 id="dock-more-title">小窝里的小乐趣</h2><p>玩耍、记录，或者一起安静一会。</p></div><button type="button" class="dock-close" aria-label="收起小窝里的小乐趣">✕</button></header>
-            <div class="dock-grid"><a class="action-btn" href="/supplies" target="_blank" rel="noopener">派特补给站 / 我的物品</a><button class="action-btn" id="btn-dress" data-icon="dress">换装</button>
+            <div class="dock-grid"><button type="button" class="action-btn cat-backup" onclick="document.querySelector('[data-dock-panel=&quot;dock-actions&quot;]').click()">动作与照料</button><a class="action-btn" href="/supplies" target="_blank" rel="noopener">派特补给站 / 我的物品</a><button class="action-btn" id="btn-dress" data-icon="dress">换装</button>
             <button class="action-btn" id="btn-photo" data-icon="photo">拍照</button>
             <button class="action-btn" id="btn-vision" data-icon="eye">面对面互动</button>
             <button class="action-btn" id="btn-tts">朗读：开</button>
@@ -591,6 +592,10 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="/static/js/den/portal-visitors.js?v={{ app_version }}"></script>
     <script src="/static/js/den/portals.js?v={{ app_version }}"></script>
     <script src="/static/js/den/greenhouse.js?v={{ app_version }}"></script>
+    <link rel="stylesheet" href="/static/css/cat-companion.css?v={{ app_version }}">
+    <script src="/static/js/den/cat-presence.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/cat-relationship.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/cat-companion-ui.js?v={{ app_version }}"></script>
     <script src="/static/js/den/cat-agent.js?v={{ app_version }}"></script>
     <aside class="cat-intent" id="cat-intent" hidden aria-live="polite"><small id="cat-intent-meta"></small><span id="cat-intent-text"></span><a href="/cat-agent-monitor" target="_blank" rel="noopener" style="display:block;margin-top:8px;pointer-events:auto;color:inherit">查看探索监控 ↗</a></aside>
     <script src="/static/js/den/island-music.js?v={{ app_version }}"></script>
@@ -1631,9 +1636,10 @@ document.addEventListener('DOMContentLoaded', () => {
             anim.birth = 0;
             setAnim('idle', 0);
             showBubble(spec.greet, 2600);
+            if(id===3&&modeledStage){catRelationship.record('visit');}
             if(id===3&&modeledStage)catAgent=new CatAgent.Controller({
-                model:petModel,locomotion,life:catLife,scope:COMPANION_SCOPE,telemetry:true,homeReady:catHomeReady,canEat:()=>islandBowls.amount('food')>0,onComplete:goal=>{if(goal.action==='eat')islandBowls.consume('food',goal.event);greenhouse?.completed(goal);if(goal.target==='portal_desktop'||goal.target==='portal_neighbor')portals?.curious(goal.target==='portal_desktop'?'desktop':'neighbor');},
-                animate(key){actionTransition=null;anim.state=key;anim.until=0;if(key==='sleep')playSleep();else playAction(key,1);},
+                model:petModel,locomotion,life:catLife,scope:COMPANION_SCOPE,telemetry:true,homeReady:catHomeReady,canEat:()=>islandBowls.amount('food')>0,canDrink:()=>islandBowls.amount('water')>0,relationship:()=>catRelationship.data,social:relation=>catSocial(relation),onComplete:goal=>{catRelationship.record(goal.action==='eat'?(goal.user?'feed':'meal'):goal.action==='drink'?(goal.user?'drink':'sip'):goal.action==='sleep'?'rest':'explore',goal.target);if(['eat','drink','sleep'].includes(goal.action))catCompanionUI.complete('care');if(goal.action==='eat')islandBowls.consume('food',goal.event);if(goal.action==='drink')islandBowls.consume('water',goal.event);greenhouse?.completed(goal);if(goal.target==='portal_desktop'||goal.target==='portal_neighbor')portals?.curious(goal.target==='portal_desktop'?'desktop':'neighbor');},
+                animate(key){if(key==='idle'&&anim.state==='standUp'&&actionTransition)return;const previous=anim.state;actionTransition=null;anim.state=key;anim.until=0;if(key==='sleep')playSleep();else if(key==='idle'&&['sleep','sit'].includes(previous)&&actions.standUp){anim.state='standUp';playOnceThen('standUp',()=>{anim.state='idle';playAction('idle',1);});}else playAction(key,1);},
                 onStatus(info){
                     document.getElementById('cat-intent').hidden=false;
                     document.getElementById('cat-intent-meta').textContent='自主探索 · '+(info.source==='model'?'AI 决策':'本地策略')+' · '+info.visited+'/'+info.total+' 处';
@@ -1883,6 +1889,8 @@ document.addEventListener('DOMContentLoaded', () => {
         function pick(arr) { return arr[Math.floor(Math.random() * arr.length)].replace('{name}', SPECS[currentPetId].name); }
 
         function doPetting() {
+            if(currentPetId===3){finishSupplyCare(false);if(toyWorkshop?.held?.state==='playing')toyWorkshop.cancel();}
+            if(currentPetId===3){catRelationship.record('pet',catAgent?.catalog?.filter(p=>Math.hypot(p.x-petModel.position.x,p.z-petModel.position.z)<1.5).sort((a,b)=>Math.hypot(a.x-petModel.position.x,a.z-petModel.position.z)-Math.hypot(b.x-petModel.position.x,b.z-petModel.position.z))[0]?.id||'');catCompanionUI.complete('meet');}
             setAnim(shibaExpression?'affection':'petting', shibaExpression?2600:1600);
             burst('heart', 5);
             const r = rewardIntimacy('pet');
@@ -2397,25 +2405,57 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!silent) speak(text);
         }
 
-        const islandBowls=new IslandBowls.Controller({THREE,canvas,camera,decor:decorGroup,scope:COMPANION_SCOPE,enabled:()=>currentPetId===3&&catHomeReady&&!spawnBusy&&!portals?.away&&!toyWorkshop?.held&&!grabbed&&!dropping,note:message=>toast(message,'info',2500),invite:kind=>{if(movementBlocked()||supplyCare){toast('请先结束当前互动','info');return;}if(kind==='food'){catAgent?.requestCare('eat');return;}if(!(islandBowls.amount('water')>0))return;catAgent?.interrupt();catLife?.cancel();setAnim('idle',0);const target=locomotion.navigation.nearest({x:.8,z:4.85});if(!target||!locomotion.goTo(target,{gait:'walk'}))return;supplyCare={model:petModel,item:{id:'water',effect:'drink',name:'清水'},station:true,phase:'walking',time:0,startedAt:Date.now(),target,resolve:done=>{if(done)islandBowls.consume('water',crypto.randomUUID());}};}});
+        const catLease=new CatPresence.Lease({scope:COMPANION_SCOPE,active:()=>currentPetId===3&&!document.hidden&&!spawnBusy&&!portals?.away});
+        let catCompanionUI=null;
+        const catRelationship=new CatRelationship.Controller({scope:COMPANION_SCOPE,active:()=>currentPetId===3,changed:()=>catCompanionUI?.render()});
+        function catNearView(){
+            const center=new THREE.Vector3();controls.target&&center.copy(controls.target);
+            const direction=camera.position.clone().sub(center);direction.y=0;if(direction.lengthSq()<.01)direction.set(0,0,1);direction.normalize();
+            const distance=catRelationship.data.familiarity>=.35?1.15:2.1;
+            return locomotion?.navigation.nearest({x:center.x+direction.x*distance,z:center.z+direction.z*distance});
+        }
+        function catSocial(relation){
+            if(currentPetId!==3||movementBlocked()||supplyCare||toyWorkshop?.held)return false;
+            const target=catNearView();if(!target)return false;
+            if(relation.favoriteToy&&toyWorkshop?.invite(relation.favoriteToy,target)){showBubble('把喜欢的玩具带给你，要一起玩吗？',2400,true);return true;}
+            if(Math.hypot(petModel.position.x-target.x,petModel.position.z-target.z)<.4)return false;
+            setAnim('idle',0);if(!locomotion.goTo(target,{gait:'walk'}))return false;
+            showBubble(relation.familiarity>=.35?'想在你旁边待一会儿。':'慢慢靠近，看看你在做什么。',2200,true);return true;
+        }
+        const islandBowls=new IslandBowls.Controller({THREE,canvas,camera,decor:decorGroup,scope:COMPANION_SCOPE,enabled:()=>currentPetId===3&&catHomeReady&&!spawnBusy&&!portals?.away&&!toyWorkshop?.held&&!grabbed&&!dropping,note:message=>toast(message,'info',2500),invite:kind=>{if(movementBlocked()||supplyCare){toast('请先结束当前互动','info');return;}if(kind==='food'){catAgent?.requestCare('eat');return;}if(!(islandBowls.amount('water')>0))return;catAgent?.interrupt();catLife?.cancel();setAnim('idle',0);const target=locomotion.navigation.nearest({x:.8,z:4.85});if(!target||!locomotion.goTo(target,{gait:'walk'}))return;supplyCare={model:petModel,item:{id:'water',effect:'drink',name:'清水'},station:true,phase:'walking',time:0,startedAt:Date.now(),target,resolve:done=>{if(done){islandBowls.consume('water',crypto.randomUUID());catRelationship.record('drink');catCompanionUI.complete('care');}}};}});
+        catCompanionUI=new CatCompanionUI.UI({scope:COMPANION_SCOPE,relationship:catRelationship,pause:()=>{finishSupplyCare(false);toyWorkshop?.cancel();catAgent?.interrupt();},active:()=>currentPetId===3&&catHomeReady&&!spawnBusy&&!portals?.away,project:p=>{const v=new THREE.Vector3(p.x,p.y,p.z).project(camera),r=canvas.getBoundingClientRect();return{x:r.left+(v.x+1)*r.width/2,y:r.top+(1-v.y)*r.height/2,z:v.z};},act:kind=>{if(kind==='food'||kind==='water'){islandBowls.open(kind);catCompanionUI.complete('care');return;}if(kind==='toys'){toyWorkshop?.open();return;}if(kind==='home'){document.getElementById('btn-cat-home').click();return;}document.getElementById(kind==='garden'?'btn-greenhouse':'btn-portals').click();}});
         // 点击宠物（射线检测）
         const raycaster = new THREE.Raycaster();
         const pointer = new THREE.Vector2();
         let lastPetClick = 0;
         let groundPress = null;
+        const sceneHint=document.createElement('div');sceneHint.className='bowl-tip';sceneHint.hidden=true;document.body.append(sceneHint);
+        function pickCatPlace(e){
+            if(currentPetId!==3||spawnBusy||!catHomeReady||portals?.away||toyWorkshop?.held||grabbed||dropping)return null;
+            const r=canvas.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,1-(e.clientY-r.top)/r.height*2);raycaster.setFromCamera(pointer,camera);
+            const hit=raycaster.intersectObject(decorGroup,true).find(h=>h.object.visible),petHit=petModel&&raycaster.intersectObject(petModel,true)[0];
+            if(!hit||(petHit&&petHit.distance<hit.distance))return null;const p=hit.point;
+            if(p.x>-4.6&&p.x<-1.4&&p.z>3&&p.z<5.9)return 'home';
+            if(p.x>1.7&&p.x<4.3&&p.z>-3.2&&p.z<-2)return 'garden';
+            if(p.x>1.6&&p.x<5.3&&p.z>-1.5&&p.z<.1)return 'portal';
+            return null;
+        }
+        canvas.addEventListener('pointerleave',()=>sceneHint.hidden=true);
+
         canvas.addEventListener('pointerdown', e => {
             if (!e.isPrimary || e.button !== 0) { groundPress = null; return; }
             groundPress = {id:e.pointerId,x:e.clientX,y:e.clientY,travel:0,time:performance.now()};
         });
         canvas.addEventListener('pointermove', e => {
             if (groundPress && groundPress.id === e.pointerId) groundPress.travel = Math.max(groundPress.travel,Math.hypot(e.clientX-groundPress.x,e.clientY-groundPress.y));
+            const place=e.buttons?null:pickCatPlace(e);sceneHint.hidden=!place;if(place){sceneHint.textContent={home:'猫窝 · 点击邀请休息',garden:'温室植物 · 点击照料',portal:'传送门 · 点击查看目的地'}[place];sceneHint.style.left=Math.max(8,Math.min(innerWidth-270,e.clientX+16))+'px';sceneHint.style.top=Math.max(8,Math.min(innerHeight-55,e.clientY+18))+'px';}
         });
         canvas.addEventListener('pointercancel', () => {groundPress=null;});
         canvas.addEventListener('pointerup', e => {
             const press=groundPress; groundPress=null;
             if(portals?.away)return;
             if (!press || press.id !== e.pointerId || press.travel > 8 || Math.hypot(e.clientX-press.x,e.clientY-press.y)>8 || performance.now()-press.time>700 || !petModel || spawnBusy || grabbed || dropping) return;
-            const bowlKind=islandBowls.pick(e);if(bowlKind){islandBowls.open(bowlKind);return;}
+            const bowlKind=islandBowls.pick(e);if(bowlKind){islandBowls.open(bowlKind);return;}const place=pickCatPlace(e);if(place){sceneHint.hidden=true;catCompanionUI.act(place);return;}
             const rect=canvas.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);
             raycaster.setFromCamera(pointer,camera);
             if (raycaster.intersectObject(petModel,true).length) {
@@ -2424,14 +2464,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (movementBlocked()) return;
             const point=modeledStage ? raycaster.intersectObject(decorGroup,true)[0]?.point :
                 raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),0),new THREE.Vector3());
-            if (point && locomotion && !locomotion.goTo(point)) toast('那里暂时走不过去，试试空地吧', 'info',1600);
+            if(point&&locomotion){finishSupplyCare(false);toyWorkshop?.cancel();catAgent?.interrupt();if(!locomotion.goTo(point))toast('那里暂时走不过去，试试空地吧','info',1600);}
         });
         function updateRoamingButton() {
             const button=document.getElementById('btn-roam');const enabled=locomotion ? locomotion.enabled : true;
             button.textContent='自由活动：'+(enabled?'开':'关');button.setAttribute('aria-pressed',String(enabled));
         }
         function movementBlocked() {
-            if(document.querySelector('.bowl-panel[open]'))return true;
+            if(document.querySelector('.bowl-panel[open],.cat-story[open]'))return true;
             if(supplyCare?.phase==='using')return true;
             if(document.getElementById('greenhouse-dialog').open||portals?.away||portals?.holding)return true;
             return document.hidden || (toyWorkshop?.held?.state==='held' && !(toyWorkshop.held.spec.id==='rattle' && toyWorkshop.rattlePath)) || ['held','flight'].includes(facePlay?.ball?.phase) || spawnBusy || !petModel || anim.birth < 1 || grabbed || dropping || bounceBack > 0 || (interactionBusy() && !facePlay?.guiding) ||
@@ -2464,7 +2504,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.getElementById('btn-greenhouse').onclick=()=>{if(!greenhouse){toast('温室还在加载','info');return;}gardenRefresh();gardenDialog.showModal();};
         for(const el of gardenDialog.querySelectorAll('[data-water]'))el.onclick=()=>{
-            const changed=greenhouse?.garden.water(el.dataset.water);gardenRefresh();
+            const changed=greenhouse?.garden.water(el.dataset.water);if(changed){catRelationship.record('water_plant',el.dataset.water);catCompanionUI.complete('care');}gardenRefresh();
             document.getElementById('garden-feedback').textContent=greenhouse?.garden.persisted===false?'已浇水，但浏览器存储不可用，刷新后可能丢失进度。':changed?'水已经浇好，下一个自然日会长出一层新芽。':'今天已经浇过水了，留一点期待给明天。';
         };
         for(const el of gardenDialog.querySelectorAll('[data-garden-style]'))el.onchange=()=>{greenhouse?.garden.cosmetic(el.dataset.gardenStyle,el.checked);greenhouse?.refresh();};
@@ -2473,6 +2513,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         function finishSupplyCare(done,preserveAction=false){
             const care=supplyCare;if(!care)return;supplyCare=null;
+            if(done&&currentPetId===3){catRelationship.record(care.item.effect==='drink'?'drink':'feed');catCompanionUI.complete('care');}
             if(care.bowl){scene.remove(care.bowl);SelectedAssets.disposeTree(care.bowl);}
             if(care.model===petModel){if(!preserveAction&&(done||care.phase==='using'&&anim.state==='eat'))setAnim('idle',0);if(done&&catAgent){if(care.item.effect!=='drink')catAgent.hunger=Math.max(0,catAgent.hunger-(care.item.id==='dinner'?.5:care.item.effect==='snack'?.15:.35));catAgent.saveNeeds();catAgent.text=care.item.effect==='drink'?'刚刚喝了清水':'刚刚享用了'+care.item.name;catAgent.reason='主人送来了日常补给';catAgent.source='local';catAgent.emit(true);}}
             care.resolve(done);
@@ -2515,7 +2556,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!locomotion) return;locomotion.toggle(!locomotion.enabled);petState().roaming=locomotion.enabled;saveState();updateRoamingButton();
         });
         document.getElementById('btn-recall').addEventListener('click',()=>{
-            if (!locomotion || movementBlocked()) return;locomotion.goTo({x:0,z:.3});
+            if(currentPetId===3){if(!petModel||spawnBusy||portals?.away)return;catCompanionUI.complete('meet');void dialogueRunner.run(['come']);return;}if(!locomotion||movementBlocked())return;locomotion.goTo({x:0,z:.3});
         });
         document.getElementById('btn-run').addEventListener('click',()=>{
             if(!locomotion||facePlay.a.busy())return;setAnim('idle',0);const route=locomotion.navigation.randomDestination(petModel.position);
@@ -2558,7 +2599,7 @@ document.addEventListener('DOMContentLoaded', () => {
             status(message){document.getElementById('dialogue-status').textContent=message;},
             label:a=>actionLabels[a],
             isHeld:()=>dialogueHeld,
-            begin(){if(!dialogueHeld)dialogueRestoreRoam=locomotion?locomotion.enabled:true;dialogueHeld=true;if(locomotion){locomotion.interrupt();locomotion.enabled=false;}clearTimeout(chainTimer);performingUntil=0;},
+            begin(){finishSupplyCare(false);toyWorkshop?.cancel();facePlay?.reset();catAgent?.interrupt();if(!dialogueHeld)dialogueRestoreRoam=locomotion?locomotion.enabled:true;dialogueHeld=true;if(locomotion){locomotion.interrupt();locomotion.enabled=false;}clearTimeout(chainTimer);performingUntil=0;},
             cancel(){if(locomotion)locomotion.interrupt();endDialogueHold();if(petModel)setAnim('idle',0);},
             finish(last){if(!['quiet','sit','lie_down','stop'].includes(last))endDialogueHold();updateRoamingButton();},
             async execute(action,current){
@@ -2566,7 +2607,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(!locomotion)throw Error('宠物还没有准备好');
                 await standForDialogue(current);
                 if(action==='come'){
-                    const point=locomotion.navigation.nearest({x:0,z:1.15});
+                    const point=currentPetId===3?catNearView():locomotion.navigation.nearest({x:0,z:1.15});
                     if(!point||!locomotion.goTo(point))throw Error('前面暂时走不过去');
                     await actionWait(()=>!locomotion.path.length,current,30000);
                     if(Math.hypot(petModel.position.x-point.x,petModel.position.z-point.z)>.12)throw Error('移动被打断了');
@@ -3387,7 +3428,7 @@ document.addEventListener('DOMContentLoaded', () => {
             visionRenderStatus();
         }
         facePlay=new FacePlay.Controller({
-            THREE,scene,canvas,camera,toys:()=>toyWorkshop,
+            THREE,scene,canvas,camera,toys:()=>toyWorkshop,onFetch:kind=>{if(currentPetId===3){catRelationship.record('play',kind);catCompanionUI.complete('play');}},
             foodActive:()=>Boolean(foodDrag?.dragging||gestureAction?.type==='food'),
             model:()=>petModel,id:()=>currentPetId,locomotion:()=>locomotion,head:petHeadPos,mouth:petMouthWorld,
             busy:()=>document.hidden||toyWorkshop?.dialog.open||renderDialog.open||facePlay?.panel.open||actingDialog.open||spawnBusy||!petModel||anim.birth<1||grabbed||dropping||performing()||dialogueRunner.active||chatBusy||voiceBusy||breathActive||!gameOverlay.hidden||!gamesMask.hidden||!moodMask.hidden||!document.getElementById('den-chat').classList.contains('hidden'),
@@ -3652,7 +3693,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 updateSupplyCare(dt);
                 const blocked=movementBlocked();
-                catAgent?.step(dt,blocked);
+                catAgent?.step(dt,blocked||!catLease.leader);
                 const catActing=catLife?.step(dt,blocked)||false;
                 if (locomotion) locomotion.update(dt,blocked||catActing);
                 if (facialBlinkAction) {

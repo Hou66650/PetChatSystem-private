@@ -117,6 +117,16 @@
   resetSupply(r){if(!r.supplyMaterials)return;for(const [node,original] of r.supplyMaterials){for(const material of (Array.isArray(node.material)?node.material:[node.material]))material.dispose();node.material=original;}r.supplyMaterials=null;r.spec=r.originalSpec;}
   takeSupply(item){const r=this.records.find(r=>r.spec.id===item.effect&&r.state==='available');if(!r)return false;this.takeKind(item.effect);if(this.held!==r)return false;r.originalSpec=r.spec;r.spec={...r.spec,name:item.name};r.supplyMaterials=[];let i=0;r.node.traverse(node=>{if(!node.isMesh)return;r.supplyMaterials.push([node,node.material]);const colors=item.id==='star_ball'?[0x86b9a6,0xffefbe]:[0xb5a9cb,0xe4dced];const tint=m=>{const c=m.clone();c.color.setHex(colors[i++%colors.length]);return c;};node.material=Array.isArray(node.material)?node.material.map(tint):tint(node.material);});this.render();this.note('已拿起'+item.name+'，沿用原来的拿取与抛接方式。');return true;}
   takeKind(kind){const r=this.records.find(r=>r.spec.id===kind&&r.state==='available');if(!r){this.note('这个玩具还没准备好。');return;}this.resetSupply(r);this.dialog.close();if(this.take(r)){this.pointerId=null;this.move(this.a.face().project(this.a.model().position));this.note('已拿起'+r.spec.name+'。在空地按住移动，绿色落点松手生效；Esc 归还。');}}
+  invite(kind,home){
+   if(this.held||this.a.busy())return false;
+   const r=this.records.find(r=>r.spec.id===kind&&r.spec.fetch&&r.state==='available'&&!r.stored);
+   if(!r)return false;const T=this.a.THREE,f=this.a.face(),loc=this.a.locomotion(),target=r.node.getWorldPosition(new T.Vector3());
+   if(!loc.navigation.route(this.a.model().position,target)||!loc.navigation.route(target,home))return false;
+   r.before={stored:r.stored,position:target.clone(),quaternion:r.node.getWorldQuaternion(new T.Quaternion())};this.a.scene.attach(r.node);r.state='playing';this.held=r;
+   f.holdBall({mesh:r.node,offset:r.offset,kind:r.spec.id,label:r.spec.name,release:complete=>this.finish(r,complete)});
+   if(!f.ball){this.finish(r,false);return false;}Object.assign(f.ball,{phase:'chase',target,home:new T.Vector3(home.x,home.y||0,home.z),autonomous:true});
+   this.a.act('idle',0);if(!loc.goTo(target,{gait:'walk'})){f.reset();return false;}this.render();this.note('它想把熟悉的玩具带到你身边。');return true;
+  }
   take(r){if(this.a.busy())return false;this.cancel();this.point=null;this.lastPoint=null;this.shakeDistance=0;this.shakeAt=0;this.a.cancelCommands();const f=this.a.face();r.before={stored:r.stored,position:r.node.getWorldPosition(new this.a.THREE.Vector3()),quaternion:r.node.getWorldQuaternion(new this.a.THREE.Quaternion())};this.a.scene.attach(r.node);r.state='held';this.held=r;this.mode=r.spec.fetch?'throw':'place';
    f.pointerMode=!f.cameraOn;f.mode=r.spec.id==='brush'?'brush':'touch';f.render();
    if(r.spec.fetch)f.holdBall({mesh:r.node,offset:r.offset,kind:r.spec.id,label:r.spec.name,release:complete=>this.finish(r,complete)});

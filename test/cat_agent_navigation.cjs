@@ -6,7 +6,7 @@ const T=require('../static/js/vendor/three.min.js'),{Controller:Agent}=require('
  const fetcher=async(url)=>({ok:true,json:async()=>({catalog,memory:[],scope:'s'})});
  agent=new Agent({model,locomotion:move,life,scope:'s',animate,fetcher,storage:null,now:()=>now,onComplete:g=>{completed.push(g.target);garden.interact(g.target,g.action);}});await agent.ready;agent.networkAfter=Infinity;
  for(const place of catalog){
-   agent.lastTarget=null;agent.memory=Object.fromEntries(catalog.filter(p=>p!==place).map(p=>[p.id,{visits:10}]));
+   agent.energy=.85;agent.hunger=.1;agent.thirst=.1;agent.lastTarget=null;agent.memory=Object.fromEntries(catalog.filter(p=>p!==place).map(p=>[p.id,{visits:10}]));
    await agent.plan();assert.equal(agent.goal.target,place.id);
    for(let i=0;i<7000&&agent.goal;i++){
      now+=1000/60;const blocked=!agent.acting&&!['idle','walk','trot','run','turnLeft','turnRight'].includes(state);
@@ -15,5 +15,5 @@ const T=require('../static/js/vendor/three.min.js'),{Controller:Agent}=require('
    assert.equal(agent.goal,null,place.id+' finishes');assert.equal(agent.memory[place.id]?.visits,1,place.id+' completes');
  }
  assert.equal(completed.length,catalog.length);assert.equal(garden.state.plants.grass.growth,1);assert.equal(garden.state.plants.catnip.growth,1);
- agent.dispose();console.log('PASS continuous real navigation + CatLife: all fourteen destinations and actions, every frame on walkable ground');
+ agent.dispose();console.log('PASS continuous real navigation + CatLife: all catalog destinations and actions, every frame on walkable ground');
 })().catch(e=>{console.error(e);process.exitCode=1});

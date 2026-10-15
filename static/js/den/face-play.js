@@ -193,10 +193,10 @@
         if(now-b.at>750){b.phase='return';this.a.act('idle',0);if(!loc.goTo(b.home,{gait:'trot'})){this.reset();this.note('回程暂时被挡住了，这轮先结束，再换块空地吧。');}}
       } else if(b.phase==='return'){
         b.mesh.position.copy(this.a.mouth());
-        if(Math.hypot(m.position.x-b.home.x,m.position.z-b.home.z)<.15){b.phase='drop';b.at=now;b.from=b.mesh.position.clone();this.a.act('greet',1700);this.note((this.a.id()===2?'雪球':'球球')+'把'+(b.item?.label||'球')+'还给你：再来一次！');}
+        if(Math.hypot(m.position.x-b.home.x,m.position.z-b.home.z)<.15){b.phase='drop';b.at=now;b.from=b.mesh.position.clone();this.a.act('greet',1700);this.note((this.a.id()===3?'猫咪':this.a.id()===2?'雪球':'球球')+'把'+(b.item?.label||'球')+'还给你：再来一次！');}
       } else if(b.phase==='drop'){
         const t=clamp((now-b.at)/350,0,1);b.mesh.position.y=b.from.y+(loc.navigation.surfaceHeight(m.position)+(b.offset||.11)-b.from.y)*t;
-        if(now-b.at>1800)this.reset();
+        if(now-b.at>1800){if(!b.autonomous)this.a.onFetch?.(b.item?.kind||'ball');this.reset();}
       }
     }
     update(dt,now){

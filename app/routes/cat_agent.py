@@ -2,6 +2,8 @@ from urllib.parse import urlsplit
 from flask import Blueprint,jsonify,request,render_template
 from ..services import cat_agent_service as agent, companion_service as companion
 
+from ..services import cat_relationship_service as relationship
+
 bp=Blueprint('cat_agent',__name__)
 
 @bp.before_request
@@ -28,6 +30,8 @@ def operate(operation):
     if not isinstance(data,dict):return jsonify(error='请求格式错误'),400
     owner=companion.owner_key()
     try:
+        if operation=='relationship-event':return jsonify(**relationship.record(owner,data),scope=companion.browser_scope())
+        if operation=='relationship-clear':return jsonify(**relationship.clear(owner),scope=companion.browser_scope())
         if operation=='telemetry':return jsonify(**agent.monitor_record(owner,data))
         if operation=='decide':return jsonify(**agent.decide(owner,data),scope=companion.browser_scope())
         if operation=='report':return jsonify(memory=agent.record(owner,data),scope=companion.browser_scope())
@@ -41,4 +45,8 @@ def monitor_page():
 
 @bp.get('/api/cat-agent/monitor')
 def monitor_data():
-    return jsonify(**agent.monitor_state(companion.owner_key()),scope=companion.browser_scope(),catalog=agent.CATALOG,memory=agent.memories(companion.owner_key()))
+    return jsonify(**agent.monitor_state(companion.owner_key()),relationship=relationship.state(companion.owner_key()),scope=companion.browser_scope(),catalog=agent.CATALOG,memory=agent.memories(companion.owner_key()))
+
+@bp.get("/api/cat-agent/relationship")
+def relationship_state():
+    return jsonify(**relationship.state(companion.owner_key()),scope=companion.browser_scope())

@@ -152,5 +152,16 @@
     "actions": [
       "paw"
     ]
+  },
+  {
+    "id": "water",
+    "name": "清水盆",
+    "x": 0.8,
+    "z": 4.85,
+    "yaw": 0,
+    "actions": [
+      "drink",
+      "sniff"
+    ]
   }
 ]

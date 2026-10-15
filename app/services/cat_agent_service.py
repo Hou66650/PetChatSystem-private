@@ -10,7 +10,7 @@ from ..llm.client import LLMError, PlanningError
 
 CATALOG = json.loads((Path(__file__).resolve().parents[2]/'static/data/cat-world.json').read_text(encoding='utf-8'))
 TARGETS = {p['id']:p for p in CATALOG}
-WORDS = {'paw':'好奇地扒扒门','nibble':'尝尝猫草','rub':'蹭蹭脸','observe':'看看周围','sniff':'闻闻新气味','rest':'歇一会儿','groom':'整理毛发','stretch':'伸个懒腰','jump':'轻轻跳一下','eat':'吃点饭','sleep':'回窝睡一会儿'}
+WORDS = {'drink':'喝一点清水','paw':'好奇地扒扒门','nibble':'尝尝猫草','rub':'蹭蹭脸','observe':'看看周围','sniff':'闻闻新气味','rest':'歇一会儿','groom':'整理毛发','stretch':'伸个懒腰','jump':'轻轻跳一下','eat':'吃点饭','sleep':'回窝睡一会儿'}
 
 
 def init_schema():
@@ -54,7 +54,7 @@ def decide(owner, data):
     ordered=sorted(candidates,key=lambda i:(
         rows.get(i,{}).get('result')=='blocked' and now-rows[i]['updated']<120,
         rows.get(i,{}).get('visits',0),rows.get(i,{}).get('updated',0)))
-    options={i:[a for a in TARGETS[i]['actions'] if a not in ('eat','sleep')] for i in ordered}
+    options={i:[a for a in TARGETS[i]['actions'] if a not in ('eat','sleep','drink')] for i in ordered}
     target=next((i for i in ordered if 'rest' in TARGETS[i]['actions']),ordered[0]) if energy<.3 else ordered[0]
     action='rest' if energy<.3 and 'rest' in TARGETS[target]['actions'] else options[target][rows.get(target,{}).get('visits',0)%len(options[target])]
     source='local';reason='后台模型繁忙，使用本地访问记录排序'
@@ -67,9 +67,11 @@ def decide(owner, data):
             if now>=gate['next']:
                 gate['next']=now+8
                 try:
+                    from .cat_relationship_service import state as relationship_state
+                    bond=relationship_state(owner)
                     raw=current_app.extensions['llm'].plan_once([
                         {'role':'system','content':'你是一只在岛上探索的猫。根据精力和探索记录，选择可选地点和该地点支持的动作。优先新地点，疲倦时休息，近期受阻时换地点。只返回JSON {"target":"地点id","action":"动作"}。不得创造地点、坐标、工具或其他字段。'},
-                        {'role':'user','content':json.dumps({'energy':energy,'candidates':[{'id':i,'name':TARGETS[i]['name'],'actions':options[i],'visits':rows.get(i,{}).get('visits',0),'lastResult':rows.get(i,{}).get('result','')} for i in ordered]},ensure_ascii=False)}])
+                        {'role':'user','content':json.dumps({'personality':bond['personality'],'favoritePlace':bond['preferredPlace'],'favoriteToy':bond['favoriteToy'],'familiarity':bond['familiarity'],'energy':energy,'candidates':[{'id':i,'name':TARGETS[i]['name'],'actions':options[i],'visits':rows.get(i,{}).get('visits',0),'lastResult':rows.get(i,{}).get('result','')} for i in ordered]},ensure_ascii=False)}])
                     result=json.loads(raw)
                     if isinstance(result,dict) and result.get('target') in candidates and result.get('action') in options[result['target']]:
                         target,action=result['target'],result['action'];source='model';reason='模型从可到达地点与允许动作中选择，已通过白名单校验';gate['failures']=0;gate['reason']='等待 8 秒决策窗口，使用本地策略'
@@ -110,7 +112,10 @@ def record(owner,data):
 
 def install(app):
     app.extensions['cat_agent_gate']={'lock':threading.Lock(),'next':0,'failures':0}
-    with app.app_context():init_schema()
+    with app.app_context():
+        init_schema()
+        from . import cat_relationship_service
+        cat_relationship_service.init_schema()
 
 
 def monitor_record(owner, data):
@@ -122,7 +127,7 @@ def monitor_record(owner, data):
         value=snap.get(key,'')
         if not isinstance(value,str) or len(value)>limit:raise ValueError('监控字段错误')
         clean[key]=value
-    for key in ('energy','hunger','x','z','pathLength'):
+    for key in ('energy','hunger','thirst','x','z','pathLength'):
         value=snap.get(key,0)
         if type(value) not in (int,float) or not math.isfinite(value) or abs(value)>10000:raise ValueError('监控数值错误')
         clean[key]=value

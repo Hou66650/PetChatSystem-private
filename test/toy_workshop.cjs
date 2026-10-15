@@ -46,6 +46,13 @@ for(let t=360;t<15000;t+=20){loc.update(.02,false);f.updateBall(start+t,.02);ass
 assert(carried&&returned);assert.equal(f.ball,null);assert.equal(w.held,null);assert.equal(node.parent,scene);assert.equal(disposed,0);
 w.take(r);w.grab(false,null,'lost');assert.equal(w.held,null);assert.equal(r.state,'available');
 console.log('PASS physical identity, cancel/invalid target, placement/re-pick, shared flight, fetch/return, hand loss; no resource disposal');
+let invitesCredited=0;a.onFetch=()=>invitesCredited++;
+assert(w.invite('ball',{x:0,z:-1}));assert(f.ball.autonomous);const inviteStart=performance.now();let invitationCarried=false;
+for(let t=0;t<16000&&f.ball;t+=20){loc.update(.02,false);f.updateBall(inviteStart+t,.02);if(f.ball?.phase==='return')invitationCarried=true;assert(nav.isWalkable(model.position));}
+assert(invitationCarried);assert.equal(f.ball,null);assert.equal(w.held,null);assert.equal(invitesCredited,0,'autonomous invitation is not invented user play');
+assert(w.invite('ball',{x:0,z:0}));w.cancel();assert.equal(f.ball,null);assert.equal(w.held,null);
+console.log('PASS autonomous invitation: carries real ground toy, safe return, cancellation, no fabricated interaction credit');
+
 r.spec=W.catalog.find(i=>i.id==='brush');w.take(r);assert.equal(f.ball,null);assert.equal(w.mode,'place');w.release();assert.equal(r.state,'available');assert.equal(w.held,null);
 const camera=new THREE.PerspectiveCamera(45,1,.1,50);camera.position.set(0,4,5);camera.lookAt(node.position);camera.updateMatrixWorld(true);scene.updateMatrixWorld(true);
 w.a.camera=camera;w.a.canvas.clientWidth=500;w.a.canvas.clientHeight=500;w.ray=new THREE.Raycaster();assert.equal(w.pick(250,250),r,'ray picks the real prop');
