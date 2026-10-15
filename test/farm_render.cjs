@@ -28,6 +28,10 @@ app.whenReady().then(async()=>{
   await pause();fs.writeFileSync(path.join(os.tmpdir(),'pait-farm-guide.png'),(await w.webContents.capturePage()).toPNG());
   await run('farm.switchTab("beds")');w.setContentSize(390,844);await pause();assert(await run('document.getElementById("farm-dialog").scrollWidth<=document.getElementById("farm-dialog").clientWidth+1'),'no mobile horizontal overflow');fs.writeFileSync(path.join(os.tmpdir(),'pait-farm-mobile.png'),(await w.webContents.capturePage()).toPNG());
   w.setContentSize(1440,1000);await run('farm.dialog.close();loadStage()');for(const [i,b] of state.beds.entries())b.plant={id:'sample-'+i,species:b.nursery?'birch':i%2?'cosmos':'pumpkin',stage:10,ready:true,remaining:0,progress:1};await run('farm.refresh()');await until('farm.groups.size===9&&!farm.refreshing');await pause();fs.writeFileSync(path.join(os.tmpdir(),'pait-farm-world.png'),(await w.webContents.capturePage()).toPNG());
-  await run('farm.dispose();cancelAnimationFrame(window.frameId)');assert(await run('farm.cache.size===0 && farm.previewRenderer===null'));assert.equal(errors.length,0,errors.join('\n'));console.log('PASS farm browser: no preloading, planting/watering/harvest/pot, real GLB and texture loading, stage inspector, mobile fit, scene cleanup.');app.exit(0);
+  for(let angle=0;angle<3;angle++){
+   await run(`camera.position.set(${-6+Math.cos(angle*1.4)*5},${3+angle},${5+Math.sin(angle*1.4)*5});camera.lookAt(-6,0,5);`);await pause();
+   fs.writeFileSync(path.join(os.tmpdir(),'pait-farm-seam-'+angle+'.png'),(await w.webContents.capturePage()).toPNG());
+  }
+  await run('farm.dispose();cancelAnimationFrame(window.frameId)');assert(await run('farm.cache.size===0 && farm.previewRenderer===null'));assert.equal(errors.length,0,errors.join('\n'));console.log('PASS farm browser: no preloading, planting/watering/harvest/pot, real GLB and texture loading, stage inspector, mobile fit, seam camera angles, scene cleanup.');app.exit(0);
  }catch(e){console.error(e,errors);app.exit(1);}finally{server.close();}
 });

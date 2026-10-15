@@ -336,6 +336,29 @@ def material_detail():
         if o.name.startswith('cosmos'):o.hide_render=True
     scene.render.filepath=str(ART/'pot-soil-macro.png');bpy.ops.render.render(write_still=True)
 
+def subtract_convex(poly,mask):
+    """Partition a polygon outside a CCW convex mask, without overlapping pieces."""
+    remaining=poly;result=[]
+    for a,c in zip(mask,mask[1:]+mask[:1]):
+        if not remaining:break
+        inside=[];outside=[]
+        def distance(p):return (c[0]-a[0])*(p[1]-a[1])-(c[1]-a[1])*(p[0]-a[0])
+        for p,q in zip(remaining,remaining[1:]+remaining[:1]):
+            dp,dq=distance(p),distance(q)
+            (inside if dp>=0 else outside).append(p)
+            if (dp>=0)!=(dq>=0):
+                t=dp/(dp-dq);cross=tuple(p[i]+t*(q[i]-p[i]) for i in range(3));inside.append(cross);outside.append(cross)
+        if len(outside)>=3:result.append(outside)
+        remaining=inside
+    return result
+
+def exposed_floor(b,mat,polygon,masks):
+    pieces=[polygon]
+    for mask in masks:pieces=[part for poly in pieces for part in subtract_convex(poly,mask)]
+    for poly in pieces:
+        area=sum(p[0]*q[1]-q[0]*p[1] for p,q in zip(poly,poly[1:]+poly[:1]))
+        if abs(area)>1e-9:b.mesh(mat,poly,[tuple(range(len(poly)))])
+
 def camera(target,pos,scale,width,height):
     scene=bpy.context.scene;bpy.ops.object.camera_add(location=pos);cam=bpy.context.object;cam.rotation_euler=(Vector(target)-cam.location).to_track_quat('-Z','Y').to_euler();cam.data.type='ORTHO';cam.data.ortho_scale=scale;scene.camera=cam
     for p,power,size in [((0,-5,8),1100,7),((-5,0,5),850,6),((4,6,9),1400,5)]:
@@ -388,6 +411,10 @@ def build_terrace():
     global M
     bpy.ops.wm.read_factory_settings(use_empty=True);M=palette();b=BotanicalBatch();random.seed(811)
     layout=json.loads((R/'static/data/farm-layout.json').read_text());t=layout['terrace'];cx,cy=t['x'],-t['z'];rx,ry=t['rx'],t['rz']
+    e=layout['entry'];ex,ey,ew,ed=e['x'],-e['z'],e['w']/2,e['d']/2
+    entry_mask=[(ex-ew,ey-ed),(ex+ew,ey-ed),(ex+ew,ey+ed),(ex-ew,ey+ed)]
+    # Match the original forest-floor rim's 384-sided footprint exactly.
+    original_mask=[(7.84*math.cos(k*TAU/384),7.84*math.sin(k*TAU/384)) for k in range(384)]
     stone=pigment('Garden_weathered_limestone',(.39,.40,.33),'soil');earth=pigment('Garden_friable_soil',(.075,.047,.026),'loam');wood=pigment('Garden_oiled_larch',(.29,.17,.078),'wood');gravel=pigment('Garden_fine_gravel',(.36,.36,.24),'soil');iron=material('Garden_patinated_iron',(.055,.085,.068),.48,.7);clay=pigment('Garden_terracotta',(.47,.23,.12),'clay');brass=material('Garden_brass',(.43,.31,.10),.35,.72)
     # The established island's photographed stone keeps the new masonry consistent.
     stone_image=R/'art/mistwood-v1/limestone-albedo.png'
@@ -409,12 +436,14 @@ def build_terrace():
         for i in range(nx):
             x0=cx-extent+2*extent*i/nx;x1=cx-extent+2*extent*(i+1)/nx
             if x1>-8.1 and -2.5<y0<-1.1:continue
-            b.mesh(gravel,[(x0,y0,.03),(x1,y0,.03),(x1,y1,.03),(x0,y1,.03)],[(0,1,2,3)])
+            exposed_floor(b,gravel,[(x0,y0,.03),(x1,y0,.03),(x1,y1,.03),(x0,y1,.03)],[entry_mask,original_mask])
     for j in range(160):
         a=random.uniform(0,TAU);h=random.uniform(-3,-.15);f=1+h*.15
         b.ellipsoid(stone,(cx+rx*f*math.cos(a),cy+ry*f*math.sin(a),h),(.28+random.random()*.3,.22+random.random()*.2,.12+random.random()*.22),12,7)
-    # Causeway lies over the join; the inherited wall is removed only at this opening.
-    e=layout['entry'];b.box(stone,(e['x'],-e['z'],-.035),(e['w'],e['d'],.13))
+    # The support sits below ground. Only the exposed connector gets a top face:
+    # never draw a second ground sheet over the original lawn or farm gravel.
+    b.box(stone,(ex,ey,-.055),(e['w'],e['d'],.09))
+    exposed_floor(b,stone,[(x,y,.03) for x,y in entry_mask],[original_mask])
     for z in [3.65,7.45]:
         for x in np.linspace(-7.2,-5.2,12):b.tube(iron,[(x,-z,.04),(x,-z,.70)],.016,8)
         b.tube(iron,[(-7.2,-z,.72),(-5.2,-z,.72)],.028,12)
@@ -466,6 +495,8 @@ def build_terrace():
             px=-13.5+col*.27;py=-8+row*.19
             if ((px-cx)/(rx-.4))**2+((py-cy)/(ry-.4))**2>1:continue
             if px>-8.1 and -2.5<py<-1.1:continue
+            if math.hypot(px,py)<7.84+.16:continue
+            if abs(px-ex)<ew+.16 and abs(py-ey)<ed+.12:continue
             if any(abs(px-bed['x'])<bed['w']/2+.16 and abs(py+bed['z'])<bed['d']/2+.16 for bed in layout['beds']):continue
             if random.random()<.36:continue
             b.box(stone,(px+random.uniform(-.02,.02),py,.043),(.24,.16,.018),random.uniform(-.08,.08))
