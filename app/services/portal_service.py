@@ -131,6 +131,9 @@ def operate(owner,op,data):
         if type(data.get('allow')) is not bool:raise PortalError('访客开关格式错误')
         db.execute('BEGIN IMMEDIATE')
         try:
+            from .pet_generation_service import appearance as private_appearance
+            if pet=='3' and data['allow'] and private_appearance(owner):
+                raise PortalError('私人重建模型暂仅在自己的岛上使用，不能开启访客',409)
             db.execute('UPDATE portal_islands SET allow_visitors=? WHERE owner=? AND pet=?',(int(data['allow']),owner,pet))
             if not data['allow']:
                 for t in db.execute("SELECT t.* FROM portal_trips t JOIN portal_islands i ON i.id=t.destination WHERE i.owner=? AND i.pet=? AND t.status='active'",(owner,pet)).fetchall():finish(t,'好友关闭访客权限，已返程')
@@ -144,6 +147,9 @@ def operate(owner,op,data):
         if kind=='neighbor' and (not isinstance(dest,str) or len(dest)>64):raise PortalError('请选择有效好友岛屿')
         db.execute('BEGIN IMMEDIATE')
         try:
+            from .pet_generation_service import appearance as private_appearance
+            if pet=='3' and private_appearance(owner):
+                raise PortalError('私人重建模型暂未适配桌宠和串门，请先在工作室恢复原来的猫咪',409)
             if db.execute("SELECT 1 FROM portal_trips WHERE owner=? AND pet=? AND status IN ('pairing','active')",(owner,pet)).fetchone():raise PortalError('这只宠物已在旅途中，请先召回',409)
             if db.execute("SELECT 1 FROM portal_trips t JOIN portal_islands i ON i.id=t.destination WHERE i.owner=? AND i.pet=? AND t.status='active'",(owner,pet)).fetchone():raise PortalError('请先结束正在接待的串门',409)
             if kind=='neighbor':

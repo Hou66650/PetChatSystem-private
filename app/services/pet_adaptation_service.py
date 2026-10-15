@@ -48,6 +48,7 @@ def start(task_id, mode, forward):
     raw = row['data'];digest = hashlib.sha256(raw).hexdigest();job = uuid.uuid4().hex
     try:
         with db:
+            db.execute('DELETE FROM pet_studio_equipped WHERE task=?', (task_id,))
             db.execute('INSERT OR REPLACE INTO pet_studio_adaptations VALUES (?,?,?,?,?,?)',
                        (task_id, job, digest, 'running', '{}', time.time()))
             db.execute("DELETE FROM pet_studio_assets WHERE task=? AND slot IN ('adapted','blend')", (task_id,))

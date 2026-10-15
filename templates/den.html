@@ -560,6 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/sakura-river-layout.js') }}?v=1.7.0"></script>
     <script src="{{ url_for('static', filename='js/den/snow-haven-layout.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/selected-assets.js') }}?v={{ app_version }}"></script>
+    <script src="/static/js/den/pet-model-bounds.js?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/scene-navigation.js') }}?v=1.7.0"></script>
     <script src="{{ url_for('static', filename='js/den/pet-locomotion.js') }}"></script>
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
@@ -1130,6 +1131,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // ---------- GLB 宠物（Quaternius CC0 动物包，本地 static/models，带骨骼动画） ----------
         for(const spec of Object.values(SPECS))if(spec.expressive)
             for(const [key,act] of Object.entries(ShibaExpression.acts))spec.anims[key]=act.clip;
+        const standardCatSpec={...SPECS[3],anims:{...SPECS[3].anims}};
+        function applyCatAppearance(coat){
+            SPECS[3]={...standardCatSpec,anims:{...standardCatSpec.anims},glb:coat.model+'?v={{ app_version }}'};
+            if(coat.custom)Object.assign(SPECS[3],{name:coat.name,custom:true,expressive:false,fallback:null,
+                anims:{idle:'idle_breathe',walk:'walk',trot:'walk',run:'run',turnLeft:'turn_left',turnRight:'turn_right',eat:'eat',sleep:'sleep_loop',lieDown:'lie_down',sit:'sit_down',sitDown:'sit_down',standUp:'stand_up',sniff:'sniff',stretch:'stretch'}});
+        }
+        applyCatAppearance({{ cat_appearance|tojson }});
         const gltfLoader = new THREE.GLTFLoader();
         const assetLoader = new SelectedAssets.Loader(gltfLoader);
         const clipShort = (n) => n.replace(/^.*\|/, '');
@@ -1521,7 +1529,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // 归一化：目标高度、落地、居中。
             model.scale.setScalar(1);
             model.position.set(0, 0, 0);
-            model.traverse(o=>{if(o.isSkinnedMesh) o.skeleton.pose();});
+            // Imported skins retain their authored rest transforms. Skeleton.pose
+            // in this Three.js version loses a transformed non-bone parent.
+            model.traverse(o=>{if(o.isSkinnedMesh&&!spec.custom) o.skeleton.pose();});
             model.updateMatrixWorld(true);
             // 摘下骨骼上的配饰再量包围盒（Box3 不看 visible，帽尖会让狗二次出现时缩水 1/4）
             const detached = [];
@@ -1533,12 +1543,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const fxShells = [];
             model.traverse((o) => { if (o.userData && o.userData.__denFx) fxShells.push(o); });
             fxShells.forEach((o) => { if (o.parent) { detached.push([o, o.parent]); o.parent.remove(o); } });
-            const box = model.userData.__denBaseBounds ? model.userData.__denBaseBounds.clone() : new THREE.Box3().setFromObject(model);
+            const box = model.userData.__denBaseBounds ? model.userData.__denBaseBounds.clone() : spec.custom ? PetModelBounds.measure(THREE,model) : new THREE.Box3().setFromObject(model);
             model.userData.__denBaseBounds=box.clone();
             const origH = Math.max(0.01, box.max.y - box.min.y);
             model.scale.setScalar(spec.h / origH);
             model.updateMatrixWorld(true);
-            const box2 = new THREE.Box3().setFromObject(model);
+            const box2 = spec.custom ? box.clone().applyMatrix4(new THREE.Matrix4().makeScale(model.scale.x,model.scale.y,model.scale.z)) : new THREE.Box3().setFromObject(model);
             model.position.set(-(box2.min.x + box2.max.x) / 2, -box2.min.y, -(box2.min.z + box2.max.z) / 2);
             detached.forEach(([o, parentBone]) => parentBone.add(o));   // 配饰挂回原骨骼
             model.traverse((o) => {
@@ -1554,6 +1564,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 let clip = gltf.animations.find((a) => clipShort(a.name) === wanted) ||
                     gltf.animations.find(a=>clipShort(a.name)===({walk:'walk',trot:'trot'}[key])) ||
                     gltf.animations.find(a => clipShort(a.name) === ({idle:'Idle', walk:'Walk', eat:'Eating', petting:'Idle_2_HeadLow', sleep:'Death', sniff:'Idle_2_HeadLow'}[key]));
+                if(clip&&spec.custom&&key==='sit'){
+                    clip=clip.clone();clip.duration=1;
+                    for(const track of clip.tracks){const count=track.getValueSize(),last=track.values.slice(-count);track.times=new Float32Array([0,1]);track.values=new Float32Array([...last,...last]);}
+                }
                 if (clip && spec.pbr) {
                     clip=clip.clone();
                     clip.tracks=clip.tracks.filter(t=>{
@@ -3831,7 +3845,7 @@ document.addEventListener('DOMContentLoaded', () => {
         async function refreshCatAppearance(){
             if(checkingCatAppearance||document.hidden||spawnBusy||interactionBusy())return;
             checkingCatAppearance=true;
-            try{const r=await fetch('/api/cat-market',{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d.scope!==COMPANION_SCOPE||d.active===catAppearanceId)return;const coat=d.catalog.find(c=>c.id===d.active);if(!coat)return;catAppearanceId=d.active;SPECS[3].glb=coat.model+'?v={{ app_version }}';if(currentPetId===3)await spawnPet(3,false,true);}
+            try{const r=await fetch('/api/cat-market',{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d.scope!==COMPANION_SCOPE)return;const coat=d.effectiveAppearance||d.catalog.find(c=>c.id===d.active);if(!coat||coat.id===catAppearanceId)return;catAppearanceId=coat.id;applyCatAppearance(coat);if(currentPetId===3)await spawnPet(3,false,true);}
             catch(e){}finally{checkingCatAppearance=false;}
         }
         window.addEventListener('focus',refreshCatAppearance);

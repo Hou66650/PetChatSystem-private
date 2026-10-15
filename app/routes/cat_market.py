@@ -1,6 +1,6 @@
 from urllib.parse import urlsplit
 from flask import Blueprint,request,jsonify,render_template
-from ..services import cat_market_service as market,companion_service as companion
+from ..services import cat_market_service as market,companion_service as companion,pet_generation_service as studio
 bp=Blueprint('cat_market',__name__)
 @bp.after_request
 def no_cache(r):r.headers['Cache-Control']='no-store';return r
@@ -9,7 +9,7 @@ def error(e):return jsonify(error=str(e)),e.status
 @bp.get('/cat-market')
 def page():return render_template('cat-market.html',scope=companion.browser_scope())
 @bp.get('/api/cat-market')
-def state():return jsonify(**market.state(companion.owner_key()),scope=companion.browser_scope())
+def state():return jsonify(**market.state(companion.owner_key()),scope=companion.browser_scope(),effectiveAppearance=studio.appearance(companion.owner_key()) or market.appearance(companion.owner_key()))
 @bp.post('/api/cat-market/<operation>')
 def operate(operation):
  origin=request.headers.get('Origin')

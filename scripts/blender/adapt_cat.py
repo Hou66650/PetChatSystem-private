@@ -11,6 +11,7 @@ import math
 from pathlib import Path
 import sys
 import bpy
+import bmesh
 from mathutils import Matrix, Vector
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -38,6 +39,61 @@ def action_on(rig, action):
     rig.animation_data_create()
     rig.animation_data.action = action
     if action.slots: rig.animation_data.action_slot = action.slots[0]
+
+
+def fit_generated_tail(rig, meshes):
+    """Fit a backward extended tail instead of transferring an upright tail's weights.
+
+    This only handles standing cats with a distinct rearward tail. Curled tails
+    remain a manual-review case. Keep head/face a single deformation region:
+    generated eyes are texture, not the template's separate eyeball meshes.
+    """
+    points=[m.matrix_world @ v.co for m in meshes for v in m.data.vertices]
+    lo,hi=bounds(meshes); length=hi.y-lo.y
+    start=lo.y+length*.71
+    samples=[]
+    for t in (0,.34,.68,.96):
+        y=start+(hi.y-start)*t
+        band=[v for v in points if abs(v.y-y)<length*.018]
+        if not band: return None
+        samples.append(Vector((sum(v.x for v in band)/len(band),y,sum(v.z for v in band)/len(band))))
+    if max((p-samples[0]).length for p in samples)<length*.12: return None
+    bpy.ops.object.select_all(action='DESELECT');rig.select_set(True);bpy.context.view_layer.objects.active=rig
+    bpy.ops.object.mode_set(mode='EDIT')
+    inv=rig.matrix_world.inverted()
+    for i,name in enumerate(('tail','tail_mid','tail_tip')):
+        b=rig.data.edit_bones[name];b.use_connect=False;b.head=inv@samples[i];b.tail=inv@samples[i+1]
+    bpy.ops.object.mode_set(mode='OBJECT')
+    return (start,samples)
+
+
+def refine_template_weights(mesh, rig, tail):
+    # Collapse template facial micro-bones into the head for a single fused mesh.
+    facial={'jaw','tongue','eye_L','eye_R','lid_L','lid_R','brow_L','brow_R','cheek_L','cheek_R','ear_L','ear_R'}
+    groups={g.index:g.name for g in mesh.vertex_groups}
+    if tail:
+        start,points=tail; reach=points[-1].y-start
+    for v in mesh.data.vertices:
+        weights={groups[g.group]:g.weight for g in v.groups}
+        head=sum(weights.pop(n,0) for n in facial)
+        if head:weights['head']=weights.get('head',0)+head
+        p=mesh.matrix_world@v.co
+        if tail and p.y>start:
+            blend=min(1,max(0,(p.y-start)/(reach*.18)))
+            weights={n:w*(1-blend) for n,w in weights.items()}
+            t=min(2,max(0,(p.y-start)/reach*3-.5)); i=int(t); f=t-i
+            names=('tail','tail_mid','tail_tip')
+            weights[names[i]]=weights.get(names[i],0)+blend*(1-f)
+            if i<2:weights[names[i+1]]=weights.get(names[i+1],0)+blend*f
+        for g in mesh.vertex_groups:
+            if g.name in weights:g.add([v.index],weights[g.name],'REPLACE')
+            elif g.index in [x.group for x in v.groups]:g.remove([v.index])
+    bpy.ops.object.select_all(action='DESELECT');mesh.select_set(True);bpy.context.view_layer.objects.active=mesh
+    bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
+    bpy.ops.object.vertex_group_smooth(group_select_mode='ALL',factor=.65,repeat=4)
+    bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL',limit=4)
+    bpy.ops.object.vertex_group_normalize_all(group_select_mode='ALL',lock_active=False)
+    bpy.ops.object.mode_set(mode='OBJECT')
 
 
 def main(args):
@@ -139,24 +195,26 @@ def main(args):
             for obj in donor_objects:
                 if obj.parent not in donor_objects: obj.matrix_world = fitted @ obj.matrix_world
             bpy.context.view_layer.update()
-            skin = max(donor_meshes, key=lambda o: len(o.data.polygons))
             rig = donor
+            tail_fit = fit_generated_tail(rig, meshes)
+            # A fused reconstructed body cannot inherit weights from separate
+            # template fur/eye shells. Weld positional seams and bind by volume.
+            for bone in rig.data.bones:
+                bone.use_deform = bone.name in CORE and bone.name != 'root'
             for mesh in meshes:
+                bm=bmesh.new();bm.from_mesh(mesh.data)
+                bmesh.ops.remove_doubles(bm,verts=list(bm.verts),dist=max(dims)*.00001)
+                bm.to_mesh(mesh.data);bm.free();mesh.data.update()
                 mesh.vertex_groups.clear()
-                for group in skin.vertex_groups: mesh.vertex_groups.new(name=group.name)
                 bpy.ops.object.select_all(action='DESELECT')
-                mesh.select_set(True); bpy.context.view_layer.objects.active = mesh
-                transfer = mesh.modifiers.new('TemplateWeightTransfer', 'DATA_TRANSFER')
-                transfer.object = skin; transfer.use_vert_data = True
-                transfer.data_types_verts = {'VGROUP_WEIGHTS'}
-                transfer.vert_mapping = 'POLYINTERP_NEAREST'
-                bpy.ops.object.modifier_apply(modifier=transfer.name)
-                world = mesh.matrix_world.copy(); mesh.parent = rig; mesh.matrix_world = world
-                modifier = mesh.modifiers.new('CatArmature', 'ARMATURE'); modifier.object = rig
+                mesh.select_set(True);rig.select_set(True);bpy.context.view_layer.objects.active = rig
+                bpy.ops.object.parent_set(type='ARMATURE_AUTO')
+                refine_template_weights(mesh,rig,tail_fit)
             for obj in donor_objects:
                 if obj != rig: bpy.data.objects.remove(obj, do_unlink=True)
             incoming = set(meshes) | {rig}
-            report['method'] = 'template-nearest-surface-skin-draft'
+            report['method'] = 'template-volume-skin-draft'
+            report['tailFitted'] = tail_fit is not None
             report['warnings'].append('模板蒙皮仅为草稿：请重点检查腋下、腹部、尾根，不能当作通用自动绑骨。')
         unweighted = 0
         for mesh in meshes:
@@ -171,6 +229,19 @@ def main(args):
         reset(rig);rig.animation_data_clear();rig.animation_data_create()
         for name in CLIPS:
             action = actions[name].copy(); action.name = 'pait_' + name
+            if not rigs:
+                # Template tails point upward; preserve the reconstructed rest
+                # shape and use small local sways rather than its large poses.
+                for layer in action.layers:
+                    for action_strip in layer.strips:
+                        for bag in action_strip.channelbags:
+                            for curve in bag.fcurves:
+                                if any(('pose.bones["'+b+'"]') in curve.data_path for b in ('tail','tail_mid','tail_tip')) and 'rotation_' in curve.data_path:
+                                    baseline = 1 if 'quaternion' in curve.data_path and curve.array_index==0 else 0
+                                    for key in curve.keyframe_points:
+                                        key.co.y=baseline+(key.co.y-baseline)*.12
+                                        key.handle_left.y=baseline+(key.handle_left.y-baseline)*.12
+                                        key.handle_right.y=baseline+(key.handle_right.y-baseline)*.12
             track = rig.animation_data.nla_tracks.new(); track.name = name
             strip = track.strips.new(name, int(action.frame_range[0]), action)
             if action.slots: strip.action_slot = action.slots[0]

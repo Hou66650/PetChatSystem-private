@@ -108,3 +108,23 @@ book.py                 旧入口已退役，运行会提示改用 run.py（旧�
 - **CDN 全部本地化**：marked/html2canvas/jspdf 在 `static/js/vendor/`，移除 jQuery/Google Fonts
 - **反馈落库**：/remark_pet 四宠物评分（真实名字）走 /remark 接口写入 reviews 表，与评分详情页互通
 - **质量关卡**：e2e 回归 28/28（`test/refactor_e2e.py`）+ 视觉评审（8 页均分 91.6，无高/中严重度问题）
+
+
+## 私人宠物重建工作室（v1.46.0）
+
+入口 `/pet-studio`，登录后创建猫咪档案并上传正面 / 左侧 / 右侧 / 背面照片。保存素材不调用云端；勾选上传与计费确认后才提交一次混元 3D 3.1 任务。服务端需要 `.env` 中的 `HUNYUAN_3D_API_KEY` 和本机 Blender（可用 `BLENDER_EXECUTABLE` 指定）。使用 API Key 原值鉴权，不使用 SecretId，也不加 Bearer 前缀。
+
+流程：照片 → 云端生成 → 自动下载 GLB → Blender 保留几何、将贴图降至 2K → 外貌确认 → 本机模板体积蒙皮 / 兼容骨骼动作复用 → 12 个动作预览与 8 项人工验收 → 手动启用猫咪岛。账号数据保持私有；可随时恢复市场外观。私人重建模型暂不参与桌宠与串门；视频输入与自动抽帧尚未实现。
+
+云端任务编号先落库再查询，刷新只恢复原任务；下载或查询失败可继续查询。提交超时且没有编号时进入“结果未知”，不会自动重复扣费，需要管理员先去腾讯云核对。删除本地档案不能取消已经提交的云端任务或退费。当前本机服务使用单进程后台线程；生产多进程部署前应改成持久任务队列。
+
+模型适配是草稿，尤其坐卧姿势、尾根、脸部、脚掌需要检查，不能保证任意照片生成的模型都自然可动。只有用户核对当前动作版本后才可启用。测试账户的自动勾选只验证接口状态门槛，不代表视觉质量认证。
+
+验证命令（PowerShell）：
+
+```powershell
+$env:PYTHONPATH='.;test'
+python -X utf8 -m unittest test_pet_generation.GenerationTests test_pet_studio.PetStudioTests
+```
+
+真实结果回归需 `PET_STUDIO_QUERY_JOB` 指定已有完成任务，并准备 `uploads/hunyuan-test-cat-20261015/{front,left,back}.png`。测试拦截提交、只查询指定原任务，不产生新的生成请求；随后真实下载、运行 Blender、验证私有启用和撤销。隔离数据库结果保存到 `uploads/hunyuan-test-cat-20261015/paid-check-20261015/workflow-e2e/`，可用 `test/studio_workflow_render.cjs`、`test/studio_island_render.cjs` 在 Electron 中验证工作室及小岛页面；这两个本地页面夹具不访问用户浏览器、登录会话或远端 API。

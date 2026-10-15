@@ -14,6 +14,7 @@ from PIL import Image, ImageOps
 from ..db import get_db
 from ..services import companion_service as identity
 from ..services import pet_adaptation_service as adaptation
+from ..services import pet_generation_service as generation
 
 bp = Blueprint('pet_studio', __name__)
 VIEWS = ('front', 'left', 'right', 'back', 'detail')
@@ -74,8 +75,11 @@ def snapshot():
         del item['owner']
         item['assets'] = [r['slot'] for r in db.execute('SELECT slot FROM pet_studio_assets WHERE task=?', (row['id'],))]
         item['adaptation'] = adaptation.state(row['id'])
+        generation.resume(row['id'])
+        item['generation'] = generation.state(row['id'])
+        item['equipped'] = bool(db.execute('SELECT 1 FROM pet_studio_equipped WHERE owner=? AND task=?', (identity.owner_key(),row['id'])).fetchone())
         rows.append(item)
-    return jsonify(tasks=rows, scope=identity.browser_scope(), generationAvailable=False)
+    return jsonify(tasks=rows, scope=identity.browser_scope(), generationAvailable=generation.available())
 
 
 @bp.get('/pet-studio')
@@ -168,7 +172,11 @@ def upload(task_id, slot):
     if task(task_id) is None:
         db.rollback()
         return jsonify(error='档案已被删除'), 404
+    if generation.locked(task_id):
+        db.rollback()
+        return jsonify(error='请先完成或核对现有云端任务，再更换素材'), 409
     with db:
+        generation.clear(task_id)
         adaptation.clear(task_id)
         db.execute('INSERT OR REPLACE INTO pet_studio_assets VALUES (?,?,?,?)', (task_id, slot, mime, raw))
         db.execute('UPDATE pet_studio_tasks SET status=?,updated=? WHERE id=?',
@@ -211,9 +219,34 @@ def operate(task_id, operation):
     status = row['status']
     if operation == 'delete':
         with db:
+            generation.clear(task_id)
             adaptation.clear(task_id)
             db.execute('DELETE FROM pet_studio_assets WHERE task=?', (task_id,))
             db.execute('DELETE FROM pet_studio_tasks WHERE id=?', (task_id,))
+        return snapshot()
+    if operation == 'generate':
+        try: generation.start(task_id, data.get('consent'))
+        except ValueError as exc: return jsonify(error=str(exc)), 409
+        return snapshot()
+    if operation == 'resume-generation':
+        generation.resume(task_id, explicit=True)
+        return snapshot()
+    if operation in ('equip','unequip'):
+        db.execute('BEGIN IMMEDIATE')
+        if db.execute("SELECT 1 FROM portal_trips t LEFT JOIN portal_islands i ON i.id=t.destination WHERE t.status IN ('active','pairing') AND ((t.owner=? AND t.pet='3') OR (i.owner=? AND i.pet='3'))", (identity.owner_key(),identity.owner_key())).fetchone():
+            db.rollback()
+            return jsonify(error='请先结束猫咪的旅行或接待，再切换伙伴'), 409
+        a = adaptation.state(task_id)
+        if operation == 'equip':
+            if not a or a['status'] != 'reviewed' or data.get('jobId') != a['id'] or not db.execute("SELECT 1 FROM pet_studio_assets WHERE task=? AND slot='adapted'",(task_id,)).fetchone():
+                db.rollback()
+                return jsonify(error='请先完成当前版本的全部动作验收'), 409
+            db.execute('INSERT OR REPLACE INTO pet_studio_equipped VALUES (?,?)',(identity.owner_key(),task_id))
+            # Private custom models never implicitly become visitor assets.
+            db.execute("UPDATE portal_islands SET allow_visitors=0 WHERE owner=? AND pet='3'",(identity.owner_key(),))
+        else:
+            db.execute('DELETE FROM pet_studio_equipped WHERE owner=? AND task=?',(identity.owner_key(),task_id))
+        db.commit()
         return snapshot()
     if operation == 'adapt':
         if status != 'approved': return jsonify(error='请先核对并确认外貌'), 409
