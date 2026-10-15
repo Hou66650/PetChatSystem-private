@@ -13,6 +13,7 @@ CATALOG=[
 ITEMS={i['id']:i for i in CATALOG}
 def init_schema():
  get_db().executescript('''
+ CREATE TABLE IF NOT EXISTS supply_bowls(owner TEXT NOT NULL,pet TEXT NOT NULL,food INTEGER NOT NULL DEFAULT 100 CHECK(food BETWEEN 0 AND 100),water INTEGER NOT NULL DEFAULT 100 CHECK(water BETWEEN 0 AND 100),PRIMARY KEY(owner,pet));
  CREATE TABLE IF NOT EXISTS supply_inventory(owner TEXT NOT NULL,item TEXT NOT NULL,quantity INTEGER NOT NULL CHECK(quantity>=0),PRIMARY KEY(owner,item));
  CREATE TABLE IF NOT EXISTS supply_requests(owner TEXT NOT NULL,token TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(owner,token));
  CREATE TABLE IF NOT EXISTS supply_daily(owner TEXT NOT NULL,day TEXT NOT NULL,PRIMARY KEY(owner,day));
@@ -22,6 +23,7 @@ def init_schema():
 def state(owner):
  base=wallet.state(owner);db=get_db()
  return dict(balance=base['balance'],guest=base['guest'],catalog=CATALOG,
+  bowls={r['pet']:dict(food=r['food'],water=r['water']) for r in db.execute('SELECT * FROM supply_bowls WHERE owner=?',(owner,))},
   inventory={r['item']:r['quantity'] for r in db.execute('SELECT * FROM supply_inventory WHERE owner=?',(owner,))},
   dailyClaimed=bool(db.execute('SELECT 1 FROM supply_daily WHERE owner=? AND day=?',(owner,wallet.day())).fetchone()),
   deliveries=[dict(r) for r in db.execute('SELECT id,pet,item,status,created,completed FROM supply_deliveries WHERE owner=? ORDER BY created DESC LIMIT 20',(owner,))])
@@ -64,6 +66,19 @@ def operate(owner,op,data):
      if not db.execute('UPDATE supply_inventory SET quantity=quantity-1 WHERE owner=? AND item=? AND quantity>0',(owner,item['id'])).rowcount:raise Error('库存不足',409)
     elif not db.execute('SELECT 1 FROM supply_inventory WHERE owner=? AND item=? AND quantity>0',(owner,item['id'])).fetchone():raise Error('请先购买这件玩具',403)
    db.execute('INSERT INTO supply_deliveries(id,owner,pet,item,status,created) VALUES (?,?,?,?,?,?)',(uuid.uuid4().hex,owner,pet,item['id'],'pending',time.time()))
+  elif op in ('bowl-refill','bowl-consume'):
+   pet=str(data.get('pet',''));kind=data.get('kind')
+   if pet!='3' or kind not in ('food','water'):raise Error('请选择猫咪岛上的食盆或水盆')
+   db.execute('INSERT OR IGNORE INTO supply_bowls(owner,pet) VALUES (?,?)',(owner,pet))
+   row=db.execute('SELECT * FROM supply_bowls WHERE owner=? AND pet=?',(owner,pet)).fetchone()
+   if op=='bowl-refill':
+    if row[kind]>=100:raise Error('盆已经满了，不需要补充',409)
+    if kind=='food':
+     if not db.execute("UPDATE supply_inventory SET quantity=quantity-1 WHERE owner=? AND item='kibble' AND quantity>0",(owner,)).rowcount:raise Error('口粮库存不足，请到补给站领取或购买',409)
+    value=100 if kind=='water' else min(100,row[kind]+25)
+   else:
+    value=max(0,row[kind]-25)
+   db.execute('UPDATE supply_bowls SET '+kind+'=? WHERE owner=? AND pet=?',(value,owner,pet))
   elif op=='cancel':
    row=db.execute("SELECT * FROM supply_deliveries WHERE owner=? AND id=? AND status='pending'",(owner,str(data.get('delivery','')))).fetchone()
    if not row:raise Error('补给不存在或已使用',404)

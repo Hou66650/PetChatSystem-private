@@ -13,8 +13,8 @@
   }
  }
  class Controller{
-  constructor({model,locomotion,life,scope,animate,telemetry=false,homeReady=true,onComplete=()=>{},onStatus=()=>{},fetcher=(...args)=>fetch(...args),storage=globalThis.localStorage,now=()=>Date.now()}){
-   Object.assign(this,{model,locomotion,life,scope,animate,onStatus,onComplete,fetcher,storage,now});
+  constructor({model,locomotion,life,scope,animate,telemetry=false,homeReady=true,canEat=()=>true,onComplete=()=>{},onStatus=()=>{},fetcher=(...args)=>fetch(...args),storage=globalThis.localStorage,now=()=>Date.now()}){
+   Object.assign(this,{model,locomotion,life,scope,animate,onStatus,onComplete,canEat,fetcher,storage,now});
    this.trace=new Trace();this.homeReady=homeReady;this.hunger=.45;this.careUntil=0;this.lastNeedsSave=0;this.telemetry=telemetry;this.stream=globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`;this.events=[];this.lastTelemetry=0;this.perceived=[];this.reason='等待环境感知';
    this.catalog=[];this.memory={};this.energy=.85;this.goal=null;this.phase='loading';this.disposed=false;this.epoch=0;this.next=0;this.pending=null;this.networkAfter=0;this.lastDecision=-Infinity;this.networkFailures=0;this.wasBlocked=false;this.cooldowns={};this.lastTarget=null;
    this.key='pait-cat-exploration:'+scope;
@@ -61,7 +61,7 @@
    if(!this.catalog.length){this.locomotion.autonomous=true;this.life.autonomous=true;}
   }
   point(p){return p.normal?{x:p.x+p.normal.x*(this.locomotion.navigation.clearance+.04),z:p.z+p.normal.z*(this.locomotion.navigation.clearance+.04)}:{x:p.x,z:p.z};}
-  candidates(){return this.catalog.filter(p=>this.now()>=(this.cooldowns[p.id]||0)&&this.locomotion.navigation.route(this.model.position,this.point(p)));}
+  candidates(){return this.catalog.filter(p=>(p.id!=='food'||this.canEat())&&this.now()>=(this.cooldowns[p.id]||0)&&this.locomotion.navigation.route(this.model.position,this.point(p)));}
   saveNeeds(){try{this.storage?.setItem(this.key+':needs',JSON.stringify({energy:this.energy,hunger:this.hunger}));}catch(e){}}
   care(candidates){
    if(this.now()<this.careUntil)return null;
@@ -70,7 +70,7 @@
    return null;
   }
   requestVisit(target){if(!this.locomotion.enabled||!['grass','catnip','hammock'].includes(target)||!this.catalog.some(p=>p.id===target))return false;this.interrupt();void this.plan({target,action:target==='grass'?'nibble':target==='catnip'?'sniff':'rest',source:'local',reason:'响应你的温室互动邀请'});return true;}
-  requestCare(action){if(!this.locomotion.enabled||!['eat','sleep'].includes(action)||!this.homeReady)return false;this.interrupt();void this.plan({target:action==='eat'?'food':'home',action,source:'local',reason:'响应你的照料指令'});return true;}
+  requestCare(action){if(action==='eat'&&!this.canEat()){this.status('食盆空了，请点击食盆补充口粮');return false;}if(!this.locomotion.enabled||!['eat','sleep'].includes(action)||!this.homeReady)return false;this.interrupt();void this.plan({target:action==='eat'?'food':'home',action,source:'local',reason:'响应你的照料指令'});return true;}
   fallback(candidates){
    const care=this.care(candidates);if(care)return care;
    const ordered=[...candidates].sort((a,b)=>(a.id===this.lastTarget)-(b.id===this.lastTarget)||(this.memory[a.id]?.visits||0)-(this.memory[b.id]?.visits||0)||(this.memory[a.id]?.updated||0)-(this.memory[b.id]?.updated||0));
@@ -128,6 +128,7 @@
     if(distance(this.model.position,g.point)>.2){this.finish('blocked');return;}
     this.phase='aligning';g.time=0;this.locomotion.interrupt(30);
    }else if(this.phase==='aligning'){
+    if(g.action==='eat'&&!this.canEat()){this.finish('blocked');return;}
     const place=this.catalog.find(p=>p.id===g.target);if(Number.isFinite(place.yaw)&&this.model.rotation){const angle=Math.atan2(Math.sin(place.yaw-this.model.rotation.y),Math.cos(place.yaw-this.model.rotation.y));this.model.rotation.y+=Math.max(-dt*2,Math.min(dt*2,angle));if(Math.abs(angle)>.04)return;}
     this.phase='acting';g.time=0;
     if(g.action==='rub'){if(!this.life.seekWall()){this.finish('blocked');return;}}

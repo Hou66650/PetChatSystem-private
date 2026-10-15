@@ -83,7 +83,7 @@ console.log('PASS rattle run follows bridge, safe retargeting, invalid water, ca
 // Run the real page guard: holding other toys still blocks wandering; a rattle route can move.
 const vm=require('node:vm'),page=fs.readFileSync('templates/den.html','utf8');
 const guard=page.match(/function movementBlocked\(\) \{([\s\S]*?)\n        \}/)[1];
-const env={portals:null,catAgent:null,supplyCare:null,document:{hidden:false,getElementById:()=>({classList:{contains:()=>true}})},toyWorkshop:{held:{state:'held',spec:{id:'rattle'}},rattlePath:[{}]},facePlay:{},spawnBusy:false,petModel:{},anim:{birth:1,state:'run',until:0},grabbed:false,dropping:false,bounceBack:0,interactionBusy:()=>false,performing:()=>false,chatBusy:false,voiceBusy:false,dialogueRunner:{active:false},breathActive:false,gameOverlay:{hidden:true},gamesMask:{hidden:true},moodMask:{hidden:true},performance:{now:()=>5000}};
+const env={portals:null,catAgent:null,supplyCare:null,document:{hidden:false,querySelector:()=>null,getElementById:()=>({classList:{contains:()=>true}})},toyWorkshop:{held:{state:'held',spec:{id:'rattle'}},rattlePath:[{}]},facePlay:{},spawnBusy:false,petModel:{},anim:{birth:1,state:'run',until:0},grabbed:false,dropping:false,bounceBack:0,interactionBusy:()=>false,performing:()=>false,chatBusy:false,voiceBusy:false,dialogueRunner:{active:false},breathActive:false,gameOverlay:{hidden:true},gamesMask:{hidden:true},moodMask:{hidden:true},performance:{now:()=>5000}};
 const blocked=()=>vm.runInNewContext('(function(){'+guard+'})()',env);
 assert.equal(blocked(),false);env.toyWorkshop.rattlePath=null;assert.equal(blocked(),true);
 env.toyWorkshop.rattlePath=[{}];env.toyWorkshop.held.spec.id='brush';assert.equal(blocked(),true);

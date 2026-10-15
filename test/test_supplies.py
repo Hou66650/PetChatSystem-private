@@ -9,6 +9,21 @@ class SupplyTests(unittest.TestCase):
  def post(self,op,data=None,c=None):
   c=c or self.a;scope=c.get('/api/supplies').json['scope']
   return c.post('/api/supplies/'+op,json={'token':uuid.uuid4().hex,**(data or {})},headers={'X-Profile-Scope':scope})
+ def test_bowl_contents_inventory_and_idempotency(self):
+  self.post('daily')
+  data=dict(pet='3',kind='food',token='meal-event-123')
+  self.assertEqual(self.post('bowl-consume',data).json['bowls']['3']['food'],75)
+  self.assertEqual(self.post('bowl-consume',data).json['bowls']['3']['food'],75)
+  data=dict(pet='3',kind='food',token='refill-event-123')
+  d=self.post('bowl-refill',data).json
+  self.assertEqual(d['bowls']['3']['food'],100);self.assertEqual(d['inventory']['kibble'],2)
+  self.assertEqual(self.post('bowl-refill',data).json['inventory']['kibble'],2)
+  self.assertEqual(self.post('bowl-refill',dict(pet='3',kind='food')).status_code,409)
+  self.assertEqual(self.b.get('/api/supplies').json['bowls'],{})
+  for _ in range(6):self.post('bowl-consume',dict(pet='3',kind='water'))
+  self.assertEqual(self.a.get('/api/supplies').json['bowls']['3']['water'],0)
+  self.assertEqual(self.post('bowl-refill',dict(pet='3',kind='water')).json['bowls']['3']['water'],100)
+  self.assertEqual(self.post('bowl-consume',dict(pet='1',kind='food')).status_code,400)
  def test_wallet_stock_daily_and_isolation(self):
   self.assertEqual(self.post('daily').json['inventory']['kibble'],3)
   self.assertEqual(self.post('daily').json['inventory']['kibble'],3)
