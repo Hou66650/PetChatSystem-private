@@ -51,6 +51,9 @@ class RealtimeController {
 
   _setState(s, extra) {
     this.state = s;
+    const waiting={REQUESTING_PERMISSION:'正在等待麦克风授权',CONNECTING:'正在连接语音通话',RECONNECTING:'正在重新连接语音'};
+    if(waiting[s]){if(!this._loadingProgress)this._loadingProgress=window.PaitLoading?.start(waiting[s],{timeout:90000});else this._loadingProgress.update(waiting[s]);}
+    else if(this._loadingProgress){if(s==='ERROR')this._loadingProgress.fail('语音连接未完成，请查看通话提示');else if(s==='STOPPED')this._loadingProgress.cancel();else this._loadingProgress.done();this._loadingProgress=null;}
     this.onState(s, extra || {});
   }
 

@@ -1363,15 +1363,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let spawnBusy = false;   // 首载窗口并发守卫
-        // 模型加载提示：GLB 下载期间不再空白
-        const petLoadingEl = document.createElement('div');
-        petLoadingEl.textContent = '🐾 宠物回家中…';
-        petLoadingEl.style.cssText = 'position:fixed;left:50%;top:46%;transform:translate(-50%,-50%);z-index:60;' +
-            'background:rgba(255,253,248,.94);border:2px solid #D8C7B4;border-radius:14px;padding:12px 24px;' +
-            'color:#6F6055;font:600 15px sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.15);pointer-events:none;';
-        petLoadingEl.hidden = true;
-        document.body.appendChild(petLoadingEl);
-        function showPetLoading(v) { petLoadingEl.hidden = !v; }
+        // Shared progress stays active through scene assembly, beyond the GLB download.
+        function showPetLoading(v, failed=false) {
+            window.PaitLoading?.sync('pet-arrival',v,
+                failed?'宠物未能回到小岛，请重试':'正在布置小岛，迎接宠物',failed);
+        }
 
         // ---------- 卡通渲染升级：Toon 三阶渐变 + 描边 + 绒毛外壳（零外部资源） ----------
         // Toon 三阶渐变贴图（暗部偏冷紫/中间调/亮部偏暖），NearestFilter 保证色阶干净不插值
@@ -1514,7 +1510,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) {
                 if (currentPetId !== id || epoch !== locomotionEpoch) return;
                 toast('宠物模型加载失败，请刷新重试', 'error');
-                spawnBusy = false; showPetLoading(false);               // 先复位再回滚：子级调用时标志状态正确
+                spawnBusy = false; showPetLoading(false,true);          // 先复位再回滚：子级调用时标志状态正确
                 if (prevId && !fromRollback) spawnPet(prevId, true);   // 回滚最多一跳：多资源损坏时不乒乓
                 return;
             }

@@ -3,6 +3,7 @@
  const $=id=>document.getElementById(id),scope=window.PET_STUDIO_SCOPE;
  const labels={draft:'收集照片',awaiting_generation:'等待生成',review:'核对外貌',approved:'等待动作适配'};
  let rows=[],selected=null,busy=false,renderer,scene,camera,controls,model,frame,previewTicket=0,mixer,activeAction,pollTimer;
+ const jobs=new Set();let previewProgress;
  const note=t=>{$('studio-message').textContent=t;};
  async function api(path='',body,form=false){
   const response=await fetch('/api/pet-studio'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:form?{'X-Profile-Scope':scope}:{'X-Profile-Scope':scope,'Content-Type':'application/json'},body:body===undefined?undefined:form?body:JSON.stringify(body)});
@@ -11,14 +12,15 @@
  }
  function setBusy(value){busy=value;for(const el of document.querySelectorAll('.pet-studio button,.pet-studio input,.pet-studio textarea'))el.disabled=value;}
  async function change(path,body,form=false){if(busy)return;setBusy(true);try{const data=await api(path,body,form);rows=data.tasks;paint();note('已保存。');schedulePoll();}catch(e){note(e.message);}finally{setBusy(false);}}
- function schedulePoll(){clearTimeout(pollTimer);if(!rows.some(r=>r.adaptation?.status==='running'))return;pollTimer=setTimeout(async()=>{if(busy){schedulePoll();return;}try{const data=await api();const before=JSON.stringify(rows.map(r=>[r.id,r.adaptation?.status]));rows=data.tasks;if(before!==JSON.stringify(rows.map(r=>[r.id,r.adaptation?.status])))paint();schedulePoll();}catch(e){note(e.message+'，可刷新查看结果。');}},3000);}
- function dispose(){previewTicket++;cancelAnimationFrame(frame);mixer?.stopAllAction();mixer=null;activeAction=null;if(model){model.traverse(o=>{o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])if(m){for(const v of Object.values(m))if(v?.isTexture)v.dispose();m.dispose();}});scene?.remove(model);model=null;}if(scene)scene.traverse(o=>{if(o.isGridHelper){o.geometry.dispose();o.material.dispose();}});controls?.dispose();renderer?.dispose();renderer=null;}
+ function schedulePoll(){for(const row of rows){const a=row.adaptation,key='studio:'+row.id;if(a?.status==='running'){jobs.add(key);window.PaitLoading?.sync(key,true,'正在为'+row.name+'适配动作 · Blender 处理中');}else{window.PaitLoading?.sync(key,false,'动作适配未完成，请查看检查报告',['failed','needs_manual'].includes(a?.status));jobs.delete(key);}}for(const key of jobs){if(!rows.some(r=>'studio:'+r.id===key)){window.PaitLoading?.sync(key,false);jobs.delete(key);}}clearTimeout(pollTimer);if(!rows.some(r=>r.adaptation?.status==='running'))return;pollTimer=setTimeout(async()=>{if(busy){schedulePoll();return;}try{const data=await api();const before=JSON.stringify(rows.map(r=>[r.id,r.adaptation?.status]));rows=data.tasks;if(before!==JSON.stringify(rows.map(r=>[r.id,r.adaptation?.status])))paint();schedulePoll();}catch(e){for(const key of jobs)window.PaitLoading?.sync(key,false,'暂时无法读取适配状态，请刷新查看',true);jobs.clear();note(e.message+'，可刷新查看结果。');}},3000);}
+ function dispose(){previewProgress?.cancel();previewProgress=null;previewTicket++;cancelAnimationFrame(frame);mixer?.stopAllAction();mixer=null;activeAction=null;if(model){model.traverse(o=>{o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])if(m){for(const v of Object.values(m))if(v?.isTexture)v.dispose();m.dispose();}});scene?.remove(model);model=null;}if(scene)scene.traverse(o=>{if(o.isGridHelper){o.geometry.dispose();o.material.dispose();}});controls?.dispose();renderer?.dispose();renderer=null;}
  async function preview(row){
   dispose();$('studio-motion-buttons').hidden=true;$('studio-motion-buttons').replaceChildren();$('studio-head-control').hidden=true;$('studio-preview-wrap').hidden=!row.assets.includes('model');if(!row.assets.includes('model'))return;
-  const ticket=previewTicket;$('studio-preview-note').textContent='正在加载模型…';
+  const ticket=previewTicket,progress=previewProgress=window.PaitLoading?.start('正在打开宠物模型');$('studio-preview-note').textContent='正在加载模型…';
   try{
-   const adapted=row.assets.includes('adapted');const response=await fetch('/api/pet-studio/'+row.id+'/assets/'+(adapted?'adapted':'model'));if(!response.ok)throw Error('模型读取失败');
-   const buffer=await response.arrayBuffer();if(ticket!==previewTicket)return;
+   const adapted=row.assets.includes('adapted');const response=await fetch('/api/pet-studio/'+row.id+'/assets/'+(adapted?'adapted':'model'),{paitTask:progress});if(!response.ok)throw Error('模型读取失败');
+   const buffer=await (globalThis.PaitLoading?.buffer?globalThis.PaitLoading.buffer(response):response.arrayBuffer());if(ticket!==previewTicket)return;
+   progress?.update('正在解析模型、材质与动作');
    const gltf=await new Promise((resolve,reject)=>new THREE.GLTFLoader().parse(buffer,'',resolve,reject));
    if(ticket!==previewTicket){gltf.scene.traverse(o=>{o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])if(m){for(const v of Object.values(m))if(v?.isTexture)v.dispose();m.dispose();}});return;}
    model=gltf.scene;renderer=new THREE.WebGLRenderer({canvas:$('studio-preview'),alpha:true,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputEncoding=THREE.sRGBEncoding;
@@ -32,9 +34,9 @@
    $('studio-motion-buttons').replaceChildren(...gltf.animations.filter(c=>names[c.name]).map(clip=>{const b=document.createElement('button');b.textContent=names[clip.name];b.onclick=()=>{activeAction?.fadeOut(.15);activeAction=mixer.clipAction(clip);activeAction.reset().fadeIn(.15).play();for(const sibling of b.parentElement.children)sibling.setAttribute('aria-pressed',String(sibling===b));};return b;}));
    if(adapted)$('studio-motion-buttons').firstChild?.click();
    const head=model.getObjectByName('head');let headBase=null;
-   let last=0;const tick=now=>{frame=requestAnimationFrame(tick);if(document.hidden||now-last<33)return;const dt=Math.min(.05,(now-last)/1000);last=now;if(headBase)head.quaternion.copy(headBase);mixer.update(dt);if(head&&adapted){headBase=head.quaternion.clone();head.rotation.y+=Number($('studio-head').value);}const c=$('studio-preview');renderer.setSize(c.clientWidth,c.clientHeight,false);camera.aspect=c.clientWidth/Math.max(c.clientHeight,1);camera.updateProjectionMatrix();controls.update();renderer.render(scene,camera);};frame=requestAnimationFrame(tick);
+   let last=0;const tick=now=>{frame=requestAnimationFrame(tick);if(document.hidden||now-last<33)return;const dt=Math.min(.05,(now-last)/1000);last=now;if(headBase)head.quaternion.copy(headBase);mixer.update(dt);if(head&&adapted){headBase=head.quaternion.clone();head.rotation.y+=Number($('studio-head').value);}const c=$('studio-preview');renderer.setSize(c.clientWidth,c.clientHeight,false);camera.aspect=c.clientWidth/Math.max(c.clientHeight,1);camera.updateProjectionMatrix();controls.update();renderer.render(scene,camera);progress?.done();};frame=requestAnimationFrame(tick);
    $('studio-preview-note').textContent=adapted?'动作草稿 · 地面网格用于检查脚掌 · 请逐项验收':'拖动旋转 · 滚轮缩放 · 外貌预览不代表动作已适配';
-  }catch(e){if(ticket===previewTicket){dispose();$('studio-preview-note').textContent='预览失败：'+e.message;}}
+  }catch(e){progress?.fail('模型预览未完成，请查看页面提示');if(ticket===previewTicket){dispose();$('studio-preview-note').textContent='预览失败：'+e.message;}}
  }
  function paint(){
   selected=rows.some(r=>r.id===selected)?selected:rows[0]?.id;const row=rows.find(r=>r.id===selected);
@@ -56,5 +58,6 @@
  $('studio-adapt-start').onclick=()=>change('/'+selected+'/adapt',{mode:$('studio-adapt-mode').value,forward:$('studio-adapt-forward').value});
  $('studio-motion-accept').onclick=()=>{const checks=[...$('studio-motion-checks').querySelectorAll('input:checked')].map(c=>c.value);if(checks.length!==8){note('请播放动作并完成全部 8 项检查。');return;}void change('/'+selected+'/review-motion',{checks,jobId:rows.find(r=>r.id===selected)?.adaptation?.id});};
  addEventListener('pagehide',()=>{clearTimeout(pollTimer);dispose();});
- api().then(data=>{rows=data.tasks;paint();schedulePoll();}).catch(e=>{note(e.message);$('studio-login').hidden=false;setBusy(true);});
+ const initial=window.PaitLoading?.start('正在读取宠物档案');
+ api().then(data=>{rows=data.tasks;paint();schedulePoll();initial?.done();}).catch(e=>{initial?.fail('宠物档案未能读取，请查看页面提示');note(e.message);$('studio-login').hidden=false;setBusy(true);});
 })();

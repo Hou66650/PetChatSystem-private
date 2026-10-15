@@ -26,14 +26,21 @@
         active(ticket){return ticket===this.current&&!ticket.signal.aborted;}
         async glb(url,ticket){
             if(!this.active(ticket))throw aborted();
+            const progress=globalThis.PaitLoading?.start('正在准备三维模型');
+            const cancel=()=>progress?.cancel();ticket.signal.addEventListener('abort',cancel,{once:true});
+            try {
             const fetcher=this.fetcher;
-            const response=await fetcher(url,{signal:ticket.signal});
+            const response=await fetcher(url,{signal:ticket.signal,paitTask:progress});
             if(!response.ok)throw new Error(`Model HTTP ${response.status}`);
-            const buffer=await response.arrayBuffer();
+            const buffer=await (globalThis.PaitLoading?.buffer?globalThis.PaitLoading.buffer(response):response.arrayBuffer());
             if(!this.active(ticket))throw aborted();
+            progress?.update('正在解析模型与材质');
             const gltf=await new Promise((resolve,reject)=>this.loader.parse(buffer,url.slice(0,url.lastIndexOf('/')+1),resolve,reject));
             if(!this.active(ticket)){disposeTree(gltf.scene);throw aborted();}
+            progress?.done();
             return gltf;
+            } catch(error){if(error.name==='AbortError')progress?.cancel();else progress?.fail('模型未能加载，请重试');throw error;}
+            finally{ticket.signal.removeEventListener('abort',cancel);}
         }
     }
     return {Loader,disposeTree};

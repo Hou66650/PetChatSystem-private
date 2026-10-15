@@ -242,6 +242,7 @@
     function open(opts) {
         if (modal || generating) return;   // 多次快速点击只保留一个任务
         generating = true;
+        var progress = window.PaitLoading?.start('正在生成分享卡片');
         var d = new Date();
         var dateKey = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
         loadAvatar(opts.avatarUrl, 3000).then(function (avatarImg) {
@@ -249,18 +250,19 @@
                 displayName: opts.senderName,
                 message: opts.message,
             }, avatarImg);
-            return new Promise(function (resolve) {
+            return new Promise(function (resolve, reject) {
                 canvas.toBlob(function (blob) {
+                    if (!blob) { reject(new Error('PNG export failed')); return; }
                     lastBlobUrl = URL.createObjectURL(blob);
                     lastFile = new File([blob], 'MPC-' + (opts.senderName || 'pet') + '-' + dateKey + '.png', { type: 'image/png' });
                     resolve(canvas);
                 }, 'image/png', 0.92);
             });
         }).then(function (canvas) {
-            generating = false;
+            generating = false;progress?.done();
             buildModal({ displayName: opts.senderName, copyText: opts.copyText, dateKey: dateKey }, canvas);
         }).catch(function () {
-            generating = false;
+            progress?.fail('卡片生成失败');generating = false;
             if (opts.copyText) opts.copyText();   // 卡片生成失败退回复制文字
         });
     }

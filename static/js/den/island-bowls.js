@@ -8,11 +8,11 @@
    this.panel.querySelector('.bowl-invite').onclick=()=>{const kind=this.kind;this.panel.close();this.invite(kind);};
    this.panel.querySelector('.bowl-refill').onclick=()=>this.refill();
    canvas.addEventListener('pointermove',e=>this.hover(e));canvas.addEventListener('pointerleave',()=>this.tip.hidden=true);
-   this.timer=setInterval(()=>{if(!document.hidden&&this.enabled())void this.refresh();else this.tip.hidden=true;},15000);void this.refresh();
+   this.timer=setInterval(()=>{if(!document.hidden&&this.enabled())void this.refresh(true);else this.tip.hidden=true;},15000);void this.refresh();
   }
   bind(home){this.home=home;this.paint();}
   amount(kind){return this.state?(this.state.bowls?.['3']?.[kind]??100):null;}
-  async refresh(){try{const r=await fetch('/api/supplies',{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d.scope!==this.scope){this.state=null;return;}this.state=d;this.paint();}catch{}}
+  async refresh(quiet=false){try{const r=await fetch('/api/supplies',{cache:'no-store',paitQuiet:quiet});if(!r.ok)return;const d=await r.json();if(d.scope!==this.scope){this.state=null;return;}this.state=d;this.paint();}catch{}}
   paint(){
    if(this.home&&this.state)this.home.traverse(o=>{if(!o.isMesh)return;const kind=o.name==='cat_home_kibble'?'food':o.name==='cat_home_water'?'water':null;if(!kind)return;const n=this.amount(kind);o.visible=n>0;if(!o.userData.bowlBase)o.userData.bowlBase={y:o.position.y,scale:o.scale.y};const b=o.userData.bowlBase;o.scale.y=b.scale*(.25+.75*n/100);});
    if(this.panel.open)this.render();

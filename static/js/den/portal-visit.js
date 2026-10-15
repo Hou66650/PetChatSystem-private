@@ -35,7 +35,7 @@
   for(const p of pets)p.update(dt);controls.update();renderer.render(scene,camera);
  }
  async function send(){if(busy||ended)return;busy=true;const batch=events.splice(0,12);try{await api('sample',{snapshot:{visitor:pets[0].snapshot(),host:pets[1].snapshot()},events:batch});}catch(e){$('visit-status').textContent=e.message;}finally{busy=false;}}
- async function poll(){try{const r=await fetch('/api/portals/trip/'+config.trip,{cache:'no-store'});const d=await r.json();if(!r.ok)throw Error(d.error);state=d;if(state.status!=='active'){ended=true;$('visit-status').textContent=state.reason+' · 已回到本岛';$('visit-return').textContent='打开自己的小岛';}
+ async function poll(){try{const r=await fetch('/api/portals/trip/'+config.trip,{cache:'no-store',paitQuiet:true});const d=await r.json();if(!r.ok)throw Error(d.error);state=d;if(state.status!=='active'){ended=true;$('visit-status').textContent=state.reason+' · 已回到本岛';$('visit-return').textContent='打开自己的小岛';}
    $('visit-messages').replaceChildren(...state.messages.map(m=>{const p=document.createElement('p');p.textContent=(m.mine?'你：':'对方：')+m.text;return p;}));
   }catch(e){$('visit-status').textContent=e.message;}}
  $('visit-return').onclick=async()=>{if(ended){location.href='/den?pet='+encodeURIComponent(state.mine?state.pet:'3');return;}try{await api('return',{});await poll();}catch(e){$('visit-status').textContent=e.message;}};

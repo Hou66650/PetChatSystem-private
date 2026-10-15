@@ -23,6 +23,8 @@ def create_app(config_object=Config):
                 template_folder=os.path.join(BASE_DIR, 'templates'),
                 static_folder=os.path.join(BASE_DIR, 'static'))
     app.config.from_object(config_object)
+    from .loading_feedback import install as install_loading_feedback
+    install_loading_feedback(app)
 
     os.makedirs(Config.AVATAR_DIR, exist_ok=True)
 

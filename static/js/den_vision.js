@@ -255,6 +255,7 @@ class DenVision {
         if (this.running) return true;
         if (this.starting) return false;
         this.starting=true;
+        const progress=this.loadingProgress=window.PaitLoading?.start('正在等待摄像头授权',{timeout:120000});
         const epoch=++this.generation;
         for(const name of ['onBlink','onSnap','onFace']) this[name]=callbacks[name] || (()=>{});
         this.onGaze = callbacks.onGaze || this.onGaze;
@@ -271,7 +272,7 @@ class DenVision {
             if(epoch!==this.generation){stream.getTracks().forEach(t=>t.stop());return false;}
             this.stream=stream;
         } catch (e) {
-            if(epoch===this.generation){this.starting=false;this.onError('camera', e);}
+            if(epoch===this.generation){progress?.fail('摄像头未能开启，请查看权限或设备提示');this.starting=false;this.onError('camera', e);}
             return false;
         }
         if(epoch!==this.generation){this.stream?.getTracks().forEach(t=>t.stop());this.stream=null;return false;}
@@ -286,8 +287,9 @@ class DenVision {
         } catch (e) { /* 出错不阻断：摄像头无帧时循环会安全跳过 */ }
 
         if(epoch!==this.generation)return false;
+        progress?.update('正在初始化眼神与手势识别');
         try { await this._models(epoch); }
-        catch(error){if(epoch===this.generation){this.stop();this.onError('model',error);}return false;}
+        catch(error){if(epoch===this.generation){progress?.fail('识别资源加载失败，请重试');this.stop();this.onError('model',error);}return false;}
         if(epoch!==this.generation || !this.stream || !this.stream.getVideoTracks().some(t=>t.readyState==='live')) {
             if(epoch===this.generation)this.stop();return false;
         }
@@ -296,10 +298,11 @@ class DenVision {
         this.target = target || videoEl;
         this.timer = setInterval(() => this._detect(), this.backend==='worker'?DETECT_MS:180);
         this._followLoop();
-        return true;
+        progress?.done();return true;
     }
 
     stop() {
+        this.loadingProgress?.cancel();this.loadingProgress=null;
         ++this.generation;
         this.starting=false;
         this.running = false;
