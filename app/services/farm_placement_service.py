@@ -3,6 +3,9 @@ import json, math
 from pathlib import Path
 MAP=json.loads((Path(__file__).resolve().parents[2]/'static/data/farm-placement.json').read_text())
 
+FLOWERS=json.loads((Path(__file__).resolve().parents[2]/'static/data/farm-flowers.json').read_text(encoding='utf-8'))
+MAP['species']=['cosmos','pumpkin','birch']+[s['id']+suffix for s in FLOWERS for suffix in ('','-dream')]
+
 def radius(species,container):
     return .28 if container=='pot' else .42 if species=='birch' else .48 if species=='pumpkin' else .30
 
@@ -19,8 +22,8 @@ def segment(p,line):
     return math.hypot(p['x']-a['x']-t*dx,p['z']-a['z']-t*dz)
 
 def validate(p,others=(),ignore=None):
-    if p.get('container') not in ('soil','pot') or p.get('species') not in ('cosmos','pumpkin','birch') or any(type(p.get(k)) not in (float,int) or not math.isfinite(p[k]) for k in ('x','z','yaw')):return '请选择有效落点'
-    if p['container']=='pot' and p['species']!='cosmos':return '这株植物需要栽入土壤'
+    if p.get('container') not in ('soil','pot') or p.get('species') not in MAP['species'] or any(type(p.get(k)) not in (float,int) or not math.isfinite(p[k]) for k in ('x','z','yaw')):return '请选择有效落点'
+    if p['container']=='pot' and p['species'] in ('pumpkin','birch'):return '这株植物需要栽入土壤'
     r=radius(p['species'],p['container']);ring=[p]+[dict(x=p['x']+r*math.cos(i*math.pi/8),z=p['z']+r*math.sin(i*math.pi/8)) for i in range(16)]
     if not all(any(inside(q,d) for d in MAP['domains']) for q in ring):return '请放在岛屿地面内'
     if any(overlap(p,o,r+.08) for o in MAP['blocked']):return '请避开水面、建筑和已有设施'

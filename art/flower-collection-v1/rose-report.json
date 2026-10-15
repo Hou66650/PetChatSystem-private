@@ -1,0 +1,68 @@
+[
+  {
+    "stage": 1,
+    "variant": false,
+    "triangles": 944,
+    "lodTriangles": 150
+  },
+  {
+    "stage": 2,
+    "variant": false,
+    "triangles": 2426,
+    "lodTriangles": 182
+  },
+  {
+    "stage": 3,
+    "variant": false,
+    "triangles": 3176,
+    "lodTriangles": 214
+  },
+  {
+    "stage": 4,
+    "variant": false,
+    "triangles": 9176,
+    "lodTriangles": 470
+  },
+  {
+    "stage": 5,
+    "variant": false,
+    "triangles": 18352,
+    "lodTriangles": 940
+  },
+  {
+    "stage": 6,
+    "variant": false,
+    "triangles": 28560,
+    "lodTriangles": 1410
+  },
+  {
+    "stage": 7,
+    "variant": false,
+    "triangles": 30300,
+    "lodTriangles": 3150
+  },
+  {
+    "stage": 8,
+    "variant": false,
+    "triangles": 30300,
+    "lodTriangles": 3150
+  },
+  {
+    "stage": 9,
+    "variant": false,
+    "triangles": 79380,
+    "lodTriangles": 9330
+  },
+  {
+    "stage": 10,
+    "variant": false,
+    "triangles": 79380,
+    "lodTriangles": 9330
+  },
+  {
+    "stage": 10,
+    "variant": true,
+    "triangles": 79380,
+    "lodTriangles": 9330
+  }
+]

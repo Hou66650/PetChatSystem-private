@@ -30,6 +30,18 @@ def init_schema():
     ''')
 
 
+def catalog(owner,world=None):
+    if world is None:
+        from .cat_scene_service import snapshot
+        world=snapshot(owner)
+    return CATALOG+world.get('places',[])
+
+
+def known_targets(owner,revision=None):
+    row=get_db().execute('SELECT payload FROM cat_scene_snapshots WHERE owner=? AND revision=?',(owner,revision)).fetchone() if isinstance(revision,str) else None
+    return {p['id']:p for p in catalog(owner,json.loads(row['payload']) if row else None)}
+
+
 def memories(owner):
     return [dict(r) for r in get_db().execute('SELECT target,visits,result,updated FROM cat_exploration WHERE owner=?',(owner,))]
 
@@ -44,6 +56,9 @@ def decide(owner, data):
 
 
 def _decide(owner, data, world, trace):
+    TARGETS={p['id']:p for p in catalog(owner,world)}
+    position=data.get('position')
+    position={k:position[k] for k in ('x','z')} if isinstance(position,dict) and all(type(position.get(k)) in (int,float) and math.isfinite(position[k]) and abs(position[k])<=100 for k in ('x','z')) else None
     candidates=data.get('candidates')
     if not isinstance(candidates,list) or not 1<=len(candidates)<=len(TARGETS) or any(not isinstance(i,str) or i not in TARGETS for i in candidates):
         raise ValueError('没有有效探索目标')
@@ -80,7 +95,7 @@ def _decide(owner, data, world, trace):
                     bond=relationship_state(owner)
                     from .cat_scene_service import remembered
                     from .companion_service import settings
-                    inputs={'personality':bond['personality'],'favoritePlace':bond['preferredPlace'],'favoriteToy':bond['favoriteToy'],'familiarity':bond['familiarity'],'energy':energy,
+                    inputs={'personality':bond['personality'],'favoritePlace':bond['preferredPlace'],'favoriteToy':bond['favoriteToy'],'familiarity':bond['familiarity'],'energy':energy,'hunger':hunger,'position':position,
                             'candidates':[{'id':i,'name':TARGETS[i]['name'],'actions':options[i],'visits':rows.get(i,{}).get('visits',0),'lastResult':rows.get(i,{}).get('result','')} for i in ordered],
                             'scene':world,'completedExperiences':remembered(owner) if settings(owner)['enabled'] else []}
                     trace.update(inputs=inputs,modelUsed=True)
@@ -108,9 +123,11 @@ def _decide(owner, data, world, trace):
 
 
 def record(owner,data):
+    TARGETS=known_targets(owner,data.get('worldRevision'))
     target=data.get('target');result=data.get('result');event=data.get('event')
     if not isinstance(target,str) or target not in TARGETS or result not in ('completed','blocked','interrupted') or not isinstance(event,str) or not 8<=len(event)<=80:
         raise ValueError('探索结果不正确')
+    if TARGETS[target].get('dynamic') and data.get('action') not in TARGETS[target]['actions']:raise ValueError('该植物只允许观察和嗅闻')
     db=get_db();now=time.time()
     with db:
         inserted=db.execute('INSERT OR IGNORE INTO cat_exploration_events VALUES (?,?,?)',(owner,event,now)).rowcount
@@ -139,6 +156,7 @@ def monitor_record(owner, data):
     stream=data.get('stream');snap=data.get('snapshot');event=data.get('event',False)
     if not isinstance(stream,str) or not 8<=len(stream)<=80 or not isinstance(snap,dict) or type(event) is not bool:
         raise ValueError('监控数据格式错误')
+    TARGETS=known_targets(owner,snap.get('worldRevision'))
     clean={}
     for key,limit in [('phase',24),('text',160),('reason',220),('source',16),('target',40),('action',24)]:
         value=snap.get(key,'')

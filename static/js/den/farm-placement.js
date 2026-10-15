@@ -5,8 +5,8 @@
  function overlap(p,o,r){if(o.kind!=='rect')return Math.hypot(p.x-o.x,p.z-o.z)<=r+o.r;const c=Math.cos(o.angle||0),s=Math.sin(o.angle||0),dx=p.x-o.x,dz=p.z-o.z;return Math.hypot(Math.max(0,Math.abs(c*dx+s*dz)-o.w/2),Math.max(0,Math.abs(-s*dx+c*dz)-o.d/2))<=r;}
  function segment(p,line){const dx=line.b.x-line.a.x,dz=line.b.z-line.a.z,t=Math.max(0,Math.min(1,((p.x-line.a.x)*dx+(p.z-line.a.z)*dz)/(dx*dx+dz*dz||1)));return Math.hypot(p.x-line.a.x-t*dx,p.z-line.a.z-t*dz);}
  function validate(map,p,others=[],ignore){
-  if(!map||!['soil','pot'].includes(p.container)||!['cosmos','pumpkin','birch'].includes(p.species)||![p.x,p.z,p.yaw].every(Number.isFinite))return '请选择有效落点';
-  if(p.container==='pot'&&p.species!=='cosmos')return '这株植物需要栽入土壤';
+  if(!map||!['soil','pot'].includes(p.container)||!(map.species||['cosmos','pumpkin','birch']).includes(p.species)||![p.x,p.z,p.yaw].every(Number.isFinite))return '请选择有效落点';
+  if(p.container==='pot'&&['pumpkin','birch'].includes(p.species))return '这株植物需要栽入土壤';
   const r=radius(p.species,p.container),ring=Array.from({length:17},(_,i)=>i===16?p:{x:p.x+r*Math.cos(i*Math.PI/8),z:p.z+r*Math.sin(i*Math.PI/8)});
   if(!ring.every(q=>map.domains.some(d=>inside(q,d))))return '请放在岛屿地面内';
   if(map.blocked.some(o=>overlap(p,o,r+.08)))return '请避开水面、建筑和已有设施';

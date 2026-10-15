@@ -30,6 +30,8 @@ with tempfile.TemporaryDirectory() as folder:
     @app.post('/fixture-mature')
     def mature():
         with get_db() as db:db.execute('UPDATE farm_plants SET planted=planted-?',(48*3600,))
+        from unittest.mock import patch
+        with patch.object(farm_service.secrets,'randbelow',return_value=0):farm_service.resolve_blooms(get_db(),companion_service.owner_key())
         return {'ok':True}
     server=make_server('127.0.0.1',0,app,threaded=True)
     worker=threading.Thread(target=server.serve_forever,daemon=True);worker.start()

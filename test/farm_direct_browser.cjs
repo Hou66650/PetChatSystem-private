@@ -1,6 +1,6 @@
 const {app,BrowserWindow}=require('electron'),fs=require('fs'),path=require('path'),os=require('os'),assert=require('assert');
 app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'garden-direct-browser-')));
-setTimeout(()=>{console.error('Browser test watchdog expired');app.exit(1);},90000);
+setTimeout(()=>{console.error('Browser test watchdog expired');app.exit(1);},180000);
 app.whenReady().then(async()=>{
  const w=new BrowserWindow({show:false,width:1440,height:1000,webPreferences:{offscreen:true,sandbox:true,backgroundThrottling:false}}),errors=[];
  w.webContents.on('console-message',(_e,l,m)=>{if(l>=3)errors.push(m);});
@@ -8,7 +8,7 @@ app.whenReady().then(async()=>{
  const until=async s=>{for(let i=0;i<200;i++){if(await run(s))return;await pause(100);}throw Error('Timeout '+s);};
  const mouse=async(type,p)=>{w.webContents.sendInputEvent({type,x:p.x,y:p.y,button:'left',clickCount:1});await pause(60);};
  const click=async p=>{await mouse('mouseMove',p);await mouse('mouseDown',p);await mouse('mouseUp',p);};
- const shot=async name=>fs.writeFileSync(path.join(os.tmpdir(),name),(await w.webContents.capturePage()).toPNG());
+ const shot=async name=>{for(let attempt=0;attempt<3;attempt++){try{fs.writeFileSync(path.join(os.tmpdir(),name),(await w.webContents.capturePage()).toPNG());return;}catch(e){if(attempt===2)throw e;await pause(500);}}};
  try{
   await w.loadURL(process.env.GARDEN_TEST_URL);await until('farm.data && farm.toolModels.size===2 && !farm.refreshing');
   await run(`farm.open();document.querySelector('#farm-welcome button').click()`);await until('farm.data.started&&!farm.busy');
@@ -59,6 +59,14 @@ app.whenReady().then(async()=>{
   await run(`farm.inspectPlaced(farm.data.arrangements[0])`);await until(`farm.dialog.open&&farm.inspectedPlacement===farm.data.arrangements[0].id&&!!farm.previewObject`);
   assert(await run(`document.getElementById('farm-detail-title').textContent.includes('花盆')`));
   await run('farm.open();farm.switchTab("guide");document.getElementById("farm-preview-species").value="birch";document.getElementById("farm-preview-stage").value="7";farm.preview()');await until('farm.previewKey==="birch-07"&&farm.previewObject?.children.some(o=>o.userData.farm_stage===7)');
+  for(const f of require('../static/data/farm-flowers.json'))for(const suffix of ['', '-dream']){
+   const id=f.id+suffix;await run(`farm.open();farm.switchTab('guide');document.getElementById('farm-preview-species').value='${id}';document.getElementById('farm-preview-stage').value=10;farm.preview()`);await until(`farm.previewKey==='${id}-10'&&!!farm.previewObject`);
+  }
+  await run(`farm.open();farm.act('plant',{bed:'bed-2',species:'rose'})`);await until('farm.data.beds[1].plant?.species==="rose"&&!farm.busy');
+  await run(`fetch('/fixture-mature',{method:'POST'}).then(()=>farm.refresh())`);await until('farm.data.beds[1].plant?.species==="rose-dream"&&!farm.refreshing');
+  await run(`farm.inspect('bed-2')`);await until(`farm.previewKey==='rose-dream-10'&&!!farm.previewObject`);await shot('pait-flower-dream-inspector.png');
+  assert(await run(`document.getElementById('farm-detail-title').textContent.includes('月雾玫瑰')`));
+  const flowerWorld=await run(`fetch('/api/cat-agent/scene').then(r=>r.json()).then(d=>d.world)`);assert(flowerWorld.places.some(p=>p.id==='garden:bed-2'&&p.name.includes('月雾玫瑰')));
   await run('farm.open();farm.switchTab("stock")');w.setContentSize(390,844);await pause(200);assert(await run('farm.dialog.scrollWidth<=farm.dialog.clientWidth+1'));await shot('pait-garden-mobile.png');
   await run('farm.dispose()');assert(await run('farm.cache.size===0&&farm.mode===null&&farm.previewRenderer===null'));
   assert.equal(errors.length,0,errors.join('\n'));console.log('PASS real HTTP/browser gardening: tool mesh click, hold watering/fertilizer, single-bed GLB, valid/invalid preview, transplant, account reload, mobile and cleanup');app.exit(0);

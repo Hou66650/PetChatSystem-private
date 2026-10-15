@@ -70,7 +70,7 @@ def create_app(config_object=Config):
 
     @app.context_processor
     def _companion_scope():
-        return {'companion_scope': companion_service.browser_scope(), 'farm_layout': farm_service.LAYOUT}
+        return {'companion_scope': companion_service.browser_scope(), 'farm_layout': farm_service.LAYOUT, 'farm_flowers': farm_service.FLOWERS}
 
 
     @app.before_request

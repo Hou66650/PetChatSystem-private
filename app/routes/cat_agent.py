@@ -16,7 +16,7 @@ def validate():
     if request.method=='POST':
         if request.headers.get('X-Profile-Scope')!=companion.browser_scope():return jsonify(error='账号已变化，请刷新页面'),409
         if not request.is_json:return jsonify(error='请发送JSON'),415
-        if request.content_length and request.content_length>4096:return jsonify(error='请求过大'),413
+        if request.content_length and request.content_length>(16384 if request.path.endswith('/telemetry') else 4096):return jsonify(error='请求过大'),413
 
 @bp.after_request
 def no_cache(response):
@@ -25,7 +25,7 @@ def no_cache(response):
 @bp.get('/api/cat-agent')
 def status():
     owner=companion.owner_key()
-    return jsonify(scope=companion.browser_scope(),catalog=agent.CATALOG,memory=agent.memories(owner),world=scene.snapshot(owner))
+    return jsonify(scope=companion.browser_scope(),catalog=agent.catalog(owner),memory=agent.memories(owner),world=scene.snapshot(owner))
 
 @bp.get('/api/cat-agent/scene')
 def scene_state():
@@ -57,7 +57,7 @@ def monitor_page():
 
 @bp.get('/api/cat-agent/monitor')
 def monitor_data():
-    return jsonify(**agent.monitor_state(companion.owner_key()),scene=scene.monitor(companion.owner_key()),controls=experience.controls(companion.owner_key()),relationship=relationship.state(companion.owner_key()),scope=companion.browser_scope(),catalog=agent.CATALOG,memory=agent.memories(companion.owner_key()))
+    return jsonify(**agent.monitor_state(companion.owner_key()),scene=scene.monitor(companion.owner_key()),controls=experience.controls(companion.owner_key()),relationship=relationship.state(companion.owner_key()),scope=companion.browser_scope(),catalog=agent.catalog(companion.owner_key()),memory=agent.memories(companion.owner_key()))
 
 @bp.get("/api/cat-agent/relationship")
 def relationship_state():

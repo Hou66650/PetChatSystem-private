@@ -43,7 +43,7 @@
    document.getElementById('farm-detail').hidden=false;for(const e of this.dialog.querySelectorAll('[data-guide-only]'))e.hidden=true;
    const plant=bed.plant,spec=this.data.catalog.find(s=>s.id===plant?.species),title=(bed.nursery?'育苗床 ':'种植床 ')+bed.id.split('-')[1];
    document.getElementById('farm-detail-title').textContent=title+(spec?' · '+spec.name:' · 等待播种');
-   document.getElementById('farm-detail-status').textContent=plant?`${spec.stages[plant.stage-1]} · ${plant.stage}/10 · ${FarmGarden.remaining(plant.remaining)} · ${plant.watered?'今日已浇水':'今日未浇水'} · ${plant.fertilized?'今日已施肥':'今日未施肥'}`:'这块土地还没有植物。选择种子后，会显示此株植物的真实生长模型。';
+   document.getElementById('farm-detail-status').textContent=plant?`${spec.variantOf?'✧ 梦幻变异 · ':''}${spec.stages[plant.stage-1]} · ${plant.stage}/10 · ${FarmGarden.remaining(plant.remaining)} · ${plant.watered?'今日已浇水':'今日未浇水'} · ${plant.fertilized?'今日已施肥':'今日未施肥'}`:'这块土地还没有植物。选择种子后，会显示此株植物的真实生长模型。';
    const meter=document.getElementById('farm-detail-growth');meter.value=plant?.progress||0;meter.hidden=!plant;
    const actions=document.getElementById('farm-detail-actions');actions.replaceChildren();
    if(plant){
@@ -57,14 +57,14 @@
    }else{
     this.closePreview();document.getElementById('farm-preview-name').textContent='空种植床';
     if(!this.data.started)actions.append(this.button('领取园艺入门礼',()=>this.act('start')));
-    for(const s of this.data.catalog.filter(s=>(s.kind==='tree')===!!bed.nursery))actions.append(this.button('播种'+s.name+' · '+(this.data.inventory['seed:'+s.id]||0),()=>this.act('plant',{bed:bed.id,species:s.id}),!this.data.inventory['seed:'+s.id]));
+    for(const s of this.data.catalog.filter(s=>!s.variantOf&&(s.kind==='tree')===!!bed.nursery))actions.append(this.button('播种'+s.name+' · '+(this.data.inventory['seed:'+s.id]||0),()=>this.act('plant',{bed:bed.id,species:s.id}),!this.data.inventory['seed:'+s.id]));
    }
    document.getElementById('farm-preview-wrap').hidden=!plant;
   }
   async preview(){if(this.inspectedBed&&!this.data?.beds.find(b=>b.id===this.inspectedBed)?.plant)return;document.getElementById('farm-preview-wrap').hidden=false;const progress=window.PaitLoading?.start('正在加载植物模型');try{await super.preview();progress?.done();}catch(e){progress?.fail('模型加载失败');}}
   renderFreeStock(){
    const stock=document.getElementById('farm-stock'),s=this.data;stock.replaceChildren();
-   for(const spec of s.catalog){const qty=s.inventory[spec.id]||0,c=this.card(spec.name+' · '+qty+' 株',spec.kind==='food'?'存入补给，或把成熟植株栽进岛屿土壤。':'自由选择落点，位置与朝向随账号保存。');
+   for(const spec of s.catalog.filter(p=>!p.variantOf||s.inventory[p.id])){const qty=s.inventory[spec.id]||0,c=this.card(spec.name+' · '+qty+' 株',spec.kind==='food'?'存入补给，或把成熟植株栽进岛屿土壤。':'自由选择落点，位置与朝向随账号保存。');
     c.append(this.button('栽入土壤',()=>this.beginPlacement({species:spec.id,container:'soil'}),!qty));
     if(spec.kind==='flower')c.append(this.button('装盆摆放 · '+(s.inventory.pot||0)+' 个盆',()=>this.beginPlacement({species:spec.id,container:'pot'}),!qty||!s.inventory.pot));
     if(spec.kind==='food')c.append(this.button('制作零食',()=>this.act('cook'),!qty));stock.append(c);

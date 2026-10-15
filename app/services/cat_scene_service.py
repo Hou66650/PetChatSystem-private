@@ -2,6 +2,7 @@
 import hashlib
 import json
 import time
+import math
 from ..db import get_db
 
 
@@ -12,10 +13,14 @@ def init_schema():
     CREATE TABLE IF NOT EXISTS cat_scene_decisions(owner TEXT NOT NULL,stream TEXT NOT NULL,created REAL NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(owner,stream));
     ''')
 
+    db=get_db()
+    if 'subject' not in [r['name'] for r in db.execute('PRAGMA table_info(cat_scene_observations)')]:
+        db.execute("ALTER TABLE cat_scene_observations ADD COLUMN subject TEXT NOT NULL DEFAULT ''")
+    db.commit()
 
 def snapshot(owner):
     from . import farm_service as farm
-    db=get_db();now=time.time();beds=[]
+    db=get_db();farm.resolve_blooms(db,owner);now=time.time();beds=[];places=[]
     rows={r['bed']:r for r in db.execute('SELECT * FROM farm_plants WHERE owner=?',(owner,))}
     for key in farm.BEDS:
         row=rows.get(key)
@@ -23,21 +28,31 @@ def snapshot(owner):
         if row is not None:
             growth=farm.growth(row,now);species=farm.SPECIES[row['species']]
             plant=dict(name=species['name'],stage=growth['stage'],stageName=species['stages'][growth['stage']-1],
-                       ready=growth['ready'],wateredToday=row['water_day']==farm.wallet.day(),fertilizedToday=row['fertilizer_day']==farm.wallet.day())
-        beds.append(dict(id=key,name=farm.bed_name(key),plant=plant))
+                       variant=bool(species.get('variantOf')),ready=growth['ready'],wateredToday=row['water_day']==farm.wallet.day(),fertilizedToday=row['fertilizer_day']==farm.wallet.day())
+        beds.append(dict(id=key,name=farm.bed_name(key),x=farm.BEDS[key]['x'],z=farm.BEDS[key]['z'],plant=plant))
+        if plant:
+            b=farm.BEDS[key];offset=b['d']/2+.65
+            subject=row['id']+':'+str(growth['stage'])+':'+row['species']
+            places.append(dict(id='garden:'+key,name=farm.bed_name(key)+'的'+plant['name'],x=b['x'],z=b['z'],actions=['observe','sniff'],bounds=dict(w=b['w'],d=b['d']),subject=subject,description=plant['stageName']+(' · 梦幻变异' if plant['variant'] else ''),priority=3 if plant['variant'] else 2 if plant['ready'] else 1,approaches=[dict(x=b['x']+dx,z=b['z']+dz) for dx,dz in [(0,offset),(0,-offset),(b['w']/2+.65,0),(-b['w']/2-.65,0)]],dynamic=True))
     decor=[dict(slot=r['slot'],place=farm.SLOTS[r['slot']]['name'],plant=farm.SPECIES[r['species']]['name']) for r in db.execute('SELECT * FROM farm_decor WHERE owner=? ORDER BY slot',(owner,))]
     decor.extend(dict(slot=r['id'],place=('土栽' if r['container']=='soil' else '花盆')+f"（{r['x']:.1f}, {r['z']:.1f}）",plant=farm.SPECIES[r['species']]['name']) for r in farm.arrangements(db,owner))
+    for r in farm.arrangements(db,owner)[-16:]:
+        name=farm.SPECIES[r['species']]['name'];distance=farm.placement.radius(r['species'],r['container'])+.70
+        places.append(dict(id='plant:'+r['id'],name=name+'旁',x=r['x'],z=r['z'],actions=['observe','sniff'],radius=farm.placement.radius(r['species'],r['container']),subject=r['id']+':'+str(r['revision']),description=('梦幻变异 · ' if farm.SPECIES[r['species']].get('variantOf') else '')+'主人安放的'+name,priority=2,approaches=[dict(x=r['x']+distance*math.cos(i*math.tau/8),z=r['z']+distance*math.sin(i*math.tau/8)) for i in range(8)],dynamic=True))
+    from .cat_agent_service import CATALOG
     events=[dict(r) for r in db.execute('SELECT id,created,kind,summary FROM farm_events WHERE owner=? AND created>? ORDER BY id DESC LIMIT 6',(owner,now-86400))]
-    facts=dict(scene='雾林温室与云畔种植园',beds=beds,decorations=decor,recentChanges=events,
-               boundaries='猫只在步道观察、嗅闻；种植床与河流不可进入。购买、播种、浇水、收获和摆放由主人操作。')
+    facts=dict(scene='雾林温室与云畔种植园',beds=beds,decorations=decor,recentChanges=events,places=places,landmarks=[dict(id=p['id'],name=p['name'],x=p['x'],z=p['z'],actions=p['actions']) for p in CATALOG],
+               boundaries='猫只在步道观察、嗅闻；种植床与河流不可进入。观赏花只能在旁观察嗅闻，不啃食、不穿过花丛。购买、播种、浇水、施肥、收获和摆放由主人操作。')
     raw=json.dumps(facts,ensure_ascii=False,sort_keys=True);revision=hashlib.sha256(raw.encode()).hexdigest()[:20]
     with db:
         db.execute('INSERT OR IGNORE INTO cat_scene_snapshots VALUES (?,?,?,?)',(owner,revision,now,raw))
         db.execute('DELETE FROM cat_scene_snapshots WHERE owner=? AND revision NOT IN (SELECT revision FROM cat_scene_snapshots WHERE owner=? ORDER BY created DESC LIMIT 32)',(owner,owner))
-    seen=db.execute("SELECT 1 FROM cat_scene_observations WHERE owner=? AND revision=? AND action IN ('observe','sniff') LIMIT 1",(owner,revision)).fetchone()
+    seen=db.execute("SELECT 1 FROM cat_scene_observations WHERE owner=? AND revision=? AND target IN ('farm_path','farm_entry') AND action IN ('observe','sniff') LIMIT 1",(owner,revision)).fetchone()
     growth_note=next((b['plant']['name']+'到了'+b['plant']['stageName'] for b in sorted(beds,key=lambda b:bool(b['plant'] and b['plant']['ready']),reverse=True) if b['plant']), '')
     reason='；'.join(filter(None,[events[0]['summary'] if events else '',growth_note])) or '种植园有新的步道，可以去看看'
-    return dict(revision=revision,asOf=now,**facts,attention=[] if seen else [dict(target='farm_path',action='observe',reason=reason)])
+    subjects={r['subject'] for r in db.execute('SELECT subject FROM cat_scene_observations WHERE owner=?',(owner,))}
+    attention=[dict(target=p['id'],action='observe',subject=p['subject'],reason=p['name']+'：'+p['description']) for p in sorted(places,key=lambda p:-p['priority']) if p['subject'] not in subjects]
+    return dict(revision=revision,asOf=now,**facts,attention=[] if seen else attention if places else [dict(target='farm_path',action='observe',reason=reason)])
 
 
 def remembered(owner):
@@ -46,17 +61,21 @@ def remembered(owner):
 
 def completed(db,owner,data):
     """Called inside the existing idempotent completion transaction. No imagined visits."""
-    if data.get('result')!='completed' or data.get('target') not in ('farm_path','farm_entry'):return
+    if data.get('result')!='completed':return
     from .cat_agent_service import TARGETS
     action=data.get('action');revision=data.get('worldRevision')
-    if action not in TARGETS[data['target']]['actions'] or not isinstance(revision,str):return
+    if not isinstance(revision,str):return
     row=db.execute('SELECT payload FROM cat_scene_snapshots WHERE owner=? AND revision=?',(owner,revision)).fetchone()
     if not row:return
-    facts=json.loads(row['payload']);plants=[b['plant']['name']+'（'+b['plant']['stageName']+'）' for b in facts['beds'] if b['plant']]
+    facts=json.loads(row['payload']);place=next((p for p in facts.get('places',[]) if p['id']==data['target']),None)
+    if not place and data['target'] not in ('farm_path','farm_entry'):return
+    if action not in (place['actions'] if place else TARGETS[data['target']]['actions']):return
+    plants=[b['plant']['name']+'（'+b['plant']['stageName']+'）' for b in facts['beds'] if b['plant']]
     if action in ('observe','sniff'):
         summary='猫咪完成种植园'+('观察' if action=='observe' else '嗅闻')+'；出发时场景记录：'+('、'.join(plants[:4]) if plants else '种植床尚未种植')
     else:summary='猫咪在花园步道完成'+('理毛' if action=='groom' else '伸懒腰')
-    db.execute('INSERT OR IGNORE INTO cat_scene_observations VALUES (?,?,?,?,?,?,?)',(owner,data['event'],time.time(),revision,data['target'],action,summary))
+    if place:summary='猫咪走近'+place['name']+'，完成'+('观察' if action=='observe' else '嗅闻')+'；出发时见到：'+place['description']
+    db.execute('INSERT OR IGNORE INTO cat_scene_observations(owner,event,created,revision,target,action,summary,subject) VALUES (?,?,?,?,?,?,?,?)',(owner,data['event'],time.time(),revision,data['target'],action,summary,place['subject'] if place else ''))
     db.execute('DELETE FROM cat_scene_observations WHERE owner=? AND event NOT IN (SELECT event FROM cat_scene_observations WHERE owner=? ORDER BY created DESC LIMIT 40)',(owner,owner))
 
 

@@ -1,5 +1,5 @@
 """Durable, account-scoped garden. Growth uses server time and never withers offline."""
-import json, re, time, uuid
+import json, re, time, uuid, secrets
 from pathlib import Path
 from ..db import get_db
 from . import cat_market_service as wallet, supply_service as supplies
@@ -16,8 +16,13 @@ CATALOG = [
          stages=['子叶展开','第一片真叶','幼叶舒展','叶柄伸长','蔓茎生长','分蔓展叶','花蕾形成','黄花绽放','青果膨大','橙果成熟']),
     dict(id='birch', name='白桦', kind='tree', price=12, hours=36,
          stages=['子叶展开','锯齿真叶','幼苗舒展','茎节伸长','顶芽生长','初始分枝','木质化','侧枝展叶','树冠形成','可移栽幼树'])]
+FLOWERS=json.loads((Path(__file__).resolve().parents[2]/'static/data/farm-flowers.json').read_text(encoding='utf-8'))
+for flower in FLOWERS:
+    base=dict(id=flower['id'],name=flower['name'],kind='flower',price=flower['price'],hours=flower['hours'],stages=flower['stages'],mutationChance=flower['mutationChance'])
+    CATALOG.append(base)
+    CATALOG.append(dict(**{**base,'id':base['id']+'-dream','name':flower['variantName']},variantOf=base['id'],mutationChanceLabel='成熟时 10% 概率出现，结果永久保留'))
 SPECIES = {p['id']:p for p in CATALOG}
-SHOP = [dict(id='seed:'+p['id'],name=p['name']+'种子',price=p['price']) for p in CATALOG]+[dict(id='pot',name='手作陶土花盆',price=15)]
+SHOP = [dict(id='seed:'+p['id'],name=p['name']+'种子',price=p['price']) for p in CATALOG if not p.get('variantOf')]+[dict(id='pot',name='手作陶土花盆',price=15)]
 SHOP.append(dict(id='fertilizer',name='缓释园艺肥',price=3))
 
 def bed_name(key):
@@ -38,6 +43,8 @@ def init_schema():
     db=get_db()
     if 'fertilizer_day' not in [r['name'] for r in db.execute('PRAGMA table_info(farm_plants)')]:
         db.execute("ALTER TABLE farm_plants ADD COLUMN fertilizer_day TEXT NOT NULL DEFAULT ''")
+    if 'bloom_resolved' not in [r['name'] for r in db.execute('PRAGMA table_info(farm_plants)')]:
+        db.execute("ALTER TABLE farm_plants ADD COLUMN bloom_resolved INTEGER NOT NULL DEFAULT 0")
     db.commit()
 
 def stock(db,owner,item,n):
@@ -54,8 +61,26 @@ def growth(row,now):
     stage=10 if progress>=1 else 1+min(8,int(progress*9))
     return dict(stage=stage,progress=progress,remaining=max(0,duration-age),ready=progress>=1)
 
+def resolve_blooms(db,owner):
+    # One atomic maturity roll per plant. All consumers use the persisted cultivar.
+    own=not db.in_transaction
+    if own:db.execute('BEGIN IMMEDIATE')
+    try:
+        for row in db.execute('SELECT * FROM farm_plants WHERE owner=? AND bloom_resolved=0',(owner,)).fetchall():
+            spec=SPECIES[row['species']]
+            if not growth(row,time.time())['ready']:continue
+            variant=row['species']+'-dream' if spec.get('mutationChance') and not spec.get('variantOf') and secrets.randbelow(10)==0 else row['species']
+            db.execute('UPDATE farm_plants SET species=?,bloom_resolved=1 WHERE owner=? AND id=?',(variant,owner,row['id']))
+            if variant!=row['species']:
+                db.execute('INSERT INTO farm_events(owner,created,kind,summary) VALUES (?,?,?,?)',(owner,time.time(),'mutation',bed_name(row['bed'])+'的'+spec['name']+'成熟时变异为'+SPECIES[variant]['name']))
+        if own:db.commit()
+    except Exception:
+        if own:db.rollback()
+        raise
+
+
 def state(owner):
-    db=get_db();base=wallet.state(owner);now=time.time()
+    db=get_db();base=wallet.state(owner);resolve_blooms(db,owner);now=time.time()
     rows={r['bed']:r for r in db.execute('SELECT * FROM farm_plants WHERE owner=?',(owner,))}
     beds=[]
     for key,bed in BEDS.items():
@@ -76,7 +101,7 @@ def operate(owner,op,data):
     token=data.get('token')
     if not isinstance(token,str) or not re.fullmatch(r'[a-zA-Z0-9_-]{8,80}',token):raise Error('缺少有效操作编号')
     payload=json.dumps([op,{k:v for k,v in data.items() if k!='token'}],sort_keys=True,ensure_ascii=False)
-    db=get_db();db.execute('BEGIN IMMEDIATE')
+    db=get_db();resolve_blooms(db,owner);db.execute('BEGIN IMMEDIATE')
     try:
         wallet.ensure(owner)
         old=db.execute('SELECT payload FROM farm_requests WHERE owner=? AND token=?',(owner,token)).fetchone()
@@ -86,7 +111,8 @@ def operate(owner,op,data):
         event_text=None
         if op=='start':
             if db.execute('INSERT OR IGNORE INTO farm_accounts VALUES (?,?)',(owner,time.time())).rowcount:
-                for p in CATALOG:stock(db,owner,'seed:'+p['id'],2)
+                for p in CATALOG:
+                    if not p.get('variantOf'):stock(db,owner,'seed:'+p['id'],2)
                 stock(db,owner,'pot',1)
                 stock(db,owner,'fertilizer',3)
         elif not db.execute('SELECT 1 FROM farm_accounts WHERE owner=?',(owner,)).fetchone():raise Error('请先领取园艺入门礼',409)
@@ -100,7 +126,7 @@ def operate(owner,op,data):
         elif op=='plant':
             bed=BEDS.get(data.get('bed')) if isinstance(data.get('bed'),str) else None
             p=SPECIES.get(data.get('species')) if isinstance(data.get('species'),str) else None
-            if not bed or not p:raise Error('请选择种植床与植物')
+            if not bed or not p or p.get('variantOf'):raise Error('请选择种植床与可播种植物')
             if bool(bed.get('nursery'))!=(p['kind']=='tree'):raise Error('树苗请种在育苗床，花卉与作物种在种植床')
             if db.execute('SELECT 1 FROM farm_plants WHERE owner=? AND bed=?',(owner,bed['id'])).fetchone():raise Error('这块种植床已经有植物了',409)
             stock(db,owner,'seed:'+p['id'],-1)

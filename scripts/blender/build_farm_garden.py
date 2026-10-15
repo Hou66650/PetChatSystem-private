@@ -537,7 +537,8 @@ def build_terrace():
     scene.render.filepath=str(ART/'farm-closeup.png');bpy.ops.render.render(write_still=True)
     print('FARM_TERRACE_COMPLETE',flush=True)
 
-if MODE=='plants':build_plants()
-elif MODE=='terrace':build_terrace()
-elif MODE=='detail':material_detail()
-else:raise ValueError('Use plants, terrace or detail')
+if __name__=='__main__':
+    if MODE=='plants':build_plants()
+    elif MODE=='terrace':build_terrace()
+    elif MODE=='detail':material_detail()
+    else:raise ValueError('Use plants, terrace or detail')
