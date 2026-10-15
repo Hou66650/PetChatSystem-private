@@ -72,7 +72,7 @@ def start(owner, client, refresh=False, context=None):
                   '底部留出百分之十二的纯背景安全边距，猫咪、花草主体不要进入底部边距。'
                   '用于竖版宠物生活纪念卡插画区域：' + secrets.choice(context.get('scenes') or SCENES) +
                   '。猫咪外观严格遵循：' + context.get('appearance', '自然狸花猫'))
-        job = {'status':'pending', 'created':now, 'prompt':prompt, 'signature':signature,
+        job = {'id':secrets.token_hex(16),'status':'pending', 'created':now, 'prompt':prompt, 'signature':signature,
                'card':{key:context[key] for key in ('day','story','coat') if key in context}}
         _jobs[owner] = job
         _pool.submit(_paint, client, job)
@@ -83,7 +83,7 @@ def snapshot(owner, locked=False):
         job = _jobs.get(owner)
         if not job:
             return {'status':'idle'}
-        return {k:job[k] for k in ('status','image','error','card') if k in job}
+        return {k:job[k] for k in ('id','status','image','error','card') if k in job}
     if locked:
         return read()
     with _lock:

@@ -34,9 +34,19 @@
    const queued=this.events.shift(),snapshot=queued||this.snapshot();this.lastTelemetry=this.now();this.sending=true;
    const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),4000);
    // Monitoring failure never blocks movement or decision execution.
-   Promise.resolve().then(()=>this.fetcher('/api/cat-agent/telemetry',{method:'POST',headers:{'Content-Type':'application/json','X-Profile-Scope':this.scope},body:JSON.stringify({stream:this.stream,event:!!queued,snapshot}),signal:abort.signal}))
-    .then(r=>{if(r.status===409){this.scopeLost=true;this.interrupt('账号已变化，请刷新页面');}}).catch(()=>{})
+   Promise.resolve().then(()=>this.fetcher('/api/cat-agent/telemetry',{method:'POST',headers:{'Content-Type':'application/json','X-Profile-Scope':this.scope},body:JSON.stringify({stream:this.stream,event:!!queued,snapshot,controlAck:this.controlAck}),signal:abort.signal}))
+    .then(async r=>{if(r.status===409){this.scopeLost=true;this.interrupt('账号已变化，请刷新页面');return;}if(r.ok){const data=await r.json();if(data.control)this.applyControl(data.control);}}).catch(()=>{})
     .finally(()=>{clearTimeout(timer);this.sending=false;if(this.events.length&&!this.scopeLost)this.emit();});
+  }
+  applyControl(command){
+   if(this.disposed||this.scopeLost||!command?.id||this.controlAck?.id===command.id)return;
+   let result='applied';
+   if(this.externalBlocked||this.locomotion.owner==='command')result='busy';
+   else if(command.action==='pause'){this.interrupt('已暂停自主探索，仍可与你互动');this.monitorPaused=true;}
+   else if(command.action==='resume'){this.monitorPaused=false;this.next=this.now()+500;this.status('继续在岛上探索');}
+   else if(command.action==='home'){if(this.candidates().some(p=>p.id==='home')&&this.requestCare('sleep'))this.monitorPaused=false;else result='unavailable';}
+   else result='unavailable';
+   this.controlAck={id:command.id,result};
   }
   async request(url,body,signal){
    const r=await this.fetcher(url,body?{method:'POST',headers:{'Content-Type':'application/json','X-Profile-Scope':this.scope},body:JSON.stringify(body),signal}:{signal,cache:'no-store'});
@@ -125,13 +135,14 @@
    this.request('/api/cat-agent/report',{target:g.target,result,event:g.event},reportAbort.signal).then(d=>{if(!this.disposed&&!this.scopeLost)this.merge(d.memory);}).catch(()=>{}).finally(()=>clearTimeout(timer));
   }
   step(dt,blocked){
-   if(this.disposed||this.scopeLost||!this.catalog.length)return;this.trace.sample(this.model.position,this.now(),blocked);this.emit();
+   if(this.disposed||this.scopeLost||!this.catalog.length)return;this.externalBlocked=!!blocked;this.trace.sample(this.model.position,this.now(),blocked);this.emit();
    dt=Math.min(.05,Math.max(0,dt));this.energy=Math.max(.05,Math.min(1,this.energy-dt*.0007));this.hunger=Math.min(1,this.hunger+dt*.001);this.thirst=Math.min(1,this.thirst+dt*.0008);if(this.now()-this.lastNeedsSave>15000){this.saveNeeds();this.lastNeedsSave=this.now();}
    if(blocked||!this.locomotion.enabled||this.locomotion.owner==='command'){
     // CatLife's own wall approach uses command ownership; it is still the active task.
     const ownWall=this.acting&&this.goal.action==='rub'&&this.life.approach&&this.locomotion.path===this.life.approach.path;
     if(!ownWall||blocked||!this.locomotion.enabled){this.wasBlocked=true;if(this.goal||this.pending)this.interrupt(!this.locomotion.enabled?'自由活动已关闭':'先陪你，探索等一会儿');return;}
    }
+   if(this.monitorPaused&&!this.goal)return;
    if(this.wasBlocked){this.wasBlocked=false;this.next=Math.max(this.lastDecision+8000,this.now()+(this.socialWaiting?10000:500));if(this.socialWaiting){this.socialWaiting=false;this.reason='主动邀请后短暂等待回应；无人回应便继续探索，不扣相处关系';this.status('在你身边等一会儿，要一起玩吗？');}}
    if(!this.goal&&this.now()>=this.socialAfter){this.socialAfter=this.now()+120000+(1-(this.relationship?.()?.personality?.sociability||.5))*90000;const r=this.relationship?.()||{};if(r.familiarity>=.15&&this.energy>.4&&this.hunger<.65&&this.social?.(r)){this.socialWaiting=true;this.next=this.now()+15000;return;}}
    if(!this.goal){if(!this.pending&&this.now()>=this.next&&this.locomotion.owner!=='command')void this.plan();return;}

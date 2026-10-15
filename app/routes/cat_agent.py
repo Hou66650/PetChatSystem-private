@@ -1,8 +1,9 @@
 from urllib.parse import urlsplit
-from flask import Blueprint,jsonify,request,render_template,current_app
+from flask import Blueprint,jsonify,request,render_template,current_app,Response
 from ..services import cat_agent_service as agent, companion_service as companion
 
 from ..services import cat_relationship_service as relationship
+from ..services import cat_experience_service as experience
 
 bp=Blueprint('cat_agent',__name__)
 
@@ -32,7 +33,12 @@ def operate(operation):
     try:
         if operation=='relationship-event':return jsonify(**relationship.record(owner,data),scope=companion.browser_scope())
         if operation=='relationship-clear':return jsonify(**relationship.clear(owner),scope=companion.browser_scope())
-        if operation=='telemetry':return jsonify(**agent.monitor_record(owner,data))
+        if operation=='telemetry':
+            result=agent.monitor_record(owner,data)
+            return jsonify(**result,control=experience.delivery(owner,data))
+        if operation=='control':return jsonify(**experience.send_control(owner,data),scope=companion.browser_scope())
+        if operation=='album-save':return jsonify(cards=experience.save_card(owner,data.get('id')),scope=companion.browser_scope())
+        if operation=='album-delete':return jsonify(cards=experience.delete_card(owner,data.get('day')),scope=companion.browser_scope())
         if operation=='decide':return jsonify(**agent.decide(owner,data),scope=companion.browser_scope())
         if operation=='report':return jsonify(memory=agent.record(owner,data),scope=companion.browser_scope())
         return jsonify(error='操作不存在'),404
@@ -45,7 +51,7 @@ def monitor_page():
 
 @bp.get('/api/cat-agent/monitor')
 def monitor_data():
-    return jsonify(**agent.monitor_state(companion.owner_key()),relationship=relationship.state(companion.owner_key()),scope=companion.browser_scope(),catalog=agent.CATALOG,memory=agent.memories(companion.owner_key()))
+    return jsonify(**agent.monitor_state(companion.owner_key()),controls=experience.controls(companion.owner_key()),relationship=relationship.state(companion.owner_key()),scope=companion.browser_scope(),catalog=agent.CATALOG,memory=agent.memories(companion.owner_key()))
 
 @bp.get("/api/cat-agent/relationship")
 def relationship_state():
@@ -66,3 +72,13 @@ def story_art_start():
 def story_art_status():
     from ..services import story_art_service as art
     return jsonify(**art.snapshot(companion.owner_key()), scope=companion.browser_scope())
+
+
+@bp.get('/api/cat-agent/album')
+def album_list():
+    return jsonify(cards=experience.album(companion.owner_key()),scope=companion.browser_scope())
+
+@bp.get('/api/cat-agent/album/<day>/image')
+def album_image(day):
+    raw=experience.image(companion.owner_key(),day)
+    return Response(raw,mimetype='image/jpeg',headers={'X-Profile-Scope':companion.browser_scope()}) if raw else (jsonify(error='卡片不存在'),404)
