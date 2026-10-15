@@ -45,10 +45,37 @@ def pet_spec(owner,pet):
         if pet=='3':
             from .cat_market_service import appearance
             coat=appearance(owner);spec.update(model=coat['model'],coat=coat['id'],coatName=coat['name'])
+            from .pet_generation_service import appearance as private_appearance
+            private=private_appearance(owner)
+            if private:spec.update(model=private['model'],name=private['name'],custom=True,task=private['task'],height=.85)
         return spec
     row=get_db().execute('SELECT * FROM portal_custom_pets WHERE id=? AND owner=?',(pet,owner)).fetchone()
     if not row:raise PortalError('宠物不存在或不属于你',404)
     return dict(id=pet,name=row['name'],model=row['model'],height=row['height'],theme='room',stage=PETS['3']['stage'])
+
+def travel_spec(owner,pet,trip,role):
+    spec=pet_spec(owner,pet)
+    if spec.get('custom'):
+        spec['model']='/api/portals/trip/'+trip+'/model/'+role
+        spec.pop('task',None)
+    return spec
+
+
+def travel_model(t,role):
+    """Only the animated asset, only while this authorized journey is active."""
+    if t['status']!='active':raise PortalError('行程已结束，模型访问已关闭',409)
+    if role=='visitor':owner,pet=t['owner'],t['pet']
+    elif role=='host' and t['kind']=='neighbor':
+        host=get_db().execute('SELECT owner,pet,allow_visitors FROM portal_islands WHERE id=?',(t['destination'],)).fetchone()
+        if not host or not host['allow_visitors']:raise PortalError('对方已关闭访问',403)
+        owner,pet=host['owner'],host['pet']
+    else:raise PortalError('模型角色不存在',404)
+    spec=pet_spec(owner,pet)
+    if not spec.get('custom'):raise PortalError('私人模型已不可用，请结束行程后重试',404)
+    row=get_db().execute("SELECT data FROM pet_studio_assets WHERE task=? AND slot='adapted'",(spec['task'],)).fetchone()
+    if not row:raise PortalError('模型不存在',404)
+    return row['data']
+
 
 def register_custom_pet(owner,pet,name,model,height=.85,memorial=True):
     """Server-side integration hook for a future validated photo-to-GLB pipeline."""
@@ -94,10 +121,10 @@ def public_trip(t,owner,brief=False):
     result={k:t[k] for k in ('id','pet','kind','destination','status','created','updated','ended','reason')}
     counts={key:sum(e['kind']==key for e in events) for key in EVENTS}
     summary='、'.join(EVENTS[k]+str(n)+'次' for k,n in counts.items() if n)
-    result.update(visitorId=public_user_id(t['owner']),petSpec=pet_spec(t['owner'],t['pet']),mine=t['owner']==owner,events=events,messages=messages,snapshot=json.loads(t['snapshot']),story=('桌面探险' if t['kind']=='desktop' else '友邻串门')+'：'+(summary or '尚无互动记录')+('。'+t['reason'] if t['ended'] else '。等待桌面配对，尚未出发' if t['status']=='pairing' else '。正在旅途中'))
+    result.update(visitorId=public_user_id(t['owner']),petSpec=travel_spec(t['owner'],t['pet'],t['id'],'visitor'),mine=t['owner']==owner,events=events,messages=messages,snapshot=json.loads(t['snapshot']),story=('桌面探险' if t['kind']=='desktop' else '友邻串门')+'：'+(summary or '尚无互动记录')+('。'+t['reason'] if t['ended'] else '。等待桌面配对，尚未出发' if t['status']=='pairing' else '。正在旅途中'))
     if t['destination']:
         host=db.execute('SELECT * FROM portal_islands WHERE id=?',(t['destination'],)).fetchone()
-        result['hostPet']=pet_spec(host['owner'],host['pet'])
+        result['hostPet']=travel_spec(host['owner'],host['pet'],t['id'],'host')
         result['hostId']=public_user_id(host['owner'])
     return result
 
@@ -131,9 +158,6 @@ def operate(owner,op,data):
         if type(data.get('allow')) is not bool:raise PortalError('访客开关格式错误')
         db.execute('BEGIN IMMEDIATE')
         try:
-            from .pet_generation_service import appearance as private_appearance
-            if pet=='3' and data['allow'] and private_appearance(owner):
-                raise PortalError('私人重建模型暂仅在自己的岛上使用，不能开启访客',409)
             db.execute('UPDATE portal_islands SET allow_visitors=? WHERE owner=? AND pet=?',(int(data['allow']),owner,pet))
             if not data['allow']:
                 for t in db.execute("SELECT t.* FROM portal_trips t JOIN portal_islands i ON i.id=t.destination WHERE i.owner=? AND i.pet=? AND t.status='active'",(owner,pet)).fetchall():finish(t,'好友关闭访客权限，已返程')
@@ -147,9 +171,6 @@ def operate(owner,op,data):
         if kind=='neighbor' and (not isinstance(dest,str) or len(dest)>64):raise PortalError('请选择有效好友岛屿')
         db.execute('BEGIN IMMEDIATE')
         try:
-            from .pet_generation_service import appearance as private_appearance
-            if pet=='3' and private_appearance(owner):
-                raise PortalError('私人重建模型暂未适配桌宠和串门，请先在工作室恢复原来的猫咪',409)
             if db.execute("SELECT 1 FROM portal_trips WHERE owner=? AND pet=? AND status IN ('pairing','active')",(owner,pet)).fetchone():raise PortalError('这只宠物已在旅途中，请先召回',409)
             if db.execute("SELECT 1 FROM portal_trips t JOIN portal_islands i ON i.id=t.destination WHERE i.owner=? AND i.pet=? AND t.status='active'",(owner,pet)).fetchone():raise PortalError('请先结束正在接待的串门',409)
             if kind=='neighbor':
@@ -215,12 +236,19 @@ def pair(code):
         t=db.execute("SELECT * FROM portal_trips WHERE pair_hash=? AND status='pairing'",(digest(code),)).fetchone()
         if not t:raise PortalError('配对码无效、过期或已经使用',403)
         db.execute("UPDATE portal_trips SET status='active',pair_hash=NULL,token_hash=?,updated=? WHERE id=?",(digest(token),time.time(),t['id']));db.commit()
-        return dict(token=token,trip=t['id'],pet=pet_spec(t['owner'],t['pet']))
+        spec=pet_spec(t['owner'],t['pet'])
+        if spec.get('custom'):spec['model']='/api/portals/desktop/model'
+        return dict(token=token,trip=t['id'],pet=spec)
     except Exception:db.rollback();raise
 
-def desktop(token,op,data):
+def desktop_trip(token):
     expire();t=get_db().execute("SELECT * FROM portal_trips WHERE token_hash=? AND kind='desktop' AND status='active'",(digest(token),)).fetchone()
     if not t:raise PortalError('桌面行程已结束，请返回小岛',409)
+    return t
+
+
+def desktop(token,op,data):
+    t=desktop_trip(token)
     if op=='state':return public_trip(t,t['owner'],True)
     if op=='plan':return plan(t)
     if op=='sample':return sample(t,data)

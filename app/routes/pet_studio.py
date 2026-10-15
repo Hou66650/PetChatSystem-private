@@ -242,7 +242,7 @@ def operate(task_id, operation):
                 db.rollback()
                 return jsonify(error='请先完成当前版本的全部动作验收'), 409
             db.execute('INSERT OR REPLACE INTO pet_studio_equipped VALUES (?,?)',(identity.owner_key(),task_id))
-            # Private custom models never implicitly become visitor assets.
+            # Equipping never grants visitor access implicitly; the owner opts in.
             db.execute("UPDATE portal_islands SET allow_visitors=0 WHERE owner=? AND pet='3'",(identity.owner_key(),))
         else:
             db.execute('DELETE FROM pet_studio_equipped WHERE owner=? AND task=?',(identity.owner_key(),task_id))

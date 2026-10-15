@@ -87,4 +87,46 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(self.a.get('/visit/'+d['trip']).status_code,200)
         self.assertEqual(self.a.get('/journeys').status_code,200)
 
+    def private_pet(self,owner,task):
+        import time
+        raw=b'glTF-private-animation-'+task.encode()
+        with self.app.app_context():
+            db=get_db()
+            db.execute('INSERT INTO pet_studio_tasks VALUES (?,?,?,?,?,?,?,?)',(task,owner,'私人猫','companion','approved','',time.time(),time.time()))
+            db.execute('INSERT INTO pet_studio_adaptations VALUES (?,?,?,?,?,?)',(task,'rig-'+task,'hash','reviewed','{}',time.time()))
+            db.execute('INSERT INTO pet_studio_assets VALUES (?,?,?,?)',(task,'adapted','model/gltf-binary',raw))
+            db.execute('INSERT INTO pet_studio_equipped VALUES (?,?)',(owner,task));db.commit()
+        return raw
+
+    def test_private_desktop_model_requires_active_paired_token(self):
+        raw=self.private_pet('user:1','private-a')
+        d=self.start().json
+        paired=self.a.post('/api/portals/desktop/pair',json={'code':d['code']}).json
+        self.assertTrue(paired['pet']['custom'])
+        self.assertEqual(paired['pet']['model'],'/api/portals/desktop/model')
+        url=paired['pet']['model'];auth={'Authorization':'Bearer '+paired['token']}
+        self.assertEqual(self.a.get(url).status_code,401)
+        self.assertEqual(self.b.get(url,headers={'Authorization':'Bearer wrong'}).status_code,409)
+        response=self.app.test_client().get(url,headers=auth)
+        self.assertEqual(response.data,raw);self.assertEqual(response.headers['Cache-Control'],'no-store')
+        self.assertEqual(self.b.get('/api/pet-studio/private-a/assets/adapted').status_code,404)
+        self.post('return',{'trip':d['trip']})
+        self.assertEqual(self.a.get(url,headers=auth).status_code,409)
+
+    def test_private_neighbor_models_only_shared_with_active_participants(self):
+        visitor=self.private_pet('user:1','private-a');host=self.private_pet('user:2','private-b')
+        self.friends()
+        self.assertEqual(self.post('settings',{'pet':'3','allow':True},self.b).status_code,200)
+        dest=next(i['id'] for i in self.b.get('/api/portals').json['islands'] if i['pet']=='3')
+        tid=self.start('neighbor',destination=dest).json['trip']
+        t=self.a.get('/api/portals/trip/'+tid).json
+        self.assertTrue(t['petSpec']['custom']);self.assertTrue(t['hostPet']['custom'])
+        for spec,raw in [(t['petSpec'],visitor),(t['hostPet'],host)]:
+            for client in (self.a,self.b):self.assertEqual(client.get(spec['model']).data,raw)
+            self.assertEqual(self.app.test_client().get(spec['model']).status_code,404)
+        self.assertEqual(self.a.get('/api/pet-studio/private-b/assets/front').status_code,404)
+        self.assertEqual(self.a.get('/api/portals/trip/'+tid+'/model/front').status_code,404)
+        self.post('settings',{'pet':'3','allow':False},self.b)
+        for spec in [t['petSpec'],t['hostPet']]:self.assertEqual(self.a.get(spec['model']).status_code,409)
+
 if __name__=='__main__':unittest.main()

@@ -15,8 +15,8 @@ ipcMain.handle('desktop:command',async(e,command,data)=>{if(!trusted(e))throw Er
   if(command==='pair'){if(pairing)throw Error('正在配对，请稍候');pairing=true;try{return await pair(data||{});}finally{pairing=false;}}
   if(command==='state')return {connected:!!session,status,sensing,action,pet:session?.pet};
   if(command==='model'){
-   if(!session)throw Error('尚未配对');const p=session.pet.model;if(typeof p!=='string'||!/^\/static\/models\/[a-zA-Z0-9_./-]+\.glb$/.test(p)||p.includes('..'))throw Error('模型路径无效');
-   const current=session;const r=await fetch(current.origin+p,{redirect:'error',signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error('模型加载失败');const bytes=await r.arrayBuffer();if(session!==current)throw Error('行程已结束');if(bytes.byteLength>50*1024*1024)throw Error('模型超过桌面资源预算');return {bytes,pet:current.pet};
+   if(!session)throw Error('尚未配对');const p=session.pet.model;const privateModel=session.pet.custom===true&&p==='/api/portals/desktop/model';if(!privateModel&&(typeof p!=='string'||!/^\/static\/models\/[a-zA-Z0-9_./-]+\.glb$/.test(p)||p.includes('..')))throw Error('模型路径无效');
+   const current=session;const r=await fetch(current.origin+p,{headers:privateModel?{'Authorization':'Bearer '+current.token}:{},redirect:'error',signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error('模型加载失败');const bytes=await r.arrayBuffer();if(session!==current)throw Error('行程已结束');if(bytes.byteLength>50*1024*1024)throw Error('模型超过桌面资源预算');return {bytes,pet:current.pet};
   }
   if(command==='ready'){if(session){status='正在桌面探索；右键宠物可返回。';petWindow.showInactive();publish();}return {ok:true};}
   if(command==='return'){if(session)await request('return',{});stop('已返回悬浮岛，网页会自动接回宠物。');return {ok:true};}
