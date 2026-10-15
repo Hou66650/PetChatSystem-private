@@ -1,0 +1,37 @@
+const assert=require('node:assert/strict'),{Controller}=require('../static/js/den/cat-agent'),catalog=require('../static/data/cat-world.json');
+const tick=()=>new Promise(r=>setImmediate(r));
+const world=revision=>({revision,attention:[{target:'farm_path',action:'observe',reason:'主人播种了波斯菊'}]});
+(async()=>{
+ let now=0,remoteWorld=world('revision-1'),failInitial=false;const reports=[],requests=[];
+ const move={navigation:{clearance:.6,route:()=>[],isWalkable:()=>true},path:[],owner:'idle',enabled:true,goTo(p){this.path=[p];this.owner='command';return true;},interrupt(){this.path=[];this.owner='idle';}};
+ const fetcher=async(url,opt)=>{
+  requests.push(url);
+  if(failInitial&&url==='/api/cat-agent')throw Error('initial outage');
+  if(url.endsWith('report'))reports.push(JSON.parse(opt.body));
+  return {ok:true,json:async()=>url.endsWith('cat-world.json')?catalog:{scope:'fixture',catalog,memory:[],world:structuredClone(remoteWorld)}};
+ };
+ const create=()=>new Controller({model:{position:{x:0,z:0}},locomotion:move,life:{cancel(){}},scope:'fixture',animate(){},storage:null,now:()=>now,fetcher});
+ const cat=create();await cat.ready;cat.networkAfter=Infinity;
+ assert.equal(cat.fallback(catalog).target,'farm_path');
+ cat.energy=.1;assert.equal(cat.fallback(catalog).action,'sleep');cat.energy=.85;
+ cat.thirst=.9;assert.equal(cat.fallback(catalog).action,'drink');cat.thirst=.25;
+ cat.advice={at:0,plan:{target:'bridge',action:'observe',source:'model',worldRevision:'revision-1'}};
+ await cat.plan();assert.equal(cat.goal.target,'farm_path','new facts have local fallback even without model');
+ const oldGoal=cat.goal;remoteWorld=world('revision-2');await cat.refreshScene();
+ assert.equal(cat.goal,oldGoal,'scene refresh must not interrupt an active action');
+ assert.equal(cat.snapshot().worldRevision,'revision-1','telemetry reports the executing snapshot');
+ assert.equal(cat.advice,null,'new revision invalidates old model suggestion');
+ cat.finish('completed');await tick();assert.equal(reports[0].worldRevision,'revision-1');assert.equal(reports[0].action,'observe');
+ assert.equal(cat.world.attention.length,1,'finishing an old goal does not mark new facts seen');
+ await cat.plan();cat.finish('completed');await tick();assert.equal(cat.world.attention.length,0);
+ await cat.refreshScene();assert.equal(cat.world.attention.length,0,'inflight polling cannot resurrect just-completed attention');
+ remoteWorld=world('revision-3');await cat.refreshScene();
+ await cat.plan({target:'bridge',action:'observe',user:true});assert.equal(cat.goal.target,'bridge','explicit user destination wins');
+ const path=move.path;move.owner='command';cat.step(.01,false);assert.equal(cat.goal,null);assert.equal(move.path,path,'user route preserved');
+ now=60000;assert.notEqual(cat.fallback(catalog).reason?.startsWith('留意种植园'),true,'expired snapshots do not claim fresh attention');
+ cat.dispose();const count=requests.length;await cat.refreshScene();assert.equal(requests.length,count);
+ failInitial=true;move.owner='idle';now=0;const recovering=create();await recovering.ready;
+ assert.equal(recovering.world,null);assert.equal(recovering.catalog.length,catalog.length);
+ recovering.next=Infinity;now=16000;recovering.step(.01,false);await tick();assert.equal(recovering.world.revision,'revision-3','static fallback retries scene polling after initial outage');
+ recovering.dispose();console.log('PASS cat scene: care/user priority, goal boundaries, snapshot completion, stale advice, polling races, offline recovery and disposal');
+})().catch(e=>{console.error(e);process.exitCode=1});

@@ -50,6 +50,8 @@ def archive():
         with db:
             db.execute('DELETE FROM companion_memories WHERE owner=?',(owner,))
             db.execute('DELETE FROM companion_messages WHERE owner=?',(owner,))
+            db.execute('DELETE FROM cat_scene_observations WHERE owner=?',(owner,))
+            db.execute('DELETE FROM cat_scene_decisions WHERE owner=?',(owner,))
             memory.invalidate_context(db,owner)
     return jsonify(memory.profile(owner,p)),200,{'Cache-Control':'no-store'}
 

@@ -3,8 +3,11 @@ const {Controller}=require('../static/js/den/cat-agent');
 const catalog=require('../static/data/cat-world.json');
 const {Navigation}=require('../static/js/den/scene-navigation');
 const layout=require('../static/js/den/mistwood-layout');
+const farm=require('../static/js/den/farm-garden');
+const farmLayout=require('../static/data/farm-layout.json');
 (async()=>{
- const nav=new Navigation({...layout,bodyRadius:.619,obstacles:[...layout.obstacles,{x:-2.4,z:-1.2,w:1.12,d:.52}]});
+ const garden=farm.navigation(layout,farmLayout);
+ const nav=new Navigation({...garden,bodyRadius:.619,obstacles:[...garden.obstacles,{x:-2.4,z:-1.2,w:1.12,d:.52}]});
  let time=0,animation='',reports=0;
  const model={position:{x:0,z:0}}, move={navigation:nav,enabled:true,path:[],owner:'idle',interrupt(){this.path=[];this.owner='interaction';},goTo(p){const r=nav.route(model.position,p);if(!r)return false;this.path=r;this.owner='command';return true;}};
  const life={cancel(){this.active=null;this.approach=null;},begin(){this.active={};return true;},seekWall(){this.approach={};return true;}};

@@ -3,6 +3,17 @@
  const cutoffs=new Map();
  let paused=false,busy=false,latest=null,selected='',timer,scopeLost=false,receivedAt=0;
  const text=(id,value)=>$(id).textContent=value;
+ function sceneContext(d){
+  const scene=d.scene||{},current=scene.current,used=scene.used?.[selected],decision=scene.decisions?.find(r=>r.stream===selected);
+  const list=(id,items)=>$(id).replaceChildren(...(items.length?items:['暂无记录']).map(value=>{const li=document.createElement('li');li.textContent=value;return li;}));
+  text('scene-current',current?'服务器场景版本 '+current.revision+' · '+new Date(current.asOf*1000).toLocaleTimeString():'场景数据暂不可用');
+  text('scene-received',used?'本实例使用版本 '+used.revision+(used.revision===current?.revision?' · 已同步':' · 当前行动沿用出发快照，新变化将在后续选择时考虑'):'尚未收到本实例的场景快照，请刷新猫咪小岛。');
+  list('scene-beds',[...(used?.beds||[]).map(b=>b.name+'：'+(b.plant?b.plant.name+' · '+b.plant.stageName+' · '+b.plant.stage+'/10'+(b.plant.wateredToday?' · 今日已浇水':''):'尚未种植')),...(used?.decorations||[]).map(p=>p.place+'：'+p.plant)]);
+  list('scene-changes',(current?.recentChanges||[]).map(e=>new Date(e.created*1000).toLocaleTimeString()+' · '+e.summary));
+  list('scene-experiences',(scene.experiences||[]).map(e=>new Date(e.created*1000).toLocaleString()+' · '+e.summary));
+  text('scene-model-status',decision?new Date(decision.created*1000).toLocaleTimeString()+' · '+(decision.modelUsed?'已尝试请求模型；结果来源：'+decision.result.source:'本轮使用本地规则，未请求模型'):'本实例尚无后台决策请求。');
+  text('scene-model-input',decision?JSON.stringify({inputs:decision.inputs,result:decision.result},null,2):'');
+ }
  function renderPaths(s,age){
   const history=CatPaths.trail(s?.trail,cutoffs.get(selected)??-Infinity);
   $('walked-path').setAttribute('d',$('show-trail').checked?history.d:'');
@@ -14,6 +25,7 @@
   const options=d.streams.map(s=>{const o=document.createElement('option');o.value=s.stream;o.textContent=s.stream.slice(0,8)+' · '+new Date(s.updated*1000).toLocaleTimeString();return o;});
   $('streams').replaceChildren(...options);if(!d.streams.some(s=>s.stream===selected))selected=d.streams[0]?.stream||'';$('streams').value=selected;
   const stream=d.streams.find(s=>s.stream===selected),s=stream?.snapshot,age=stream?d.serverTime-stream.updated:Infinity;
+  sceneContext(d);
   $('share-card').disabled=!stream;
   for(const id of ['agent-pause','agent-resume','agent-home'])if($(id))$(id).disabled=scopeLost||!stream||age>10||s.phase==='stopped';
   const control=d.controls?.find(c=>c.stream===selected);if(control&&$('control-status'))text('control-status',({pending:d.serverTime-control.created>30?'指令已过期':'等待猫咪页面确认…',applied:'猫咪已响应指令',busy:'猫咪正在与你互动，请稍后再试',unavailable:'当前无法执行，请检查自由活动和猫窝',expired:'指令已过期，请重新发送'})[control.result]||'');
@@ -25,7 +37,7 @@
   const events=d.events.filter(e=>e.stream===selected);text('count',events.length+' 条');$('events').replaceChildren(...events.map(e=>{const a=document.createElement('div');a.className='event';const time=document.createElement('time'),p=document.createElement('p'),reason=document.createElement('small');time.textContent=new Date(e.updated*1000).toLocaleTimeString()+' · '+(phases[e.snapshot.phase]||e.snapshot.phase);p.textContent=(e.snapshot.source==='model'?'[AI] ':'[本地] ')+e.snapshot.text;reason.textContent=e.snapshot.reason;a.append(time,p,reason);return a;}));
   $('memory').replaceChildren(...d.catalog.map(p=>{const m=d.memory.find(m=>m.target===p.id),tr=document.createElement('tr');for(const value of [p.name,m?.visits||0,results[m?.result]||'尚未探索']){const td=document.createElement('td');td.textContent=value;tr.append(td);}return tr;}));
  }
- async function poll(){if(paused||busy||document.hidden||scopeLost)return;busy=true;const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),5000);try{const r=await fetch('/api/cat-agent/monitor',{cache:'no-store',signal:abort.signal});if(!r.ok)throw Error();const d=await r.json();if(d.scope!==window.MONITOR_SCOPE){scopeLost=true;for(const id of ['agent-pause','agent-resume','agent-home'])if($(id))$(id).disabled=true;latest=null;$('share-card').disabled=true;$('share-preview').close();cutoffs.clear();$('walked-path').setAttribute('d','');$('planned-path').setAttribute('d','');text('path-stats','');$('events').replaceChildren();$('memory').replaceChildren();$('places').replaceChildren();$('cat').setAttribute('visibility','hidden');for(const id of ['life-story','life-imprints','intent','reason','phase','source','energy','hunger','thirst','tired','route','task'])text(id,'—');text('connection','账号已切换，请刷新监控页');return;}latest=d;receivedAt=Date.now();render(d);}catch(e){text('connection','监控连接暂时中断，正在重试');}finally{clearTimeout(timeout);busy=false;}}
+ async function poll(){if(paused||busy||document.hidden||scopeLost)return;busy=true;const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),5000);try{const r=await fetch('/api/cat-agent/monitor',{cache:'no-store',signal:abort.signal});if(!r.ok)throw Error();const d=await r.json();if(d.scope!==window.MONITOR_SCOPE){scopeLost=true;for(const id of ['agent-pause','agent-resume','agent-home'])if($(id))$(id).disabled=true;latest=null;sceneContext({});$('share-card').disabled=true;$('share-preview').close();cutoffs.clear();$('walked-path').setAttribute('d','');$('planned-path').setAttribute('d','');text('path-stats','');$('events').replaceChildren();$('memory').replaceChildren();$('places').replaceChildren();$('cat').setAttribute('visibility','hidden');for(const id of ['life-story','life-imprints','intent','reason','phase','source','energy','hunger','thirst','tired','route','task'])text(id,'—');text('connection','账号已切换，请刷新监控页');return;}latest=d;receivedAt=Date.now();render(d);}catch(e){text('connection','监控连接暂时中断，正在重试');}finally{clearTimeout(timeout);busy=false;}}
  async function control(action){if(scopeLost||!selected)return;try{const r=await fetch('/api/cat-agent/control',{method:'POST',headers:{'Content-Type':'application/json','X-Profile-Scope':window.MONITOR_SCOPE},body:JSON.stringify({stream:selected,action}),signal:AbortSignal.timeout(6000)});const d=await r.json();if(!r.ok)throw Error(d.error||'发送失败');if(d.scope!==window.MONITOR_SCOPE)throw Error('账号已变化，请刷新');text('control-status','已发送，等待猫咪页面确认…');await poll();}catch(e){text('control-status',e.message);}}
  for(const [id,action] of [['agent-pause','pause'],['agent-resume','resume'],['agent-home','home']])if($(id))$(id).onclick=()=>control(action);
  $('share-card').onclick=()=>{const s=CatShareCard.summary(latest?{...latest,serverTime:latest.serverTime+(Date.now()-receivedAt)/1000}:null,selected,cutoffs.get(selected)??-Infinity);if(!s)return;CatShareCard.draw($('share-canvas'),s);text('share-status',s.points?'预览已生成，保存后可自行分享。':'当前还没有轨迹，卡片会如实显示 0 个采样点。');$('share-preview').showModal();};

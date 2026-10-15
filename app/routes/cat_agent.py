@@ -4,6 +4,7 @@ from ..services import cat_agent_service as agent, companion_service as companio
 
 from ..services import cat_relationship_service as relationship
 from ..services import cat_experience_service as experience
+from ..services import cat_scene_service as scene
 
 bp=Blueprint('cat_agent',__name__)
 
@@ -23,7 +24,12 @@ def no_cache(response):
 
 @bp.get('/api/cat-agent')
 def status():
-    return jsonify(scope=companion.browser_scope(),catalog=agent.CATALOG,memory=agent.memories(companion.owner_key()))
+    owner=companion.owner_key()
+    return jsonify(scope=companion.browser_scope(),catalog=agent.CATALOG,memory=agent.memories(owner),world=scene.snapshot(owner))
+
+@bp.get('/api/cat-agent/scene')
+def scene_state():
+    return jsonify(scope=companion.browser_scope(),world=scene.snapshot(companion.owner_key()))
 
 @bp.post('/api/cat-agent/<operation>')
 def operate(operation):
@@ -51,7 +57,7 @@ def monitor_page():
 
 @bp.get('/api/cat-agent/monitor')
 def monitor_data():
-    return jsonify(**agent.monitor_state(companion.owner_key()),controls=experience.controls(companion.owner_key()),relationship=relationship.state(companion.owner_key()),scope=companion.browser_scope(),catalog=agent.CATALOG,memory=agent.memories(companion.owner_key()))
+    return jsonify(**agent.monitor_state(companion.owner_key()),scene=scene.monitor(companion.owner_key()),controls=experience.controls(companion.owner_key()),relationship=relationship.state(companion.owner_key()),scope=companion.browser_scope(),catalog=agent.CATALOG,memory=agent.memories(companion.owner_key()))
 
 @bp.get("/api/cat-agent/relationship")
 def relationship_state():

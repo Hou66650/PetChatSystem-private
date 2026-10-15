@@ -57,6 +57,8 @@ def create_app(config_object=Config):
         supply_service.init_schema()
         from .services import farm_service
         farm_service.init_schema()
+        from .services import cat_scene_service
+        cat_scene_service.init_schema()
         from .services import voiceprint_service
         voiceprint_service.init_schema()
         from .routes.pet_studio import init_schema as init_pet_studio

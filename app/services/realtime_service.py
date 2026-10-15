@@ -65,6 +65,9 @@ def build_instructions(pet_id, gender=None, surface='chat', private_context=True
     pet = pet_registry.get_pet(pet_id)
     text = (pet_registry.build_system_prompt(pet, gender) + VOICE_CONSTRAINTS
             + (companion_service.context(companion_service.owner_key(), pet_id) if private_context else ''))
+    if private_context:
+        from . import cat_scene_service
+        text += cat_scene_service.prompt(companion_service.owner_key(),pet_id)
     if surface == 'den':
         text += ('\n你在3D小窝里陪伴用户。明确动作请求会由系统另行执行，'
                  '可简短回应“好呀”，不要声称动作已经完成；不要朗读动作指令或JSON。')

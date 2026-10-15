@@ -18,6 +18,10 @@ CATALOG = [
 SPECIES = {p['id']:p for p in CATALOG}
 SHOP = [dict(id='seed:'+p['id'],name=p['name']+'种子',price=p['price']) for p in CATALOG]+[dict(id='pot',name='手作陶土花盆',price=15)]
 
+def bed_name(key):
+    return ('育苗床' if BEDS[key].get('nursery') else '种植床')+key.split('-')[1]
+
+
 def init_schema():
     get_db().executescript('''
     CREATE TABLE IF NOT EXISTS farm_accounts(owner TEXT PRIMARY KEY,created REAL NOT NULL);
@@ -25,6 +29,8 @@ def init_schema():
     CREATE TABLE IF NOT EXISTS farm_plants(owner TEXT NOT NULL,bed TEXT NOT NULL,id TEXT NOT NULL,species TEXT NOT NULL,planted REAL NOT NULL,bonus REAL NOT NULL DEFAULT 0,water_day TEXT NOT NULL DEFAULT '',PRIMARY KEY(owner,bed));
     CREATE TABLE IF NOT EXISTS farm_decor(owner TEXT NOT NULL,slot TEXT NOT NULL,species TEXT NOT NULL,created REAL NOT NULL,PRIMARY KEY(owner,slot));
     CREATE TABLE IF NOT EXISTS farm_requests(owner TEXT NOT NULL,token TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(owner,token));
+    CREATE TABLE IF NOT EXISTS farm_events(id INTEGER PRIMARY KEY AUTOINCREMENT,owner TEXT NOT NULL,created REAL NOT NULL,kind TEXT NOT NULL,summary TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS farm_events_owner ON farm_events(owner,id);
     ''')
 
 def stock(db,owner,item,n):
@@ -64,6 +70,7 @@ def operate(owner,op,data):
         if old:
             if old['payload']!=payload:raise Error('操作编号已使用，请刷新后重试',409)
             db.commit();return state(owner)
+        event_text=None
         if op=='start':
             if db.execute('INSERT OR IGNORE INTO farm_accounts VALUES (?,?)',(owner,time.time())).rowcount:
                 for p in CATALOG:stock(db,owner,'seed:'+p['id'],2)
@@ -84,6 +91,7 @@ def operate(owner,op,data):
             if db.execute('SELECT 1 FROM farm_plants WHERE owner=? AND bed=?',(owner,bed['id'])).fetchone():raise Error('这块种植床已经有植物了',409)
             stock(db,owner,'seed:'+p['id'],-1)
             db.execute('INSERT INTO farm_plants(owner,bed,id,species,planted) VALUES (?,?,?,?,?)',(owner,bed['id'],uuid.uuid4().hex,p['id'],time.time()))
+            event_text='主人在'+bed_name(bed['id'])+'种下了'+p['name']
         elif op in ('water','harvest'):
             if not isinstance(data.get('bed'),str) or not isinstance(data.get('plant'),str):raise Error('缺少植物编号')
             row=db.execute('SELECT * FROM farm_plants WHERE owner=? AND bed=? AND id=?',(owner,data['bed'],data['plant'])).fetchone()
@@ -93,10 +101,12 @@ def operate(owner,op,data):
                 if row['water_day']==wallet.day():raise Error('今天已浇过水了',409)
                 if g['ready']:raise Error('已经成熟，可以收获了',409)
                 db.execute('UPDATE farm_plants SET bonus=bonus+?,water_day=? WHERE owner=? AND bed=?',(p['hours']*3600*.08,wallet.day(),owner,row['bed']))
+                event_text='主人给'+bed_name(row['bed'])+'的'+p['name']+'浇了水'
             else:
                 if not g['ready']:raise Error('还在生长，成熟后再来收获',409)
                 stock(db,owner,p['id'],2 if p['kind']=='food' else 1)
                 db.execute('DELETE FROM farm_plants WHERE owner=? AND bed=?',(owner,row['bed']))
+                event_text='主人收获了'+bed_name(row['bed'])+'的'+p['name']
         elif op=='place':
             slot=SLOTS.get(data.get('slot')) if isinstance(data.get('slot'),str) else None
             p=SPECIES.get(data.get('species')) if isinstance(data.get('species'),str) else None
@@ -105,6 +115,7 @@ def operate(owner,op,data):
             stock(db,owner,p['id'],-1)
             if p['kind']=='flower':stock(db,owner,'pot',-1)
             db.execute('INSERT INTO farm_decor VALUES (?,?,?,?)',(owner,slot['id'],p['id'],time.time()))
+            event_text='主人把'+p['name']+'安放在'+slot['name']
         elif op=='recover':
             if not isinstance(data.get('slot'),str):raise Error('请选择摆放位置')
             row=db.execute('SELECT * FROM farm_decor WHERE owner=? AND slot=?',(owner,data['slot'])).fetchone()
@@ -112,10 +123,14 @@ def operate(owner,op,data):
             stock(db,owner,row['species'],1)
             if SPECIES[row['species']]['kind']=='flower':stock(db,owner,'pot',1)
             db.execute('DELETE FROM farm_decor WHERE owner=? AND slot=?',(owner,row['slot']))
+            event_text='主人收回了'+SLOTS[row['slot']]['name']+'的'+SPECIES[row['species']]['name']
         elif op=='cook':
             # A game recipe, never pass raw crops directly to the animal care engine.
             stock(db,owner,'pumpkin',-1);supplies.stock(db,owner,'treat',1)
         else:raise Error('操作不存在',404)
+        if event_text:
+            db.execute('INSERT INTO farm_events(owner,created,kind,summary) VALUES (?,?,?,?)',(owner,time.time(),op,event_text))
+            db.execute('DELETE FROM farm_events WHERE owner=? AND id NOT IN (SELECT id FROM farm_events WHERE owner=? ORDER BY id DESC LIMIT 80)',(owner,owner))
         db.execute('INSERT INTO farm_requests VALUES (?,?,?)',(owner,token,payload));db.commit()
     except Exception:db.rollback();raise
     return state(owner)

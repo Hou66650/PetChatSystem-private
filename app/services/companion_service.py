@@ -153,7 +153,8 @@ def context(owner, pet_id):
 
 
 def planner_prompt(owner, pet_id, surface):
-    return context(owner, pet_id) + '\n当前 UTC 时间：' + datetime.now(timezone.utc).isoformat() + '''
+    from . import cat_scene_service
+    return context(owner, pet_id) + cat_scene_service.prompt(owner,pet_id) + '\n当前 UTC 时间：' + datetime.now(timezone.utc).isoformat() + '''
 本轮输出一个 JSON 对象，不要 Markdown，格式：
 {"reply":"给用户的自然回复","actions":[{"type":"允许的动作类型","quote":"本轮原文片段"}],"memories":[{"category":"允许的记忆分类","value":"本轮原文中的值","quote":"包含该值的本轮原文片段"}],"forget_ids":[]}
 reply 必须是非空中文短句。理解用户本轮意图，不要靠回复文本决定动作。
