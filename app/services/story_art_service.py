@@ -51,6 +51,7 @@ def start(owner, client, refresh=False):
             return {'error':'画师正在忙，请稍后再试。'}, 429
         prompt = ('清新治愈漫画插画，细腻手绘线条与淡水彩质感，奶油白、薄荷绿和天空蓝，'
                   '柔和自然光，精美有层次，不要文字、字母、水印或边框。主体完整位于画面中央，'
+                  '底部留出百分之十二的纯背景安全边距，猫咪、花草主体不要进入底部边距。'
                   '用于竖版宠物生活纪念卡插画区域：' + secrets.choice(SCENES))
         job = {'status':'pending', 'created':now, 'prompt':prompt}
         _jobs[owner] = job
