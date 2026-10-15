@@ -2,10 +2,15 @@ import io
 import json
 import struct
 import unittest
+import os
+import hashlib
+import time
 from pathlib import Path
 from unittest.mock import patch
 from PIL import Image
 from test_companion import CompanionTests
+from app.services import pet_adaptation_service as adaptation
+from app.db import get_db
 
 
 class PetStudioTests(unittest.TestCase):
@@ -76,3 +81,51 @@ class PetStudioTests(unittest.TestCase):
         r=self.photo(key)
         self.assertNotIn('model',r.json['tasks'][0]['assets'])
         self.assertEqual(r.json['tasks'][0]['status'],'draft')
+
+    def approved_model(self):
+        key=self.create_studio()
+        raw=Path('static/models/petchat-cat-v3/cat.glb').read_bytes()
+        self.a.post('/api/pet-studio/'+key+'/assets/model',data={'file':(io.BytesIO(raw),'cat.glb')},headers=self.headers)
+        self.a.post('/api/pet-studio/'+key+'/approve',json={},headers=self.headers)
+        return key,raw
+
+    def test_adaptation_requires_appearance_approval_and_valid_options(self):
+        key=self.create_studio()
+        self.assertEqual(self.a.post('/api/pet-studio/'+key+'/adapt',json={},headers=self.headers).status_code,409)
+        key,_=self.approved_model()
+        r=self.a.post('/api/pet-studio/'+key+'/adapt',json={'mode':'arbitrary'},headers=self.headers)
+        self.assertEqual(r.status_code,409)
+
+    def test_deleted_task_cannot_be_restored_by_late_worker(self):
+        key,raw=self.approved_model();digest=hashlib.sha256(raw).hexdigest()
+        with self.app.app_context():
+            db=get_db();db.execute('INSERT INTO pet_studio_adaptations VALUES (?,?,?,?,?,?)',(key,'job',digest,'running','{}',time.time()));db.commit()
+        self.a.post('/api/pet-studio/'+key+'/delete',json={},headers=self.headers)
+        adaptation._finish(self.app,key,'job',digest,'review_motion',{}, {'adapted':raw})
+        self.assertEqual(self.a.get('/api/pet-studio/'+key+'/assets/adapted').status_code,404)
+
+    def test_motion_approval_checks_version_and_all_checkpoints(self):
+        key,raw=self.approved_model()
+        with self.app.app_context():
+            db=get_db();db.execute('INSERT INTO pet_studio_adaptations VALUES (?,?,?,?,?,?)',(key,'current',hashlib.sha256(raw).hexdigest(),'review_motion','{}',time.time()));db.commit()
+        endpoint='/api/pet-studio/'+key+'/review-motion'
+        self.assertEqual(self.a.post(endpoint,json={'jobId':'old','checks':adaptation.CHECKS},headers=self.headers).status_code,409)
+        self.assertEqual(self.a.post(endpoint,json={'jobId':'current','checks':['walk']},headers=self.headers).status_code,400)
+        r=self.a.post(endpoint,json={'jobId':'current','checks':adaptation.CHECKS},headers=self.headers)
+        self.assertEqual(r.json['tasks'][0]['adaptation']['status'],'reviewed')
+
+    @unittest.skipUnless(os.getenv('PET_ADAPT_REAL_TEST')=='1','Set PET_ADAPT_REAL_TEST=1 for real Blender worker')
+    def test_real_local_blender_worker(self):
+        key,raw=self.approved_model()
+        r=self.a.post('/api/pet-studio/'+key+'/adapt',json={'mode':'auto'},headers=self.headers)
+        self.assertEqual(r.status_code,200)
+        self.assertEqual(r.json['tasks'][0]['adaptation']['status'],'running')
+        deadline=time.monotonic()+180
+        while time.monotonic()<deadline:
+            data=self.a.get('/api/pet-studio').json['tasks'][0]
+            if data['adaptation']['status']!='running':break
+            time.sleep(.5)
+        self.assertEqual(data['adaptation']['status'],'review_motion',data['adaptation'])
+        self.assertIn('adapted',data['assets']);self.assertIn('blend',data['assets'])
+        self.assertFalse(data['adaptation']['report']['readyForIsland'])
+        self.assertEqual(self.b.get('/api/pet-studio/'+key+'/assets/adapted').status_code,404)

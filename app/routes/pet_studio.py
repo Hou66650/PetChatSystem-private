@@ -13,6 +13,7 @@ from PIL import Image, ImageOps
 
 from ..db import get_db
 from ..services import companion_service as identity
+from ..services import pet_adaptation_service as adaptation
 
 bp = Blueprint('pet_studio', __name__)
 VIEWS = ('front', 'left', 'right', 'back', 'detail')
@@ -72,6 +73,7 @@ def snapshot():
         item = dict(row)
         del item['owner']
         item['assets'] = [r['slot'] for r in db.execute('SELECT slot FROM pet_studio_assets WHERE task=?', (row['id'],))]
+        item['adaptation'] = adaptation.state(row['id'])
         rows.append(item)
     return jsonify(tasks=rows, scope=identity.browser_scope(), generationAvailable=False)
 
@@ -167,6 +169,7 @@ def upload(task_id, slot):
         db.rollback()
         return jsonify(error='档案已被删除'), 404
     with db:
+        adaptation.clear(task_id)
         db.execute('INSERT OR REPLACE INTO pet_studio_assets VALUES (?,?,?,?)', (task_id, slot, mime, raw))
         db.execute('UPDATE pet_studio_tasks SET status=?,updated=? WHERE id=?',
                    ('review' if slot == 'model' else 'draft', time.time(), task_id))
@@ -180,7 +183,8 @@ def asset(task_id, slot):
     if task(task_id) is None: return jsonify(error='档案不存在'), 404
     row = get_db().execute('SELECT * FROM pet_studio_assets WHERE task=? AND slot=?', (task_id,slot)).fetchone()
     if row is None: return jsonify(error='文件不存在'), 404
-    return send_file(io.BytesIO(row['data']), mimetype=row['mime'], download_name=slot+('.glb' if slot=='model' else '.jpg'))
+    suffix = '.blend' if slot=='blend' else '.glb' if slot in ('model','adapted') else '.jpg'
+    return send_file(io.BytesIO(row['data']), mimetype=row['mime'], download_name=slot+suffix, as_attachment=slot=='blend')
 
 
 @bp.get('/api/pet-studio/<task_id>/references')
@@ -191,7 +195,7 @@ def references(task_id):
     with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as archive:
         archive.writestr('reference.json', json.dumps({'name':row['name'], 'mode':row['mode'],
             'notes':row['notes'], 'species':'cat', 'visibility':'private'}, ensure_ascii=False, indent=2))
-        for image in get_db().execute("SELECT slot,data FROM pet_studio_assets WHERE task=? AND slot!='model'", (task_id,)):
+        for image in get_db().execute("SELECT slot,data FROM pet_studio_assets WHERE task=? AND slot IN ('front','left','right','back','detail')", (task_id,)):
             archive.writestr(image['slot']+'.jpg', image['data'])
     output.seek(0)
     return send_file(output, mimetype='application/zip', as_attachment=True, download_name='pet-references.zip')
@@ -207,8 +211,27 @@ def operate(task_id, operation):
     status = row['status']
     if operation == 'delete':
         with db:
+            adaptation.clear(task_id)
             db.execute('DELETE FROM pet_studio_assets WHERE task=?', (task_id,))
             db.execute('DELETE FROM pet_studio_tasks WHERE id=?', (task_id,))
+        return snapshot()
+    if operation == 'adapt':
+        if status != 'approved': return jsonify(error='请先核对并确认外貌'), 409
+        try: adaptation.start(task_id, data.get('mode','auto'), data.get('forward','-Y'))
+        except ValueError as exc: return jsonify(error=str(exc)), 409
+        return snapshot()
+    if operation == 'review-motion':
+        db.execute('BEGIN IMMEDIATE')
+        result = adaptation.state(task_id)
+        if not result or result['status'] != 'review_motion' or data.get('jobId') != result['id']:
+            db.rollback()
+            return jsonify(error='动作版本已变化，请刷新后重新检查'), 409
+        checks = data.get('checks')
+        if not isinstance(checks, list) or any(not isinstance(c,str) for c in checks) or set(checks) != set(adaptation.CHECKS):
+            db.rollback()
+            return jsonify(error='请逐项检查外貌、动作、头部及脚掌'), 400
+        with db:
+            db.execute("UPDATE pet_studio_adaptations SET status='reviewed',updated=? WHERE task=?", (time.time(),task_id))
         return snapshot()
     if operation == 'prepare':
         if not db.execute("SELECT 1 FROM pet_studio_assets WHERE task=? AND slot='front'", (task_id,)).fetchone():

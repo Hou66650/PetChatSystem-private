@@ -18,10 +18,18 @@
    <a id="studio-download">下载素材包 ↗</a>
    <div class="studio-notice"><strong>素材先安放好，生成可以稍后继续。</strong><p>云端生成暂未开放：混元账户目前返回额度不足。保存素材不会上传腾讯云、不会扣费，也不会自动开始生成。</p></div>
    <details><summary>已有生成模型？导入并核对外貌</summary><p>导入 Blender 导出的自包含 GLB（最多 30 MB）。此处仅预览外貌，尚未通过动作验收的模型不会替换岛上的猫咪。</p><input id="studio-model" type="file" accept=".glb" aria-label="导入 GLB 模型"></details>
-   <div id="studio-preview-wrap" hidden><canvas id="studio-preview" aria-label="拖动旋转模型，滚轮缩放"></canvas><p id="studio-preview-note">拖动旋转 · 滚轮缩放</p></div>
+   <div id="studio-preview-wrap" hidden><canvas id="studio-preview" aria-label="拖动旋转模型，滚轮缩放"></canvas><p id="studio-preview-note">拖动旋转 · 滚轮缩放</p><div id="studio-motion-buttons" class="studio-actions" hidden></div><label id="studio-head-control" hidden>转头检查<input id="studio-head" type="range" min="-0.4" max="0.4" step="0.02" value="0"></label></div>
    <label class="studio-notes">想保留的特征 / 需要修正的地方<textarea id="studio-notes" maxlength="1000" rows="3" placeholder="例如：左耳有一小块白毛，尾巴尖是深色的。"></textarea></label>
    <div class="studio-actions"><button id="studio-save">保存说明</button><button id="studio-approve" hidden>确认外貌，等待动作适配</button><button id="studio-delete" class="studio-delete">删除档案</button></div>
    <p id="studio-next" class="studio-hint"></p>
+   <section id="studio-adaptation" class="studio-adaptation" hidden>
+    <h3>让它动起来</h3><p>已有标准猫骨骼时复用动作；无骨骼的站立猫可以尝试模板蒙皮。草稿仍需要你逐项检查，不会直接替换岛上的伙伴。</p>
+    <label>适配方式<select id="studio-adapt-mode"><option value="auto">兼容骨骼 · 保留原蒙皮</option><option value="template-skin">无骨骼站立猫 · 模板蒙皮草稿</option></select></label>
+    <label>模板蒙皮时的朝向校正<select id="studio-adapt-forward"><option value="-Y">保持默认朝向</option><option value="+Y">旋转 180°</option><option value="+X">旋转 90°</option><option value="-X">旋转 -90°</option></select></label>
+    <button id="studio-adapt-start">开始本机 Blender 适配</button><p id="studio-adapt-status" role="status"></p><ul id="studio-adapt-report"></ul>
+    <div id="studio-adapt-downloads" class="studio-actions" hidden><a id="studio-adapt-glb">下载动作模型 ↗</a><a id="studio-adapt-blend">下载 Blender 工程 ↗</a></div>
+    <fieldset id="studio-motion-checks" hidden><legend>动作验收 · 请播放动作后逐项确认</legend><label><input type="checkbox" value="appearance"> 外形和毛色没有改变</label><label><input type="checkbox" value="walk"> 走路自然，四肢没有拉扯</label><label><input type="checkbox" value="run"> 跑动没有明显穿插</label><label><input type="checkbox" value="sit"> 坐下、起身正常</label><label><input type="checkbox" value="sleep"> 趴卧、休息正常</label><label><input type="checkbox" value="eat"> 吃饭时头颈自然</label><label><input type="checkbox" value="head"> 转头时眼睛、耳朵跟随正常</label><label><input type="checkbox" value="paws"> 脚掌没有明显滑动或穿地</label><button id="studio-motion-accept">记录动作验收通过</button></fieldset>
+   </section>
   </section>
   <section id="studio-empty"><div class="studio-orbit">✦</div><h2>每一只，都值得被记住。</h2><p>先为它留一个名字，再放上熟悉的照片。<br>不用一次准备完，档案会替你保存进度。</p></section>
  </div>

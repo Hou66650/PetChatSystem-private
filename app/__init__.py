@@ -57,6 +57,8 @@ def create_app(config_object=Config):
         voiceprint_service.init_schema()
         from .routes.pet_studio import init_schema as init_pet_studio
         init_pet_studio()
+        from .services import pet_adaptation_service
+        pet_adaptation_service.init_schema()
 
     @app.context_processor
     def _companion_scope():

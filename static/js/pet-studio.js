@@ -2,7 +2,7 @@
 (()=>{'use strict';
  const $=id=>document.getElementById(id),scope=window.PET_STUDIO_SCOPE;
  const labels={draft:'收集照片',awaiting_generation:'等待生成',review:'核对外貌',approved:'等待动作适配'};
- let rows=[],selected=null,busy=false,renderer,scene,camera,controls,model,frame,previewTicket=0;
+ let rows=[],selected=null,busy=false,renderer,scene,camera,controls,model,frame,previewTicket=0,mixer,activeAction,pollTimer;
  const note=t=>{$('studio-message').textContent=t;};
  async function api(path='',body,form=false){
   const response=await fetch('/api/pet-studio'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:form?{'X-Profile-Scope':scope}:{'X-Profile-Scope':scope,'Content-Type':'application/json'},body:body===undefined?undefined:form?body:JSON.stringify(body)});
@@ -10,13 +10,14 @@
   if(data.scope!==scope)throw Error('账号已变化，请刷新页面');return data;
  }
  function setBusy(value){busy=value;for(const el of document.querySelectorAll('.pet-studio button,.pet-studio input,.pet-studio textarea'))el.disabled=value;}
- async function change(path,body,form=false){if(busy)return;setBusy(true);try{const data=await api(path,body,form);rows=data.tasks;paint();note('已保存。');}catch(e){note(e.message);}finally{setBusy(false);}}
- function dispose(){previewTicket++;cancelAnimationFrame(frame);if(model){model.traverse(o=>{o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])if(m){for(const v of Object.values(m))if(v?.isTexture)v.dispose();m.dispose();}});scene?.remove(model);model=null;}controls?.dispose();renderer?.dispose();renderer=null;}
+ async function change(path,body,form=false){if(busy)return;setBusy(true);try{const data=await api(path,body,form);rows=data.tasks;paint();note('已保存。');schedulePoll();}catch(e){note(e.message);}finally{setBusy(false);}}
+ function schedulePoll(){clearTimeout(pollTimer);if(!rows.some(r=>r.adaptation?.status==='running'))return;pollTimer=setTimeout(async()=>{if(busy){schedulePoll();return;}try{const data=await api();const before=JSON.stringify(rows.map(r=>[r.id,r.adaptation?.status]));rows=data.tasks;if(before!==JSON.stringify(rows.map(r=>[r.id,r.adaptation?.status])))paint();schedulePoll();}catch(e){note(e.message+'，可刷新查看结果。');}},3000);}
+ function dispose(){previewTicket++;cancelAnimationFrame(frame);mixer?.stopAllAction();mixer=null;activeAction=null;if(model){model.traverse(o=>{o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])if(m){for(const v of Object.values(m))if(v?.isTexture)v.dispose();m.dispose();}});scene?.remove(model);model=null;}if(scene)scene.traverse(o=>{if(o.isGridHelper){o.geometry.dispose();o.material.dispose();}});controls?.dispose();renderer?.dispose();renderer=null;}
  async function preview(row){
-  dispose();$('studio-preview-wrap').hidden=!row.assets.includes('model');if(!row.assets.includes('model'))return;
+  dispose();$('studio-motion-buttons').hidden=true;$('studio-motion-buttons').replaceChildren();$('studio-head-control').hidden=true;$('studio-preview-wrap').hidden=!row.assets.includes('model');if(!row.assets.includes('model'))return;
   const ticket=previewTicket;$('studio-preview-note').textContent='正在加载模型…';
   try{
-   const response=await fetch('/api/pet-studio/'+row.id+'/assets/model');if(!response.ok)throw Error('模型读取失败');
+   const adapted=row.assets.includes('adapted');const response=await fetch('/api/pet-studio/'+row.id+'/assets/'+(adapted?'adapted':'model'));if(!response.ok)throw Error('模型读取失败');
    const buffer=await response.arrayBuffer();if(ticket!==previewTicket)return;
    const gltf=await new Promise((resolve,reject)=>new THREE.GLTFLoader().parse(buffer,'',resolve,reject));
    if(ticket!==previewTicket){gltf.scene.traverse(o=>{o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])if(m){for(const v of Object.values(m))if(v?.isTexture)v.dispose();m.dispose();}});return;}
@@ -25,8 +26,14 @@
    const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3()),extent=Math.max(size.x,size.y,size.z);
    if(!Number.isFinite(extent)||extent<=0)throw Error('模型尺寸无效');model.position.sub(center);model.scale.setScalar(1/extent);model.position.multiplyScalar(1/extent);scene.add(model);
    camera=new THREE.PerspectiveCamera(35,1,.01,100);camera.position.set(1.3,.8,2);controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.minDistance=.7;controls.maxDistance=5;
-   let last=0;const tick=now=>{frame=requestAnimationFrame(tick);if(document.hidden||now-last<33)return;last=now;const c=$('studio-preview');renderer.setSize(c.clientWidth,c.clientHeight,false);camera.aspect=c.clientWidth/Math.max(c.clientHeight,1);camera.updateProjectionMatrix();controls.update();renderer.render(scene,camera);};frame=requestAnimationFrame(tick);
-   $('studio-preview-note').textContent='拖动旋转 · 滚轮缩放 · 外貌预览不代表动作已适配';
+   const grid=new THREE.GridHelper(2,20,0x889c8d,0xc3cec0);grid.position.y=-size.y/(2*extent);scene.add(grid);
+   mixer=new THREE.AnimationMixer(model);const names={idle_breathe:'站立',walk:'走路',run:'跑动',sit_down:'坐下',stand_up:'起身',lie_down:'趴下',sleep_loop:'睡觉',eat:'吃饭',sniff:'嗅闻',stretch:'伸懒腰',turn_left:'左转',turn_right:'右转'};
+   $('studio-motion-buttons').hidden=!adapted;$('studio-head-control').hidden=!adapted;$('studio-head').value='0';
+   $('studio-motion-buttons').replaceChildren(...gltf.animations.filter(c=>names[c.name]).map(clip=>{const b=document.createElement('button');b.textContent=names[clip.name];b.onclick=()=>{activeAction?.fadeOut(.15);activeAction=mixer.clipAction(clip);activeAction.reset().fadeIn(.15).play();for(const sibling of b.parentElement.children)sibling.setAttribute('aria-pressed',String(sibling===b));};return b;}));
+   if(adapted)$('studio-motion-buttons').firstChild?.click();
+   const head=model.getObjectByName('head');let headBase=null;
+   let last=0;const tick=now=>{frame=requestAnimationFrame(tick);if(document.hidden||now-last<33)return;const dt=Math.min(.05,(now-last)/1000);last=now;if(headBase)head.quaternion.copy(headBase);mixer.update(dt);if(head&&adapted){headBase=head.quaternion.clone();head.rotation.y+=Number($('studio-head').value);}const c=$('studio-preview');renderer.setSize(c.clientWidth,c.clientHeight,false);camera.aspect=c.clientWidth/Math.max(c.clientHeight,1);camera.updateProjectionMatrix();controls.update();renderer.render(scene,camera);};frame=requestAnimationFrame(tick);
+   $('studio-preview-note').textContent=adapted?'动作草稿 · 地面网格用于检查脚掌 · 请逐项验收':'拖动旋转 · 滚轮缩放 · 外貌预览不代表动作已适配';
   }catch(e){if(ticket===previewTicket){dispose();$('studio-preview-note').textContent='预览失败：'+e.message;}}
  }
  function paint(){
@@ -38,13 +45,16 @@
   $('studio-guidance').textContent=row.mode==='memory'?'从已有照片里选清楚的一张就好。不必凑齐所有角度，未拍到的细节需要后续与你一起核对。':'尽量在柔和光线下拍摄站立的全身照，保持姿势相近，让耳朵、四肢与尾巴都在画面内。手机可直接拍照上传；视频抽帧稍后开放。';
   $('studio-photos').replaceChildren(...Object.entries({front:'正面 · 必填',left:'左侧',right:'右侧',back:'背面',detail:'花纹细节'}).map(([slot,title])=>{const label=document.createElement('label');label.className='studio-photo';const caption=document.createElement('span');caption.textContent=title;label.append(caption);if(row.assets.includes(slot)){const img=document.createElement('img');img.src='/api/pet-studio/'+row.id+'/assets/'+slot+'?v='+row.updated;img.alt=title;label.append(img);}else{const box=document.createElement('span');box.className='photo-placeholder';box.textContent='＋';label.append(box);}const input=document.createElement('input');input.type='file';input.accept='image/jpeg,image/png';input.setAttribute('aria-label','上传'+title+'照片');input.onchange=()=>upload(row.id,slot,input.files[0]);label.append(input);return label;}));
   $('studio-notes').value=row.notes;$('studio-approve').hidden=row.status!=='review';$('studio-prepare').hidden=['review','approved'].includes(row.status);
-  $('studio-next').textContent=row.status==='approved'?'外貌已确认。下一步需要 Blender 骨骼、蒙皮与动作验收；目前尚未启用到岛屿或桌宠。':'保存说明后，可随时回来继续。模型生成及外貌核对不会自动公开档案。';void preview(row);
+  $('studio-next').textContent=row.status==='approved'?'外貌已确认，可在下方适配动作。动作验收不会自动启用到岛屿或桌宠。':'保存说明后，可随时回来继续。模型生成及外貌核对不会自动公开档案。';paintAdaptation(row);void preview(row);
  }
+ function paintAdaptation(row){$('studio-adaptation').hidden=row.status!=='approved';const a=row.adaptation,r=a?.report||{},states={running:'Blender 正在适配，通常需要几十秒。你可以离开页面，稍后回来查看。',review_motion:'动作草稿已生成，请在上方逐一播放并检查。',needs_manual:'需要手动修正后重试',failed:'此次适配未完成，可以重试',reviewed:'已记录你的动作验收。可下载模型和工程；尚未自动入岛。'};$('studio-adapt-status').textContent=states[a?.status]||'在本机运行，不调用混元，不消耗云端额度。';$('studio-adapt-start').hidden=a?.status==='running';$('studio-adapt-report').replaceChildren(...[r.error,...(r.warnings||[])].filter(Boolean).map(text=>{const li=document.createElement('li');li.textContent=text;return li;}));$('studio-adapt-downloads').hidden=!row.assets.includes('adapted');$('studio-adapt-glb').href='/api/pet-studio/'+row.id+'/assets/adapted';$('studio-adapt-glb').download='cat-animated.glb';$('studio-adapt-blend').href='/api/pet-studio/'+row.id+'/assets/blend';$('studio-motion-checks').hidden=a?.status!=='review_motion';for(const c of $('studio-motion-checks').querySelectorAll('input'))c.checked=false;}
  function upload(id,slot,file){if(!file)return;const limit=(slot==='model'?30:8)*1024*1024;if(file.size>limit){note('文件过大，请压缩后再上传。');return;}if(slot!=='model'&&rows.find(r=>r.id===id)?.assets.includes('model')&&!confirm('更换参考照将移除旧模型预览，继续吗？'))return;const data=new FormData();data.append('file',file);void change('/'+id+'/assets/'+slot,data,true);}
  $('studio-create').onsubmit=e=>{e.preventDefault();const data=new FormData(e.target);selected=null;void change('',{name:data.get('name'),mode:data.get('mode')});};
  $('studio-model').onchange=e=>upload(selected,'model',e.target.files[0]);
  for(const [id,op] of [['studio-prepare','prepare'],['studio-save','notes'],['studio-approve','approve']])$(id).onclick=()=>change('/'+selected+'/'+op,{notes:$('studio-notes').value});
  $('studio-delete').onclick=()=>{if(confirm('永久删除这个私人档案、照片和模型？'))void change('/'+selected+'/delete',{});};
- addEventListener('pagehide',dispose);
- api().then(data=>{rows=data.tasks;paint();}).catch(e=>{note(e.message);$('studio-login').hidden=false;setBusy(true);});
+ $('studio-adapt-start').onclick=()=>change('/'+selected+'/adapt',{mode:$('studio-adapt-mode').value,forward:$('studio-adapt-forward').value});
+ $('studio-motion-accept').onclick=()=>{const checks=[...$('studio-motion-checks').querySelectorAll('input:checked')].map(c=>c.value);if(checks.length!==8){note('请播放动作并完成全部 8 项检查。');return;}void change('/'+selected+'/review-motion',{checks,jobId:rows.find(r=>r.id===selected)?.adaptation?.id});};
+ addEventListener('pagehide',()=>{clearTimeout(pollTimer);dispose();});
+ api().then(data=>{rows=data.tasks;paint();schedulePoll();}).catch(e=>{note(e.message);$('studio-login').hidden=false;setBusy(true);});
 })();
