@@ -32,6 +32,7 @@
         }
         .den-pet-chip img {
             width: 30px; height: 30px; border-radius: 50%; object-fit: cover;
+            background: radial-gradient(circle at 35% 25%, #fffaf0, #d9e4dd);
             border: 2px solid transparent; transition: border-color .15s;
         }
         .den-pet-chip.selected { color: var(--c-primary-deep); font-weight: 700; }
@@ -2826,7 +2827,8 @@ document.addEventListener('DOMContentLoaded', () => {
             PETS.forEach((p) => {
                 const b = document.createElement('button');
                 b.className = 'den-pet-chip' + (p.id === currentPetId ? ' selected' : '');
-                b.innerHTML = `<img src="/images/${p.avatar}" alt="">${p.name}`;
+                const portrait={1:'shiba',2:'husky',3:'cat',4:'shepherd'}[p.id];
+                b.innerHTML = `<img src="/static/images/pet-portraits/${portrait}.png?v={{ app_version }}" alt="" width="30" height="30">${p.name}`;
                 b.addEventListener('click', () => spawnPet(p.id));
                 box.appendChild(b);
             });
