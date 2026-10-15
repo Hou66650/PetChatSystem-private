@@ -1,0 +1,218 @@
+{
+  "cosmos": [
+    {
+      "stage": 1,
+      "triangles": 1044,
+      "lodTriangles": 340,
+      "bytes": 5001752,
+      "meshes": 2
+    },
+    {
+      "stage": 2,
+      "triangles": 25012,
+      "lodTriangles": 2548,
+      "bytes": 6154056,
+      "meshes": 3
+    },
+    {
+      "stage": 3,
+      "triangles": 36996,
+      "lodTriangles": 3652,
+      "bytes": 6458668,
+      "meshes": 3
+    },
+    {
+      "stage": 4,
+      "triangles": 48980,
+      "lodTriangles": 4756,
+      "bytes": 6763272,
+      "meshes": 3
+    },
+    {
+      "stage": 5,
+      "triangles": 72320,
+      "lodTriangles": 7040,
+      "bytes": 6813556,
+      "meshes": 2
+    },
+    {
+      "stage": 6,
+      "triangles": 96428,
+      "lodTriangles": 9388,
+      "bytes": 7425920,
+      "meshes": 2
+    },
+    {
+      "stage": 7,
+      "triangles": 123144,
+      "lodTriangles": 15368,
+      "bytes": 9413892,
+      "meshes": 4
+    },
+    {
+      "stage": 8,
+      "triangles": 138916,
+      "lodTriangles": 17796,
+      "bytes": 10517396,
+      "meshes": 4
+    },
+    {
+      "stage": 9,
+      "triangles": 177344,
+      "lodTriangles": 23936,
+      "bytes": 12301312,
+      "meshes": 6
+    },
+    {
+      "stage": 10,
+      "triangles": 198780,
+      "lodTriangles": 27292,
+      "bytes": 12914468,
+      "meshes": 6
+    }
+  ],
+  "pumpkin": [
+    {
+      "stage": 1,
+      "triangles": 1580,
+      "lodTriangles": 144,
+      "bytes": 5016156,
+      "meshes": 3
+    },
+    {
+      "stage": 2,
+      "triangles": 3770,
+      "lodTriangles": 524,
+      "bytes": 9091716,
+      "meshes": 4
+    },
+    {
+      "stage": 3,
+      "triangles": 6128,
+      "lodTriangles": 1072,
+      "bytes": 9148148,
+      "meshes": 4
+    },
+    {
+      "stage": 4,
+      "triangles": 6662,
+      "lodTriangles": 1232,
+      "bytes": 5127580,
+      "meshes": 3
+    },
+    {
+      "stage": 5,
+      "triangles": 10260,
+      "lodTriangles": 2260,
+      "bytes": 9244800,
+      "meshes": 4
+    },
+    {
+      "stage": 6,
+      "triangles": 25640,
+      "lodTriangles": 5640,
+      "bytes": 9610880,
+      "meshes": 4
+    },
+    {
+      "stage": 7,
+      "triangles": 38112,
+      "lodTriangles": 9184,
+      "bytes": 10645508,
+      "meshes": 5
+    },
+    {
+      "stage": 8,
+      "triangles": 52832,
+      "lodTriangles": 11824,
+      "bytes": 11016376,
+      "meshes": 6
+    },
+    {
+      "stage": 9,
+      "triangles": 63460,
+      "lodTriangles": 14484,
+      "bytes": 11893852,
+      "meshes": 7
+    },
+    {
+      "stage": 10,
+      "triangles": 68580,
+      "lodTriangles": 15604,
+      "bytes": 13022140,
+      "meshes": 8
+    }
+  ],
+  "birch": [
+    {
+      "stage": 1,
+      "triangles": 1268,
+      "lodTriangles": 564,
+      "bytes": 5006672,
+      "meshes": 2
+    },
+    {
+      "stage": 2,
+      "triangles": 2000,
+      "lodTriangles": 564,
+      "bytes": 5025328,
+      "meshes": 3
+    },
+    {
+      "stage": 3,
+      "triangles": 3500,
+      "lodTriangles": 628,
+      "bytes": 5604908,
+      "meshes": 4
+    },
+    {
+      "stage": 4,
+      "triangles": 7250,
+      "lodTriangles": 788,
+      "bytes": 5696232,
+      "meshes": 4
+    },
+    {
+      "stage": 5,
+      "triangles": 27532,
+      "lodTriangles": 2402,
+      "bytes": 7139920,
+      "meshes": 5
+    },
+    {
+      "stage": 6,
+      "triangles": 48902,
+      "lodTriangles": 4356,
+      "bytes": 6714264,
+      "meshes": 4
+    },
+    {
+      "stage": 7,
+      "triangles": 69184,
+      "lodTriangles": 5970,
+      "bytes": 7206680,
+      "meshes": 4
+    },
+    {
+      "stage": 8,
+      "triangles": 88716,
+      "lodTriangles": 7552,
+      "bytes": 7680832,
+      "meshes": 4
+    },
+    {
+      "stage": 9,
+      "triangles": 107498,
+      "lodTriangles": 9102,
+      "bytes": 8136716,
+      "meshes": 4
+    },
+    {
+      "stage": 10,
+      "triangles": 126280,
+      "lodTriangles": 10652,
+      "bytes": 8592616,
+      "meshes": 4
+    }
+  ]
+}

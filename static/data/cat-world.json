@@ -163,5 +163,26 @@
       "drink",
       "sniff"
     ]
+  },
+  {
+    "id": "farm_path",
+    "name": "云畔种植园",
+    "x": -9.3,
+    "z": 4.4,
+    "actions": [
+      "sniff",
+      "observe",
+      "groom"
+    ]
+  },
+  {
+    "id": "farm_entry",
+    "name": "花园步道",
+    "x": -5,
+    "z": 6.4,
+    "actions": [
+      "observe",
+      "stretch"
+    ]
   }
 ]

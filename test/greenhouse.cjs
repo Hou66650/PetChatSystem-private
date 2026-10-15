@@ -13,7 +13,7 @@ assert.equal(new Garden({...options,scope:'bob'}).state.plants.grass.growth,0);
 assert(!garden.water('unknown'));garden.cosmetic('lace',true);assert(new Garden(options).state.cosmetics.lace);
 const broken=new Garden({scope:'broken',storage:{getItem:()=>'{',setItem:()=>{throw Error('quota');}}});assert.doesNotThrow(()=>broken.water('grass'));assert.equal(broken.persisted,false);
 assert.equal(lighting(12,0).intensity,0);assert(lighting(18,0).intensity>lighting(23,0).intensity);assert(lighting(18,0).warmth>lighting(18,5).warmth);
-const nav=new Navigation({...layout,bodyRadius:.619});
+const nav=new Navigation({...require('../static/js/den/farm-garden').navigation(layout,require('../static/data/farm-layout.json')),bodyRadius:.619});
 for(const p of catalog){const target=p.normal?{x:p.x+p.normal.x*(nav.clearance+.04),z:p.z+p.normal.z*(nav.clearance+.04)}:p;assert(nav.route({x:0,z:0},target),p.id+' reachable');}
 assert(!nav.isWalkable({x:.9,z:-3.4}));assert(!nav.isWalkable({x:1.4,z:-3.5}));assert(!nav.isWalkable({x:3,z:1.8}));assert(nav.isWalkable({x:3,z:-3.5}));
 assert.equal(nav.surfaceHeight({x:3,z:-4.22}),.525);

@@ -7,10 +7,12 @@
     'use strict';
     const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
     class Navigation {
-        constructor({radius = 3.2, bodyRadius = .36, margin = .08, cell = .18, obstacles = [], water = [], bridges = [], rug = null, surfaces = []} = {}) {
+        constructor({radius = 3.2, bodyRadius = .36, margin = .08, cell = .18, obstacles = [], water = [], bridges = [], rug = null, surfaces = [], domains = null} = {}) {
             this.radius = radius - bodyRadius - margin;
             this.clearance = bodyRadius + margin;
+            this.domains = domains;
             this.cell = cell;
+            this.edgeClear = new Map();
             this.surfaces=surfaces;this.water = water; this.bridges = bridges; this.rug = rug;
             this.obstacles = [...obstacles, ...bridges.flatMap(b => [-1,1].map(side => ({
                 kind:'rect', x:b.x+side*(b.w-b.rail)/2, z:b.z, w:b.rail, d:b.d
@@ -25,6 +27,12 @@
         }
         isWalkable(p) {
             if (!Number.isFinite(p.x + p.z) || Math.hypot(p.x, p.z) > this.radius) return false;
+            if(this.domains){
+                const inside=q=>this.domains.some(d=>d.kind==='rect'?Math.abs(q.x-d.x)<=d.w/2&&Math.abs(q.z-d.z)<=d.d/2:((q.x-d.x)/d.rx)**2+((q.z-d.z)/d.rz)**2<=1);
+                if(!inside(p))return false;
+                // Erode the union, not each piece: adjoining terraces remain connected.
+                for(let i=0;i<16;i++)if(!inside({x:p.x+this.clearance*Math.cos(i*Math.PI/8),z:p.z+this.clearance*Math.sin(i*Math.PI/8)}))return false;
+            }
             for (const w of this.water) {
                 const distanceToWater = Math.hypot(Math.max(0,Math.abs(p.x-w.x)-w.w/2),Math.max(0,Math.abs(p.z-w.z)-w.d/2));
                 // Only the deck corridor can override water exclusion. Ordinary props
@@ -85,7 +93,16 @@
             // Commands outside the stage or inside a prop are rejected, not silently re-targeted.
             if (!this.isWalkable(from) || !this.isWalkable(to)) return null;
             if (this.segmentClear(from,to)) return [to];
-            const nearestConnected = (p) => this.nodes.filter(n => n.valid && this.segmentClear(p,n)).sort((a,b)=>distance(p,a)-distance(p,b))[0];
+            const nearestConnected = (p) => {
+                const gx=Math.round(p.x/this.cell),gz=Math.round(p.z/this.cell),near=[];
+                for(let z=gz-2;z<=gz+2;z++)for(let x=gx-2;x<=gx+2;x++){
+                    const n=this.node(x,z);if(n?.valid)near.push(n);
+                }
+                // Check nearby candidates first. Testing visibility to every node
+                // made each decision stall on larger, irregular islands.
+                const connected=near.sort((a,b)=>distance(p,a)-distance(p,b)).find(n=>this.segmentClear(p,n));
+                return connected||this.nodes.filter(n=>n.valid).sort((a,b)=>distance(p,a)-distance(p,b)).find(n=>this.segmentClear(p,n));
+            };
             const start = nearestConnected(from), end = nearestConnected(to);
             if (!start || !end) return null;
             const id = n => this.index(n.gx,n.gz), startId = id(start), endId = id(end);
@@ -109,7 +126,10 @@
                 for (let dz=-1; dz<=1; dz++) for (let dx=-1; dx<=1; dx++) {
                     if (!dx && !dz) continue;
                     const next = this.node(node.gx+dx,node.gz+dz);
-                    if (!next || !next.valid || !this.segmentClear(node,next)) continue;
+                    if (!next || !next.valid) continue;
+                    const neighborId=id(next),edgeKey=Math.min(current,neighborId)*this.nodes.length+Math.max(current,neighborId);
+                    if(!this.edgeClear.has(edgeKey))this.edgeClear.set(edgeKey,this.segmentClear(node,next));
+                    if(!this.edgeClear.get(edgeKey))continue;
                     if (dx && dz && (!this.node(node.gx+dx,node.gz).valid || !this.node(node.gx,node.gz+dz).valid)) continue;
                     const nextId=id(next), cost=costs.get(current)+distance(node,next);
                     if (cost < (costs.get(nextId) ?? Infinity)) {costs.set(nextId,cost);previous.set(nextId,current);open.add(nextId);}

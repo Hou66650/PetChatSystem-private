@@ -1,0 +1,25 @@
+派特岛农场与花园 — 可编辑模型源文件
+
+Blender 5.2.2 LTS。所有尺寸以米为单位。
+复建（项目根目录）：
+  blender -b --python scripts/blender/build_farm_garden.py -- plants
+  blender -b --python scripts/blender/build_farm_garden.py -- terrace
+  blender -b --python scripts/blender/build_farm_garden.py -- detail
+  python scripts/pack_farm_textures.py
+
+cosmos/pumpkin/birch 各 10 个独立地上生长模型；另有各 10 个远景模型。
+生长改变分枝、叶片、花芽、花朵、果实和树冠，不用统一缩放冒充生长阶段。
+土壤由起伏表面、大小不一的团粒、矿物颗粒和有机碎屑组成。
+花盆具有厚壁、卷边、内腔、排水孔和独立托盘；陶土底色来源见 ../materials/provenance.json。
+叶片具有实体弯曲与不对称轮廓，桦树羽状叶脉与南瓜掌状叶脉分别使用材质。
+纹理为内置 imagegen 生成的材质输入；所有 *-detail.png、pot-soil-macro.png、farm-closeup.png 都是实际 Blender 渲染。
+它们是视觉复查依据，不能把生成概念图当作最终模型效果。
+
+farm-island.blend 保存空种植床。预览图中的成熟植物仅用于演示构图，不代表真实账号库存。
+模型输出：static/models/petchat-farm-v1。公共纹理使用内容哈希共享，生长切换不重复下载同一纹理。
+网页按当前岛屿、已种植物及所选图鉴阶段加载。近远景有距离迟滞，离岛释放模型与材质。
+地形和种植位置唯一来源：static/data/farm-layout.json；导航和 Blender 共用此文件。
+导航以实际猫体宽度检查地形接缝、围栏、桥面和种植床阻挡。
+
+验证：test/test_farm.py、test/farm_garden.cjs、test/farm_geometry.cjs、test/farm_render.cjs。
+图鉴可鼠标旋转检查每一种植物的 10 个阶段。渲染器光照与 Cycles 不完全相同，需同时检查浏览器。

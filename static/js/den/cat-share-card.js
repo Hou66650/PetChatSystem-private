@@ -10,12 +10,12 @@
   const events=(data.events||[]).filter(e=>e.stream===selected&&(after===-Infinity||Number.isFinite(e.updated)&&e.updated*1000>after));
   const places=new Set(events.map(e=>e.snapshot?.target).filter(Boolean));
   const names=(data.catalog||[]).filter(p=>places.has(p.id)).map(p=>p.name);
-  const landmarks=(data.catalog||[]).filter(p=>typeof p.name==='string'&&Number.isFinite(p.x)&&Number.isFinite(p.z)&&Math.hypot(p.x,p.z)<=7.8)
+  const landmarks=(data.catalog||[]).filter(p=>typeof p.name==='string'&&Number.isFinite(p.x)&&Number.isFinite(p.z)&&Math.hypot(p.x,p.z)<=16)
    .slice(0,20).map(p=>({name:p.name.slice(0,12),x:p.x,z:p.z,recorded:places.has(p.id)}));
   return {path:trail.d,distance:trail.length,points:trail.count,names:names.slice(0,5),landmarks,
    time:stream.updated*1000,stale:data.serverTime-stream.updated>10||stream.snapshot?.phase==='stopped'};
  }
- const MAP={x:540,y:625,scale:33};
+ const MAP={x:638,y:625,scale:24};
  function labels(landmarks=[]){
   const entries=landmarks.map(p=>({...p,px:MAP.x+p.x*MAP.scale,py:MAP.y+p.z*MAP.scale}));
   for(const left of [true,false]){
@@ -35,7 +35,7 @@
   c.font='27px sans-serif';c.fillStyle='#b8d2c5';c.fillText('猫咪的雾林探索手记',80,260);
   c.font='24px sans-serif';c.fillStyle='#d7c591';c.fillText('雾林温室 · 岛屿地点图',80,330);
   c.save();c.translate(MAP.x,MAP.y);c.scale(MAP.scale,MAP.scale);
-  c.fillStyle='#244d48';c.beginPath();c.arc(0,0,7.8,0,Math.PI*2);c.fill();
+  c.fillStyle='#244d48';c.beginPath();c.arc(0,0,7.8,0,Math.PI*2);c.fill();c.beginPath();c.ellipse(-9.5,4.7,4.8,4.1,0,0,Math.PI*2);c.fill();
   c.strokeStyle='#689f9f';c.lineWidth=.34;c.beginPath();c.moveTo(-7.5,1.8);c.lineTo(7.5,1.8);c.stroke();
   c.strokeStyle='#d6c397';c.lineWidth=.48;c.beginPath();c.moveTo(0,-.2);c.lineTo(0,3.8);c.stroke();
   if(s.path){c.strokeStyle='#b6f3cf';c.lineWidth=.075;c.lineCap='round';c.lineJoin='round';c.stroke(new Path2D(s.path));}

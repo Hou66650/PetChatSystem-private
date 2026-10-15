@@ -55,6 +55,8 @@ def create_app(config_object=Config):
         cat_market_service.init_schema()
         from .services import supply_service
         supply_service.init_schema()
+        from .services import farm_service
+        farm_service.init_schema()
         from .services import voiceprint_service
         voiceprint_service.init_schema()
         from .routes.pet_studio import init_schema as init_pet_studio
@@ -66,7 +68,7 @@ def create_app(config_object=Config):
 
     @app.context_processor
     def _companion_scope():
-        return {'companion_scope': companion_service.browser_scope()}
+        return {'companion_scope': companion_service.browser_scope(), 'farm_layout': farm_service.LAYOUT}
 
 
     @app.before_request

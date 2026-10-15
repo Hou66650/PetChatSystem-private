@@ -1,0 +1,22 @@
+{
+  "mode": "built-in imagegen",
+  "purpose": "Base-color material inputs; final geometry and validation renders are authored in Blender, not imagegen.",
+  "assets": [
+    {
+      "file": "soil.png",
+      "prompt": "Create a single seamless square photorealistic PBR base-color texture of natural dark garden loam viewed exactly orthographically from above. Fine irregular crumb aggregates, porous small clods of mixed sizes, occasional tiny pale mineral grains and very sparse fragmented dry plant fibres. Moist brown earth, not black, not polished, no regular pattern, no uniform pebble scatter. Absolutely flat diffuse neutral studio lighting, no directional shadows, no highlights, no vignette, no perspective, no objects, no text. Edge-to-edge material scan appearance, high resolution fine detail. This is a texture asset for a realistic Blender garden bed."
+    },
+    {
+      "file": "clay.png",
+      "prompt": "Create a single seamless square photographic PBR base-color material texture of naturally aged unglazed terracotta clay. Restrained dusty muted warm salmon brown, subtle uneven firing mottling, tiny visible clay pores and mineral grains, very faint wheel throwing horizontal striations, sparse pale mineral bloom. Not orange plastic, not stone, not masonry or tiles. Texture covers entire square, no pot object, no borders, no text, no directional lighting or shadows, orthographic flat diffuse material scan suitable to wrap onto a ceramic pot."
+    },
+    {
+      "file": "leaf.png",
+      "prompt": "Create a single square photographic botanical texture: an extreme close-up of a real green birch leaf membrane, filling the entire frame edge to edge without background or visible outer silhouette. Central slender midrib exactly along vertical center, secondary pinnate veins branch diagonally upward left and right, delicate reticulated fine tertiary vein network and natural chlorophyll mottling. Dark restrained natural green, subtle asymmetry. Flat diffuse transmitted light balanced with reflected light, no shiny highlights, no shadows, no dew drops, no text, no border. This is a base color UV texture for a true geometry leaf, not an illustration."
+    },
+    {
+      "file": "pumpkin-leaf.png",
+      "prompt": "Square photorealistic base-color UV texture for a pumpkin leaf, leaf membrane fills entire image with no background and no outer leaf outline. Five main slender pale green veins radiate from the exact center (0.5,0.5), with irregular intricate fine branching secondary and tertiary veins. Natural dark muted green pumpkin leaf tissue, faint silver-green patches between some veins, very subtle tiny hairs, no dew, no highlights, no lighting gradient, no drop shadows, no text. Orthographic diffuse material scan. Important: vein pattern is palmate radiating from the central point, not a single vertical midrib. Entire image is continuous leaf tissue, no border."
+    }
+  ]
+}

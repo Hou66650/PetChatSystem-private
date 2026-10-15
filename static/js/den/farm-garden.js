@@ -1,0 +1,82 @@
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.FarmGarden=api;})(typeof window!=='undefined'?window:globalThis,function(){
+ 'use strict';
+ const BASE='/static/models/petchat-farm-v1/';
+ function navigation(base,layout){return {...base,radius:16,cell:.24,domains:[{x:0,z:0,rx:base.radius,rz:base.radius},layout.terrace,{kind:'rect',...layout.entry}],obstacles:[...base.obstacles,...(layout.decorObstacles||[]),...layout.beds.map(b=>({kind:'rect',...b})),...layout.fixtures.map(b=>({kind:'rect',...b})),...layout.placements.map(p=>({...p,r:p.kind==='tree'?.26:.24})),...[3.65,7.45].map(z=>({kind:'rect',x:-6.2,z,w:2,d:.06}))]};}
+ function modelKey(species,stage,far){if(!['cosmos','pumpkin','birch'].includes(species)||!Number.isInteger(stage)||stage<1||stage>10)throw Error('无效植物模型');return species+'-'+String(stage).padStart(2,'0')+(far?'-lod':'');}
+ function remaining(seconds){return seconds<=0?'可以收获':seconds<3600?Math.ceil(seconds/60)+' 分钟后成熟':Math.ceil(seconds/3600)+' 小时后成熟';}
+ class View{
+  constructor(api){
+   this.a=api;this.T=api.THREE;this.layout=api.layout;this.disposed=false;this.cache=new Map();this.groups=new Map();this.epoch=0;this.tab='beds';this.nextRefresh=0;this.nextLod=0;this.busy=false;this.requestAbort=new AbortController();
+   this.root=new this.T.Group();api.scene.add(this.root);this.dialog=document.getElementById('farm-dialog');this.feedback=document.getElementById('farm-feedback');this.hover=document.getElementById('farm-hover');
+   this.dialog.querySelector('#farm-close').onclick=()=>this.dialog.close();this.dialog.querySelector('#farm-refresh').onclick=()=>this.refresh();this.dialog.querySelector('#farm-focus').onclick=()=>{this.dialog.close();api.focus();};
+   for(const b of this.dialog.querySelectorAll('[data-farm-tab]'))b.onclick=()=>this.switchTab(b.dataset.farmTab);
+   this.dialog.onclose=()=>this.closePreview();
+   this.dialog.querySelector('#farm-preview-species').onchange=()=>this.preview();this.dialog.querySelector('#farm-preview-stage').onchange=()=>this.preview();
+   this.down=null;this.onDown=e=>{this.down={x:e.clientX,y:e.clientY};};this.onMove=e=>this.point(e,false);this.onClick=e=>{if(this.down&&Math.hypot(e.clientX-this.down.x,e.clientY-this.down.y)<6)this.point(e,true);};this.onLeave=()=>this.hover.hidden=true;
+   api.canvas.addEventListener('pointerdown',this.onDown);api.canvas.addEventListener('pointermove',this.onMove);api.canvas.addEventListener('click',this.onClick,true);api.canvas.addEventListener('pointerleave',this.onLeave);
+   this.refresh();
+  }
+  async request(op,data){
+   const r=await fetch('/api/farm'+(op?'/'+op:''),{method:op?'POST':'GET',headers:op?{'Content-Type':'application/json','X-Profile-Scope':this.a.scope}:undefined,body:op?JSON.stringify({...data,token:data.token||crypto.randomUUID()}):undefined,cache:'no-store',signal:this.requestAbort.signal});
+   const result=await r.json();if(result.scope&&result.scope!==this.a.scope){this.scopeLost=true;throw Error('账号已变化，请刷新页面');}if(!r.ok)throw Error(result.error||'花园暂时无法连接');return result;
+  }
+  note(text,error=false){this.feedback.textContent=text;this.feedback.dataset.error=String(error);}
+  async refresh(){if(this.disposed||this.refreshing||this.busy||this.scopeLost)return;this.refreshing=true;const revision=this.stateRevision||0;try{const s=await this.request();if(this.disposed||revision!==(this.stateRevision||0))return;this.data=s;this.render();await this.sync();this.nextRefresh=performance.now()+30000;}catch(e){if(e.name!=='AbortError')this.note(e.message,true);}finally{this.refreshing=false;}}
+  async act(op,data={}){if(this.busy||this.disposed||this.scopeLost)return;this.busy=true;this.stateRevision=(this.stateRevision||0)+1;this.render();try{this.data=await this.request(op,data);if(this.disposed)return;this.note(({start:'种子和花盆已放进仓库。选一块种植床，开始吧。',plant:'已经种下，会在离线时继续生长。',water:'浇水完成，生长稍微加快了。',harvest:'收获已放进仓库，可以装盆、移栽或制作补给。',place:'植物已安放在岛上。',recover:'植物已收回，花盆也会保留。',cook:'已制作 1 份游戏宠物零食，可去补给站送给它。',buy:'已放入仓库。'})[op]);await this.sync();}catch(e){if(e.name!=='AbortError')this.note(e.message,true);}finally{this.busy=false;if(!this.disposed)this.render();}}
+  open(bed){if(this.disposed)return;this.switchTab('beds');this.dialog.showModal();if(!this.data)this.refresh();if(bed)requestAnimationFrame(()=>document.getElementById('farm-'+bed)?.scrollIntoView({block:'nearest',behavior:'smooth'}));}
+  switchTab(tab){this.tab=tab;for(const name of ['beds','stock','shop','guide']){document.getElementById('farm-'+name).hidden=name!==tab;this.dialog.querySelector('[data-farm-tab="'+name+'"]').setAttribute('aria-selected',String(name===tab));}if(tab==='guide'&&this.dialog.open)this.preview();else this.closePreview();}
+  element(tag,text,cls){const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e;}
+  button(text,fn,disabled=false){const b=this.element('button',text);b.type='button';b.disabled=disabled||this.busy||this.scopeLost||!!this.data?.guest;b.onclick=fn;return b;}
+  card(title,description){const c=this.element('article',null,'farm-card');c.append(this.element('h3',title),this.element('p',description));return c;}
+  render(){
+   const s=this.data;if(!s)return;document.getElementById('farm-wallet').textContent=`${s.balance} 枚代币 · ${s.beds.filter(b=>b.plant?.ready).length} 块已成熟`;
+   const welcome=document.getElementById('farm-welcome');welcome.replaceChildren();
+   if(s.guest){const a=this.element('a','登录后开始种植');a.href='/login';welcome.append(a);}else if(!s.started)welcome.append(this.element('p','第一次来，送你三种植物各 2 份种子和 1 个陶土花盆。'),this.button('领取园艺入门礼',()=>this.act('start')));
+   const beds=document.getElementById('farm-beds');beds.replaceChildren();
+   for(const bed of s.beds){const p=bed.plant,spec=s.catalog.find(x=>x.id===p?.species),c=this.card((bed.nursery?'育苗床 ':'种植床 ')+bed.id.split('-')[1],p?spec.name+' · '+spec.stages[p.stage-1]+' · '+p.stage+'/10':'一小块等待生长的土地');c.id='farm-'+bed.id;
+    if(p){const bar=this.element('progress');bar.max=1;bar.value=p.progress;bar.setAttribute('aria-label','生长进度');c.append(bar,this.element('p',remaining(p.remaining)));const actions=this.element('div',null,'farm-actions');actions.append(this.button(p.watered?'今日已浇水':'浇水',()=>this.act('water',{bed:bed.id,plant:p.id}),p.watered||p.ready),this.button('收获',()=>this.act('harvest',{bed:bed.id,plant:p.id}),!p.ready));c.append(actions);}
+    else{const select=this.element('select');select.setAttribute('aria-label','选择'+bed.id+'的种子');for(const sp of s.catalog.filter(x=>(x.kind==='tree')===!!bed.nursery)){const o=this.element('option',sp.name+' · 库存 '+(s.inventory['seed:'+sp.id]||0));o.value=sp.id;select.append(o);}const actions=this.element('div',null,'farm-actions');actions.append(this.button('种下',()=>this.act('plant',{bed:bed.id,species:select.value}),!s.started));c.append(select,actions);}beds.append(c);
+   }
+   const shop=document.getElementById('farm-shop');shop.replaceChildren();for(const item of s.shop){const c=this.card(item.name,`${item.price} 枚代币 · 库存 ${s.inventory[item.id]||0}`);c.append(this.button('购买 1 份',()=>this.act('buy',{item:item.id,quantity:1}),!s.started||s.balance<item.price));shop.append(c);}
+   const stock=document.getElementById('farm-stock');stock.replaceChildren();
+   for(const spec of s.catalog){const qty=s.inventory[spec.id]||0,c=this.card(spec.name+' · '+qty+(spec.kind==='food'?' 份':' 株'),spec.kind==='flower'?'装盆消耗 1 个花盆，收回时完整保留。':spec.kind==='tree'?'移栽到预留树池，留出宠物通行空间。':'收获保存在仓库，可制作游戏宠物零食。');
+    if(spec.kind==='food'){c.append(this.button('制作 1 份零食',()=>this.act('cook'),qty<1));const a=this.element('a','前往补给站 ↗');a.href='/supplies';a.target='_blank';a.rel='noopener';c.append(this.element('p'),a);}
+    else{const select=this.element('select');select.setAttribute('aria-label',spec.name+'摆放位置');for(const slot of s.placements.filter(p=>p.kind===spec.kind)){const o=this.element('option',slot.name+(s.decorations.some(d=>d.slot===slot.id)?' · 已占用':''));o.value=slot.id;o.disabled=s.decorations.some(d=>d.slot===slot.id);select.append(o);}c.append(select,this.element('p',spec.kind==='flower'?'空花盆：'+(s.inventory.pot||0):'幼树收回后可换一个树池。'),this.button(spec.kind==='flower'?'装盆摆放':'移栽',()=>this.act('place',{species:spec.id,slot:select.value}),qty<1||spec.kind==='flower'&&!s.inventory.pot||![...select.options].some(o=>!o.disabled)));}stock.append(c);
+   }
+   for(const d of s.decorations){const place=s.placements.find(x=>x.id===d.slot),spec=s.catalog.find(x=>x.id===d.species),c=this.card(place.name,spec.name+'已在这里安家');c.append(this.button('收回仓库',()=>this.act('recover',{slot:d.slot})));stock.append(c);}
+  }
+  async asset(key){
+   if(!this.cache.has(key)){const promise=this.a.loader.glb(BASE+key+'.glb?v='+this.a.version,this.a.ticket).then(g=>{if(this.disposed){SelectedAssets.disposeTree(g.scene);throw Object.assign(Error('closed'),{name:'AbortError'});}g.scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});return g.scene;}).catch(e=>{this.cache.delete(key);throw e;});this.cache.set(key,promise);}return this.cache.get(key);
+  }
+  records(){const s=this.data;if(!s)return [];return [...s.beds.filter(b=>b.plant).map(b=>({id:b.id,x:b.x,z:b.z,y:.23,species:b.plant.species,stage:b.plant.stage})),...s.decorations.map(d=>{const p=s.placements.find(p=>p.id===d.slot);return {id:d.slot,x:p.x,z:p.z,y:p.kind==='flower'?.33:.04,species:d.species,stage:10,pot:p.kind==='flower'};})];}
+  async sync(){
+   if(this.disposed)return;const epoch=++this.epoch,records=this.records(),wanted=new Set(records.map(r=>r.id));
+   for(const [id,g] of this.groups)if(!wanted.has(id)){this.root.remove(g);this.groups.delete(id);}
+   const used=new Set();
+   await Promise.all(records.map(async r=>{const distance=Math.hypot(this.a.camera.position.x-r.x,this.a.camera.position.y-r.y,this.a.camera.position.z-r.z),old=this.groups.get(r.id);const far=old?.userData.far?distance>8:distance>12,key=modelKey(r.species,r.stage,far);used.add(key);if(r.pot)used.add('flowerpot');if(old?.userData.key===key)return;
+    try{const source=await this.asset(key),pot=r.pot?await this.asset('flowerpot'):null;if(this.disposed||epoch!==this.epoch)return;const g=new this.T.Group(),mesh=source.clone(true);g.position.set(r.x,r.y,r.z);g.add(mesh);if(pot){const p=pot.clone(true);p.position.y=-.29;g.add(p);}g.userData={key,far};if(old)this.root.remove(old);this.root.add(g);this.groups.set(r.id,g);}catch(e){if(e.name!=='AbortError')this.note('部分植物模型未能加载，可点“刷新生长”重试。',true);}}));
+   if(this.disposed||epoch!==this.epoch)return;
+   for(const [key,promise] of this.cache)if(!used.has(key)&&key!==this.previewKey){this.cache.delete(key);promise.then(o=>SelectedAssets.disposeTree(o)).catch(()=>{});}
+  }
+  update(dt){if(this.disposed)return;const now=performance.now();if(now>this.nextRefresh&&!document.hidden){this.nextRefresh=now+30000;this.refresh();}if(now>this.nextLod){this.nextLod=now+1500;this.sync();}}
+  point(e,click){
+   if(this.disposed||!this.a.active()||this.dialog.open){this.hover.hidden=true;return;}
+   const r=this.a.canvas.getBoundingClientRect(),ray=new this.T.Raycaster();ray.setFromCamera(new this.T.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),this.a.camera);const p=ray.ray.intersectPlane(new this.T.Plane(new this.T.Vector3(0,1,0),-.23),new this.T.Vector3());
+   const bed=p&&this.layout.beds.find(b=>Math.abs(p.x-b.x)<b.w/2+.12&&Math.abs(p.z-b.z)<b.d/2+.12),fixture=p&&this.layout.fixtures.find(b=>Math.abs(p.x-b.x)<b.w/2+.2&&Math.abs(p.z-b.z)<b.d/2+.2);this.hover.hidden=!bed&&!fixture;
+   if(bed||fixture){const planted=this.data?.beds.find(b=>b.id===bed?.id)?.plant,spec=this.data?.catalog.find(s=>s.id===planted?.species);this.hover.textContent=spec?spec.name+' · '+spec.stages[planted.stage-1]+' · 点击照料':bed?'空种植床 · 点击选择种子':fixture.id==='storage'?'园艺仓库 · 点击查看':'园艺工作台 · 点击查看';this.hover.style.left=Math.max(8,Math.min(innerWidth-270,e.clientX+12))+'px';this.hover.style.top=Math.max(8,e.clientY-44)+'px';if(click){e.stopImmediatePropagation();this.open(bed?.id);if(fixture)this.switchTab(fixture.id==='storage'?'stock':'shop');}}
+  }
+  async preview(){
+   if(this.disposed||this.tab!=='guide'||!this.dialog.open)return;
+   const species=document.getElementById('farm-preview-species').value,stage=Number(document.getElementById('farm-preview-stage').value),key=modelKey(species,stage,false);this.previewKey=key;const epoch=(this.previewEpoch||0)+1;this.previewEpoch=epoch;
+   const spec=this.data?.catalog.find(s=>s.id===species);document.getElementById('farm-preview-name').textContent=stage+'/10 · '+(spec?.stages[stage-1]||'');
+   try{const source=await this.asset(key);if(this.disposed||epoch!==this.previewEpoch||!this.dialog.open)return;
+    if(!this.previewRenderer){const T=this.T,canvas=document.getElementById('farm-preview');this.previewRenderer=new T.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'high-performance'});this.previewRenderer.setPixelRatio(Math.min(1.5,devicePixelRatio));this.previewScene=new T.Scene();this.previewCamera=new T.PerspectiveCamera(36,1,.005,100);this.previewControls=new T.OrbitControls(this.previewCamera,canvas);this.previewControls.enableDamping=true;this.previewControls.enablePan=false;this.previewScene.add(new T.HemisphereLight(0xfff8e8,0x63715c,1.15));const light=new T.DirectionalLight(0xffefdf,1.4);light.position.set(3,5,4);this.previewScene.add(light);this.previewRenderer.outputEncoding=T.sRGBEncoding;}
+    if(this.previewObject)this.previewScene.remove(this.previewObject);this.previewObject=source.clone(true);this.previewScene.add(this.previewObject);const box=new this.T.Box3().setFromObject(this.previewObject),size=box.getSize(new this.T.Vector3()),target=box.getCenter(new this.T.Vector3()),span=Math.max(size.x,size.y,size.z,.06);this.previewControls.target.copy(target);this.previewCamera.position.copy(target).add(new this.T.Vector3(span*1.2,span*.7,span*2));this.previewControls.minDistance=span*.45;this.previewControls.maxDistance=span*6;
+    if(!this.previewFrame){const loop=()=>{if(!this.previewRenderer)return;const wrap=document.getElementById('farm-preview-wrap'),w=wrap.clientWidth,h=wrap.clientHeight;this.previewRenderer.setSize(w,h,false);this.previewCamera.aspect=w/Math.max(1,h);this.previewCamera.updateProjectionMatrix();this.previewControls.update();this.previewRenderer.render(this.previewScene,this.previewCamera);this.previewFrame=requestAnimationFrame(loop);};loop();}
+   }catch(e){if(e.name!=='AbortError')this.note('图鉴模型加载失败，请重选阶段重试。',true);}
+  }
+  closePreview(){this.previewEpoch=(this.previewEpoch||0)+1;this.previewKey=null;cancelAnimationFrame(this.previewFrame);this.previewFrame=null;this.previewControls?.dispose();this.previewRenderer?.dispose();this.previewRenderer=null;this.previewScene=null;this.previewObject=null;}
+  dispose(){this.disposed=true;this.epoch++;this.requestAbort.abort();this.dialog.close();this.closePreview();this.a.canvas.removeEventListener('pointerdown',this.onDown);this.a.canvas.removeEventListener('pointermove',this.onMove);this.a.canvas.removeEventListener('click',this.onClick,true);this.a.canvas.removeEventListener('pointerleave',this.onLeave);this.hover.hidden=true;this.a.scene.remove(this.root);for(const p of this.cache.values())p.then(o=>SelectedAssets.disposeTree(o)).catch(()=>{});this.cache.clear();}
+ }
+ return {View,navigation,modelKey,remaining};
+});
