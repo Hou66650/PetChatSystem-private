@@ -35,6 +35,7 @@
     }
   ],
   "obstacles": [
+    {"kind":"rect","tag":"catHome","id":"feedingStation","x":1.5,"z":6.28,"w":1.35,"d":0.65},
     {"kind":"rect","tag":"catHome","x":-4.4,"z":4.35,"w":0.19,"d":2.4},
     {"kind":"rect","tag":"catHome","x":-1.6,"z":4.35,"w":0.19,"d":2.4},
     {"kind":"rect","tag":"catHome","x":-3,"z":3.25,"w":2.8,"d":0.19},

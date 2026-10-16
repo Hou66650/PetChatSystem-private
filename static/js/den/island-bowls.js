@@ -21,8 +21,8 @@
    if(!this.enabled()||!this.home||this.panel.open)return null;
    const T=this.T,r=this.canvas.getBoundingClientRect(),ray=new T.Raycaster();ray.setFromCamera(new T.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),this.camera);
    this.home.updateWorldMatrix(true,false);let best=null;
-   for(const [kind,x] of [['food',.1],['water',.8]]){
-    const center=this.home.localToWorld(new T.Vector3(x,.35,5.38)),hit=ray.ray.intersectSphere(new T.Sphere(center,.30),new T.Vector3());if(!hit)continue;
+   for(const [kind,x] of [['food',1.15],['water',1.85]]){
+    const center=this.home.localToWorld(new T.Vector3(x,.35,6.28)),hit=ray.ray.intersectSphere(new T.Sphere(center,.30),new T.Vector3());if(!hit)continue;
     const distance=hit.distanceTo(ray.ray.origin);if(!best||distance<best.distance)best={kind,distance};
    }
    if(best){const hit=ray.intersectObject(this.decor,true).find(h=>h.object.visible);if(hit&&hit.distance+.15<best.distance)return null;}

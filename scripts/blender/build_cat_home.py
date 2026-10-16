@@ -45,17 +45,18 @@ for x in [-4.4,-1.6]:
 cube('nameplate',-3,5.56,1.65,.65,.08,.22,trim)
 # Paw sign without font dependency.
 for x,z in [(-3,1.64),(-3.17,1.72),(-3.06,1.76),(-2.94,1.76),(-2.83,1.72)]:sphere('paw_inlay',x,5.61,z,(.055,.014,.045),brass)
-# Feeding station: cat approaches from Z=4.85, mouth reaches the bowl at Z=5.38.
-cube('feeding_stand',.45,5.38,.265,1.35,.65,.05,trim)
-for x in [-.16,1.06]:
- for z in [5.13,5.63]:cube('stand_leg',x,z,.135,.055,.055,.23,trim,.01)
-for x,kind in [(.1,'food'),(.8,'water')]:
- torus(kind+'_bowl',x,5.38,.36,.24,.055,ceramic)
- sphere(kind+'_base',x,5.38,.275,(.24,.24,.06),ceramic)
- if kind=='water':sphere('water_surface',x,5.38,.325,(.205,.205,.012),water)
+# Feeding station: leave the bridge exit clear for full-body turning.
+# Runtime measures each cat for the final standing position.
+cube('feeding_stand',1.5,6.28,.265,1.35,.65,.05,trim)
+for x in [.89,2.11]:
+ for z in [6.03,6.53]:cube('stand_leg',x,z,.135,.055,.055,.23,trim,.01)
+for x,kind in [(1.15,'food'),(1.85,'water')]:
+ torus(kind+'_bowl',x,6.28,.36,.24,.055,ceramic)
+ sphere(kind+'_base',x,6.28,.275,(.24,.24,.06),ceramic)
+ if kind=='water':sphere('water_surface',x,6.28,.325,(.205,.205,.012),water)
  else:
   for i in range(42):
-   a=random.random()*math.tau;r=math.sqrt(random.random())*.18;sphere('kibble',x+math.cos(a)*r,5.38+math.sin(a)*r,.33+random.random()*.025,(.026,.02,.018),food)
+   a=random.random()*math.tau;r=math.sqrt(random.random())*.18;sphere('kibble',x+math.cos(a)*r,6.28+math.sin(a)*r,.33+random.random()*.025,(.026,.02,.018),food)
 # Batch by material to keep browser draw calls low.
 for material in list(bpy.data.materials):
  objects=[o for o in bpy.context.scene.objects if o.type=='MESH' and o.active_material==material]

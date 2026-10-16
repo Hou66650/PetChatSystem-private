@@ -83,7 +83,7 @@
    this.phase='idle';this.next=this.now()+4000;this.status(this.catalog.length?'想看看今天的小岛':'探索地图暂不可用，先在附近走走');
    if(!this.catalog.length){this.locomotion.autonomous=true;this.life.autonomous=true;}
   }
-  point(p){if(p.approaches){const nav=this.locomotion.navigation,points=[];if(p.bounds||Number.isFinite(p.radius)){for(const extra of [.08,.32,.65])for(let i=0;i<8;i++){const a=i*Math.PI/4,r=nav.clearance+extra;points.push({x:p.x+Math.cos(a)*((p.bounds?.w/2||p.radius||0)+r),z:p.z+Math.sin(a)*((p.bounds?.d/2||p.radius||0)+r)});}}else points.push(...p.approaches);return points.filter(q=>nav.isWalkable(q)).sort((a,b)=>distance(this.model.position,a)-distance(this.model.position,b)).find(q=>nav.route(this.model.position,q))||{x:p.x,z:p.z};}return p.normal?{x:p.x+p.normal.x*(this.locomotion.navigation.clearance+.04),z:p.z+p.normal.z*(this.locomotion.navigation.clearance+.04)}:{x:p.x,z:p.z};}
+  point(p){const dock=p.station&&this.life.feedingDock?.(p);if(dock)return dock.entry;if(p.approaches){const nav=this.locomotion.navigation,points=[];if(p.bounds||Number.isFinite(p.radius)){for(const extra of [.08,.32,.65])for(let i=0;i<8;i++){const a=i*Math.PI/4,r=nav.clearance+extra;points.push({x:p.x+Math.cos(a)*((p.bounds?.w/2||p.radius||0)+r),z:p.z+Math.sin(a)*((p.bounds?.d/2||p.radius||0)+r)});}}else points.push(...p.approaches);return points.filter(q=>nav.isWalkable(q)).sort((a,b)=>distance(this.model.position,a)-distance(this.model.position,b)).find(q=>nav.route(this.model.position,q))||{x:p.x,z:p.z};}return p.normal?{x:p.x+p.normal.x*(this.locomotion.navigation.clearance+.04),z:p.z+p.normal.z*(this.locomotion.navigation.clearance+.04)}:{x:p.x,z:p.z};}
   candidates(){return this.catalog.filter(p=>(p.id!=='food'||this.canEat())&&(p.id!=='water'||this.canDrink())&&this.now()>=(this.cooldowns[p.id]||0)&&this.locomotion.navigation.route(this.model.position,this.point(p)));}
   saveNeeds(){try{this.storage?.setItem(this.key+':needs',JSON.stringify({energy:this.energy,hunger:this.hunger,thirst:this.thirst,position:this.locomotion.navigation.isWalkable(this.model.position)?{x:this.model.position.x,z:this.model.position.z}:undefined}));}catch(e){}}
   care(candidates){
@@ -133,7 +133,7 @@
   }
   interrupt(text='先陪你，探索等一会儿',preserveAgenda=false){
    ++this.epoch;if(!preserveAgenda)this.agenda=[];this.pending?.abort();this.pending=null;
-   if(this.goal){const external=this.locomotion.owner==='command'&&this.locomotion.path!==this.life.approach?.path;if(!external)this.animate('idle');if(this.locomotion.owner==='agent')this.locomotion.interrupt(3);this.life.cancel(external);}
+   if(this.goal){const external=this.locomotion.owner==='command'&&this.locomotion.path!==this.life.approach?.path;if(!external)this.animate('idle');if(this.locomotion.owner==='agent'||(!external&&this.locomotion.navigation.dock))this.locomotion.interrupt(3);this.life.cancel(external);}
    this.goal=null;this.phase='idle';this.next=Math.max(this.lastDecision+8000,this.now()+500);this.status(text);
   }
   finish(result){
@@ -169,12 +169,20 @@
    const g=this.goal;g.time+=dt;
    if(this.phase==='walking'){if(distance(this.model.position,g.lastPosition||this.model.position)>.03){g.lastPosition={x:this.model.position.x,z:this.model.position.z};g.progress=0;}else g.progress=(g.progress||0)+dt;if(g.progress>8){this.finish('blocked');return;}}
    if(g.time>100){this.finish('blocked');return;}
-   if(this.phase==='walking'&&!this.locomotion.path.length){
+   if(this.phase==='docking'&&!this.locomotion.path.length){
+    if(distance(this.model.position,g.dock.target)>.025){this.finish('blocked');return;}
+    g.docked=true;this.phase='aligning';g.time=0;this.animate('idle');
+   }else if(this.phase==='walking'&&!this.locomotion.path.length){
     if(distance(this.model.position,g.point)>.2){this.finish('blocked');return;}
     this.phase='aligning';g.time=0;this.locomotion.interrupt(30);this.animate('idle');this.status('到了，先停下来看看周围');
    }else if(this.phase==='aligning'){
     if((g.action==='eat'&&!this.canEat())||(g.action==='drink'&&!this.canDrink())){this.finish('blocked');return;}
     const place=g.place||this.catalog.find(p=>p.id===g.target);if(!place){this.finish('blocked');return;}if(Number.isFinite(place.yaw)&&this.model.rotation){const angle=Math.atan2(Math.sin(place.yaw-this.model.rotation.y),Math.cos(place.yaw-this.model.rotation.y));this.model.rotation.y+=Math.max(-dt*2,Math.min(dt*2,angle));if(Math.abs(angle)>.04)return;}
+    if(place.station&&['eat','drink'].includes(g.action)&&!g.docked){
+     g.dock=this.life.feedingDock?.(place);
+     if(!g.dock||!this.locomotion.approachBowl(g.dock)){this.finish('blocked');return;}
+     this.phase='docking';g.time=0;this.status('慢慢靠近'+place.name);return;
+    }
     if(!g.arrival){g.arrival=true;g.time=0;this.animate(['eat','drink','nibble','rub'].includes(g.action)?'sniff':'curious');this.status('在'+place.name+'闻闻、确认周围');return;}
     if(g.time<.9)return;
     this.phase='acting';g.time=0;

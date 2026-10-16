@@ -9,6 +9,25 @@
    Object.assign(this,{T,model,locomotion,random,animate,walls});this.elapsed=0;this.wait=9;this.active=null;this.approach=null;this.last=null;this.entries=[];this.lookUntil=0;this.lookYaw=0;this.lookHeight=.6;this.lookAtCamera=false;
    model.traverse(b=>{if(b.isBone&&!/^SOCKET/.test(b.name))this.entries.push({bone:b,q:b.quaternion.clone(),p:b.position.clone(),applied:false,shifted:false});});
    this.byName=Object.fromEntries(this.entries.map(e=>[e.bone.name,e]));this.axis=new T.Vector3();this.q=new T.Quaternion();this.parentQ=new T.Quaternion();this.modelQ=new T.Quaternion();this.target=new T.Vector3();
+   // Measure the actual imported body/forelegs once, rather than assuming the
+   // template skeleton's toes coincide with the surface of every uploaded cat.
+   model.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(model.matrixWorld).invert();let front=-Infinity;
+   model.traverse(mesh=>{if(!mesh.isSkinnedMesh)return;mesh.skeleton.update();const a=mesh.geometry.attributes;
+    if(!a.skinWeight||!a.skinIndex)return;
+    for(let i=0;i<a.position.count;i++){
+     let head=0;for(let j=0;j<4;j++)if(/^(neck|head|jaw|ear|eye)/.test(mesh.skeleton.bones[a.skinIndex.array[i*4+j]]?.name))head+=a.skinWeight.array[i*4+j];
+     if(head>.35)continue;
+     this.target.fromBufferAttribute(a.position,i);if(mesh.applyBoneTransform)mesh.applyBoneTransform(i,this.target);else mesh.boneTransform(i,this.target);
+     this.target.applyMatrix4(mesh.matrixWorld).applyMatrix4(inverse);
+     if(this.target.y<(model.userData.height||.85)*.58)front=Math.max(front,this.target.z);
+    }
+   });this.feedingFront=Number.isFinite(front)?front:null;
+  }
+  feedingDock(place){
+   const nav=this.locomotion.navigation,stand=nav?.obstacles.find(o=>o.id===place.station);
+   if(!stand||this.feedingFront===null)return null;
+   const front=stand.z-stand.d/2,clearance=this.feedingFront+.045;
+   return {obstacle:stand.id,entry:{x:place.x,z:front-nav.clearance-.04},target:{x:place.x,z:Math.min(front-clearance-.025,front-nav.clearance-.04+.5)},clearance};
   }
   beforeFrame(){for(const e of this.entries){if(e.applied){e.bone.quaternion.copy(e.q);e.applied=false;}if(e.shifted){e.bone.position.copy(e.p);e.shifted=false;}}}
   cancel(preserveCommand=false){this.beforeFrame();if(this.active){this.model.position.y=this.locomotion.navigation.surfaceHeight(this.model.position);}
@@ -116,7 +135,13 @@
    this.eatBlend=(this.eatBlend||0)+((state==='eat'?1:0)-(this.eatBlend||0))*(1-Math.exp(-dt*6));
    if(this.eatBlend>.001){
     const blend=this.eatBlend,e=this.byName.neck;
-    if(e){e.p.copy(e.bone.position);e.shifted=true;e.bone.getWorldPosition(this.target);this.target.y-=.22*blend;e.bone.parent.worldToLocal(this.target);e.bone.position.copy(this.target);e.bone.updateMatrixWorld(true);}
+    if(e){e.p.copy(e.bone.position);e.shifted=true;e.bone.getWorldPosition(this.target);
+     const atBowl=!!this.locomotion.navigation?.dock;
+     // Raised bowls need a shallower dip and a small neck reach; the shoulders
+     // and forelegs stay planted behind the tabletop throughout the meal.
+     this.target.y-=(atBowl ? .14 : .22)*blend;
+     if(atBowl){this.target.x+=Math.sin(this.model.rotation.y)*.08*blend;this.target.z+=Math.cos(this.model.rotation.y)*.08*blend;}
+     e.bone.parent.worldToLocal(this.target);e.bone.position.copy(this.target);e.bone.updateMatrixWorld(true);}
     this.rotate('neck',[1,0,0],.7*blend);this.rotate('head',[1,0,0],(.15+Math.sin(t*9)*.025)*blend);
    }
    if(!a)return;

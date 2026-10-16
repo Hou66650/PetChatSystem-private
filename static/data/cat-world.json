@@ -92,8 +92,9 @@
   {
     "id": "food",
     "name": "食碗",
-    "x": 0.1,
-    "z": 4.85,
+    "x": 1.15,
+    "z": 4.9,
+    "station": "feedingStation",
     "yaw": 0,
     "actions": [
       "eat",
@@ -156,8 +157,9 @@
   {
     "id": "water",
     "name": "清水盆",
-    "x": 0.8,
-    "z": 4.85,
+    "x": 1.85,
+    "z": 4.9,
+    "station": "feedingStation",
     "yaw": 0,
     "actions": [
       "drink",

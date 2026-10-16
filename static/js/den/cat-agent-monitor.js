@@ -1,5 +1,5 @@
 (()=>{'use strict';
- const $=id=>document.getElementById(id),phases={loading:'加载地图',idle:'等待 / 休息',planning:'选择目标',walking:'前往地点',aligning:'到达 / 观察环境',acting:'执行动作',stopped:'已离开'},actions={drink:'饮水',observe:'观察',sniff:'嗅闻',rub:'蹭墙',jump:'短跳',groom:'理毛',stretch:'伸展',rest:'休息',eat:'进食',sleep:'回窝睡觉'},results={completed:'已完成',blocked:'受阻',interrupted:'被打断'};
+ const $=id=>document.getElementById(id),phases={loading:'加载地图',idle:'等待 / 休息',planning:'选择目标',walking:'前往地点',docking:'靠近食水盆',aligning:'到达 / 观察环境',acting:'执行动作',stopped:'已离开'},actions={drink:'饮水',observe:'观察',sniff:'嗅闻',rub:'蹭墙',jump:'短跳',groom:'理毛',stretch:'伸展',rest:'休息',eat:'进食',sleep:'回窝睡觉'},results={completed:'已完成',blocked:'受阻',interrupted:'被打断'};
  const cutoffs=new Map();
  let paused=false,busy=false,latest=null,selected='',timer,scopeLost=false,receivedAt=0;
  const text=(id,value)=>$(id).textContent=value;

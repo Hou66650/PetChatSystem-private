@@ -46,7 +46,9 @@
                     const dx = p.x - o.x, dz = p.z - o.z;
                     const x = c * dx + s * dz, z = -s * dx + c * dz;
                     // Rounded expansion of the original box, including corner clearance.
-                    if (Math.hypot(Math.max(0, Math.abs(x) - o.w / 2), Math.max(0, Math.abs(z) - o.d / 2)) <= this.clearance) return false;
+                    const dock=this.dock;
+                    const clearance=dock&&o.id===dock.obstacle&&Math.abs(p.x-dock.entry.x)<.025&&p.z>=dock.entry.z-.001&&p.z<=dock.target.z+.001?dock.clearance:this.clearance;
+                    if (Math.hypot(Math.max(0, Math.abs(x) - o.w / 2), Math.max(0, Math.abs(z) - o.d / 2)) <= clearance) return false;
                 } else if (distance(p, o) <= o.r + this.clearance) return false;
             }
             return true;
@@ -89,7 +91,16 @@
             }
             return best ? {x:best.x, z:best.z} : null;
         }
-        route(from, to) {
+        route(from, to, leavingDock=false) {
+            // A precision feeding stance is only reachable after facing the bowl.
+            // Every ordinary command first backs out to the full-body safe point.
+            if(this.dock&&!leavingDock&&distance(from,this.dock.entry)>.012){
+                if(!this.segmentClear(from,this.dock.entry))return null;
+                const dock=this.dock;let onward;
+                this.dock=null;
+                try{onward=this.route(dock.entry,to,true);}finally{this.dock=dock;}
+                return onward?[{...dock.entry},...onward]:null;
+            }
             // Commands outside the stage or inside a prop are rejected, not silently re-targeted.
             if (!this.isWalkable(from) || !this.isWalkable(to)) return null;
             if (this.segmentClear(from,to)) return [to];

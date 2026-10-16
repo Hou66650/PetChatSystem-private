@@ -1,6 +1,7 @@
 const assert=require('node:assert/strict'),T=require('../static/js/vendor/three.min.js'),{Controller:Agent}=require('../static/js/den/cat-agent'),{Controller:Life}=require('../static/js/den/cat-life'),{Controller:Move}=require('../static/js/den/pet-locomotion'),{Navigation}=require('../static/js/den/scene-navigation'),layout=require('../static/js/den/mistwood-layout'),catalog=require('../static/data/cat-world.json');
 (async()=>{
  let now=0,state='idle',agent;const states=[];const model=new T.Group(),nav=new Navigation({...layout,bodyRadius:.619}),animate=k=>{state=k;states.push(k);},move=new Move({navigation:nav,model,animate,rest:()=>animate('idle')}),life=new Life(T,model,move,{animate});
+ life.feedingFront=.423; // Geometry envelope supplied by the real-GLB feeding regression.
  const fetcher=async()=>({ok:true,json:async()=>({scope:'s',catalog,memory:[]})});agent=new Agent({model,locomotion:move,life,scope:'s',animate,fetcher,storage:null,now:()=>now});await agent.ready;
  const frame=()=>{now+=1000/60;agent.step(1/60,false);move.update(1/60,life.step(1/60,false));assert(nav.isWalkable(model.position),'no walls or water');};
  agent.hunger=.9;await agent.plan();assert.equal(agent.goal.action,'eat');
