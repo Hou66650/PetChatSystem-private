@@ -3,6 +3,7 @@
 Run after the Blender builder. Leaves geometry and image pixels unchanged.
 """
 import hashlib,json,struct
+from quantize_landscape_normals import quantize_normals
 from pathlib import Path
 R=Path(__file__).resolve().parents[1]
 P=R/'static/models/petchat-meadow-v1/mistwood-meadow.glb'
@@ -19,7 +20,9 @@ def main():
         else:
             name=hashlib.sha256(raw).hexdigest()[:24]+suffix;target=P.parent/'textures'/name;target.parent.mkdir(exist_ok=True);target.write_bytes(raw);image['uri']='textures/'+name
         removed.add(i)
-    if not removed:return
+    if not removed:
+        quantize_normals(P)
+        return
     packed=bytearray();views=[];mapping={}
     for i,v in enumerate(doc['bufferViews']):
         if i in removed:continue
@@ -30,6 +33,7 @@ def main():
             if isinstance(v,dict) and 'bufferView' in v:v['bufferView']=mapping[v['bufferView']]
     doc['bufferViews']=views;doc['buffers'][0]['byteLength']=len(packed);packed.extend(b'\0'*((-len(packed))%4));raw=json.dumps(doc,separators=(',',':'),ensure_ascii=False).encode();raw+=b' '*((-len(raw))%4)
     P.write_bytes(struct.pack('<III',0x46546c67,2,28+len(raw)+len(packed))+struct.pack('<II',len(raw),0x4e4f534a)+raw+struct.pack('<II',len(packed),0x004e4942)+packed)
-    report=R/'art/cloud-meadow-v1/build-report.json';r=json.loads(report.read_text());r.update(bytes=P.stat().st_size,sharedTextures=sum(i['uri'].startswith('../') for i in doc['images']),newTextureBytes=sum(p.stat().st_size for p in (P.parent/'textures').iterdir()));report.write_text(json.dumps(r,indent=2))
+    quantize_normals(P)
+    report=R/'art/cloud-meadow-v2/build-report.json';r=json.loads(report.read_text());r.update(bytes=P.stat().st_size,normalEncoding='KHR_mesh_quantization: int8 normalized; positions and topology unchanged',sharedTextures=sum(i['uri'].startswith('../') for i in doc['images']),newTextureBytes=sum((P.parent/i['uri']).stat().st_size for i in doc['images'] if i['uri'].startswith('textures/')));report.write_text(json.dumps(r,indent=2))
     print(json.dumps(r))
 if __name__=='__main__':main()

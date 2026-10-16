@@ -48,7 +48,12 @@ try:
                 wait(f'window.__denMoveTo({x},{z})',15)
                 wait(f'Math.hypot(window.__den.petModel.position.x-{x},window.__den.petModel.position.z-{z})<.1',60)
                 assert js('window.__denLocomotionDebug().legal')
-            out=ROOT/'art/cloud-meadow-v1/browser-overview.png'
+                if x==10:
+                    js("document.getElementById('btn-pet-view').click()")
+                    time.sleep(2)
+                    (ROOT/'art/cloud-meadow-v2/browser-meadow.png').write_bytes(base64.b64decode(page.call('Page.captureScreenshot',{'format':'png'})['data']))
+                    js("document.getElementById('btn-stage-view').click()")
+            out=ROOT/'art/cloud-meadow-v2/browser-overview.png'
             out.write_bytes(base64.b64decode(page.call('Page.captureScreenshot',{'format':'png'})['data']))
             performance_result=js("new Promise(resolve=>{let first=performance.now(),frames=0;function tick(){if(++frames===90){const c=document.getElementById('den-canvas'),gl=c.getContext('webgl2')||c.getContext('webgl'),e=gl.getExtension('WEBGL_debug_renderer_info');resolve({fps:Math.round(frames*1000/(performance.now()-first)),renderer:gl.getParameter(e.UNMASKED_RENDERER_WEBGL),lost:gl.isContextLost()});}else requestAnimationFrame(tick)}requestAnimationFrame(tick)})",True)
             assert not performance_result['lost']
@@ -64,7 +69,7 @@ try:
             js("document.querySelector('.island-choice[data-theme=room]').click()")
             time.sleep(2)
             assert js("document.querySelector('.island-home').classList.contains('is-focused')")
-            (ROOT/'art/cloud-meadow-v1/browser-home.png').write_bytes(base64.b64decode(page.call('Page.captureScreenshot',{'format':'png'})['data']))
+            (ROOT/'art/cloud-meadow-v2/browser-home.png').write_bytes(base64.b64decode(page.call('Page.captureScreenshot',{'format':'png'})['data']))
             print(json.dumps({'passed':True,'journeys':'old island -> meadow -> woodland -> bridge','gpu':performance_result,'screenshot':str(out)},ensure_ascii=False))
         finally:
             if page:page.close()

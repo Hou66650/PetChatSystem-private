@@ -7,6 +7,8 @@ import sys
 import struct
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT/'scripts'))
+from quantize_landscape_normals import quantize_normals
 OUT=ROOT/'static/models/home-islands'
 OUT.mkdir(parents=True,exist_ok=True)
 for theme in (sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else ['sakura','snow','camp','room']):
@@ -37,7 +39,7 @@ for theme in (sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else ['sakur
                 span=max(max(v.co[i] for v in component)-min(v.co[i] for v in component) for i in range(3))
                 if span<.12:remove.extend(component)
             bmesh.ops.delete(bm,geom=remove,context='VERTS');bm.to_mesh(obj.data);bm.free()
-        if theme=='room' and obj.name in ['Mistwood_Birch_leaves','Mistwood_Young_leaves','Mistwood_Cedar_sprays']:
+        if theme=='room' and (obj.name in ['Mistwood_Birch_leaves','Mistwood_Young_leaves','Mistwood_Cedar_sprays'] or 'Canopy_leaf_' in obj.name or 'Cliff_ivy_' in obj.name):
             # Four-triangle leaves become two triangles, keeping every leaf's
             # full outer contour. Never randomly delete foliage components.
             bm=bmesh.new();bm.from_mesh(obj.data)
@@ -63,6 +65,7 @@ for theme in (sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else ['sakur
             a,b,c=[obj.matrix_world@obj.data.vertices[i].co for i in tri.vertices]
             surface_area+=(b-a).cross(c-a).length*.5;triangles+=1
     bpy.ops.export_scene.gltf(filepath=str(OUT/(theme+'.glb')),export_format='GLB',export_animations=False,export_extras=False)
+    if theme=='room':quantize_normals(OUT/(theme+'.glb'))
     # The exporter removes degenerate triangles left by surface simplification.
     raw=(OUT/(theme+'.glb')).read_bytes();doc=json.loads(raw[20:20+struct.unpack_from('<I',raw,12)[0]])
     triangles=sum(doc['accessors'][p['indices']]['count']//3 for n in doc['nodes'] if 'mesh' in n for p in doc['meshes'][n['mesh']]['primitives'])

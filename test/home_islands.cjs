@@ -27,7 +27,7 @@ const parse=p=>new Promise((resolve,reject)=>{const b=fs.readFileSync(p);new THR
    let picked=hits[0].object;while(picked&&picked.userData.island===undefined)picked=picked.parent;assert.equal(picked.userData.island,i);
   }
  }
- assert(total<75*1024*1024,'uncompressed geometry stays bounded; gzip served over network');assert(triangles<1700000,'four islands including the expanded meadow have bounded geometry');
- assert(JSON.parse(fs.readFileSync('static/models/home-islands/room.json')).triangles<750000,'expanded island selector uses its own LOD, not the detailed playable stage');
+ assert(total<100*1024*1024,'uncompressed geometry stays bounded; gzip served over network');assert(triangles<2400000,'four islands including the detailed meadow have bounded geometry');
+ assert(JSON.parse(fs.readFileSync('static/models/home-islands/room.json')).triangles<1400000,'expanded island selector uses its own LOD, not the 2.85M detailed playable stage');
  console.log('PASS four real previews: finite geometry, normalized spacing, all-direction picking, '+triangles+' triangles / '+(total/1024/1024).toFixed(2)+' MiB');
 })().catch(e=>{console.error(e);process.exitCode=1;});

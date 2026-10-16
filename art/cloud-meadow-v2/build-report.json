@@ -1,0 +1,32 @@
+{
+  "meshes": 135,
+  "newMeshes": 21,
+  "triangles": 2855852,
+  "bytes": 96382976,
+  "trimmedWallFaces": 3233,
+  "domains": [
+    {
+      "x": 10,
+      "z": 8,
+      "rx": 9,
+      "rz": 5.5
+    },
+    {
+      "x": 15,
+      "z": 2,
+      "rx": 3.8,
+      "rz": 4.8
+    }
+  ],
+  "detail": {
+    "leaves": 155066,
+    "grassBlades": 137796,
+    "rockOutcrops": 1387,
+    "vineStrands": 331,
+    "flowers": 1176,
+    "coastSamples": 260
+  },
+  "normalEncoding": "KHR_mesh_quantization: int8 normalized; positions and topology unchanged",
+  "sharedTextures": 20,
+  "newTextureBytes": 11603854
+}
