@@ -43,3 +43,11 @@ A-手语识别模块研发/sign_dataset/processed/
 A-手语识别模块研发/sign_dataset/exports/
 A-手语识别模块研发/sign_dataset/consent/
 A-手语识别模块研发/sign_dataset/rejected/
+# Reproducible offline cinematic master / client staging stay on this workstation.
+/art/cloud-meadow-cinematic-v1/*.blend
+/art/cloud-meadow-cinematic-v1/client-staging/
+/art/cloud-meadow-cinematic-v1/*-preview.png
+/art/cloud-meadow-cinematic-v1/*-test.png
+/art/cloud-meadow-cinematic-v1/*.log
+/art/cloud-meadow-cinematic-build.log
+/art/cloud-meadow-tone-test.log

@@ -1,0 +1,114 @@
+{
+  "seed": 171026,
+  "source": "static/models/petchat-meadow-v1/mistwood-meadow.glb",
+  "sourceSha256": "37b456897272990a25b8e1539d1a987eb1ed24eb3537e7b77f672ee74a05e349",
+  "renderer": "Cycles / OptiX",
+  "devices": [
+    "NVIDIA GeForce RTX 5060 Laptop GPU"
+  ],
+  "units": "metres",
+  "masterUpAxis": "Z",
+  "runtimeUpAxis": "Y",
+  "layoutSource": "static/data/farm-layout.json",
+  "newFineGrassBlades": 75064,
+  "refinedCanopyLeaves": 130520,
+  "renderOnlyCollections": [
+    "90 Presentation atmosphere • not gameplay",
+    "91 Cinematic lighting"
+  ],
+  "webSceneChanged": false,
+  "accountDataRead": false,
+  "runtimeCaveats": [
+    "Master procedural micro-bump and atmospheric volumes require engine recreation or baking.",
+    "Visual meshes are not navigation/collision meshes. Keep the shared layout and bake client collision separately.",
+    "No client FPS claim: desktop runtime integration has not been performed."
+  ],
+  "collections": {
+    "01 Existing island • shared layout": {
+      "meshes": 130,
+      "baseTriangles": 6505494
+    },
+    "02 Architectural craftsmanship": {
+      "meshes": 7,
+      "baseTriangles": 25198
+    },
+    "03 Meadow ecology": {
+      "meshes": 25,
+      "baseTriangles": 1386254
+    },
+    "04 Stream and falling water": {
+      "meshes": 4,
+      "baseTriangles": 229532
+    },
+    "05 Demonstration props • no account data": {
+      "meshes": 118,
+      "baseTriangles": 1599520
+    }
+  },
+  "totalBaseTriangles": 9745998,
+  "runtimeModules": [
+    {
+      "file": "client-staging/base-island.glb",
+      "bytes": 149555244,
+      "sha256": "7484c45a22a28b0049744e914d8fbef52d86a8626763f174445e836cb2969ce0",
+      "optional": false
+    },
+    {
+      "file": "client-staging/canopy-0.glb",
+      "bytes": 33219036,
+      "sha256": "115578637b9dfd73d14229a98fd1bf9f1a17a67859595bdc28edeb175c170daf",
+      "optional": false
+    },
+    {
+      "file": "client-staging/canopy-1.glb",
+      "bytes": 33219036,
+      "sha256": "5ff0304cc653f0495ed59542539212bc0848492a6a145a2d33a852cf6e23e728",
+      "optional": false
+    },
+    {
+      "file": "client-staging/canopy-2.glb",
+      "bytes": 33219036,
+      "sha256": "4e91e4d28115317e33e8e8bd3b41e863e851f67ea4cb65da253f555d0f3d2865",
+      "optional": false
+    },
+    {
+      "file": "client-staging/canopy-3.glb",
+      "bytes": 33219036,
+      "sha256": "17aee41f55739155ea0d578c5f4a64eeccc46f7599676c93099a7bcecc7f8b89",
+      "optional": false
+    },
+    {
+      "file": "client-staging/canopy-4.glb",
+      "bytes": 33219036,
+      "sha256": "d3063eab9dd67ea8f0282f4fd193ae0b39e9aabd4934f6bff955cf6a9fbf0b1e",
+      "optional": false
+    },
+    {
+      "file": "client-staging/architecture.glb",
+      "bytes": 14518532,
+      "sha256": "05d8c8c1291c60575335feddf122e6b17bc033bd1cd76607853a8a4e8842d100",
+      "optional": false
+    },
+    {
+      "file": "client-staging/botany.glb",
+      "bytes": 78144704,
+      "sha256": "6f74e95a2ef20cb833e9450f6b32e18e68b91cd71fa62a4ec8d3d79038d6a02b",
+      "optional": false
+    },
+    {
+      "file": "client-staging/water.glb",
+      "bytes": 20389892,
+      "sha256": "964f9122ab78faa4344e4b3f3c6b3d157ebfa4a26138c66bb3eb65d6b149d253",
+      "optional": false
+    },
+    {
+      "file": "client-staging/demonstration-props.glb",
+      "bytes": 22915456,
+      "sha256": "4c3f9dec872b32188d8bcacb09697e17f003182b1232417c60b58d830e87f24c",
+      "optional": true
+    }
+  ],
+  "masterBytes": 296402476,
+  "masterSha256": "3c8469b140dbca90222f61a7892c19f4c05deebfc38462a21862b3722fff423b",
+  "packedImages": 54
+}

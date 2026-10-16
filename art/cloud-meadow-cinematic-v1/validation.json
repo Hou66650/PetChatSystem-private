@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "modules": 10,
+  "moduleBytes": 451619008,
+  "uniqueMeshTriangles": 8689732,
+  "positionsChecked": 8574919,
+  "renders": {
+    "01-meadow-panorama": [
+      2400,
+      1688
+    ],
+    "02-conservatory-detail": [
+      2400,
+      1688
+    ],
+    "03-grass-and-bridge": [
+      2400,
+      1688
+    ],
+    "04-plan": [
+      2400,
+      1688
+    ]
+  },
+  "scope": "file integrity, embedded textures, finite positions, dimensions; visual review is separate"
+}
