@@ -13,6 +13,8 @@ import sys
 import bpy
 import bmesh
 from mathutils import Matrix, Vector
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from pet_mesh_checks import rear_branches, binding_support, mesh_snapshot, deformation_ratio
 
 ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE = ROOT / 'static/models/petchat-cat-v3/cat.glb'
@@ -101,7 +103,9 @@ def main(args):
     dest.mkdir(parents=True, exist_ok=True)
     if any((dest / f).exists() for f in ['adapted.glb', 'review.blend', 'report.json']):
         raise ValueError('输出目录已存在结果，请使用新目录')
-    report = {'schema': 1, 'template': 'pait-cat-v1', 'templateSha256': hashlib.sha256(TEMPLATE.read_bytes()).hexdigest(),
+    report = {'schema': 2, 'sourceSha256': hashlib.sha256(Path(args.input).read_bytes()).hexdigest(),
+              'quality': {'geometry': 'unknown', 'rig': 'unknown', 'motion': 'unknown'},
+              'template': 'pait-cat-v1', 'templateSha256': hashlib.sha256(TEMPLATE.read_bytes()).hexdigest(),
               'readyForIsland': False, 'warnings': [], 'mode': args.mode}
     try:
         bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -184,6 +188,9 @@ def main(args):
                 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
             lo, hi = bounds(meshes); dims = hi-lo
             if min(dims) <= .0001: raise ValueError('模型尺寸无效')
+            report['rearBranchCounts'] = rear_branches(meshes)
+            if sum(n > 1 for n in report['rearBranchCounts']) >= 2:
+                raise ValueError('尾部存在多个显著分支，疑似重复尾巴或结构粘连；请修正原始网格，禁止直接套用模板')
             donor_meshes = [o for o in donor_objects if o.type == 'MESH' and o.vertex_groups]
             dlo, dhi = bounds(donor_meshes); dd = dhi-dlo
             ratios = [dims[i]/dd[i] for i in range(3)]
@@ -197,6 +204,8 @@ def main(args):
             bpy.context.view_layer.update()
             rig = donor
             tail_fit = fit_generated_tail(rig, meshes)
+            if tail_fit is None:
+                raise ValueError('无法可靠定位尾巴，需人工定位尾根与尾部中心线')
             # A fused reconstructed body cannot inherit weights from separate
             # template fur/eye shells. Weld positional seams and bind by volume.
             for bone in rig.data.bones:
@@ -226,6 +235,7 @@ def main(args):
             unweighted += sum(1 for v in mesh.data.vertices if sum(g.weight for g in v.groups if g.group in valid) < .001)
         report['unweightedVertices'] = unweighted
         if unweighted: raise ValueError('存在未绑定顶点，需要修正蒙皮后重试')
+        report['footWeightSupport'] = binding_support(meshes, rig)
         reset(rig);rig.animation_data_clear();rig.animation_data_create()
         for name in CLIPS:
             action = actions[name].copy(); action.name = 'pait_' + name
@@ -251,15 +261,26 @@ def main(args):
         report['warnings'] += ['动作已复用；脚掌滑动、穿地及脸部变形仍需逐项验收。',
                                '没有制作眼球或眼睑结构的模型，不保证眨眼与眼神效果。']
         samples = {}
+        reset(rig)
+        rest_mesh = mesh_snapshot(meshes)
+        report['meshMotion'] = {}
         for track in rig.animation_data.nla_tracks:
             action = track.strips[0].action; action_on(rig, action)
             frames = []
+            max_stretch = 1.0
+            max_displacement = 0.0
             for fraction in (0, .25, .5, .75, 1):
                 start, end = action.frame_range; bpy.context.scene.frame_set(int(start + (end-start)*fraction))
                 feet = {leg: list(rig.matrix_world @ rig.pose.bones[leg+'_foot'].head) for leg in ['FL','FR','HL','HR']}
                 if not all(math.isfinite(x) for p in feet.values() for x in p): raise ValueError('动作包含无效坐标')
                 frames.append(feet)
+                posed_mesh = mesh_snapshot(meshes)
+                max_stretch = max(max_stretch, deformation_ratio(rest_mesh, posed_mesh, meshes))
+                max_displacement = max(max_displacement, max((a-b).length for before, after in zip(rest_mesh, posed_mesh) for a,b in zip(before, after)))
             samples[track.name] = frames
+            report['meshMotion'][track.name] = {'maxEdgeStretch': max_stretch, 'maxVertexDisplacement': max_displacement}
+            if track.name in ('walk', 'run') and max_displacement < 1e-5:
+                raise ValueError('骨骼动作未驱动实际网格，请修正蒙皮')
         report['footSamples'] = samples
         reset(rig)
         bpy.context.scene.frame_set(1)

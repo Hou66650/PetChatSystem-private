@@ -12,6 +12,7 @@ import uuid
 from flask import current_app
 from ..config import BASE_DIR
 from ..db import get_db
+from . import pet_quality_service as quality
 
 LOCK = threading.BoundedSemaphore(1)
 CHECKS = ['appearance', 'walk', 'run', 'sit', 'sleep', 'eat', 'head', 'paws']
@@ -44,10 +45,16 @@ def start(task_id, mode, forward):
     db = get_db()
     row = db.execute("SELECT data FROM pet_studio_assets WHERE task=? AND slot='model'", (task_id,)).fetchone()
     if not row: raise ValueError('请先导入并确认模型外貌')
+    quality.require(task_id, 'geometry')
     if not LOCK.acquire(blocking=False): raise ValueError('Blender 正在处理另一个模型，请稍后再试')
     raw = row['data'];digest = hashlib.sha256(raw).hexdigest();job = uuid.uuid4().hex
     try:
         with db:
+            db.execute('BEGIN IMMEDIATE')
+            current = db.execute("SELECT data FROM pet_studio_assets WHERE task=? AND slot='model'", (task_id,)).fetchone()
+            if not current or hashlib.sha256(current['data']).hexdigest() != digest:
+                raise ValueError('模型已变化，请刷新后重试')
+            quality.require(task_id, 'geometry')
             db.execute('DELETE FROM pet_studio_equipped WHERE task=?', (task_id,))
             db.execute('INSERT OR REPLACE INTO pet_studio_adaptations VALUES (?,?,?,?,?,?)',
                        (task_id, job, digest, 'running', '{}', time.time()))
@@ -64,10 +71,17 @@ def _worker(app, task_id, job, digest, raw, mode, forward):
         with tempfile.TemporaryDirectory(prefix='pait-cat-adapt-') as folder:
             directory = Path(folder);source = directory/'source.glb';output = directory/'output'
             source.write_bytes(raw)
-            result = subprocess.run([executable(), '--background', '--factory-startup', '--disable-autoexec',
-                '--python', str(Path(BASE_DIR)/'scripts/blender/adapt_cat.py'), '--', str(source), str(output),
-                '--mode', mode, '--forward='+forward], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                timeout=240, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0), check=False)
+            with (directory/'blender.log').open('wb') as log:
+                result = subprocess.run([executable(), '--background', '--factory-startup', '--disable-autoexec',
+                    '--python', str(Path(BASE_DIR)/'scripts/blender/adapt_cat.py'), '--', str(source), str(output),
+                    '--mode', mode, '--forward='+forward], stdout=log, stderr=subprocess.STDOUT,
+                    timeout=240, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0), check=False)
+            # Keep paths/private data out of API reports; preserve known diagnostic codes.
+            with (directory/'blender.log').open('rb') as log:
+                size = log.seek(0,2)
+                log.seek(max(0,size-65536)); diagnostic = log.read().lower()
+            if b'bone heat weighting: failed' in diagnostic:
+                raise ValueError('自动热权重求解失败：请检查粘连、重叠表面及关节位置，修复后重新绑定')
             report_path = output/'report.json'
             if not report_path.is_file(): raise ValueError('Blender 未生成检查结果，请检查模型后重试')
             report = json.loads(report_path.read_text(encoding='utf-8'))

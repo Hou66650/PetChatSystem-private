@@ -15,6 +15,7 @@ from ..db import get_db
 from ..services import companion_service as identity
 from ..services import pet_adaptation_service as adaptation
 from ..services import pet_generation_service as generation
+from ..services import pet_quality_service as quality
 
 bp = Blueprint('pet_studio', __name__)
 VIEWS = ('front', 'left', 'right', 'back', 'detail')
@@ -75,9 +76,10 @@ def snapshot():
         del item['owner']
         item['assets'] = [r['slot'] for r in db.execute('SELECT slot FROM pet_studio_assets WHERE task=?', (row['id'],))]
         item['adaptation'] = adaptation.state(row['id'])
+        item['quality'] = quality.state(row['id'])
         generation.resume(row['id'])
         item['generation'] = generation.state(row['id'])
-        item['equipped'] = bool(db.execute('SELECT 1 FROM pet_studio_equipped WHERE owner=? AND task=?', (identity.owner_key(),row['id'])).fetchone())
+        item['equipped'] = all(q['status']=='pass' for q in item['quality'].values()) and bool(db.execute('SELECT 1 FROM pet_studio_equipped WHERE owner=? AND task=?', (identity.owner_key(),row['id'])).fetchone())
         rows.append(item)
     return jsonify(tasks=rows, scope=identity.browser_scope(), generationAvailable=generation.available())
 
@@ -222,6 +224,7 @@ def operate(task_id, operation):
             generation.clear(task_id)
             adaptation.clear(task_id)
             db.execute('DELETE FROM pet_studio_assets WHERE task=?', (task_id,))
+            db.execute('DELETE FROM pet_studio_quality WHERE task=?', (task_id,))
             db.execute('DELETE FROM pet_studio_tasks WHERE id=?', (task_id,))
         return snapshot()
     if operation == 'generate':
@@ -238,6 +241,10 @@ def operate(task_id, operation):
             return jsonify(error='请先结束猫咪的旅行或接待，再切换伙伴'), 409
         a = adaptation.state(task_id)
         if operation == 'equip':
+            try: quality.require(task_id, 'motion')
+            except ValueError as exc:
+                db.rollback()
+                return jsonify(error=str(exc)), 409
             if not a or a['status'] != 'reviewed' or data.get('jobId') != a['id'] or not db.execute("SELECT 1 FROM pet_studio_assets WHERE task=? AND slot='adapted'",(task_id,)).fetchone():
                 db.rollback()
                 return jsonify(error='请先完成当前版本的全部动作验收'), 409
@@ -264,6 +271,10 @@ def operate(task_id, operation):
             db.rollback()
             return jsonify(error='请逐项检查外貌、动作、头部及脚掌'), 400
         with db:
+            try: quality.require(task_id, 'motion')
+            except ValueError as exc:
+                db.rollback()
+                return jsonify(error=str(exc)), 409
             db.execute("UPDATE pet_studio_adaptations SET status='reviewed',updated=? WHERE task=?", (time.time(),task_id))
         return snapshot()
     if operation == 'prepare':
@@ -273,6 +284,8 @@ def operate(task_id, operation):
         status = 'awaiting_generation'
     elif operation == 'approve':
         if status != 'review': return jsonify(error='请先导入模型并核对外貌'), 409
+        try: quality.require(task_id, 'geometry')
+        except ValueError as exc: return jsonify(error=str(exc)), 409
         status = 'approved'
     elif operation != 'notes': return jsonify(error='操作不存在'), 404
     notes = data.get('notes', row['notes'])

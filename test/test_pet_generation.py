@@ -11,6 +11,7 @@ from unittest.mock import patch
 from test_pet_studio import PetStudioTests
 from app.db import get_db
 from app.services import pet_generation_service as cloud, pet_adaptation_service as adaptation
+from pet_quality_helpers import approve_quality
 
 
 class GenerationTests(unittest.TestCase):
@@ -24,6 +25,7 @@ class GenerationTests(unittest.TestCase):
 
     def ready(self):
         key=self.create_studio(); self.photo(key)
+        with self.app.app_context(): approve_quality(key, 'inputs')
         return key
 
     def row(self): return self.a.get('/api/pet-studio').json['tasks'][0]
@@ -84,6 +86,8 @@ class GenerationTests(unittest.TestCase):
             db=get_db();db.execute("UPDATE pet_studio_tasks SET status='approved' WHERE id=?",(key,))
             db.execute('INSERT INTO pet_studio_adaptations VALUES (?,?,?,?,?,?)',(key,'j',hashlib.sha256(raw).hexdigest(),'reviewed','{}',time.time()))
             db.execute('INSERT INTO pet_studio_assets VALUES (?,?,?,?)',(key,'adapted','model/gltf-binary',raw));db.commit()
+            db.execute('INSERT INTO pet_studio_assets VALUES (?,?,?,?)',(key,'model','model/gltf-binary',raw));db.commit()
+            approve_quality(key)
         self.assertEqual(self.post(key,'equip',{'jobId':'old'}).status_code,409)
         self.assertEqual(self.post(key,'equip',{'jobId':'j'}).status_code,200)
         self.assertTrue(self.a.get('/api/cat-market').json['effectiveAppearance']['custom'])
@@ -94,11 +98,13 @@ class GenerationTests(unittest.TestCase):
         self.assertNotIn('custom',self.a.get('/api/cat-market').json['effectiveAppearance'])
 
     @unittest.skipUnless(os.getenv('PET_STUDIO_QUERY_JOB'),'Requires an existing completed cloud job; never submits')
-    def test_real_cloud_result_to_blender_to_private_island(self):
+    def test_real_cloud_result_stays_quarantined(self):
         key=self.create_studio();folder=Path('uploads/hunyuan-test-cat-20261015/paid-check-20261015')
         for view in ('front','left','back'):
             r=self.a.post('/api/pet-studio/'+key+'/assets/'+view,data={'file':(io.BytesIO((folder.parent/(view+'.png')).read_bytes()),view+'.png')},headers=self.headers)
             self.assertEqual(r.status_code,200)
+        # Isolated transport fixture: this does not approve real photos for production.
+        with self.app.app_context(): approve_quality(key, 'inputs')
         real_call=cloud._call;calls=[]
         def transport(action,payload):
             calls.append(action)
@@ -112,26 +118,10 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(row['generation']['status'],'done',row['generation'])
         self.assertEqual(row['generation']['credits'],50)
         self.assertEqual(calls.count('submit'),1)
-        self.assertEqual(self.post(key,'approve').status_code,200)
-        self.assertEqual(self.post(key,'adapt',{'mode':'template-skin','forward':'-Y'}).status_code,200)
-        row=self.wait_for(lambda r:r.get('adaptation',{}).get('status')!='running')
-        self.assertEqual(row['adaptation']['status'],'review_motion',row['adaptation'])
-        report=row['adaptation']['report'];self.assertEqual(report['unweightedVertices'],0)
-        output=folder/'workflow-e2e';output.mkdir(exist_ok=True)
-        for slot,filename in [('model','model.glb'),('adapted','adapted.glb'),('blend','review.blend')]:
-            r=self.a.get('/api/pet-studio/'+key+'/assets/'+slot);self.assertEqual(r.status_code,200)
-            (output/filename).write_bytes(r.data)
-        # This checks the acceptance API, not an assertion that visual quality passes.
-        job=row['adaptation']['id']
-        self.assertEqual(self.post(key,'review-motion',{'jobId':job,'checks':adaptation.CHECKS}).status_code,200)
-        self.assertEqual(self.post(key,'equip',{'jobId':job}).status_code,200)
-        appearance=self.a.get('/api/cat-market').json['effectiveAppearance']
-        self.assertEqual(appearance['task'],key)
-        html=self.a.get('/den?pet=3').data.decode()
-        self.assertIn(appearance['model'],html)
-        (output/'den-fixture.html').write_text(html,encoding='utf-8')
-        (output/'result.json').write_text(json.dumps({'cloudJob':os.environ['PET_STUDIO_QUERY_JOB'],'newPaidSubmissions':0,'cloudQueries':calls.count('query'),'modelBytes':(output/'model.glb').stat().st_size,'clips':report['clips'],'unweightedVertices':0,'privateEquipAPI':'passed','visualReview':'pending'},indent=2),encoding='utf-8')
-        self.assertEqual(self.post(key,'unequip').status_code,200)
+        self.assertEqual(row['quality']['geometry']['status'],'unknown')
+        self.assertEqual(self.post(key,'approve').status_code,409)
+        self.assertEqual(self.post(key,'adapt',{'mode':'template-skin','forward':'-Y'}).status_code,409)
+        self.assertEqual(self.post(key,'equip',{'jobId':'unchecked'}).status_code,409)
         self.assertNotIn('custom',self.a.get('/api/cat-market').json['effectiveAppearance'])
 
     def wait_for(self, predicate):

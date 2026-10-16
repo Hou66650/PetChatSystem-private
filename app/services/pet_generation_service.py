@@ -20,6 +20,7 @@ from flask import current_app
 from ..config import BASE_DIR
 from ..db import get_db
 from . import pet_adaptation_service as adaptation
+from . import pet_quality_service as quality
 
 BASE = 'https://api.ai3d.cloud.tencent.com/v1/ai3d/'
 ACTIVE = ('submitting', 'waiting', 'running', 'processing', 'uncertain')
@@ -84,6 +85,7 @@ def start(task_id, consent):
         if db.execute("SELECT 1 FROM pet_studio_generations g JOIN pet_studio_tasks t ON t.id=g.task WHERE t.owner=? AND g.status IN ('submitting','waiting','running','processing','uncertain','paused')", (owner,)).fetchone():
             raise ValueError('这个账号已有未结束的生成任务，请先处理原任务')
         payload, digest, _ = inputs(task_id)
+        quality.require(task_id, 'inputs')
         token = uuid.uuid4().hex; now = time.time()
         db.execute('INSERT OR REPLACE INTO pet_studio_generations VALUES (?,?,?,?,?,?,?,?,?)',
                    (task_id, token, None, 'submitting', digest, None, '正在提交，尚未取得任务编号', now, now))
@@ -175,8 +177,8 @@ def _worker(task_id, token, payload=None):
                 entry = next((f for f in value.get('ResultFile3Ds',[]) if f.get('Type')=='GLB'),None)
                 if not entry: raise ValueError('missing GLB')
                 raw = _download(entry['Url'])
-                raw = _prepare(raw)
-                _finish(task_id,token,r['source_hash'],raw,credits)
+                raw, diagnostics = _prepare(raw)
+                _finish(task_id,token,r['source_hash'],raw,credits,diagnostics)
                 return
             if status not in ('WAIT','RUN'): raise ValueError('unknown status')
             _update(task_id,token,status='waiting' if status=='WAIT' else 'running',message='云端排队中' if status=='WAIT' else '正在生成几何与 PBR 材质')
@@ -216,10 +218,11 @@ def _prepare(raw):
             if result.returncode or not (p/'web.glb').is_file(): raise ValueError('Blender export failed')
             if (p/'web.glb').stat().st_size>30*1024*1024: raise ValueError('Web model too large')
             output=(p/'web.glb').read_bytes(); validate_glb(output)
-            return output
+            diagnostics = json.loads((p/'web.quality.json').read_text(encoding='utf-8'))
+            return output, diagnostics
 
 
-def _finish(task_id, token, digest, raw, credits):
+def _finish(task_id, token, digest, raw, credits, diagnostics=None):
     db=get_db(); db.execute('BEGIN IMMEDIATE')
     r=db.execute('SELECT 1 FROM pet_studio_generations g JOIN pet_studio_tasks t ON t.id=g.task WHERE g.task=? AND g.id=?',(task_id,token)).fetchone()
     if not r:
@@ -229,9 +232,14 @@ def _finish(task_id, token, digest, raw, credits):
     with db:
         adaptation.clear(task_id)
         db.execute('INSERT OR REPLACE INTO pet_studio_assets VALUES (?,?,?,?)',(task_id,'model','model/gltf-binary',raw))
+        if diagnostics:
+            from .. import pet_quality
+            pet_quality.record(db, task_id, 'geometry', pet_quality.fingerprints(db,task_id)['geometry'], 'unknown',
+                               {'notes':diagnostics['reason'], 'files':[{'sha256':hashlib.sha256(raw).hexdigest()}],
+                                'method':'automatic-diagnostics-only', 'diagnostics':diagnostics})
         db.execute("UPDATE pet_studio_tasks SET status='review',updated=? WHERE id=?",(time.time(),task_id))
         db.execute("UPDATE pet_studio_generations SET status='done',credits=?,message=?,updated=? WHERE task=? AND id=?",
-                   (credits,'模型已就绪，请旋转检查外貌',time.time(),task_id,token))
+                   (credits,'模型草稿已生成，身体结构审核通过后才能适配；请检查重复尾巴、多余肢体及粘连',time.time(),task_id,token))
 
 
 def clear(task_id):
@@ -242,5 +250,6 @@ def clear(task_id):
 def appearance(owner):
     r=get_db().execute("SELECT t.id,t.name,a.id AS version FROM pet_studio_equipped e JOIN pet_studio_tasks t ON t.id=e.task AND t.owner=e.owner JOIN pet_studio_adaptations a ON a.task=t.id AND a.status='reviewed' JOIN pet_studio_assets s ON s.task=t.id AND s.slot='adapted' WHERE e.owner=?",(owner,)).fetchone()
     if not r: return None
+    if not quality.ready(r['id']): return None
     return dict(id='studio-'+r['id']+'-'+r['version'],name=r['name'],custom=True,
                 model='/api/pet-studio/'+r['id']+'/assets/adapted',task=r['id'])

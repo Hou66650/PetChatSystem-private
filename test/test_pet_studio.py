@@ -11,6 +11,7 @@ from PIL import Image
 from test_companion import CompanionTests
 from app.services import pet_adaptation_service as adaptation
 from app.db import get_db
+from pet_quality_helpers import approve_quality
 
 
 class PetStudioTests(unittest.TestCase):
@@ -76,6 +77,7 @@ class PetStudioTests(unittest.TestCase):
         r=self.a.post('/api/pet-studio/'+key+'/assets/model',data={'file':(io.BytesIO(raw),'cat.glb')},headers=self.headers)
         self.assertEqual(r.status_code,200)
         self.assertEqual(r.json['tasks'][0]['status'],'review')
+        with self.app.app_context(): approve_quality(key, 'geometry')
         r=self.a.post('/api/pet-studio/'+key+'/approve',json={},headers=self.headers)
         self.assertEqual(r.json['tasks'][0]['status'],'approved')
         r=self.photo(key)
@@ -86,6 +88,7 @@ class PetStudioTests(unittest.TestCase):
         key=self.create_studio()
         raw=Path('static/models/petchat-cat-v3/cat.glb').read_bytes()
         self.a.post('/api/pet-studio/'+key+'/assets/model',data={'file':(io.BytesIO(raw),'cat.glb')},headers=self.headers)
+        with self.app.app_context(): approve_quality(key, 'geometry')
         self.a.post('/api/pet-studio/'+key+'/approve',json={},headers=self.headers)
         return key,raw
 
@@ -108,6 +111,8 @@ class PetStudioTests(unittest.TestCase):
         key,raw=self.approved_model()
         with self.app.app_context():
             db=get_db();db.execute('INSERT INTO pet_studio_adaptations VALUES (?,?,?,?,?,?)',(key,'current',hashlib.sha256(raw).hexdigest(),'review_motion','{}',time.time()));db.commit()
+            db.execute('INSERT INTO pet_studio_assets VALUES (?,?,?,?)',(key,'adapted','model/gltf-binary',raw));db.commit()
+            approve_quality(key)
         endpoint='/api/pet-studio/'+key+'/review-motion'
         self.assertEqual(self.a.post(endpoint,json={'jobId':'old','checks':adaptation.CHECKS},headers=self.headers).status_code,409)
         self.assertEqual(self.a.post(endpoint,json={'jobId':'current','checks':['walk']},headers=self.headers).status_code,400)

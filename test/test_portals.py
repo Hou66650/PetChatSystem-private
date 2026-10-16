@@ -89,12 +89,16 @@ class PortalTests(unittest.TestCase):
 
     def private_pet(self,owner,task):
         import time
+        import hashlib
+        from pet_quality_helpers import approve_quality
         raw=b'glTF-private-animation-'+task.encode()
         with self.app.app_context():
             db=get_db()
             db.execute('INSERT INTO pet_studio_tasks VALUES (?,?,?,?,?,?,?,?)',(task,owner,'私人猫','companion','approved','',time.time(),time.time()))
-            db.execute('INSERT INTO pet_studio_adaptations VALUES (?,?,?,?,?,?)',(task,'rig-'+task,'hash','reviewed','{}',time.time()))
+            db.execute('INSERT INTO pet_studio_adaptations VALUES (?,?,?,?,?,?)',(task,'rig-'+task,hashlib.sha256(raw).hexdigest(),'reviewed','{}',time.time()))
             db.execute('INSERT INTO pet_studio_assets VALUES (?,?,?,?)',(task,'adapted','model/gltf-binary',raw))
+            db.execute('INSERT INTO pet_studio_assets VALUES (?,?,?,?)',(task,'model','model/gltf-binary',raw))
+            approve_quality(task)
             db.execute('INSERT INTO pet_studio_equipped VALUES (?,?)',(owner,task));db.commit()
         return raw
 
@@ -109,6 +113,9 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(self.b.get(url,headers={'Authorization':'Bearer wrong'}).status_code,409)
         response=self.app.test_client().get(url,headers=auth)
         self.assertEqual(response.data,raw);self.assertEqual(response.headers['Cache-Control'],'no-store')
+        with self.app.app_context():
+            db=get_db();db.execute("DELETE FROM pet_studio_quality WHERE task=? AND stage='motion'",('private-a',));db.commit()
+        self.assertNotEqual(self.a.get(url,headers=auth).status_code,200)
         self.assertEqual(self.b.get('/api/pet-studio/private-a/assets/adapted').status_code,404)
         self.post('return',{'trip':d['trip']})
         self.assertEqual(self.a.get(url,headers=auth).status_code,409)
