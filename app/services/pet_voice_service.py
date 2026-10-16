@@ -89,6 +89,16 @@ def validate_audio(raw):
         raise VoiceError('音频损坏或格式不正确，请重新选择录音')
 
 
+def voice_name(profile_id):
+    # Upstream enforces 30 characters. Base36 keeps all 128 UUID bits in <=25.
+    number = int(profile_id, 16)
+    encoded = ''
+    while number:
+        number, digit = divmod(number, 36)
+        encoded = '0123456789abcdefghijklmnopqrstuvwxyz'[digit] + encoded
+    return 'pait_' + (encoded or '0')
+
+
 def provider(method, path, missing_ok=False, **kwargs):
     key = current_app.config.get('GLM_API_KEY')
     if not key:
@@ -103,8 +113,36 @@ def provider(method, path, missing_ok=False, **kwargs):
     if response.status_code == 404 and missing_ok:
         return response
     if not response.ok:
-        message = {401:'语音服务凭证无效', 403:'语音服务权限不足', 429:'语音服务繁忙或额度受限，请稍后再试'}.get(response.status_code, '语音服务未完成请求，请检查录音质量与服务额度')
-        raise VoiceError(message, 502)
+        try:
+            body = response.json()
+            error = body.get('error', {}) if isinstance(body, dict) else {}
+            if not isinstance(error, dict):error = {}
+        except ValueError:
+            error = {}
+        code = str(error.get('code', ''))
+        if not re.fullmatch(r'[0-9]{3,8}', code):code = ''
+        detail = str(error.get('message', ''))
+        message = {
+            '1113':'语音服务账户余额不足，请在智谱平台充值后重试',
+            '1210':'语音接口参数不正确，请联系维护者检查接入配置',
+            '1211':'语音模型不存在，请检查模型配置',
+            '1213':'语音接口缺少必要参数，请联系维护者检查接入配置',
+            '1214':'语音接口参数不符合要求，请联系维护者检查接入配置',
+            '1220':'当前账号没有访问该语音服务的权限',
+            '1301':'语音服务未通过内容审核，请更换参考内容',
+            '1302':'语音请求过于频繁，请稍后再试',
+            '1305':'语音服务当前繁忙，请稍后再试',
+            '1308':'语音服务已达到使用上限，请检查服务限额',
+            '1311':'当前套餐未开放此语音模型权限',
+        }.get(code) or {401:'语音服务凭证无效', 403:'语音服务权限不足', 429:'语音服务请求受限，请稍后再试'}.get(response.status_code, '语音服务暂时无法完成请求，请稍后查看状态')
+        if code == '1214' and detail.startswith('voice_name:'):
+            message = '音色名称不符合服务要求，请联系维护者检查接入配置'
+            if '30 characters' in detail:message = '音色名称超过服务允许的 30 个字符，请更新页面后重新创建'
+        if code:message += '（错误码 '+code+'）'
+        # Do not log credentials, recording text, file IDs or raw upstream bodies.
+        endpoint = '/files/*' if path.startswith('/files/') else path
+        current_app.logger.warning('Voice provider rejected endpoint=%s http=%s code=%s', endpoint, response.status_code, code or 'unknown')
+        raise VoiceError(message, 504 if response.status_code >= 500 else 502)
     return response
 
 
@@ -159,7 +197,7 @@ def generate(app, profile_id, raw, transcript):
                 if not isinstance(file_id, str) or not file_id:
                     raise VoiceError('上传结果无效，未创建音色', 502)
                 db.execute('UPDATE pet_voice_profiles SET file_id=? WHERE id=?', (file_id,profile_id)); db.commit()
-                payload = dict(model='glm-tts-clone', voice_name='pait_'+profile_id, input=PREVIEW, file_id=file_id, request_id=profile_id)
+                payload = dict(model='glm-tts-clone', voice_name=voice_name(profile_id), input=PREVIEW, file_id=file_id, request_id=profile_id)
                 if transcript:
                     payload['text'] = transcript
                 cloned = provider('POST', '/voice/clone', json=payload).json()
@@ -212,7 +250,7 @@ def reconcile(owner, profile_id):
     row = owned(owner, profile_id)
     if row['status'] != 'uncertain':
         raise VoiceError('这段声音不需要核查', 409)
-    name = 'pait_'+profile_id
+    name = voice_name(profile_id)
     result = provider('GET', '/voice/list', params={'voiceName':name,'voiceType':'PRIVATE'}).json()
     matches = [item for item in result.get('voice_list', []) if item.get('voice_name')==name and isinstance(item.get('voice'),str) and item['voice']]
     if len(matches) != 1:

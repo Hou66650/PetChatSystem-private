@@ -86,6 +86,29 @@ class PetVoiceTests(unittest.TestCase):
             second=self.upload(requestId=request_id)
             self.assertEqual(first.json['id'],second.json['id'])
             self.assertEqual(sum(c.args[1]=='/voice/clone' for c in upstream.call_args_list),1)
+            payload=next(c.kwargs['json'] for c in upstream.call_args_list if c.args[1]=='/voice/clone')
+            self.assertLessEqual(len(payload['voice_name']),30)
+            self.assertEqual(payload['voice_name'],voice.voice_name(first.json['id']))
+
+    def test_voice_name_preserves_uuid_within_provider_limit(self):
+        for profile in ['0'*32,'f'*32,uuid.uuid4().hex]:
+            name=voice.voice_name(profile)
+            self.assertLessEqual(len(name),30)
+            self.assertEqual(int(name.removeprefix('pait_'),36),int(profile,16))
+
+    def test_provider_errors_distinguish_parameters_balance_and_unknown_result(self):
+        for http,body,expected,status in [
+            (400,{'code':'1214','message':'voice_name:The voice name length cannot exceed 30 characters.'},'30 个字符',502),
+            (429,{'code':'1113','message':'private provider data'},'余额不足',502),
+            (429,{'code':'1302','message':'private provider data'},'过于频繁',502),
+            (500,{'code':'1200','message':'private provider data'},'稍后查看状态',504),
+        ]:
+            response=Mock(ok=False,status_code=http,json=lambda:{'error':body})
+            with self.app.app_context(),patch.object(voice.requests,'Session') as session:
+                session.return_value.__enter__.return_value.request.return_value=response
+                with self.assertRaises(voice.VoiceError) as caught:voice.provider('POST','/voice/clone')
+                self.assertIn(expected,str(caught.exception));self.assertEqual(caught.exception.status,status)
+                self.assertNotIn('private provider data',str(caught.exception))
 
     def test_rejects_invalid_audio_consent_scope_and_cross_account_access(self):
         with patch.object(voice,'provider',side_effect=self.provider) as upstream:
@@ -120,7 +143,7 @@ class PetVoiceTests(unittest.TestCase):
             profile=self.upload().json['id'];self.wait(profile)
         with patch.object(voice,'provider',return_value=Mock(json=lambda:{'voice_list':[{'voice_name':'pait_other','voice':'foreign'}]})):
             self.assertEqual(self.a.post('/api/pet-voices/'+profile+'/reconcile',headers=self.headers).status_code,409)
-        with patch.object(voice,'provider',return_value=Mock(json=lambda:{'voice_list':[{'voice_name':'pait_'+profile,'voice':'recovered'}]})) as upstream:
+        with patch.object(voice,'provider',return_value=Mock(json=lambda:{'voice_list':[{'voice_name':voice.voice_name(profile),'voice':'recovered'}]})) as upstream:
             self.assertEqual(self.a.post('/api/pet-voices/'+profile+'/reconcile',headers=self.headers).json['status'],'ready')
             self.assertEqual(upstream.call_args.args[0],'GET')
 
