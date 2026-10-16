@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const {Controller,tracks}=require('../static/js/den/island-music');
+const {Controller,tracks,files}=require('../static/js/den/island-music');
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 (async()=>{
  const made=[];let fail=false;
@@ -13,13 +13,13 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
  music.setTheme('camp');await flush();assert.equal(music.items.length,2);
  for(let i=0;i<180;i++)music.update(1/60);
  assert.equal(music.items.length,1);assert(made[0].paused&&!made[0].src,'old track released');
- music.setTheme('room');music.setTheme('sakura');await flush();
+ music.setTheme('room');await flush();assert(music.items.at(-1).audio.src.includes('cat-island.mp3'));assert(music.items.at(-1).audio.loop);assert.equal(tracks.room,'猫咪岛');music.setTheme('sakura');await flush();
  assert(music.items.length<=2);assert(music.items.at(-1).audio.src.includes('sakura.flac'),'rapid switch keeps newest');
  music.setHidden(true);assert.equal(music.items.length,0);assert(music.enabled);
  music.setHidden(false);await flush();assert.equal(music.items.length,1);
  music.setVolume(0);for(let i=0;i<180;i++)music.update(1/60);assert(music.items[0].audio.volume<.0001);
  music.stop();assert.equal(music.items.length,0);
  fail=true;music.toggle();await flush();assert(!music.enabled);assert.equal(music.items.length,0,'blocked playback cleans up');
- for(const key of Object.keys(tracks))assert(fs.statSync('static/audio/islands/'+key+'.flac').size>100000);
+ for(const key of Object.keys(tracks))assert(fs.statSync('static/audio/islands/'+files[key]).size>100000);
  console.log('PASS opt-in/current-only loading, crossfade, rapid switching, voice ducking, hidden pause, mute and failed playback cleanup');
 })().catch(e=>{console.error(e);process.exitCode=1;});

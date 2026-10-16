@@ -1,6 +1,7 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.IslandMusic=api;})(typeof window!=='undefined'?window:globalThis,function(){
  'use strict';
- const tracks={sakura:'樱风小径',snow:'雪落星光',camp:'山岭暮歌',room:'雾林午后'};
+ const tracks={sakura:'樱风小径',snow:'雪落星光',camp:'山岭暮歌',room:'猫咪岛'};
+ const files={sakura:'sakura.flac',snow:'snow.flac',camp:'camp.flac',room:'cat-island.mp3'};
  class Controller{
   constructor({audio=()=>new Audio(),notify=()=>{},version='1',volume=.3}={}){Object.assign(this,{audio,notify,version,volume});this.theme='sakura';this.enabled=false;this.hidden=false;this.duck=false;this.items=[];this.epoch=0;}
   setTheme(theme){if(!tracks[theme]||theme===this.theme)return;this.theme=theme;if(this.enabled&&!this.hidden)this.start();else this.emit();}
@@ -12,7 +13,7 @@
    for(const item of [...this.items])if(!item.ready)this.release(item);
    while(this.items.length>1)this.release(this.items[0]);
    const audio=this.audio(),item={audio,ready:false,level:0,target:0,progress:globalThis.PaitLoading?.start('正在准备小岛背景音乐')};
-   audio.preload='none';audio.loop=true;audio.volume=0;audio.src='/static/audio/islands/'+this.theme+'.flac?v='+encodeURIComponent(this.version);
+   audio.preload='none';audio.loop=true;audio.volume=0;audio.src='/static/audio/islands/'+files[this.theme]+'?v='+encodeURIComponent(this.version);
    this.items.push(item);
    audio.onerror=()=>{item.progress?.fail('背景音乐未能加载，请重试');if(token===this.epoch){this.stop();this.emit('音乐暂时无法播放，请重试');}};
    try{await audio.play();if(token!==this.epoch){if(this.items.includes(item))this.release(item);return;}
@@ -30,5 +31,5 @@
    }
   }
  }
- return {Controller,tracks};
+ return {Controller,tracks,files};
 });
