@@ -4,6 +4,7 @@ import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
 import { picker } from '@kit.CoreFileKit';
 import { PetApi } from '../service/PetApi';
 import BuildProfile from '../../../../build/default/generated/profile/default/BuildProfile';
+import { NativePreview } from '../components/NativePreview';
 
 // Render the existing site directly: no replacement UI, injected CSS or copied business logic.
 @Entry
@@ -14,6 +15,7 @@ struct WebPage {
   @State private settings: boolean = true;
   @State private allowLan: boolean = true;
   @State private error: string = '';
+  @State private nativePreview: boolean = false;
   private controller: webview.WebviewController = new webview.WebviewController();
   private fullScreen: FullScreenExitHandler | null = null;
 
@@ -54,6 +56,7 @@ struct WebPage {
   }
 
   onBackPress(): boolean {
+    if (this.nativePreview) { this.nativePreview = false; return true; }
     if (this.settings) { return false; }
     if (this.fullScreen) { this.fullScreen.exitFullScreen(); this.fullScreen = null; return true; }
     try {
@@ -97,7 +100,9 @@ struct WebPage {
 
   build() {
     Column() {
-      if (this.settings) {
+      if (this.nativePreview) {
+        NativePreview({ origin: this.address.trim().replace(/\/$/, ''), onClose: () => { this.nativePreview = false; } })
+      } else if (this.settings) {
         Column({ space: 20 }) {
           Text('打开原版派特岛').fontSize(28).fontWeight(FontWeight.Bold)
           Text('连接电脑网页版，保留原有页面、3D 场景和功能。').fontSize(17)
@@ -110,6 +115,10 @@ struct WebPage {
           }
           if (this.error) { Text(this.error).fontColor('#A32929') }
           Button('进入网页版').onClick(() => { this.open(); })
+          Button('原生 3D 对照入口').onClick(() => {
+            try { new PetApi().configure(this.address, this.allowLan); this.nativePreview = true; }
+            catch (failure) { this.error = (failure as Error).message; }
+          })
           Text('登录使用网页原有账号。在首页按系统返回键可修改连接地址。摄像头和麦克风需要 HTTPS 与系统授权。')
             .fontSize(14).fontColor('#665D57')
         }.padding(28).constraintSize({ maxWidth: 720 }).width('100%')
