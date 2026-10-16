@@ -11,7 +11,7 @@
   if(state.hostPet.theme==='room'){const r=await fetch('/static/data/farm-layout.json',{cache:'no-cache'});if(!r.ok)throw Error('岛屿地图加载失败');layout=FarmGarden.navigation(layout,await r.json());const fit=Math.max(1,1.15/camera.aspect);camera.position.set(2+17*fit,1+22*fit,3+36*fit);controls.target.set(2,1,3);controls.maxDistance=110;camera.far=250;camera.updateProjectionMatrix();}
   // Only the selected destination and these two pets are requested.
   for(const spec of [state.petSpec,state.hostPet]){const gltf=await loader.glb(spec.model,ticket),pet=new PortalPets.Pet(THREE,gltf,spec);scene.add(pet.root);pets.push(pet);const box=new THREE.Box3().setFromObject(pet.root),radius=Math.hypot(box.max.x-box.min.x,box.max.z-box.min.z)/2+.015;
-   pet.radius=radius;const nav=new PetNavigation.Navigation({...layout,bodyRadius:radius}),move=new PetLocomotion.Controller({navigation:nav,model:pet.root,animate:k=>pet.play(k),rest:()=>pet.play('idle')});move.autonomous=false;pet.root.position.copy(new THREE.Vector3(...[0,0,0]));const start=nav.nearest({x:pets.length===1?-1:1,z:0});pet.root.position.set(start.x,nav.surfaceHeight(start),start.z);moves.push(move);
+   pet.radius=radius;const nav=new PetNavigation.Navigation({...layout,bodyRadius:radius}),move=new PetLocomotion.Controller({navigation:nav,model:pet.root,animate:(k,speed)=>pet.play(k,speed),rest:()=>pet.play('idle')});move.autonomous=false;pet.root.position.copy(new THREE.Vector3(...[0,0,0]));const start=nav.nearest({x:pets.length===1?-1:1,z:0});pet.root.position.set(start.x,nav.surfaceHeight(start),start.z);moves.push(move);
   }
   if(ended)return;ready=true;resize();requestAnimationFrame(tick);$('visit-status').textContent=state.mine?'它们各自探索，靠近时会打招呼。':'正在旁观好友的宠物来访。';
  }
