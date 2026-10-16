@@ -27,7 +27,8 @@ browser=page=None
 try:
     with patch.object(voice,'provider',side_effect=fixture.provider), tempfile.TemporaryDirectory(prefix='pait-voice-ui-') as tmp:
         plan=json.loads(subprocess.check_output(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(ROOT/'scripts/start-island.ps1'),'-Inspect'],text=True,encoding='utf-8'))
-        chrome=subprocess.Popen([plan['Chrome'],'--headless=new','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--use-angle=d3d11','--use-adapter-luid='+plan['Selected']['Luid'],'--user-data-dir='+tmp,'about:blank'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        mic_sample=Path(tmp)/'microphone.wav';mic_sample.write_bytes(fixture.audio)
+        chrome=subprocess.Popen([plan['Chrome'],'--headless=new','--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--use-file-for-fake-audio-capture='+str(mic_sample),'--autoplay-policy=no-user-gesture-required','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--use-angle=d3d11','--use-adapter-luid='+plan['Selected']['Luid'],'--user-data-dir='+tmp,'about:blank'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         try:
             port_file=Path(tmp)/'DevToolsActivePort'
             for _ in range(100):
@@ -65,8 +66,37 @@ try:
             js("[...document.querySelectorAll('[data-list] button')].find(b=>b.textContent==='应用给球球').click()")
             wait("document.querySelector('[data-current]').textContent.includes('专属音色')")
             assert js("document.querySelector('[data-list]').textContent.includes('当前使用')")
+            js("window.voiceEvents=[];document.addEventListener('pet-voice-changed',e=>voiceEvents.push(e.detail));window.originalMic=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);window.micStreams=[];navigator.mediaDevices.getUserMedia=async c=>{const s=await originalMic(c);micStreams.push(s);return s;}")
+            js("document.querySelector('[data-name]').value='现场录制的第二种声音';document.querySelector('[data-record]').click()")
+            wait("!document.querySelector('[data-record-stop]').disabled")
+            assert js("document.querySelector('[data-file]').disabled&&document.querySelector('[data-create]').disabled")
+            time.sleep(3.8)
+            js("document.querySelector('[data-record-stop]').click()")
+            wait("!document.querySelector('[data-create]').disabled")
+            wait("document.querySelector('[data-source]').duration>=3")
+            assert js("micStreams.every(s=>s.getTracks().every(t=>t.readyState==='ended'))")
+            assert js("document.querySelectorAll('[data-list] article').length===1"), 'recording must not automatically upload'
+            js("document.querySelector('[data-create]').click()")
+            wait("[...document.querySelectorAll('[data-list] article')].some(a=>a.textContent.includes('现场录制的第二种声音')&&a.textContent.includes('可使用'))")
+            js("[...document.querySelectorAll('[data-list] article')].find(a=>a.textContent.includes('现场录制的第二种声音')).querySelectorAll('button')[1].click()")
+            wait("document.querySelector('[data-current]').textContent.includes('现场录制的第二种声音')")
+            second=js('voiceEvents.at(-1).activeId')
+            js("[...document.querySelectorAll('[data-list] article')].find(a=>a.textContent.includes('清新的测试声音')).querySelectorAll('button')[1].click()")
+            wait("document.querySelector('[data-current]').textContent.includes('清新的测试声音')")
+            assert js('voiceEvents.at(-1).activeId') != second
+            js("document.querySelector('[data-record]').click()")
+            wait("!document.querySelector('[data-record-stop]').disabled")
+            js("document.querySelector('[data-record-cancel]').click()")
+            assert js("micStreams.every(s=>s.getTracks().every(t=>t.readyState==='ended'))&&document.querySelector('[data-create]').disabled")
+            js("navigator.mediaDevices.getUserMedia=async()=>{throw new DOMException('denied','NotAllowedError')};document.querySelector('[data-record]').click()")
+            wait("document.querySelector('[data-status]').textContent.includes('权限未获允许')")
+            assert js("!document.querySelector('[data-record]').disabled")
+            js("navigator.mediaDevices.getUserMedia=async c=>{const s=await originalMic(c);micStreams.push(s);return s;};document.querySelector('[data-record]').click()")
+            wait("!document.querySelector('[data-record-stop]').disabled")
+
             js("document.querySelector('[data-close]').click();PetVoiceUI.open(2,'雪球')")
             wait("document.querySelector('[data-list]').textContent.includes('还没有')")
+            assert js("micStreams.every(s=>s.getTracks().every(t=>t.readyState==='ended'))")
             assert js("document.querySelector('[data-current]').textContent.includes('默认')")
             js("document.querySelector('[data-close]').click();PetVoiceUI.open(1,'球球')")
             wait("document.querySelector('[data-current]').textContent.includes('专属音色')")
@@ -76,9 +106,11 @@ try:
             image=page.call('Page.captureScreenshot',{'format':'png'})['data'];out=Path(os.environ['TEMP'])/'pait-pet-voice-ui.png';out.write_bytes(base64.b64decode(image))
             js("document.querySelector('[data-reset]').click()")
             wait("document.querySelector('[data-current]').textContent.includes('默认')")
-            js("[...document.querySelectorAll('[data-list] button')].find(b=>b.textContent==='删除').click()")
+            for remaining in [1,0]:
+                js("[...document.querySelectorAll('[data-list] button')].find(b=>b.textContent==='删除').click()")
+                wait("document.querySelectorAll('[data-list] article').length==="+str(remaining))
             wait("document.querySelector('[data-list]').textContent.includes('还没有')")
-            print(json.dumps({'passed':True,'checks':['real WAV decode/upload','original preview','cloud preview playback URL','explicit apply','per-pet isolation','reopen persistence','mobile width','restore default','delete'],'screenshot':str(out)},ensure_ascii=False))
+            print(json.dumps({'passed':True,'checks':['real microphone capture and WAV conversion','stop/cancel/close releases microphone','permission denial recovery','two voices switch and publish updates','no automatic recording upload','real WAV decode/upload','original preview','cloud preview playback URL','explicit apply','per-pet isolation','reopen persistence','mobile width','restore default','delete'],'screenshot':str(out)},ensure_ascii=False))
         finally:
             if page:page.close()
             if browser:

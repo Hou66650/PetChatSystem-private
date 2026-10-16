@@ -616,7 +616,11 @@
         let activeAudioUrl = null;
         let activePetPlayer = null;   // v1.0.0 PetSounds 序列播放器（朗读真实叫声链）
         let activeSpeakButton = null;
+        let speechEpoch=0;
+        document.addEventListener('pet-voice-settings-open',()=>stopSpeaking());
+        document.addEventListener('pet-voice-changed',()=>stopSpeaking());
         function stopSpeaking() {
+            speechEpoch++;
             if (activePetPlayer) { activePetPlayer.stop(); activePetPlayer = null; }
             if (activeAudio) { try { activeAudio.pause(); } catch (e) {} activeAudio = null; }
             if (activeAudioUrl) { URL.revokeObjectURL(activeAudioUrl); activeAudioUrl = null; }
@@ -722,6 +726,8 @@
                     return;
                 }
             }
+            const epoch=speechEpoch;
+            activeSpeakButton=button;
             button.disabled = true;
             button.textContent = '生成中…';
             try {
@@ -735,6 +741,7 @@
                 });
                 if (!resp.ok) throw new Error('tts ' + resp.status);
                 const blob = await resp.blob();
+                if(epoch!==speechEpoch)return;
                 activeAudioUrl = URL.createObjectURL(blob);
                 activeAudio = new Audio(activeAudioUrl);
                 activeSpeakButton = button;
@@ -744,6 +751,7 @@
                 activeAudio.onerror = () => { stopSpeaking(); toast('朗读失败', 'error'); };
                 await activeAudio.play();
             } catch (e) {
+                if(epoch!==speechEpoch)return;
                 button.disabled = false;
                 button.textContent = '朗读';
                 browserFallbackSpeak(text);

@@ -8,6 +8,17 @@
     var VALID = ['male', 'female', 'unspecified'];
     var voiceVersion = document.currentScript?.src ? new URL(document.currentScript.src).search : '';
     var voiceLoad;
+    // Account-scoped notifications invalidate already synthesized replies in every open tab.
+    var VOICE_KEY = 'pait-pet-voice-change:' + (window.COMPANION_SCOPE || 'legacy');
+    function voiceChanged(detail, broadcast) {
+        if (!detail || detail.scope !== window.COMPANION_SCOPE || ![1,2,3,4].includes(Number(detail.petId))) return;
+        document.dispatchEvent(new CustomEvent('pet-voice-changed', {detail:detail}));
+        if (broadcast) try { localStorage.setItem(VOICE_KEY, JSON.stringify({...detail, revision:crypto.randomUUID()})); } catch(e) {}
+    }
+    window.PetVoiceChanges = {publish: detail => voiceChanged(detail, true)};
+    window.addEventListener('storage', e => {
+        if (e.key === VOICE_KEY && e.newValue) try { voiceChanged(JSON.parse(e.newValue), false); } catch(err) {}
+    });
 
     function loadAll() {
         try {
@@ -108,7 +119,7 @@
             }
             var onKey = function (e) { if (e.key === 'Escape') close(); };
             var voiceButton = document.createElement('button');
-            voiceButton.type = 'button';voiceButton.textContent = '专属声音 · 上传录音';
+            voiceButton.type = 'button';voiceButton.textContent = '专属声音 · 录音或上传';
             voiceButton.style.cssText = 'width:100%;padding:12px;margin-top:12px;border:1px solid #b8cec7;border-radius:12px;background:#eef7f2;color:#315c51;cursor:pointer;font:inherit;';
             voiceButton.onclick = async function () {
                 voiceButton.disabled=true;

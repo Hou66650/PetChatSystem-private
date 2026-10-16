@@ -79,6 +79,19 @@ class PetVoiceTests(unittest.TestCase):
             self.assertTrue(any(c.args[1]=='/voice/delete' for c in upstream.call_args_list))
             self.assertEqual(sum(c.args[0]=='DELETE' for c in upstream.call_args_list),2)
 
+    def test_switch_two_voices_routes_new_tts_and_sessions(self):
+        with patch.object(voice,'provider',side_effect=self.provider) as upstream:
+            ids=[]
+            for name in ['声音甲','声音乙']:
+                profile=self.upload(name=name).json['id'];self.wait(profile);ids.append(profile)
+            used=[]
+            for profile in ids+[ids[0]]:
+                self.assertEqual(self.apply(profile).json['activeId'],profile)
+                self.assertEqual(self.a.post('/api/tts',json={'petId':1,'text':'完全相同的一句话'}).status_code,200)
+                used.append(upstream.call_args.kwargs['json']['voice'])
+                self.assertEqual(self.a.post('/api/realtime/session',json={'petId':1}).json['customVoice']['id'],profile)
+            self.assertNotEqual(used[0],used[1]);self.assertEqual(used[0],used[2])
+
     def test_duplicate_submission_creates_once(self):
         request_id=uuid.uuid4().hex
         with patch.object(voice,'provider',side_effect=self.provider) as upstream:

@@ -44,6 +44,7 @@
     this._injectStyle();
     document.addEventListener?.('voiceprint-settings-open',()=>this.stop());
     document.addEventListener?.('pet-voice-settings-open',()=>this.stop());
+    document.addEventListener?.('pet-voice-changed',e=>{if(Number(e.detail?.petId)===Number(this.getPet().id)&&this.isActive())this._restart();});
   }
 
   RealtimeUI.prototype._injectStyle = function () {
