@@ -8,6 +8,7 @@
   camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,.1,100);camera.position.set(10,9,15);controls=new THREE.OrbitControls(camera,renderer.domElement);controls.target.set(0,.5,0);controls.enableDamping=true;controls.maxDistance=35;controls.minDistance=4;controls.maxPolarAngle=Math.PI*.48;
   const loader=new SelectedAssets.Loader(new THREE.GLTFLoader()),ticket=loader.begin(),stage=await loader.glb(state.hostPet.stage,ticket);scene.add(stage.scene);if(state.hostPet.theme==='room')new PetPortals.Gates(THREE,scene,{desktop:{x:2.3,z:-.75,mountX:1.4,mountZ:-1.65},neighbor:{x:4.6,z:-.75,mountZ:-1.65}});
   let layout={room:MistwoodLayout,camp:AlpineLayout,snow:SnowHavenLayout,sakura:{...SakuraRiverLayout,radius:3.2,obstacles:[{x:-2.1,z:-1.5,r:.55},{x:2.25,z:-1.2,r:.38},{kind:'rect',x:0,z:-2.65,w:3.7,d:.26}]}}[state.hostPet.theme];
+  if(state.hostPet.theme==='room'){const r=await fetch('/static/data/farm-layout.json',{cache:'no-cache'});if(!r.ok)throw Error('岛屿地图加载失败');layout=FarmGarden.navigation(layout,await r.json());const fit=Math.max(1,1.15/camera.aspect);camera.position.set(2+17*fit,1+22*fit,3+36*fit);controls.target.set(2,1,3);controls.maxDistance=110;camera.far=250;camera.updateProjectionMatrix();}
   // Only the selected destination and these two pets are requested.
   for(const spec of [state.petSpec,state.hostPet]){const gltf=await loader.glb(spec.model,ticket),pet=new PortalPets.Pet(THREE,gltf,spec);scene.add(pet.root);pets.push(pet);const box=new THREE.Box3().setFromObject(pet.root),radius=Math.hypot(box.max.x-box.min.x,box.max.z-box.min.z)/2+.015;
    pet.radius=radius;const nav=new PetNavigation.Navigation({...layout,bodyRadius:radius}),move=new PetLocomotion.Controller({navigation:nav,model:pet.root,animate:k=>pet.play(k),rest:()=>pet.play('idle')});move.autonomous=false;pet.root.position.copy(new THREE.Vector3(...[0,0,0]));const start=nav.nearest({x:pets.length===1?-1:1,z:0});pet.root.position.set(start.x,nav.surfaceHeight(start),start.z);moves.push(move);
@@ -32,7 +33,7 @@
    }
    if(now-lastSample>2000){lastSample=now;addEvent('position');void send();}
   }else if(state.snapshot){for(let i=0;i<2;i++){const s=state.snapshot[i?'host':'visitor'];if(s){pets[i].root.position.lerp(new THREE.Vector3(s.x,moves[i].navigation.surfaceHeight(s),s.z),1-Math.exp(-dt*6));pets[i].root.rotation.y=s.yaw;pets[i].play(s.action);}}}
-  for(const p of pets)p.update(dt);controls.update();renderer.render(scene,camera);
+  for(const p of pets)p.update(dt);controls.update();if(state.hostPet.theme==='room'){scene.fog.near=Math.max(28,camera.position.distanceTo(controls.target)+8);scene.fog.far=scene.fog.near+65;}renderer.render(scene,camera);
  }
  async function send(){if(busy||ended)return;busy=true;const batch=events.splice(0,12);try{await api('sample',{snapshot:{visitor:pets[0].snapshot(),host:pets[1].snapshot()},events:batch});}catch(e){$('visit-status').textContent=e.message;}finally{busy=false;}}
  async function poll(){try{const r=await fetch('/api/portals/trip/'+config.trip,{cache:'no-store',paitQuiet:true});const d=await r.json();if(!r.ok)throw Error(d.error);state=d;if(state.status!=='active'){ended=true;$('visit-status').textContent=state.reason+' · 已回到本岛';$('visit-return').textContent='打开自己的小岛';}

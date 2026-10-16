@@ -1,8 +1,8 @@
 {
   "theme": "room",
-  "triangles": 480474,
-  "surfaceArea": 1814.229017923445,
-  "meshes": 19,
-  "geometry": "original topology, no collapse decimation",
-  "bytes": 20314128
+  "triangles": 714031,
+  "surfaceArea": 2970.5739265144366,
+  "meshes": 121,
+  "geometry": "room: ground/masonry preserved, all leaf contours retained, pottery/cloth/branch LOD, subpixel clods and short grass omitted",
+  "bytes": 27834588
 }

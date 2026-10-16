@@ -729,9 +729,9 @@ document.addEventListener('DOMContentLoaded', () => {
         function frameAlpine(close){
             if(!petModel)return;
             const ticket=++cameraMoveEpoch,from=camera.position.clone(),fromTarget=controls.target.clone();
-            const target=close?petModel.position.clone().add(new THREE.Vector3(0,.55,0)):new THREE.Vector3(currentTheme==='room'?-3:0,.65,currentTheme==='room'?1:0);
+            const target=close?petModel.position.clone().add(new THREE.Vector3(0,.55,0)):new THREE.Vector3(currentTheme==='room'?2:0,.65,currentTheme==='room'?3:0);
             const to=close?target.clone().add(new THREE.Vector3(1.25,.65,2.1)):
-                currentTheme==='room'?new THREE.Vector3(11,13,25):
+                currentTheme==='room'?target.clone().add(new THREE.Vector3(17,22,36).multiplyScalar(Math.max(1,1.15/camera.aspect))):
                 currentTheme==='camp'?new THREE.Vector3(5.4,6.8,14):
                 currentTheme==='sakura'?new THREE.Vector3(2.4,4.4,10.8):new THREE.Vector3(3.5,3.8,8.4);
             const duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:650,start=performance.now();
@@ -1011,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sakura: {url:"/static/models/petchat-sakura-grand-v1/sakura.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('sakura',{...SAKURA_NAV,...SakuraRiverLayout})},
             snow: {url:"/static/models/petchat-toys-v1/snow.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('snow',SnowHavenLayout)},
             camp: {url:"/static/models/petchat-shepherd-v1/alpine.glb?v={{ app_version }}", navigation:ToyWorkshop.navigation('camp',AlpineLayout)},
-            room: {url:"/static/models/petchat-farm-v1/mistwood-farm.glb?v={{ app_version }}", navigation:FarmGarden.navigation(ToyWorkshop.navigation('room',MistwoodLayout),FARM_LAYOUT)}
+            room: {url:"/static/models/petchat-meadow-v1/mistwood-meadow.glb?v={{ app_version }}", navigation:FarmGarden.navigation(ToyWorkshop.navigation('room',MistwoodLayout),FARM_LAYOUT)}
         };
         function applyTheme(name, assetTicket) {
             const t = THEMES[name], modeledSpec = MODELED_STAGES[name];
@@ -1028,10 +1028,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('btn-pet-view').hidden=false;document.getElementById('btn-stage-view').hidden=false;
             document.getElementById('btn-pet-view').textContent=`近看${SPECS[currentPetId].name}`;
             document.getElementById('btn-stage-view').textContent=name==='camp'?'营地全景':'小窝全景';
-            controls.maxDistance=name==='room'?42:name==='camp'?24:12;
+            controls.maxDistance=name==='room'?110:name==='camp'?24:12;
             if(name==='camp' && currentTheme!=='camp'){camera.position.set(5.4,6.8,14);controls.target.set(0,.65,0);}
-            if(name==='room' && currentTheme!=='room'){camera.position.set(11,13,25);controls.target.set(-3,1.4,1);}
-            const shadowExtent=name==='room'?15:name==='camp'?7:4;
+            if(name==='room' && currentTheme!=='room'){const fit=Math.max(1,1.15/camera.aspect);camera.position.set(2+17*fit,1+22*fit,3+36*fit);controls.target.set(2,1,3);}
+            const shadowExtent=name==='room'?22:name==='camp'?7:4;
             Object.assign(sun.shadow.camera,{left:-shadowExtent,right:shadowExtent,top:shadowExtent,bottom:-shadowExtent});sun.shadow.camera.updateProjectionMatrix();
             currentTheme = name;
             islandMusic?.setTheme(name);
@@ -1109,7 +1109,8 @@ document.addEventListener('DOMContentLoaded', () => {
             else { sky = 0x3E4A6B; fog = 0x3E4A6B; sunI = 0.35; }                        // 夜晚
             skyBackground.set(h >= 6 && h < 20 ? 'day' : 'night', sky,
                 currentTheme==='room'?'/static/textures/mistwood-sky-v1':currentTheme==='camp'?'/static/textures/alpine-sky-v1':currentTheme==='snow'?'/static/textures/snow-sky-v1':'/static/textures/cloud-sky-v1');
-            scene.fog = new THREE.Fog(fog, currentTheme==='room'?28:currentTheme==='camp'?20:9, currentTheme==='room'?60:currentTheme==='camp'?45:22);
+            const fogNear=currentTheme==='room'?Math.max(28,camera.position.distanceTo(controls.target)+8):currentTheme==='camp'?20:9;
+            scene.fog = new THREE.Fog(fog, fogNear, currentTheme==='room'?fogNear+65:currentTheme==='camp'?45:22);
             sun.intensity = sunI;
             hemi.intensity = 0.5 + sunI * 0.4;
             renderer.toneMappingExposure=currentTheme==='room'?1.0:1.12;
@@ -3647,6 +3648,7 @@ document.addEventListener('DOMContentLoaded', () => {
             autoBlinkTick(now);
 
             controls.update();
+            if(currentTheme==='room'&&scene.fog){scene.fog.near=Math.max(28,camera.position.distanceTo(controls.target)+8);scene.fog.far=scene.fog.near+65;}
             camera.updateMatrixWorld(true);
             petGrounding?.beforeFrame();
             catLife?.beforeFrame();

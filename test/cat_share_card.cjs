@@ -11,4 +11,4 @@ const placements=labels(map.landmarks);for(const left of [true,false]){
  for(let i=0;i<side.length;i++){assert(side[i].labelY>=375&&side[i].labelY<=875);if(i)assert(side[i].labelY-side[i-1].labelY>=38,'map label boxes cannot overlap');}
 }
 const cleared=summary({...data,catalog,events:[{stream:'private-A',updated:100,snapshot:{target:'garden'}}]},'private-A',100001);assert(cleared.landmarks.every(p=>!p.recorded),'cleared trail cannot highlight old place events');
-console.log('PASS share map: catalog coordinates, session-only highlights, cutoff, 15 nonoverlapping place labels');
+console.log('PASS share map: catalog coordinates, session-only highlights, cutoff, '+placements.length+' nonoverlapping place labels');

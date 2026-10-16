@@ -25,20 +25,21 @@
                 this.nodes.push({...p, gx: x, gz: z, valid: this.isWalkable(p)});
             }
         }
-        isWalkable(p) {
-            if (!Number.isFinite(p.x + p.z) || Math.hypot(p.x, p.z) > this.radius) return false;
+        isWalkable(p, padding=0) {
+            const clearance=this.clearance+padding;
+            if (!Number.isFinite(p.x + p.z) || Math.hypot(p.x, p.z) > this.radius-padding) return false;
             if(this.domains){
                 const inside=q=>this.domains.some(d=>d.kind==='rect'?Math.abs(q.x-d.x)<=d.w/2&&Math.abs(q.z-d.z)<=d.d/2:((q.x-d.x)/d.rx)**2+((q.z-d.z)/d.rz)**2<=1);
                 if(!inside(p))return false;
                 // Erode the union, not each piece: adjoining terraces remain connected.
-                for(let i=0;i<16;i++)if(!inside({x:p.x+this.clearance*Math.cos(i*Math.PI/8),z:p.z+this.clearance*Math.sin(i*Math.PI/8)}))return false;
+                for(let i=0;i<16;i++)if(!inside({x:p.x+clearance*Math.cos(i*Math.PI/8),z:p.z+clearance*Math.sin(i*Math.PI/8)}))return false;
             }
             for (const w of this.water) {
                 const distanceToWater = Math.hypot(Math.max(0,Math.abs(p.x-w.x)-w.w/2),Math.max(0,Math.abs(p.z-w.z)-w.d/2));
                 // Only the deck corridor can override water exclusion. Ordinary props
                 // and bridge rails below remain obstacles, including at the banks.
-                if (distanceToWater <= this.clearance && !this.bridges.some(b =>
-                    Math.abs(p.x-b.x) < b.w/2-b.rail-this.clearance && Math.abs(p.z-b.z) <= b.d/2)) return false;
+                if (distanceToWater <= clearance && !this.bridges.some(b =>
+                    Math.abs(p.x-b.x) < b.w/2-b.rail-clearance && Math.abs(p.z-b.z) <= b.d/2)) return false;
             }
             for (const o of this.obstacles) {
                 if (o.kind === 'rect') {
@@ -47,9 +48,9 @@
                     const x = c * dx + s * dz, z = -s * dx + c * dz;
                     // Rounded expansion of the original box, including corner clearance.
                     const dock=this.dock;
-                    const clearance=dock&&o.id===dock.obstacle&&Math.abs(p.x-dock.entry.x)<.025&&p.z>=dock.entry.z-.001&&p.z<=dock.target.z+.001?dock.clearance:this.clearance;
-                    if (Math.hypot(Math.max(0, Math.abs(x) - o.w / 2), Math.max(0, Math.abs(z) - o.d / 2)) <= clearance) return false;
-                } else if (distance(p, o) <= o.r + this.clearance) return false;
+                    const boxClearance=dock&&o.id===dock.obstacle&&Math.abs(p.x-dock.entry.x)<.025&&p.z>=dock.entry.z-.001&&p.z<=dock.target.z+.001?dock.clearance+padding:clearance;
+                    if (Math.hypot(Math.max(0, Math.abs(x) - o.w / 2), Math.max(0, Math.abs(z) - o.d / 2)) <= boxClearance) return false;
+                } else if (distance(p, o) <= o.r + clearance) return false;
             }
             return true;
         }
@@ -73,13 +74,19 @@
             }
             return height;
         }
-        segmentClear(a, b) {
-            const count = Math.max(1, Math.ceil(distance(a, b) / .035));
-            for (let i = 0; i <= count; i++) {
-                const k = i / count;
-                if (!this.isWalkable({x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k})) return false;
-            }
-            return true;
+        segmentClear(a, b, padding=0) {
+            const length=distance(a,b);
+            const check=(spacing,cushion)=>{
+                const count=Math.max(1,Math.ceil(length/spacing));
+                for(let i=0;i<=count;i++){
+                    const k=i/count;
+                    if(!this.isWalkable({x:a.x+(b.x-a.x)*k,z:a.z+(b.z-a.z)*k},Math.min(cushion,k*length,(1-k)*length)))return false;
+                }
+                return true;
+            };
+            // Open ground needs only coarse samples with a wider cushion. Use
+            // finer samples near boundaries so narrow doorways remain usable.
+            return padding ? check(.035,.02)||check(.008,padding) : check(.035,0);
         }
         index(x, z) { return (z + this.n) * this.size + x + this.n; }
         node(x, z) { return Math.abs(x) <= this.n && Math.abs(z) <= this.n ? this.nodes[this.index(x,z)] : null; }
@@ -103,7 +110,11 @@
             }
             // Commands outside the stage or inside a prop are rejected, not silently re-targeted.
             if (!this.isWalkable(from) || !this.isWalkable(to)) return null;
-            if (this.segmentClear(from,to)) return [to];
+            // Leave a small planning cushion between samples. A line that merely
+            // grazes a concave terrace edge can pass sparse samples but stop the
+            // actual animal when a later animation frame lands in that gap.
+            const clear=(a,b)=>this.segmentClear(a,b,.005);
+            if (clear(from,to)) return [to];
             const nearestConnected = (p) => {
                 const gx=Math.round(p.x/this.cell),gz=Math.round(p.z/this.cell),near=[];
                 for(let z=gz-2;z<=gz+2;z++)for(let x=gx-2;x<=gx+2;x++){
@@ -111,8 +122,8 @@
                 }
                 // Check nearby candidates first. Testing visibility to every node
                 // made each decision stall on larger, irregular islands.
-                const connected=near.sort((a,b)=>distance(p,a)-distance(p,b)).find(n=>this.segmentClear(p,n));
-                return connected||this.nodes.filter(n=>n.valid).sort((a,b)=>distance(p,a)-distance(p,b)).find(n=>this.segmentClear(p,n));
+                const connected=near.sort((a,b)=>distance(p,a)-distance(p,b)).find(n=>clear(p,n));
+                return connected||this.nodes.filter(n=>n.valid).sort((a,b)=>distance(p,a)-distance(p,b)).find(n=>clear(p,n));
             };
             const start = nearestConnected(from), end = nearestConnected(to);
             if (!start || !end) return null;
@@ -128,7 +139,7 @@
                     const result = []; let cursor = from;
                     for (let i = 0; i < path.length;) {
                         let far = i;
-                        for (let j = i; j < path.length; j++) if (this.segmentClear(cursor,path[j])) far=j;
+                        for (let j = i; j < path.length; j++) if (clear(cursor,path[j])) far=j;
                         const point = {x:path[far].x,z:path[far].z}; result.push(point); cursor=point; i=far+1;
                     }
                     return result;
@@ -139,7 +150,7 @@
                     const next = this.node(node.gx+dx,node.gz+dz);
                     if (!next || !next.valid) continue;
                     const neighborId=id(next),edgeKey=Math.min(current,neighborId)*this.nodes.length+Math.max(current,neighborId);
-                    if(!this.edgeClear.has(edgeKey))this.edgeClear.set(edgeKey,this.segmentClear(node,next));
+                    if(!this.edgeClear.has(edgeKey))this.edgeClear.set(edgeKey,clear(node,next));
                     if(!this.edgeClear.get(edgeKey))continue;
                     if (dx && dz && (!this.node(node.gx+dx,node.gz).valid || !this.node(node.gx,node.gz+dz).valid)) continue;
                     const nextId=id(next), cost=costs.get(current)+distance(node,next);

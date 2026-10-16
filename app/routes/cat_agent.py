@@ -53,7 +53,8 @@ def operate(operation):
 
 @bp.get('/cat-agent-monitor')
 def monitor_page():
-    return render_template('cat-agent-monitor.html',scope=companion.browser_scope())
+    from ..services.farm_service import LAYOUT
+    return render_template('cat-agent-monitor.html',scope=companion.browser_scope(),farm_layout=LAYOUT)
 
 @bp.get('/api/cat-agent/monitor')
 def monitor_data():

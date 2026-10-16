@@ -1,0 +1,23 @@
+{
+  "meshes": 124,
+  "newMeshes": 10,
+  "triangles": 1526109,
+  "bytes": 48722308,
+  "trimmedWallFaces": 3233,
+  "domains": [
+    {
+      "x": 10,
+      "z": 8,
+      "rx": 9,
+      "rz": 5.5
+    },
+    {
+      "x": 15,
+      "z": 2,
+      "rx": 3.8,
+      "rz": 4.8
+    }
+  ],
+  "sharedTextures": 20,
+  "newTextureBytes": 2902975
+}

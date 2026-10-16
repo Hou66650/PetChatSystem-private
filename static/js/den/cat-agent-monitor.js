@@ -8,7 +8,7 @@
   const list=(id,items)=>$(id).replaceChildren(...(items.length?items:['暂无记录']).map(value=>{const li=document.createElement('li');li.textContent=value;return li;}));
   text('scene-current',current?'服务器场景版本 '+current.revision+' · '+new Date(current.asOf*1000).toLocaleTimeString():'场景数据暂不可用');
   text('scene-received',used?'本实例使用版本 '+used.revision+(used.revision===current?.revision?' · 已同步':' · 当前行动沿用出发快照，新变化将在后续选择时考虑'):'尚未收到本实例的场景快照，请刷新猫咪小岛。');
-  list('scene-beds',[...(used?.beds||[]).map(b=>b.name+'：'+(b.plant?b.plant.name+(b.plant.variant?' ✧ 梦幻变异':'')+' · '+b.plant.stageName+' · '+b.plant.stage+'/10'+(b.plant.wateredToday?' · 今日已浇水':''):'尚未种植')),...(used?.decorations||[]).map(p=>p.place+'：'+p.plant)]);
+  list('scene-beds',[...(used?.regions||[]).map(p=>p.name+'：'+p.description),...(used?.beds||[]).map(b=>b.name+'：'+(b.plant?b.plant.name+(b.plant.variant?' ✧ 梦幻变异':'')+' · '+b.plant.stageName+' · '+b.plant.stage+'/10'+(b.plant.wateredToday?' · 今日已浇水':''):'尚未种植')),...(used?.decorations||[]).map(p=>p.place+'：'+p.plant)]);
   list('scene-changes',(current?.recentChanges||[]).map(e=>new Date(e.created*1000).toLocaleTimeString()+' · '+e.summary));
   list('scene-experiences',(scene.experiences||[]).map(e=>new Date(e.created*1000).toLocaleString()+' · '+e.summary));
   text('scene-model-status',decision?new Date(decision.created*1000).toLocaleTimeString()+' · '+(decision.modelUsed?'已尝试请求模型；结果来源：'+decision.result.source:'本轮使用本地规则，未请求模型'):'本实例尚无后台决策请求。');

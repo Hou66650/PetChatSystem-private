@@ -1,0 +1,37 @@
+云上原野 / Cloud meadow — v1.56.0
+
+用途
+沿猫咪岛东南侧扩出连续大草坪，向东北延伸疏林空地，留出主人自由种花、
+摆盆和宠物活动的空间。温室、猫窝、种植园和河道保留原坐标；右岸旧长椅
+移到 (5.5, 3.5)，为大型上传猫咪留出通行宽度。瀑布出口保持开放。
+
+可编辑源与实模图
+cloud-meadow.blend：Blender 5.2 场景、材质与相机。
+perspective.png、plan.png：同一实模的透视图、正俯视图；不是 AI 概念图。
+猫窝与宠物仍由网页独立加载，所以 Blender 场景图中未重复烘入它们。
+
+可复现生成（在项目根目录执行）
+blender -b --python scripts/blender/build_cloud_meadow.py
+python scripts/pack_meadow_textures.py
+blender -b --python scripts/blender/build_home_previews.py -- room
+
+数据与加载
+static/data/farm-layout.json 的 expansion 是地形、步道、林缘树木和 Agent
+地标的共同来源；farm-placement.json 同步土壤边界、设施避让及通道保护。
+主场景约 153 万三角面，外置纹理复用旧岛 20 张纹理，新增约 2.9 MB。
+首页有独立 LOD：约 71 万三角面，保留所有叶片轮廓和地面，简化枝干、
+花盆与布面，省去远景不可见的短草和土壤小颗粒。岛内精细模型不受影响。
+具体字节数见 build-report.json 与 static/models/home-islands/room.json。
+
+功能
+新增云上大草坪、林缘静谧空地、原野环岛小径三个地标；本地探索与后台
+模型都接收新地图。新空地支持现有的幼苗/成熟植物带盆或直接落地摆放，
+保存到当前账号。步道、树干、河道与边界不能摆放。观测台与分享图覆盖新区域。
+友邻访问猫咪岛使用同一场景及导航边界。
+
+验证
+144 项隔离后端测试：种植/移栽保存、账户隔离、场景快照、传送门等。
+真实 GLB 射线检查地面高度与接缝；不同猫咪体型往返新地标；实际逐帧 Agent
+完成全部地标行动；2 mm 间隔检查种植园凹角路线，防止规划通过后行走卡住。
+Chrome 隔离账号验证 GPU、旧岛→草坪→林缘→桥边、全景/窄屏布局与首页选择。
+浏览器测试使用模拟云服务，没有发起收费模型或音色生成请求。

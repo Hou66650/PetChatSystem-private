@@ -10,7 +10,7 @@ from ..db import get_db
 PETS = {
  '1':dict(name='柴犬',model='/static/models/petchat-shiba-v4/qiuqiu.glb',stage='/static/models/petchat-sakura-grand-v1/sakura.glb',theme='sakura',height=.95),
  '2':dict(name='哈士奇',model='/static/models/petchat-husky-v3/xueqiu.glb',stage='/static/models/petchat-toys-v1/snow.glb',theme='snow',height=1.05),
- '3':dict(name='猫咪',model='/static/models/petchat-cat-v3/cat.glb',stage='/static/models/petchat-mistwood-v1/mistwood.glb',theme='room',height=.85),
+ '3':dict(name='猫咪',model='/static/models/petchat-cat-v3/cat.glb',stage='/static/models/petchat-meadow-v1/mistwood-meadow.glb',theme='room',height=.85),
  '4':dict(name='德牧',model='/static/models/petchat-shepherd-v2/shepherd.glb',stage='/static/models/petchat-shepherd-v1/alpine.glb',theme='camp',height=1.12),
 }
 EVENTS={'icon':'拜访桌面图标','walk':'散步','rest':'休息','pet':'被摸摸','sniff':'互相嗅闻','chase':'追逐','cursor':'蹭光标','document':'陪伴文档工作','video':'在播放器旁休息','paw':'扒了扒门','decline':'主人暂时不出发'}

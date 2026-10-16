@@ -186,5 +186,41 @@
       "observe",
       "stretch"
     ]
+  },
+  {
+    "id": "cloud_meadow",
+    "name": "云上大草坪",
+    "x": 10,
+    "z": 8,
+    "actions": [
+      "observe",
+      "sniff",
+      "jump",
+      "stretch"
+    ],
+    "description": "新扩建的连贯草地，可以奔跑、伸展，留意主人种下的花。"
+  },
+  {
+    "id": "woodland_clearing",
+    "name": "林缘静谧空地",
+    "x": 15.3,
+    "z": 0.6,
+    "actions": [
+      "rest",
+      "observe",
+      "groom"
+    ],
+    "description": "原野北侧疏林围合的小空地，可以安静理毛、看云。"
+  },
+  {
+    "id": "meadow_walk",
+    "name": "原野环岛小径",
+    "x": 13.9,
+    "z": 11.3,
+    "actions": [
+      "sniff",
+      "observe"
+    ],
+    "description": "沿岛屿外缘的步道，从草坪绕行回温室，不能越过护栏。"
   }
 ]

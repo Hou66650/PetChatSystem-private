@@ -41,8 +41,8 @@ def snapshot(owner):
         places.append(dict(id='plant:'+r['id'],name=name+'旁',x=r['x'],z=r['z'],actions=['observe','sniff'],radius=farm.placement.radius(r['species'],r['container']),subject=r['id']+':'+str(r['revision'])+':'+str(r['stage'])+':'+r['species'],description=('梦幻变异 · ' if farm.SPECIES[r['species']].get('variantOf') else '')+'主人移栽的'+name+' · '+farm.SPECIES[r['species']]['stages'][r['stage']-1]+(' · 已成熟' if r['ready'] else ' · 正在缓慢生长'),priority=2,approaches=[dict(x=r['x']+distance*math.cos(i*math.tau/8),z=r['z']+distance*math.sin(i*math.tau/8)) for i in range(8)],dynamic=True))
     from .cat_agent_service import CATALOG
     events=[dict(r) for r in db.execute('SELECT id,created,kind,summary FROM farm_events WHERE owner=? AND created>? ORDER BY id DESC LIMIT 6',(owner,now-86400))]
-    facts=dict(scene='雾林温室与云畔种植园',beds=beds,decorations=decor,recentChanges=events,places=places,landmarks=[dict(id=p['id'],name=p['name'],x=p['x'],z=p['z'],actions=p['actions']) for p in CATALOG],
-               boundaries='猫只在步道观察、嗅闻；种植床与河流不可进入。观赏花只能在旁观察嗅闻，不啃食、不穿过花丛。购买、播种、浇水、施肥、收获和摆放由主人操作。')
+    facts=dict(scene='雾林温室、云畔种植园与云上原野',regions=farm.LAYOUT.get('expansion',{}).get('landmarks',[]),beds=beds,decorations=decor,recentChanges=events,places=places,landmarks=[dict(id=p['id'],name=p['name'],x=p['x'],z=p['z'],actions=p['actions']) for p in CATALOG],
+               boundaries='猫可在云上大草坪自由行走、短跳、伸展，在林缘空地休息，沿环岛小径往返温室与旧岛；只能在种植床旁观察、嗅闻，种植床与河流不可进入。观赏花只能在旁观察嗅闻，不啃食、不穿过花丛。购买、播种、浇水、施肥、收获和摆放由主人操作。')
     raw=json.dumps(facts,ensure_ascii=False,sort_keys=True);revision=hashlib.sha256(raw.encode()).hexdigest()[:20]
     with db:
         db.execute('INSERT OR IGNORE INTO cat_scene_snapshots VALUES (?,?,?,?)',(owner,revision,now,raw))
