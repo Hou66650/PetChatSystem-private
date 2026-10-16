@@ -1,1 +1,16 @@
-{ "string": [{ "name": "module_desc", "value": "派特岛原生平板客户端" }] }
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "派特岛原生平板客户端"
+    },
+    {
+      "name": "microphone_reason",
+      "value": "用于网页中的语音聊天和录音"
+    },
+    {
+      "name": "camera_reason",
+      "value": "用于网页中的摄像头互动"
+    }
+  ]
+}

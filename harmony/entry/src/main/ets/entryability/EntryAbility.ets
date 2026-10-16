@@ -3,6 +3,6 @@ import { window } from '@kit.ArkUI';
 
 export default class EntryAbility extends UIAbility {
   onWindowStageCreate(windowStage: window.WindowStage): void {
-    windowStage.loadContent('pages/Index');
+    windowStage.loadContent('pages/WebPage');
   }
 }
