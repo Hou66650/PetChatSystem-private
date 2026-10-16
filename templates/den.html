@@ -416,6 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-breath" data-icon="breath">呼吸</button>
             <button class="action-btn" id="btn-games" data-icon="gamepad">游戏中心</button>
             <button class="action-btn" id="btn-companion">陪伴档案</button>
+            <button class="action-btn" id="btn-pet-care">主动关怀与宠物原声</button>
             <button class="action-btn" id="btn-music" data-icon="music">音乐</button><button class="action-btn" id="btn-toys">玩具柜</button><button class="action-btn" id="btn-voiceprint">熟悉的声音</button><button class="action-btn" id="btn-pet-view" hidden>近看德牧</button><button class="action-btn" id="btn-stage-view" hidden>营地全景</button><button class="action-btn" id="btn-render-settings">流畅度</button></div>
         </section>
 
@@ -601,6 +602,9 @@ document.addEventListener('DOMContentLoaded', () => {
     <link rel="stylesheet" href="/static/css/cat-companion.css?v={{ app_version }}">
     <script src="/static/js/den/cat-presence.js?v={{ app_version }}"></script>
     <script src="/static/js/den/cat-relationship.js?v={{ app_version }}"></script>
+    <link rel="stylesheet" href="/static/css/pet-care.css?v={{ app_version }}">
+    <script src="/static/js/pet-care-ui.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/pet-care-runtime.js?v={{ app_version }}"></script>
     <script src="/static/js/den/cat-companion-ui.js?v={{ app_version }}"></script>
     <script src="/static/js/den/cat-agent.js?v={{ app_version }}"></script>
     <aside class="cat-intent" id="cat-intent" hidden aria-live="polite"><small id="cat-intent-meta"></small><span id="cat-intent-text"></span><a href="/cat-agent-monitor" target="_blank" rel="noopener" style="display:block;margin-top:8px;pointer-events:auto;color:inherit">查看探索监控 ↗</a></aside>
@@ -618,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="/static/js/realtime/realtime-ui.js?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/pet-profile.js') }}?v={{ app_version }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/den_vision.js') }}?v={{ app_version }}"></script>
-    <script src="/static/js/pet-sounds.js?v=1"></script>
+    <script src="/static/js/pet-sounds.js?v={{ app_version }}"></script>
     <script src="/static/js/den/render-budget.js?v={{ app_version }}"></script>
     <script src="/static/js/den/face-play.js?v={{ app_version }}"></script>
     <script src="/static/js/den/toy-grip.js?v={{ app_version }}"></script>
@@ -2751,6 +2755,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 voiceBusy=['USER_SPEAKING','AI_THINKING','AI_SPEAKING'].includes(state);
                 if(active)stopDenSpeech();
                 if(state==='USER_SPEAKING'){
+                    petCareRuntime?.manual();
                     historyEpoch++;dialogueRunner.cancel('正在听你说…');endDialogueHold();
                 }
                 if(state==='AI_SPEAKING'&&!dialogueRunner.active&&!dialogueHeld&&petModel)setAnim('talk',60000);
@@ -2776,6 +2781,7 @@ document.addEventListener('DOMContentLoaded', () => {
             onSaved(data,pet,turn,latest){
                 if(pet.id!==currentPetId||!turn||turn.epoch!==locomotionEpoch)return;
                 applyCompanionName(data.profile);
+                if(latest)petCareRuntime?.handle(data.care);
                 if(!latest||turn.commandToken!==dialogueRunner.serial||chatBusy)return;
                 if(data.actions?.length)dialogueRunner.run(data.actions);
                 else{document.getElementById('dialogue-status').textContent=data.memorySaved?'已记住，并调整了陪伴方式':'我在听呢';companionReaction();}
@@ -2829,6 +2835,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appendMsg('pet',data.reply);
                 denHistory.push({role:'user',content:text},{role:'assistant',content:data.reply});
                 applyCompanionName(data.profile);
+                petCareRuntime?.handle(data.care);
                 if(commandToken!==dialogueRunner.serial){document.getElementById('dialogue-status').textContent='已取消本轮动作';return;}
                 speak(data.reply,{talk:false});
                 if(directPlan.length){ /* Already acted; never replay a delayed model plan. */ }
@@ -2838,6 +2845,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }catch(err){if(targetPet===currentPetId&&targetEpoch===locomotionEpoch){appendMsg('pet',err.message||'网络开小差了，请再试一次');document.getElementById('dialogue-status').textContent='消息未完成';}}
             finally{chatBusy=false;chatSend.disabled=false;if(targetEpoch!==locomotionEpoch)restoreDenHistory(currentPetId);}
         });
+
+        let comfortSerial=null;
+        const careAvailable=()=>!!petModel&&!!locomotion&&!spawnBusy&&!portals?.away&&!portals?.intent&&!dialogueRunner.active&&!dialogueHeld&&!interactionBusy()&&!toyWorkshop?.held&&!farmGarden?.mode&&!supplyCare&&!breathActive&&!voiceBusy&&!chatBusy&&gameOverlay.hidden&&gamesMask.hidden&&moodMask.hidden&&!document.querySelector('dialog[open],#pet-profile-dialog')&&anim.birth>=1;
+        const petCareRuntime=new PetCareRuntime.Controller({scope:COMPANION_SCOPE,pet:()=>({id:currentPetId}),
+            open:()=>PetCareUI.open(currentPetId,SPECS[currentPetId].displayName||SPECS[currentPetId].name),
+            available:careAvailable,noticeAvailable:()=>!voiceUI?.isActive()&&!chatBusy&&!interactionBusy()&&!document.querySelector('dialog[open]'),
+            voiceActive:()=>!!voiceUI?.isActive()||!ttsOn,
+            cancelComfort(){if(comfortSerial!==null&&dialogueRunner.serial===comfortSerial){dialogueRunner.cancel('留一点安静的空间');endDialogueHold();}comfortSerial=null;},
+            async comfort(){if(!careAvailable())return;const targetEpoch=locomotionEpoch;
+                const plan=['come'];if(shibaExpression&&actions.affection&&companionBehavior?.mode!=='calm')plan.push('affection');plan.push(actions.sit?'sit':'stop');
+                const running=dialogueRunner.run(plan);comfortSerial=dialogueRunner.serial;const token=comfortSerial;
+                await running;if(token!==dialogueRunner.serial||targetEpoch!==locomotionEpoch||dialogueRunner.message!=='动作已完成')return;
+                showBubble('我在这里，陪你安静待一会儿。',4200,true);void petCareRuntime.call('comfort');
+                setTimeout(()=>{if(comfortSerial===token&&dialogueRunner.serial===token){dialogueRunner.cancel('继续慢慢陪着你');endDialogueHold();comfortSerial=null;}},18000);
+            },vocalize(seconds){if(anim.state==='idle'&&!dialogueRunner.active&&!dialogueHeld&&!catAgent?.goal&&!locomotion?.path.length)setAnim('talk',seconds*1000);}
+        });
+        document.getElementById('btn-pet-care').onclick=()=>PetCareUI.open(currentPetId,SPECS[currentPetId].displayName||SPECS[currentPetId].name);
+        window.__denCareDebug=()=>({ready:petCareRuntime.ready,available:careAvailable(),comfort:comfortSerial!==null,pending:!!petCareRuntime.pending});
+        document.addEventListener('pointerdown',()=>petCareRuntime.manual(),true);
+        document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.target===chatInput)petCareRuntime.manual();});
+        window.addEventListener('pagehide',()=>petCareRuntime.dispose());
 
         // ---------- UI 绑定 ----------
         function renderPetChips() {
@@ -3480,7 +3508,7 @@ document.addEventListener('DOMContentLoaded', () => {
             visionRenderStatus();
         }
         facePlay=new FacePlay.Controller({
-            THREE,scene,canvas,camera,toys:()=>toyWorkshop,onFetch:kind=>{if(currentPetId===3){catRelationship.record('play',kind);catCompanionUI.complete('play');}},
+            THREE,scene,canvas,camera,toys:()=>toyWorkshop,onFetch:kind=>{void petCareRuntime.call('play');if(currentPetId===3){catRelationship.record('play',kind);catCompanionUI.complete('play');}},
             foodActive:()=>Boolean(foodDrag?.dragging||gestureAction?.type==='food'),
             model:()=>petModel,id:()=>currentPetId,locomotion:()=>locomotion,head:petHeadPos,mouth:petMouthWorld,
             busy:()=>document.hidden||toyWorkshop?.dialog.open||renderDialog.open||facePlay?.panel.open||actingDialog.open||spawnBusy||!petModel||anim.birth<1||grabbed||dropping||performing()||dialogueRunner.active||chatBusy||voiceBusy||breathActive||!gameOverlay.hidden||!gamesMask.hidden||!moodMask.hidden||!document.getElementById('den-chat').classList.contains('hidden'),

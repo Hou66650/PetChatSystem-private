@@ -237,6 +237,7 @@ def save_turn(owner, pet_id, request_id, message, plan, revision):
         forgotten = plan['forget_ids']
         if forgotten:
             db.executemany('DELETE FROM companion_memories WHERE owner=? AND pet_id IN (0,?) AND id=?', [(owner,pet_id,i) for i in forgotten])
+        source_id = None
         if state['enabled']:
             row = db.execute("INSERT INTO companion_messages(owner,pet_id,role,content,request_id) VALUES (?,?,'user',?,?)", (owner,pet_id,message,request_id))
             source_id = row.lastrowid
@@ -253,6 +254,8 @@ def save_turn(owner, pet_id, request_id, message, plan, revision):
                 db.execute('INSERT INTO companion_memories(owner,pet_id,category,value,source_quote,source_message) VALUES (?,?,?,?,?,?) '
                            'ON CONFLICT(owner,pet_id,category,value) DO UPDATE SET source_quote=excluded.source_quote,source_message=excluded.source_message,updated_at=strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')',
                            (owner,scope,cat,fact['value'],fact['quote'],source_id))
+        from . import pet_care_service
+        plan['care'] = pet_care_service.on_turn(db,owner,pet_id,message,source_id,bool(state['enabled']))
         if forgotten:
             invalidate_context(db,owner)
     return True

@@ -90,7 +90,6 @@
     return _ctx;
   }
 
-  var soundCache = {};   // 'species/kind' → ArrayBuffer（本地小文件，缓存避免重复请求）
 
   function fetchTTSBuffer(text, petId) {
     return fetch('/api/tts', {
@@ -104,17 +103,8 @@
   }
 
   function fetchPetSoundBuffer(petId, kind) {
-    var species = SPECIES[petId] || 'dog';
-    var key = species + '/' + kind;
-    if (soundCache[key]) return Promise.resolve(soundCache[key]);
-    return fetch('/api/pet-sound?petId=' + petId + '&kind=' + kind)
-      .then(function (r) {
-        if (!r.ok) throw new Error('pet-sound ' + r.status);
-        return r.arrayBuffer();
-      }).then(function (buf) {
-        soundCache[key] = buf;
-        return buf;
-      });
+    return fetch('/api/pet-sound?petId=' + petId + '&kind=' + kind,{cache:'no-store'})
+      .then(async function(r){if(!r.ok)throw Error('pet-sound '+r.status);if(window.COMPANION_SCOPE&&r.headers.get('X-Profile-Scope')!==window.COMPANION_SCOPE)throw Error('account changed');return {bytes:await r.arrayBuffer(),original:r.headers.get('X-Pet-Original')==='true'};});
   }
 
   /**
@@ -159,7 +149,7 @@
           var rate = 0.91 + Math.random() * 0.18;       // ±1.5 半音内微变调
           try {
             var sbuf = await fetchPetSoundBuffer(petId, seg.kind);
-            await playBuf(sbuf, rate);
+            await playBuf(sbuf.bytes, sbuf.original ? 1.0 : rate);
           } catch (e) {
             // 声音库缺失 → 降级：用 TTS 念出拟声词（好过无声）
             try {

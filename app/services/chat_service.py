@@ -57,4 +57,4 @@ def handle_chat(data, observed_reply=None):
     return {'reply':plan['reply'],'pet':pet_registry.public_info(pet),'actions':plan['actions'],
             'profile':memory.profile(owner,pet['id']),
             'memorySaved':bool(state['enabled'] and plan['memories']),
-            'requestId':request_id},200
+            'requestId':request_id,'care':plan.get('care')},200

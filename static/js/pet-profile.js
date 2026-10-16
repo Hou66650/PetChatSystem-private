@@ -132,6 +132,9 @@
                 } catch(e) {voiceButton.textContent=e.message;} finally {voiceButton.disabled=false;}
             };
             card.appendChild(voiceButton);
+            var careButton=document.createElement('button');careButton.type='button';careButton.textContent='主动关怀 · 宠物原声';careButton.style.cssText=voiceButton.style.cssText;
+            careButton.onclick=async function(){careButton.disabled=true;try{if(!window.PetCareUI)await new Promise(function(resolve,reject){var script=document.createElement('script');script.src='/static/js/pet-care-ui.js'+voiceVersion;script.onload=resolve;script.onerror=()=>reject(Error('陪伴设置加载失败'));document.head.append(script);});close();PetCareUI.open(petId,petName);}catch(e){careButton.textContent=e.message;}finally{careButton.disabled=false;}};card.appendChild(careButton);
+
             mkBtn('取消', false, close);
             mkBtn('保存', true, function () {
                 var sel = card.querySelector('input[name="pet-gender"]:checked');

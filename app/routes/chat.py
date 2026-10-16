@@ -173,6 +173,14 @@ def pet_sound():
     species = (current_app.config.get('PET_SPECIES') or {}).get(pet_id)
     if not species:
         return jsonify({'error': 'unknown pet'}), 400
+    from ..services import pet_call_service as original_calls, companion_service as companion
+    owner = companion.owner_key()
+    original = original_calls.state(owner, pet_id)
+    candidates = [c for c in original['clips'] if c['kind'] == ('comfort' if kind in ('purr','whine') else 'greeting')]
+    if original['enabled'] and candidates:
+        import secrets
+        clip = original_calls.get_audio(owner, secrets.choice(candidates)['id'])
+        return current_app.response_class(clip['audio'],mimetype='audio/wav',headers={'Cache-Control':'private, no-store','X-Pet-Original':'true','X-Profile-Scope':companion.browser_scope()})
     import os as _os
     import random as _random
     from flask import send_file as _send_file
@@ -186,7 +194,8 @@ def pet_sound():
         return jsonify({'error': 'no sound asset'}), 404
     resp = _send_file(_os.path.join(d, _random.choice(variants)),
                       mimetype='audio/wav', conditional=True)
-    resp.headers['Cache-Control'] = 'public, max-age=86400'
+    resp.headers['Cache-Control'] = 'private, no-store'
+    resp.headers['X-Profile-Scope'] = companion.browser_scope()
     return resp
 
 

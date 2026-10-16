@@ -1,3 +1,6 @@
 flask>=3.0
 requests>=2.31
 PyJWT>=2.7
+
+# Local audio/video extraction for original pet calls
+imageio-ffmpeg==0.6.0

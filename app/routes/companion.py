@@ -48,6 +48,7 @@ def archive():
             memory.invalidate_context(db,owner)
     elif request.method == 'DELETE':
         with db:
+            db.execute('DELETE FROM pet_care_events WHERE owner=?',(owner,))
             db.execute('DELETE FROM companion_memories WHERE owner=?',(owner,))
             db.execute('DELETE FROM companion_messages WHERE owner=?',(owner,))
             db.execute('DELETE FROM cat_scene_observations WHERE owner=?',(owner,))
@@ -64,6 +65,8 @@ def conversation():
     if request.method == 'DELETE':
         db=get_db()
         with db:
+            if p is None: db.execute('DELETE FROM pet_care_events WHERE owner=? AND source_id IS NOT NULL',(owner,))
+            else: db.execute('DELETE FROM pet_care_events WHERE owner=? AND pet_id=? AND source_id IS NOT NULL',(owner,p))
             if p is None: db.execute('DELETE FROM companion_messages WHERE owner=?',(owner,))
             else: db.execute('DELETE FROM companion_messages WHERE owner=? AND pet_id=?',(owner,p))
             memory.invalidate_context(db,owner)
@@ -76,6 +79,7 @@ def delete_message(message_id):
     with db:
         row=db.execute('SELECT id FROM companion_messages WHERE owner=? AND id=?',(owner,message_id)).fetchone()
         if not row:return jsonify(error='记录不存在'),404
+        db.execute('DELETE FROM pet_care_events WHERE owner=? AND source_id=?',(owner,message_id))
         db.execute('DELETE FROM companion_messages WHERE owner=? AND id=?',(owner,message_id))
         memory.invalidate_context(db,owner)
     return jsonify(success=True)

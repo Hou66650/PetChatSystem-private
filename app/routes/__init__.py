@@ -20,4 +20,6 @@ from .pet_studio import bp as pet_studio_bp
 from .farm import bp as farm_bp
 from .pet_voice import bp as pet_voice_bp
 
-ALL_BLUEPRINTS = (pet_voice_bp, farm_bp, pet_studio_bp, supplies_bp, cat_market_bp, portals_bp, cat_agent_bp, voiceprint_bp, main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)
+from .pet_care import bp as pet_care_bp
+
+ALL_BLUEPRINTS = (pet_care_bp, pet_voice_bp, farm_bp, pet_studio_bp, supplies_bp, cat_market_bp, portals_bp, cat_agent_bp, voiceprint_bp, main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)
