@@ -9,6 +9,8 @@
 
 ## 快速开始
 
+Windows 本机已装好依赖时：双击 `Start-PetIsland.cmd`，自动选择当前高性能显卡、启动服务并创建桌面「派特岛（自动独显）」入口。以后从该入口打开即可；[GPU 启动与验证说明](docs/GPU启动.md)。
+
 ```bash
 pip install -r requirements.txt      # 仅需 flask + requests
 cp .env.example .env                 # 填入 GLM_API_KEY（开发机 .env 已配好）
