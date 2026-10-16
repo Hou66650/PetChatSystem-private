@@ -1,5 +1,42 @@
 /* 全站公共 JS：toast + 顶栏汉堡（规范：docs/UI重构设计文档.md 二.6/二.7） */
 
+// randomUUID is secure-context-only, while getRandomValues is also available on LAN HTTP.
+// Keep native implementations; use cryptographic randomness for transaction/client IDs.
+(function () {
+  const c = globalThis.crypto;
+  if (!c || typeof c.randomUUID === 'function' || typeof c.getRandomValues !== 'function') return;
+  c.randomUUID = function () {
+    const bytes = c.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 15) | 64;
+    bytes[8] = (bytes[8] & 63) | 128;
+    const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0'));
+    return hex.slice(0, 4).join('') + '-' + hex.slice(4, 6).join('') + '-' +
+      hex.slice(6, 8).join('') + '-' + hex.slice(8, 10).join('') + '-' + hex.slice(10).join('');
+  };
+})();
+
+// ArkWeb 6.x may invalidate cached GL bindings between composited frames.
+// Rebind state before drawing, without changing geometry, materials or page layout.
+(function () {
+  const prepared = new WeakSet();
+  window.PaitWebCompat = {
+    prepareRenderer(renderer) {
+      if (!/ArkWeb\/6\./.test(globalThis.navigator?.userAgent || '') || prepared.has(renderer)) return renderer;
+      prepared.add(renderer);
+      const render = renderer.render;
+      renderer.render = function (...args) {
+        const target = this.getRenderTarget();
+        const face = this.getActiveCubeFace();
+        const level = this.getActiveMipmapLevel();
+        this.resetState();
+        this.setRenderTarget(target, face, level);
+        return render.apply(this, args);
+      };
+      return renderer;
+    }
+  };
+})();
+
 // ---------- toast ----------
 (function () {
   var container = null;

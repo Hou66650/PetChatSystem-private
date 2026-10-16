@@ -707,6 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // ---------- 渲染基础 ----------
         const canvas = document.getElementById('den-canvas');
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });
+        window.PaitWebCompat?.prepareRenderer(renderer);
         renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;

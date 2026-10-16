@@ -46,7 +46,7 @@
    progress?.update('正在解析模型、材质与动作');
    const gltf=await new Promise((resolve,reject)=>new THREE.GLTFLoader().parse(buffer,'',resolve,reject));
    if(ticket!==previewTicket){gltf.scene.traverse(o=>{o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])if(m){for(const v of Object.values(m))if(v?.isTexture)v.dispose();m.dispose();}});return;}
-   model=gltf.scene;renderer=new THREE.WebGLRenderer({canvas:$('studio-preview'),alpha:true,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputEncoding=THREE.sRGBEncoding;
+   model=gltf.scene;renderer=new THREE.WebGLRenderer({canvas:$('studio-preview'),alpha:true,antialias:true,powerPreference:'high-performance'});window.PaitWebCompat?.prepareRenderer(renderer);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputEncoding=THREE.sRGBEncoding;
    scene=new THREE.Scene();scene.add(new THREE.HemisphereLight(0xffffff,0x809584,1.3));const light=new THREE.DirectionalLight(0xffefdb,1.5);light.position.set(3,5,4);scene.add(light);
    const box=(window.PetModelBounds?PetModelBounds.measure(THREE,model):new THREE.Box3().setFromObject(model)),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3()),extent=Math.max(size.x,size.y,size.z);
    if(!Number.isFinite(extent)||extent<=0)throw Error('模型尺寸无效');model.position.sub(center);model.scale.setScalar(1/extent);model.position.multiplyScalar(1/extent);scene.add(model);

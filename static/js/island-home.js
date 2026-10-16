@@ -4,7 +4,7 @@
  const reduced=matchMedia('(prefers-reduced-motion: reduce)'),choices=[...root.querySelectorAll('.island-choice')],status=document.getElementById('island-preview-status'),enter=document.getElementById('island-enter');
  let renderer;
  try{renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'high-performance'});}catch(e){status.textContent='三维预览暂不可用，可用下方链接直接进入小窝。';return;}
- renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+ window.PaitWebCompat?.prepareRenderer(renderer);renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(42,1,.1,400);scene.fog=new THREE.Fog(0xa8bac1,48,220);
  const environment=new HomeAtmosphere.Environment(THREE,scene),resident=new HomeResident.Resident(THREE,SelectedAssets,root.dataset.version,{room:root.dataset.catModel});
  scene.add(new THREE.HemisphereLight(0xe3eff5,0x627777,1.15));const sun=new THREE.DirectionalLight(0xffe0b6,2.3);sun.position.set(-35,32,-45);scene.add(sun);const rim=new THREE.DirectionalLight(0xb6e6ff,1);rim.position.set(20,10,-20);scene.add(rim);

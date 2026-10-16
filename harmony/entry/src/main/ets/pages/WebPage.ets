@@ -3,6 +3,7 @@ import { preferences } from '@kit.ArkData';
 import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
 import { picker } from '@kit.CoreFileKit';
 import { PetApi } from '../service/PetApi';
+import BuildProfile from '../../../../build/default/generated/profile/default/BuildProfile';
 
 // Render the existing site directly: no replacement UI, injected CSS or copied business logic.
 @Entry
@@ -16,7 +17,10 @@ struct WebPage {
   private controller: webview.WebviewController = new webview.WebviewController();
   private fullScreen: FullScreenExitHandler | null = null;
 
-  aboutToAppear(): void { this.restore(); }
+  aboutToAppear(): void {
+    webview.WebviewController.setWebDebuggingAccess(BuildProfile.DEBUG);
+    this.restore();
+  }
 
   private async restore(): Promise<void> {
     try {
