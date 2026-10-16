@@ -1,0 +1,8 @@
+{
+  "modelVersion": "6.1.0",
+  "name": "pait-tablet",
+  "version": "0.1.0",
+  "description": "派特岛鸿蒙平板原生客户端（开发预览）",
+  "dependencies": {},
+  "devDependencies": {}
+}

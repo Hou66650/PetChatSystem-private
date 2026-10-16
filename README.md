@@ -9,10 +9,12 @@
 
 ## 快速开始
 
+鸿蒙平板原生客户端源码与局域网调试步骤见 [harmony/README.md](harmony/README.md)。当前提供原生登录、宠物选择、文本聊天与历史；尚待 DevEco 编译及 MatePad Air 真机验收。
+
 Windows 本机已装好依赖时：双击 `Start-PetIsland.cmd`，自动选择当前高性能显卡、启动服务并创建桌面「派特岛（自动独显）」入口。以后从该入口打开即可；[GPU 启动与验证说明](docs/GPU启动.md)。
 
 ```bash
-pip install -r requirements.txt      # 仅需 flask + requests
+pip install -r requirements.txt      # Flask、requests、PyJWT、Pillow
 cp .env.example .env                 # 填入 GLM_API_KEY（开发机 .env 已配好）
 python run.py --init-db              # 首次运行：建表（幂等，不动存量数据）
 python run.py                        # 启动 http://127.0.0.1:5000

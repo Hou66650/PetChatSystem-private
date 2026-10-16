@@ -7,9 +7,25 @@ node_modules/
 
 # 密钥与运行时产物
 .env
+.venv/
+*.db
+*.db-shm
+*.db-wal
 __pycache__/
 *.pyc
 uploads/
+
+# HarmonyOS local SDK paths, builds and signing credentials
+harmony/.hvigor/
+harmony/.preview/
+harmony/**/build/
+harmony/**/oh_modules/
+harmony/local.properties
+harmony/**/.cxx/
+harmony/**/*.p12
+harmony/**/*.p7b
+harmony/**/*.cer
+harmony/**/*.hap
 
 # Blender backups and local verification output (editable art and final renders stay tracked)
 *.blend1
