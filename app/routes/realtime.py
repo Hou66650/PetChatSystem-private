@@ -78,7 +78,7 @@ def realtime_diagnostics():
         return jsonify(error='invalid data'), 400
     pet = data.get('petId'); stage = data.get('stage'); code = data.get('code'); status = data.get('status', 0)
     if (type(pet) is not int or pet not in (1,2,3,4)
-            or stage not in ('session', 'socket', 'provider', 'custom_tts')
+            or stage not in ('session', 'socket', 'provider', 'custom_tts', 'voice_create')
             or not isinstance(code, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', code)
             or type(status) is not int or not 0 <= status <= 4999):
         return jsonify(error='invalid metadata'), 400

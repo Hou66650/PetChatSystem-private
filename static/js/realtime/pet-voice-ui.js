@@ -2,15 +2,16 @@
 (()=>{'use strict';
  let panel,scope,petId,petName,epoch=0,timer,raw=null,requestId=null,busy=false,enabled=false,sourceUrl,previewUrl,recording=null,recordEpoch=0;
  const $=key=>panel.querySelector('[data-'+key+']');
- function message(text){$('status').textContent=text;}
+ function message(text,failed=false){const el=$('status');el.textContent=text;el.classList.toggle('is-error',failed);el.setAttribute('role',failed?'alert':'status');if(failed)el.scrollIntoView({block:'nearest',behavior:'smooth'});}
+ function reportCreate(code,status=0){try{Promise.resolve(fetch('/api/realtime/diagnostics',{method:'POST',paitQuiet:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({petId,stage:'voice_create',code,status})})).catch(()=>{});}catch{}}
  function lock(value){busy=value;$('create').disabled=value||!!recording||!enabled||!raw||!$('consent').checked;$('file').disabled=value||!!recording;$('record').disabled=value||!!recording||!enabled;for(const b of $('list').querySelectorAll('button'))b.disabled=value||!!recording;$('reset').disabled=value||!!recording||!panel.dataset.activeVoice;}
  function publish(d){window.PetVoiceChanges?.publish({scope:d.scope,petId:d.petId,activeId:d.activeId});}
- async function api(url,options={}){const r=await fetch(url,{...options,headers:{'X-Profile-Scope':scope,...options.headers}});if(!r.ok){let d;try{d=await r.json();}catch{}throw Error(d?.error||'声音操作失败，请稍后再试');}return r;}
+ async function api(url,options={}){const r=await fetch(url,{...options,headers:{'X-Profile-Scope':scope,...options.headers}});if(!r.ok){let d;try{d=await r.json();}catch{}const error=Error(d?.error||'声音操作失败，请稍后再试');error.status=r.status;throw error;}return r;}
  function clearAudio(){for(const key of ['source','preview']){const audio=$(key);audio.pause();audio.hidden=true;audio.removeAttribute('src');audio.load();}if(sourceUrl)URL.revokeObjectURL(sourceUrl);if(previewUrl)URL.revokeObjectURL(previewUrl);sourceUrl=previewUrl=null;}
  function close(){epoch++;cancelRecording();clearTimeout(timer);raw=null;requestId=null;clearAudio();lock(false);}
  function button(text,fn){const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=async()=>{if(busy||recording)return;const token=epoch;lock(true);try{await fn();}catch(e){if(token===epoch)message(e.message);}finally{if(token===epoch)lock(false);}};return b;}
  async function refresh(token=epoch){
-  const d=await (await api('/api/pet-voices?petId='+petId)).json();if(token!==epoch)return;
+  const d=await (await api('/api/pet-voices?petId='+petId,{paitQuiet:busy})).json();if(token!==epoch)return;
   scope=d.scope;enabled=d.enabled;$('hint').textContent=d.hint;lock(busy);
   $('list').replaceChildren();
   const labels={creating:'正在创建',ready:'可使用',failed:'未完成',uncertain:'结果待核查'};
@@ -19,7 +20,7 @@
    title.textContent=p.name+(p.id===d.activeId?' · 当前使用':'');meta.textContent=(labels[p.status]||p.status)+' · '+p.duration.toFixed(1)+' 秒参考录音';
    row.append(title,meta,actions);if(p.error){const e=document.createElement('p');e.textContent=p.error;row.append(e);}
    if(p.status==='ready'){
-    actions.append(button('试听新声音',async()=>{const audio=$('preview');audio.pause();message('正在用这个声音说一句新话…');const task=window.PaitLoading?.start('生成音色试听');try{const blob=await (await api('/api/pet-voices/'+p.id+'/preview',{method:'POST'})).blob();if(token!==epoch)return;if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=URL.createObjectURL(blob);audio.src=previewUrl;audio.hidden=false;try{await audio.play();message('试听满意后，点击“应用给'+petName+'”。');}catch{message('试听已生成，请点击播放器的播放按钮。');}task?.done();}catch(e){task?.fail();throw e;}finally{task?.cancel();}}));
+    actions.append(button('试听新声音',async()=>{const audio=$('preview');audio.pause();message('正在用这个声音说一句新话…');const task=window.PaitLoading?.start('生成音色试听');try{const blob=await (await api('/api/pet-voices/'+p.id+'/preview',{method:'POST',paitQuiet:true})).blob();if(token!==epoch)return;if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=URL.createObjectURL(blob);audio.src=previewUrl;audio.hidden=false;try{await audio.play();message('试听满意后，点击“应用给'+petName+'”。');}catch{message('试听已生成，请点击播放器的播放按钮。');}task?.done();}catch(e){task?.fail();throw e;}finally{task?.cancel();}}));
     if(p.id!==d.activeId)actions.append(button('应用给'+petName,async()=>{const changed=await (await api('/api/pet-voices/selection',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({petId,id:p.id})})).json();publish(changed);if(token!==epoch)return;await refresh(token);message('已应用给'+petName+'。后续回复会使用这个音色；点击语音对话即可继续。');}));
    }
    if(p.status==='uncertain')actions.append(button('核查云端结果',async()=>{await api('/api/pet-voices/'+p.id+'/reconcile',{method:'POST'});if(token===epoch){await refresh(token);message('已找回云端创建的声音，可以试听。');}}));
@@ -51,7 +52,7 @@
  async function prepare(file,token=epoch){
   raw=null;requestId=null;clearAudio();lock(true);const task=window.PaitLoading?.start('检查参考录音');
   try{const audio=await convert(file);if(token!==epoch)return;raw=audio;requestId=crypto.randomUUID();sourceUrl=URL.createObjectURL(raw);$('source').src=sourceUrl;$('source').hidden=false;message('录音已准备好，可先听原音再创建。');task?.done();}
-  catch(e){if(token===epoch)message(e.message);task?.fail();}finally{task?.cancel();if(token===epoch)lock(false);}
+  catch(e){if(token===epoch)message(e.message,true);task?.fail(e.message);}finally{task?.cancel();if(token===epoch)lock(false);}
  }
  async function record(){
   if(busy||recording||!enabled)return;
@@ -75,24 +76,24 @@
  function stopRecording(){const r=recording;if(!r?.recorder||r.recorder.state!=='recording')return;$('record-stop').disabled=true;clearInterval(r.timer);clearTimeout(r.limit);message('正在整理录音…');r.recorder.stop();releaseRecording(r);}
  window.addEventListener('pagehide',()=>{if(panel)close();});
  async function upload(){
-  if(busy||!raw||!$('consent').checked)return;const token=epoch,task=window.PaitLoading?.start('上传录音并创建专属音色');lock(true);
+  if(busy||!raw||!$('consent').checked)return;const token=epoch,task=window.PaitLoading?.start('上传录音并创建专属音色');let submitted=false;lock(true);
   try{
-   const name=$('name').value.trim();if(!name)throw Error('请给这段声音取一个名字。');
+   const name=$('name').value.trim()||(petName+'的专属声音').slice(0,32);$('name').value=name;
    const data=new FormData();data.set('audio',raw,'reference.wav');data.set('petId',petId);data.set('name',name);data.set('transcript',$('transcript').value.trim());data.set('consent','true');data.set('requestId',requestId);
-   const created=await (await api('/api/pet-voices',{method:'POST',body:data})).json();
+   const created=await (await api('/api/pet-voices',{method:'POST',body:data,paitQuiet:true})).json();submitted=true;
    if(token!==epoch)return;message('正在创建，通常需要等待一会儿；可以关闭窗口，稍后回来查看。');task?.update('智谱正在创建专属音色');
    for(let i=0;i<150&&token===epoch;i++){
     const d=await refresh(token);const row=d?.profiles.find(p=>p.id===created.id);
-    if(row?.status!=='creating'){if(row?.status==='ready'){task?.done();message('专属声音已创建。先试听，再应用给'+petName+'。');}else{task?.fail();message(row?.error||'创建结果尚未确认，请稍后查看。');}return;}
+    if(row?.status!=='creating'){if(row?.status==='ready'){task?.done();message('专属声音已创建。先试听，再应用给'+petName+'。');}else{const reason=row?.error||'创建结果尚未确认，请稍后查看。';task?.fail(reason);message(reason,true);}return;}
     clearTimeout(timer);await new Promise(r=>setTimeout(r,2000));
    }
-  }catch(e){if(token===epoch)message(e.message);task?.fail();}
+  }catch(e){const reason=submitted?'创建已提交，但暂时无法读取进度。稍后重新打开查看结果，不要重复创建。':e.status?e.message:e instanceof TypeError?'上传连接失败，请检查网络后重试；当前录音仍保留，无需重新录制。':e.message;reportCreate(submitted?'poll_failed':e.status?'http_error':'submit_failed',e.status||0);if(token===epoch)message(reason,true);task?.fail(reason);}
   finally{task?.cancel();if(token===epoch)lock(false);}
  }
  async function open(id,name){
   if(!panel){
    const css=document.createElement('link');css.rel='stylesheet';css.href='/static/css/pet-voice.css';document.head.append(css);
-   panel=document.createElement('dialog');panel.id='pet-voice-dialog';panel.innerHTML=`<header><div><small>派特岛 · 专属声音</small><h2 data-title></h2></div><button type="button" data-close aria-label="关闭声音设置">✕</button></header><p data-current></p><p>上传人的说话录音，让它用这个音色说出新的回复。这里改变宠物的说话声音，不影响熟人声纹识别或动物叫声。</p><p data-hint></p><section><label>声音名称<input data-name maxlength="32" placeholder="例如：温柔的陪伴"></label><label>上传参考录音<input data-file type="file" accept="audio/*,.wav,.mp3,.m4a"></label><button type="button" data-record>直接录音</button><div data-recording hidden><strong data-record-time>0.0 秒 / 29 秒</strong><progress data-record-level max="1" value="0" aria-label="麦克风音量"></progress><button type="button" data-record-stop>停止并试听</button><button type="button" data-record-cancel>取消录音</button></div><p class="pet-voice-note">可自然读一段话：“今天想和你一起在岛上散散步，看看新开的花。听到我的声音，就慢慢走过来吧。”录满 29 秒自动停止。</p><small>3–30 秒，推荐 10–20 秒清晰单人说话，无背景音乐。支持浏览器可解码的 WAV、MP3、M4A，文件不超过 20MB。</small><audio data-source controls hidden></audio><label>录音原文（可选）<textarea data-transcript maxlength="1000" rows="2" placeholder="如填写，请与录音实际说的话一致"></textarea></label><label class="pet-voice-consent"><input data-consent type="checkbox">这是本人或已获授权用于声音复刻的录音，同意发送至智谱生成音色。</label><button type="button" data-create disabled>创建专属声音</button></section><p data-status role="status" aria-live="polite"></p><audio data-preview controls hidden></audio><h3>为这只宠物保存的声音</h3><div data-list></div><button type="button" data-reset>恢复默认声音</button><p class="pet-voice-note">设置按账号和宠物独立保存。语音通话会先生成回复，再用专属音色朗读，等待可能比默认声音稍长。样本在本机只作临时处理；删除会请求清理云端音色和样本。</p>`;
+   panel=document.createElement('dialog');panel.id='pet-voice-dialog';panel.innerHTML=`<header><div><small>派特岛 · 专属声音</small><h2 data-title></h2></div><button type="button" data-close aria-label="关闭声音设置">✕</button></header><p data-current></p><p>上传人的说话录音，让它用这个音色说出新的回复。这里改变宠物的说话声音，不影响熟人声纹识别或动物叫声。</p><p data-hint></p><section><label>声音名称（可选）<input data-name maxlength="32" placeholder="不填则使用宠物的默认名称"></label><label>上传参考录音<input data-file type="file" accept="audio/*,.wav,.mp3,.m4a"></label><button type="button" data-record>直接录音</button><div data-recording hidden><strong data-record-time>0.0 秒 / 29 秒</strong><progress data-record-level max="1" value="0" aria-label="麦克风音量"></progress><button type="button" data-record-stop>停止并试听</button><button type="button" data-record-cancel>取消录音</button></div><p class="pet-voice-note">可自然读一段话：“今天想和你一起在岛上散散步，看看新开的花。听到我的声音，就慢慢走过来吧。”录满 29 秒自动停止。</p><small>3–30 秒，推荐 10–20 秒清晰单人说话，无背景音乐。支持浏览器可解码的 WAV、MP3、M4A，文件不超过 20MB。</small><audio data-source controls hidden></audio><label>录音原文（可选）<textarea data-transcript maxlength="1000" rows="2" placeholder="如填写，请与录音实际说的话一致"></textarea></label><label class="pet-voice-consent"><input data-consent type="checkbox">这是本人或已获授权用于声音复刻的录音，同意发送至智谱生成音色。</label><button type="button" data-create disabled>创建专属声音</button><p data-status role="status" aria-live="polite"></p></section><audio data-preview controls hidden></audio><h3>为这只宠物保存的声音</h3><div data-list></div><button type="button" data-reset>恢复默认声音</button><p class="pet-voice-note">设置按账号和宠物独立保存。语音通话会先生成回复，再用专属音色朗读，等待可能比默认声音稍长。样本在本机只作临时处理；删除会请求清理云端音色和样本。</p>`;
    document.body.append(panel);$('close').onclick=()=>panel.close();panel.addEventListener('close',()=>{if(!panel.open)close();});
    $('consent').onchange=()=>lock(busy);$('create').onclick=upload;
    $('file').onchange=()=>{const file=$('file').files[0];if(file)void prepare(file);};

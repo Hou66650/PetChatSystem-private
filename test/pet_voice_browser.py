@@ -58,8 +58,15 @@ try:
             page.call('DOM.setFileInputFiles',{'nodeId':node,'files':[str(sample)]})
             wait("!document.querySelector('[data-create]').disabled")
             assert js("document.querySelector('[data-source]').duration>=3")
-            js("document.querySelector('[data-create]').click()")
+            js("window.voiceOriginalFetch=window.fetch;window.createRequests=[];window.rejectVoiceUpload=true;window.fetch=(url,options={})=>{if(url==='/api/pet-voices'&&options.method==='POST'){createRequests.push(options.body.get('requestId'));if(rejectVoiceUpload)return Promise.resolve(new Response(JSON.stringify({error:'测试：语音服务暂时不可用'}),{status:503,headers:{'Content-Type':'application/json'}}));}return voiceOriginalFetch(url,options);};document.querySelector('[data-create]').click()")
+            wait("document.querySelector('[data-status]').textContent==='测试：语音服务暂时不可用'&&!document.querySelector('[data-create]').disabled")
+            assert js("document.querySelector('[data-status]').getAttribute('role')==='alert'&&document.querySelector('[data-status]').parentElement===document.querySelector('[data-create]').parentElement")
+            assert js("[...document.querySelectorAll('.pait-glass-task.failed')].some(e=>e.textContent.includes('测试：语音服务暂时不可用'))")
+            assert js("document.querySelector('[data-source]').src.startsWith('blob:')"), 'failed upload preserves local recording'
+            js("rejectVoiceUpload=false;document.querySelector('[data-create]').click()")
             wait("[...document.querySelectorAll('[data-list] button')].some(b=>b.textContent==='试听新声音')")
+            assert js("createRequests.length===2&&createRequests[0]===createRequests[1]"), 'retry must preserve idempotency key'
+            js("window.fetch=voiceOriginalFetch")
             assert js("document.querySelector('[data-current]').textContent.includes('默认')")
             js("[...document.querySelectorAll('[data-list] button')].find(b=>b.textContent==='试听新声音').click()")
             wait("document.querySelector('[data-preview]').src.startsWith('blob:')")
@@ -67,7 +74,7 @@ try:
             wait("document.querySelector('[data-current]').textContent.includes('专属音色')")
             assert js("document.querySelector('[data-list]').textContent.includes('当前使用')")
             js("window.voiceEvents=[];document.addEventListener('pet-voice-changed',e=>voiceEvents.push(e.detail));window.originalMic=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);window.micStreams=[];navigator.mediaDevices.getUserMedia=async c=>{const s=await originalMic(c);micStreams.push(s);return s;}")
-            js("document.querySelector('[data-name]').value='现场录制的第二种声音';document.querySelector('[data-record]').click()")
+            js("document.querySelector('[data-name]').value='';document.querySelector('[data-record]').click()")
             wait("!document.querySelector('[data-record-stop]').disabled")
             assert js("document.querySelector('[data-file]').disabled&&document.querySelector('[data-create]').disabled")
             time.sleep(3.8)
@@ -77,9 +84,9 @@ try:
             assert js("micStreams.every(s=>s.getTracks().every(t=>t.readyState==='ended'))")
             assert js("document.querySelectorAll('[data-list] article').length===1"), 'recording must not automatically upload'
             js("document.querySelector('[data-create]').click()")
-            wait("[...document.querySelectorAll('[data-list] article')].some(a=>a.textContent.includes('现场录制的第二种声音')&&a.textContent.includes('可使用'))")
-            js("[...document.querySelectorAll('[data-list] article')].find(a=>a.textContent.includes('现场录制的第二种声音')).querySelectorAll('button')[1].click()")
-            wait("document.querySelector('[data-current]').textContent.includes('现场录制的第二种声音')")
+            wait("[...document.querySelectorAll('[data-list] article')].some(a=>a.textContent.includes('球球的专属声音')&&a.textContent.includes('可使用'))")
+            js("[...document.querySelectorAll('[data-list] article')].find(a=>a.textContent.includes('球球的专属声音')).querySelectorAll('button')[1].click()")
+            wait("document.querySelector('[data-current]').textContent.includes('球球的专属声音')")
             second=js('voiceEvents.at(-1).activeId')
             js("[...document.querySelectorAll('[data-list] article')].find(a=>a.textContent.includes('清新的测试声音')).querySelectorAll('button')[1].click()")
             wait("document.querySelector('[data-current]').textContent.includes('清新的测试声音')")
@@ -110,7 +117,7 @@ try:
                 js("[...document.querySelectorAll('[data-list] button')].find(b=>b.textContent==='删除').click()")
                 wait("document.querySelectorAll('[data-list] article').length==="+str(remaining))
             wait("document.querySelector('[data-list]').textContent.includes('还没有')")
-            print(json.dumps({'passed':True,'checks':['real microphone capture and WAV conversion','stop/cancel/close releases microphone','permission denial recovery','two voices switch and publish updates','no automatic recording upload','real WAV decode/upload','original preview','cloud preview playback URL','explicit apply','per-pet isolation','reopen persistence','mobile width','restore default','delete'],'screenshot':str(out)},ensure_ascii=False))
+            print(json.dumps({'passed':True,'checks':['blank-name direct recording auto-names and creates','exact upload error beside button and in glass progress','recording and request ID survive failed upload retry','real microphone capture and WAV conversion','stop/cancel/close releases microphone','permission denial recovery','two voices switch and publish updates','no automatic recording upload','real WAV decode/upload','original preview','cloud preview playback URL','explicit apply','per-pet isolation','reopen persistence','mobile width','restore default','delete'],'screenshot':str(out)},ensure_ascii=False))
         finally:
             if page:page.close()
             if browser:

@@ -19,6 +19,11 @@ class RealtimeDiagnosticsTests(unittest.TestCase):
         self.assertNotIn('SECRET',str(log.call_args));self.assertNotIn('PRIVATE',str(log.call_args))
         self.assertIn('downstream_reconnect_exceeded',str(log.call_args))
 
+    def test_voice_creation_diagnostic_without_recording(self):
+        with patch.object(self.app.logger,'warning') as log:
+            self.assertEqual(self.post(stage='voice_create',code='http_error',status=503,recording='PRIVATE').status_code,200)
+        self.assertIn('voice_create',str(log.call_args));self.assertNotIn('PRIVATE',str(log.call_args))
+
     def test_malformed_oversized_and_cross_origin_rejected(self):
         for changes in [dict(petId=True),dict(petId=9),dict(code='line\nbreak'),dict(code='x'*65),dict(stage='other'),dict(status=True)]:
             self.assertEqual(self.post(**changes).status_code,400)
