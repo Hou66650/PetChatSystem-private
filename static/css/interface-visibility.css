@@ -1,0 +1,28 @@
+#interface-toggle{position:absolute;right:24px;top:84px;z-index:44;border:1px solid #ffffffbd;border-radius:18px;padding:9px 15px;min-height:40px;color:#36564b;background:#fffdf1ce;box-shadow:0 5px 18px #153e3420;cursor:pointer;font:inherit;font-size:13px;backdrop-filter:blur(12px)}
+#interface-toggle:hover{background:#fffdf4}
+#interface-toggle:focus-visible,#interface-settings :focus-visible{outline:3px solid #648d80;outline-offset:3px}
+#interface-settings{box-sizing:border-box;width:min(390px,calc(100vw - 28px));max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:22px;border:1px solid #ffffffd9;border-radius:26px;background:linear-gradient(140deg,#fffef4f5,#e5eee8f5);color:#315448;box-shadow:0 18px 80px #092e3840;backdrop-filter:blur(24px);font-size:14px}
+#interface-settings::backdrop{background:#12333135;backdrop-filter:blur(3px)}
+#interface-settings header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#interface-settings h2{font-size:19px;margin:0}
+#interface-settings p{font-size:13px;line-height:1.7;margin:12px 0}
+#interface-settings fieldset{border:0;padding:0;margin:16px 0;display:grid;gap:3px;min-width:0}
+#interface-settings legend{font-size:12px;color:#677d70;margin-bottom:6px}
+#interface-settings label{display:flex;gap:12px;align-items:center;padding:9px 8px;min-height:24px;cursor:pointer;border-radius:12px}
+#interface-settings label:hover{background:#ffffff80}
+#interface-settings input{appearance:auto;position:static;opacity:1;width:18px;height:18px;flex:0 0 18px;margin:0;accent-color:#427867;cursor:pointer}
+#interface-settings fieldset:disabled{opacity:.5}
+#interface-settings summary{cursor:pointer;padding:10px 0;border-top:1px solid #31544820}
+#interface-settings .interface-note{font-size:12px;color:#61786c}
+#interface-settings button{font:inherit;font-size:13px;color:inherit;border:1px solid #a9c5b8;background:#fffef4b8;padding:10px 12px;border-radius:14px;cursor:pointer;min-height:40px}
+#interface-settings footer{display:flex;gap:8px;flex-wrap:wrap}
+#interface-settings [data-done]{margin-left:auto;background:#365e51;color:white}
+#interface-settings .interface-status{display:block;min-height:18px;margin-top:8px;font-size:12px;color:#61786c}
+#interface-settings .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+html.pait-hide-navigation body.theme{--nav-h:0px;padding-top:0!important}
+html.pait-hide-navigation #den-wrap{top:0!important}
+html.pait-custom-dock #den-wrap .glass-dock{display:flex;width:max-content;max-width:calc(100vw - 32px)}
+html.pait-custom-dock #den-wrap .glass-dock>.action-btn{flex:1 1 72px;width:72px}
+/* No empty glass shell when every currently available action is hidden. */
+html.pait-hide-call.pait-hide-voice.pait-hide-pet.pait-hide-food.pait-hide-actions.pait-hide-chat.pait-hide-more #den-wrap .glass-dock{display:none!important}
+@media(max-width:767px){#interface-toggle{right:12px;top:132px;padding:8px 12px}#interface-settings{padding:18px}html.pait-custom-dock #den-wrap .glass-dock>.action-btn{width:52px;flex-basis:52px}}

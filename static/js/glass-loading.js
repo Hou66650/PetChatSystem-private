@@ -3,7 +3,7 @@
  if(window.PaitLoading)return;
  const tasks=new Map(),named=new Map();const dialogOrder=new WeakMap();let dialogSeq=0,seq=0,host,timer;
  const clamp=x=>Math.max(0,Math.min(1,x));
- function mount(){if(!document.body)return;const dialogs=[...document.querySelectorAll('dialog[open]')].sort((a,b)=>(dialogOrder.get(a)||0)-(dialogOrder.get(b)||0));const parent=dialogs.at(-1)||document.fullscreenElement||document.body;if(!host){host=document.createElement('section');host.className='pait-glass-loading';host.setAttribute('aria-label','加载进度');host.setAttribute('aria-live','polite');host.hidden=true;}if(host.parentNode!==parent){if(parent.tagName==='DIALOG')parent.prepend(host);else parent.append(host);}host.classList.toggle('in-dialog',parent.tagName==='DIALOG');}
+ function mount(){if(!document.body)return;const dialogs=[...document.querySelectorAll('dialog[open]:not([data-loading-overlay="outside"])')].sort((a,b)=>(dialogOrder.get(a)||0)-(dialogOrder.get(b)||0));const parent=dialogs.at(-1)||document.fullscreenElement||document.body;if(!host){host=document.createElement('section');host.className='pait-glass-loading';host.setAttribute('aria-label','加载进度');host.setAttribute('aria-live','polite');host.hidden=true;}if(host.parentNode!==parent){if(parent.tagName==='DIALOG')parent.prepend(host);else parent.append(host);}host.classList.toggle('in-dialog',parent.tagName==='DIALOG');}
  let updateTimer;
  function scheduleRender(){if(!updateTimer)updateTimer=setTimeout(()=>{updateTimer=null;render();},100);}
  function render(){

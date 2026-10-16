@@ -365,6 +365,8 @@ document.addEventListener('DOMContentLoaded', () => {
 <script defer src="{{ url_for('static', filename='js/den-ui.js') }}?v={{ app_version }}"></script>
 <link rel="stylesheet" href="{{ url_for('static',filename='css/face-play.css') }}?v={{ app_version }}">
 <link rel="stylesheet" href="/static/css/voiceprint.css?v={{ app_version }}">
+<link rel="stylesheet" href="/static/css/interface-visibility.css?v={{ app_version }}">
+<script defer src="/static/js/den/interface-visibility.js?v={{ app_version }}"></script>
 </head>
 <body class="theme">
     {% include '_navbar.html' %}
