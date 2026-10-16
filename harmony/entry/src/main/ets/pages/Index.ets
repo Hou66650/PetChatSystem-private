@@ -1,5 +1,5 @@
 import { util } from '@kit.ArkTS';
-import { ChatMessage, ChatRequest, PetInfo } from '../model/Contracts';
+import { ChatMessage, ChatRequest, CompanionMemory, CompanionProfile, PetInfo } from '../model/Contracts';
 import { PetApi } from '../service/PetApi';
 
 @Entry
@@ -21,6 +21,8 @@ struct Index {
   @State private wide: boolean = true;
   @State private maxChars: number = 2000;
   @State private pendingText: string = '';
+  @State private section: string = 'chat';
+  @State private profile: CompanionProfile | null = null;
   private pendingId: string = '';
   private api: PetApi = new PetApi();
   private scroller: Scroller = new Scroller();
@@ -50,8 +52,11 @@ struct Index {
     if (this.busy || pet.id === this.selectedId || this.pendingId) { return; }
     this.busy = true; this.error = '';
     // Clear first so a failed request never displays a different pet's messages.
-    this.selectedId = pet.id; this.selectedName = pet.name; this.messages = []; this.draft = '';
-    try { this.messages = (await this.api.history(pet.id)).messages; }
+    this.selectedId = pet.id; this.selectedName = pet.name; this.messages = []; this.draft = ''; this.profile = null;
+    try {
+      this.messages = (await this.api.history(pet.id)).messages;
+      if (this.section === 'profile') { this.profile = await this.api.companion(pet.id); }
+    }
     catch (failure) { this.error = (failure as Error).message || '读取历史失败'; }
     finally { this.busy = false; }
   }
@@ -94,9 +99,78 @@ struct Index {
     catch (_) { /* Always forget the local credential even when the server is unavailable. */ }
     finally {
       this.account = ''; this.password = ''; this.pets = []; this.messages = [];
+      this.profile = null; this.section = 'chat';
       this.selectedId = 0; this.selectedName = ''; this.pendingId = ''; this.pendingText = '';
       this.draft = ''; this.error = ''; this.status = '已退出'; this.busy = false;
     }
+  }
+
+  private async showProfile(): Promise<void> {
+    if (this.busy) { return; }
+    this.section = 'profile'; this.busy = true; this.error = ''; this.profile = null;
+    try { this.profile = await this.api.companion(this.selectedId); }
+    catch (failure) { this.error = (failure as Error).message || '读取陪伴档案失败'; }
+    finally { this.busy = false; }
+  }
+
+  private async changeMemory(): Promise<void> {
+    if (this.busy || !this.profile) { return; }
+    this.busy = true; this.error = '';
+    try { this.profile = await this.api.setMemory(this.selectedId, !this.profile.enabled); }
+    catch (failure) { this.error = (failure as Error).message || '更新失败，请刷新确认'; }
+    finally { this.busy = false; }
+  }
+
+  @Builder
+  private companionPanel() {
+    Scroll() {
+      Column({ space: 18 }) {
+        Row() {
+          Text('陪伴档案').fontSize(26).fontWeight(FontWeight.Bold).layoutWeight(1)
+          Button('刷新').enabled(!this.busy).onClick(() => { this.showProfile(); })
+        }.width('100%')
+        if (this.profile) {
+          Text(this.profile.name + ' · ' + this.profile.species).fontSize(24).fontWeight(FontWeight.Bold)
+          Text(this.profile.role).fontSize(16).fontColor('#775E51')
+          Text('已经交流 ' + this.profile.interactionCount.toString() + ' 次').fontSize(16)
+          Text('陪伴方式：' + this.profile.companionStyle).fontSize(18)
+          Row({ space: 16 }) {
+            Text(this.profile.enabled ? '长期记忆已开启' : '长期记忆已暂停').layoutWeight(1)
+            Button(this.profile.enabled ? '暂停记忆' : '恢复记忆')
+              .enabled(!this.busy).onClick(() => { this.changeMemory(); })
+          }.width('100%')
+          Text('此设置影响账号下所有宠物。暂停后保留已有档案，不再使用长期记忆；聊天历史仍保留。')
+            .fontSize(14).fontColor('#775E51')
+          Text('它记得的事').fontSize(20).fontWeight(FontWeight.Bold)
+          if (this.profile.memories.length === 0) {
+            Text('还没有记录。可以在聊天中告诉它你的称呼或陪伴偏好。').fontColor('#775E51')
+          }
+          ForEach(this.profile.memories, (memory: CompanionMemory) => {
+            Column({ space: 8 }) {
+              Text(memory.label).fontSize(14).fontColor('#775E51')
+              Text(memory.value).fontSize(18).copyOption(CopyOptions.InApp)
+            }.width('100%').alignItems(HorizontalAlign.Start).padding(16)
+              .backgroundColor('#FFFFFF').borderRadius(16)
+          }, (memory: CompanionMemory) => memory.id.toString())
+        } else {
+          Text(this.busy ? '正在读取档案…' : '暂未取得档案，请点击刷新。').padding(24)
+        }
+      }.width('100%').alignItems(HorizontalAlign.Start).padding(20)
+    }.layoutWeight(1).width('100%')
+  }
+
+  @Builder
+  private workspacePanel() {
+    Column({ space: 8 }) {
+      Row({ space: 12 }) {
+        Button('聊天').backgroundColor(this.section === 'chat' ? '#98512D' : '#775E51')
+          .enabled(!this.busy).onClick(() => { this.section = 'chat'; })
+        Button('陪伴档案').backgroundColor(this.section === 'profile' ? '#98512D' : '#775E51')
+          .enabled(!this.busy && this.pendingText.length === 0).onClick(() => { this.showProfile(); })
+      }.padding({ top: 12, left: 20 }).width('100%')
+      if (this.section === 'chat') { this.chatPanel(); }
+      else { this.companionPanel(); }
+    }.layoutWeight(1).height('100%')
   }
 
   @Builder
@@ -171,7 +245,7 @@ struct Index {
           .enabled(!this.busy && (this.draft.trim().length > 0 || this.pendingText.length > 0))
           .onClick(() => { this.send(); })
       }.width('100%')
-    }.padding(20).layoutWeight(1).height('100%')
+    }.padding(20).layoutWeight(1).width('100%')
   }
 
   build() {
@@ -189,13 +263,13 @@ struct Index {
         this.loginPanel()
       } else {
         if (this.wide) {
-          Row() { this.petPicker(); this.chatPanel() }.layoutWeight(1).width('100%')
+          Row() { this.petPicker(); this.workspacePanel() }.layoutWeight(1).width('100%')
         } else {
           Column() {
             Select(this.pets.map((pet: PetInfo): SelectOption => ({ value: pet.name })))
               .value(this.selectedName).enabled(!this.busy && this.pendingText.length === 0)
               .onSelect((index: number) => { this.selectPet(this.pets[index]); })
-            this.chatPanel()
+            this.workspacePanel()
           }.layoutWeight(1).width('100%')
         }
       }

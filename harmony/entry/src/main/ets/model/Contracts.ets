@@ -27,3 +27,16 @@ export interface ChatMessage {
   created_at: string;
 }
 export interface History { messages: ChatMessage[]; }
+
+export interface CompanionMemory { id: number; label: string; value: string; }
+export interface CompanionProfile {
+  petId: number;
+  name: string;
+  species: string;
+  role: string;
+  companionStyle: string;
+  interactionCount: number;
+  enabled: boolean;
+  memories: CompanionMemory[];
+}
+export interface MemorySettings { enabled: boolean; }

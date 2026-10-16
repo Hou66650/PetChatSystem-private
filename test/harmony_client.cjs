@@ -82,6 +82,14 @@ const bootstrap = () => response({ apiVersion: 1, appVersion: 'test', pets: [{ i
   queue.push(response({ username: 'alice' }, 'other=irrelevant'));
   await assert.rejects(() => api.login('alice', 'password'), /登录凭证/);
 
+  queue.push(response({ petId: 2, enabled: true, memories: [] }));
+  assert.equal((await api.companion(2)).petId, 2);
+  assert.ok(calls.at(-1).url.endsWith('/companion?petId=2'));
+  queue.push(response({ petId: 2, enabled: false, memories: [] }));
+  assert.equal((await api.setMemory(2, false)).enabled, false);
+  assert.equal(calls.at(-1).method, 'POST');
+  assert.deepEqual(JSON.parse(calls.at(-1).extraData), { enabled: false });
+
   let finish;
   queue.push(() => new Promise(resolve => { finish = resolve; }));
   const pending = api.history(1);

@@ -71,6 +71,37 @@ class MobileTests(unittest.TestCase):
         self.assertNotIn('description', result.json['pets'][0])
         self.assertEqual(set(result.json), {'apiVersion', 'appVersion', 'pets', 'maxMessageChars', 'sessionCookieName'})
 
+    def test_companion_auth_validation_and_account_isolation(self):
+        url = '/api/mobile/v1/companion?petId=1'
+        self.assertEqual(self.client.get(url).status_code, 401)
+        self.login()
+        result = self.client.get(url)
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json['petId'], 1)
+        self.assertNotIn('basePersonality', result.json)
+        self.assertEqual(result.headers['Cache-Control'], 'no-store')
+        # Write via the existing web API, then read the same owner-scoped data natively.
+        saved = self.client.post('/api/companion/memories?petId=1',
+                                 json={'category': 'pet_name', 'value': '测试伙伴'})
+        self.assertEqual(saved.status_code, 200)
+        self.assertEqual(self.client.get(url).json['name'], '测试伙伴')
+        paused = self.client.post(url, json={'enabled': False})
+        self.assertEqual(paused.status_code, 200)
+        self.assertFalse(paused.json['enabled'])
+        self.assertTrue(paused.json['memories'])
+        self.assertFalse(self.client.get('/api/companion?petId=2').json['enabled'])
+        bob = self.app.test_client()
+        self.login(bob, 'bob')
+        self.assertTrue(bob.get(url).json['enabled'])
+        self.assertEqual(bob.get(url).json['memories'], [])
+        self.assertTrue(self.client.post(url, json={'enabled': True}).json['enabled'])
+        for value in ('false', 0, None):
+            self.assertEqual(self.client.post(url, json={'enabled': value}).status_code, 400)
+        for value in ('', '../1', '999'):
+            self.assertEqual(self.client.get('/api/mobile/v1/companion?petId=' + value).status_code, 400)
+        self.assertEqual(self.client.post(url, json={'enabled': False},
+                                         headers={'Origin': 'https://other.example'}).status_code, 403)
+
     def test_login_and_logout(self):
         response = self.login()
         self.assertEqual(response.status_code, 200)

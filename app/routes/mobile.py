@@ -6,7 +6,7 @@ import time
 from flask import Blueprint, current_app, g, jsonify, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from ..db import query_db
+from ..db import get_db, query_db
 from ..llm import pets
 from ..services import chat_service, companion_service
 
@@ -149,3 +149,31 @@ def chat():
     finally:
         with gate['lock']:
             gate['active'].discard(key)
+
+
+@bp.route('/companion', methods=['GET', 'POST'])
+def companion():
+    raw = request.args.get('petId', '')
+    if not raw.isdecimal():
+        return jsonify(error='请选择有效宠物'), 400
+    try:
+        pet = pets.get_pet(raw)
+    except LookupError:
+        return jsonify(error='宠物不存在'), 400
+    owner = companion_service.owner_key()
+    if request.method == 'POST':
+        enabled = request.get_json().get('enabled')
+        if type(enabled) is not bool:
+            return jsonify(error='enabled 必须是布尔值'), 400
+        db = get_db()
+        with db:
+            db.execute('UPDATE companion_owners SET enabled=? WHERE owner=?', (int(enabled), owner))
+            companion_service.invalidate_context(db, owner)
+    profile = companion_service.profile(owner, pet['id'])
+    detail = profile['pet']
+    return jsonify(
+        petId=pet['id'], name=detail['name'], species=detail['species'],
+        role=pet['role'], companionStyle=detail['companionStyle'],
+        interactionCount=detail['interactionCount'], enabled=profile['enabled'],
+        memories=[{'id': item['id'], 'label': companion_service.CATEGORIES.get(item['category'], item['category']),
+                   'value': item['value']} for item in profile['memories']])

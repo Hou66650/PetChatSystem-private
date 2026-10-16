@@ -1,5 +1,5 @@
 import { http } from '@kit.NetworkKit';
-import { Account, ApiError, Bootstrap, ChatReply, ChatRequest, History, LoginRequest } from '../model/Contracts';
+import { Account, CompanionProfile, MemorySettings, ApiError, Bootstrap, ChatReply, ChatRequest, History, LoginRequest } from '../model/Contracts';
 
 // Memory-only session: never write passwords, cookies or conversations to logs/preferences.
 export class PetApi {
@@ -117,6 +117,16 @@ export class PetApi {
 
   async history(petId: number): Promise<History> {
     return JSON.parse(await this.request('/history?petId=' + petId.toString(), http.RequestMethod.GET)) as History;
+  }
+
+  async companion(petId: number): Promise<CompanionProfile> {
+    return JSON.parse(await this.request('/companion?petId=' + petId.toString(), http.RequestMethod.GET)) as CompanionProfile;
+  }
+
+  async setMemory(petId: number, enabled: boolean): Promise<CompanionProfile> {
+    const data: MemorySettings = { enabled: enabled };
+    return JSON.parse(await this.request('/companion?petId=' + petId.toString(), http.RequestMethod.POST,
+      JSON.stringify(data))) as CompanionProfile;
   }
 
   async chat(data: ChatRequest): Promise<ChatReply> {
