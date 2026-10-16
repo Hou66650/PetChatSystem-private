@@ -276,3 +276,45 @@ def claim_care():
         return jsonify(notice=care.claim(companion_service.owner_key(), pet_id))
     except (ValueError, LookupError) as error:
         return jsonify(error=str(error)), 400
+
+
+def _farm_view(owner):
+    from ..services import farm_service as farm, cat_market_service as wallet
+    data = farm.state(owner)
+    names = {p['id']: p['name'] for p in data['catalog']}
+    names.update({p['id']: p['name'] for p in data['shop']})
+    return dict(started=data['started'], balance=data['balance'],
+                dailyClaimed=wallet.state(owner)['dailyClaimed'],
+                catalog=[dict(id=p['id'], name=p['name'], kind=p['kind'], hours=p['hours'],
+                              plantable=not bool(p.get('variantOf'))) for p in data['catalog']],
+                shop=data['shop'],
+                beds=[dict(id=b['id'], name=farm.bed_name(b['id']), nursery=bool(b.get('nursery')),
+                           plant=b['plant']) for b in data['beds']],
+                inventory=[dict(id=item, name=names.get(item, item), quantity=count)
+                           for item, count in sorted(data['inventory'].items())],
+                recentRequests=data['recentRequests'])
+
+
+@bp.get('/farm')
+def farm_state():
+    return jsonify(_farm_view(companion_service.owner_key()))
+
+
+@bp.post('/farm/<operation>')
+def farm_operate(operation):
+    from ..services import farm_service as farm, cat_market_service as wallet
+    owner = companion_service.owner_key()
+    if operation not in ('start', 'buy', 'plant', 'water', 'fertilize', 'harvest', 'cook', 'daily'):
+        return jsonify(error='移动端暂不支持此园艺操作'), 404
+    try:
+        if operation == 'daily':
+            wallet.operate(owner, 'daily', {})
+        else:
+            # Only bed care is exposed here; 3D arrangement mutations stay in the scene client.
+            data = request.get_json()
+            if any(key not in ('token', 'item', 'quantity', 'bed', 'species', 'plant') for key in data):
+                return jsonify(error='园艺参数不受支持'), 400
+            farm.operate(owner, operation, data)
+        return jsonify(_farm_view(owner))
+    except farm.Error as error:
+        return jsonify(error=str(error)), error.status

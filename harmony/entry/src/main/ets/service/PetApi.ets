@@ -1,5 +1,10 @@
 import { http } from '@kit.NetworkKit';
-import { Account, CareState, CareSettingsInput, CareEventInput, CareClaim, MemoryInput, CompanionProfile, MemorySettings, ApiError, Bootstrap, ChatReply, ChatRequest, History, LoginRequest } from '../model/Contracts';
+import { Account, FarmState, FarmAction, CareState, CareSettingsInput, CareEventInput, CareClaim, MemoryInput, CompanionProfile, MemorySettings, ApiError, Bootstrap, ChatReply, ChatRequest, History, LoginRequest } from '../model/Contracts';
+
+export class HttpStatusError extends Error {
+  status: number;
+  constructor(message: string, status: number) { super(message); this.status = status; }
+}
 
 // Memory-only session: never write passwords, cookies or conversations to logs/preferences.
 export class PetApi {
@@ -52,7 +57,7 @@ export class PetApi {
           const failure = JSON.parse(result) as ApiError;
           if (failure.error) { reason = failure.error; }
         } catch (_) { /* Non-JSON proxy errors keep the status-only message. */ }
-        throw new Error(reason);
+        throw new HttpStatusError(reason, response.responseCode);
       }
       // Prefer the actual response header; NetworkKit cookies may use a cookie-list format.
       const headers = response.header as Record<string, string | string[]>;
@@ -160,6 +165,15 @@ export class PetApi {
 
   async claimCare(petId: number): Promise<CareClaim> {
     return JSON.parse(await this.request('/care/claim?petId=' + petId.toString(), http.RequestMethod.POST, '{}')) as CareClaim;
+  }
+
+  async farm(): Promise<FarmState> {
+    return JSON.parse(await this.request('/farm', http.RequestMethod.GET)) as FarmState;
+  }
+
+  async farmAction(operation: string, data: FarmAction): Promise<FarmState> {
+    return JSON.parse(await this.request('/farm/' + encodeURIComponent(operation), http.RequestMethod.POST,
+      JSON.stringify(data))) as FarmState;
   }
 
   async chat(data: ChatRequest): Promise<ChatReply> {

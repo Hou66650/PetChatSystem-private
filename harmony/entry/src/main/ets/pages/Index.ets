@@ -1,6 +1,7 @@
+import { FarmPanel } from '../components/FarmPanel';
 import { preferences } from '@kit.ArkData';
 import { util } from '@kit.ArkTS';
-import { CareState, CareEvent, CareEventInput, CareSettingsInput, ChatMessage, ChatRequest, CompanionMemory, CompanionProfile, PetInfo } from '../model/Contracts';
+import { FarmAction, CareState, CareEvent, CareEventInput, CareSettingsInput, ChatMessage, ChatRequest, CompanionMemory, CompanionProfile, PetInfo } from '../model/Contracts';
 import { PetApi } from '../service/PetApi';
 
 @Entry
@@ -24,6 +25,9 @@ struct Index {
   @State private maxChars: number = 2000;
   @State private pendingText: string = '';
   @State private section: string = 'chat';
+  @State private farmPending: boolean = false;
+  @State private farmRequest: FarmAction | null = null;
+  @State private farmOperation: string = '';
   @State private profile: CompanionProfile | null = null;
   @State private memoryId: number = 0;
   @State private memoryCategory: number = 0;
@@ -415,16 +419,19 @@ struct Index {
   @Builder
   private workspacePanel() {
     Column({ space: 8 }) {
-      Row({ space: 12 }) {
-        Button('聊天').backgroundColor(this.section === 'chat' ? '#98512D' : '#775E51')
-          .enabled(!this.busy).onClick(() => { this.section = 'chat'; })
-        Button('陪伴档案').backgroundColor(this.section === 'profile' ? '#98512D' : '#775E51')
-          .enabled(!this.busy && this.pendingText.length === 0).onClick(() => { this.showProfile(); })
-        Button('主动关怀').backgroundColor(this.section === 'care' ? '#98512D' : '#775E51')
-          .enabled(!this.busy && this.pendingText.length === 0).onClick(() => { this.showCare(); })
+      Flex({ wrap: FlexWrap.Wrap }) {
+        Button('聊天').margin(4).backgroundColor(this.section === 'chat' ? '#98512D' : '#775E51')
+          .enabled(!this.busy && !this.farmPending).onClick(() => { this.section = 'chat'; })
+        Button('陪伴档案').margin(4).backgroundColor(this.section === 'profile' ? '#98512D' : '#775E51')
+          .enabled(!this.busy && !this.farmPending && this.pendingText.length === 0).onClick(() => { this.showProfile(); })
+        Button('主动关怀').margin(4).backgroundColor(this.section === 'care' ? '#98512D' : '#775E51')
+          .enabled(!this.busy && !this.farmPending && this.pendingText.length === 0).onClick(() => { this.showCare(); })
+        Button('种植园').margin(4).backgroundColor(this.section === 'farm' ? '#98512D' : '#775E51')
+          .enabled(!this.busy && !this.farmPending && this.pendingText.length === 0).onClick(() => { this.section = 'farm'; })
       }.padding({ top: 12, left: 20 }).width('100%')
       if (this.section === 'chat') { this.chatPanel(); }
       else if (this.section === 'care') { this.carePanel(); }
+      else if (this.section === 'farm') { FarmPanel({ api: this.api, busy: $busy, error: $error, pending: $farmPending, request: $farmRequest, operation: $farmOperation }); }
       else { this.companionPanel(); }
     }.layoutWeight(1).height('100%')
   }
@@ -468,7 +475,7 @@ struct Index {
         Button(pet.name).width('100%').height(52)
           .backgroundColor(pet.id === this.selectedId ? '#98512D' : '#F2E4D8')
           .fontColor(pet.id === this.selectedId ? '#FFFFFF' : '#51392E')
-          .enabled(!this.busy && this.pendingText.length === 0)
+          .enabled(!this.busy && !this.farmPending && this.pendingText.length === 0)
           .onClick(() => { this.selectPet(pet); })
       }, (pet: PetInfo) => pet.id.toString())
     }.padding(16).width(this.wide ? 210 : '100%')
@@ -522,7 +529,7 @@ struct Index {
         Text(this.status).fontSize(13).fontColor('#775E51').layoutWeight(1)
         if (this.account) {
           Text(this.account).fontSize(14)
-          Button('退出').enabled(!this.busy).onClick(() => { this.disconnect(); })
+          Button('退出').enabled(!this.busy && !this.farmPending).onClick(() => { this.disconnect(); })
         }
       }.padding(20).width('100%')
       if (this.error) { Text(this.error).fontColor('#9C2525').fontSize(15).padding(12).width('100%') }
@@ -534,7 +541,7 @@ struct Index {
         } else {
           Column() {
             Select(this.pets.map((pet: PetInfo): SelectOption => ({ value: pet.name })))
-              .value(this.selectedName).enabled(!this.busy && this.pendingText.length === 0)
+              .value(this.selectedName).enabled(!this.busy && !this.farmPending && this.pendingText.length === 0)
               .onSelect((index: number) => { this.selectPet(this.pets[index]); })
             this.workspacePanel()
           }.layoutWeight(1).width('100%')

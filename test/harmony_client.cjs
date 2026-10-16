@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { stripTypeScriptTypes } = require('node:module');
 let source = fs.readFileSync(path.join(__dirname, '../harmony/entry/src/main/ets/service/PetApi.ets'), 'utf8');
-source = source.replace(/^import .*;\r?\n/gm, '').replace('export class PetApi', 'class PetApi');
+source = source.replace(/^import .*;\r?\n/gm, '').replace(/export class /g, 'class ');
 let queue = [], calls = [], destroyed = 0;
 const http = {
   RequestMethod: { GET: 'GET', POST: 'POST', DELETE: 'DELETE' }, HttpDataType: { STRING: 'string' },
@@ -105,6 +105,21 @@ const bootstrap = () => response({ apiVersion: 1, appVersion: 'test', pets: [{ i
   queue.push(response({ events: [] })); await api.cancelEvent(2, 'abc');
   assert.ok(calls.at(-1).url.endsWith('/care/events/abc/cancel?petId=2'));
   queue.push(response({ notice: null })); assert.equal((await api.claimCare(2)).notice, null);
+
+  queue.push(response({ started: false, inventory: [] }));
+  assert.equal((await api.farm()).started, false);
+  assert.ok(calls.at(-1).url.endsWith('/farm'));
+  const purchase = { token: 'native-purchase-retry', item: 'pot', quantity: 1 };
+  queue.push(() => Promise.reject(new Error('network interrupted')));
+  await assert.rejects(() => api.farmAction('buy', purchase), /network interrupted/);
+  queue.push(response({ started: true }));
+  await api.farmAction('buy', purchase);
+  assert.equal(calls.at(-1).extraData, calls.at(-2).extraData);
+  assert.deepEqual(JSON.parse(calls.at(-1).extraData), purchase);
+  assert.ok(calls.at(-1).url.endsWith('/farm/buy'));
+  assert.equal(calls.at(-1).method, 'POST');
+  queue.push(response({ error: 'insufficient coins' }, '', 409));
+  await assert.rejects(() => api.farmAction('buy', purchase), error => error.status === 409);
 
   let finish;
   queue.push(() => new Promise(resolve => { finish = resolve; }));

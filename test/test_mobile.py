@@ -62,6 +62,71 @@ class MobileTests(unittest.TestCase):
         data.update(changes)
         return (client or self.client).post('/api/mobile/v1/chat', json=data)
 
+    def farm(self, operation, token='mobile-farm-test', **data):
+        return self.client.post('/api/mobile/v1/farm/' + operation,
+                                json=dict(token=token, **data))
+
+    def test_farm_auth_validation_and_isolation(self):
+        url = '/api/mobile/v1/farm'
+        self.assertEqual(self.client.get(url).status_code, 401)
+        self.assertEqual(self.farm('start').status_code, 401)
+        self.login()
+        state = self.farm('start').json
+        self.assertTrue(state['started'])
+        self.assertEqual({i['id']: i['quantity'] for i in state['inventory']}['pot'], 1)
+        self.assertTrue(all('name' in b and isinstance(b['nursery'], bool) for b in state['beds']))
+        self.assertNotIn('scope', state)
+        self.assertEqual(self.farm('place').status_code, 404)
+        self.assertEqual(self.farm('buy', owner='user:bob').status_code, 400)
+        self.assertEqual(self.farm('plant', 'invalid-bed-test', bed='bed-1', species='birch').status_code, 400)
+        self.assertEqual(self.client.post(url + '/start', json=[]).status_code, 400)
+        self.assertEqual(self.client.post(url + '/start', json={}, headers={'Origin': 'https://evil.test'}).status_code, 403)
+        bob = self.app.test_client()
+        self.login(bob, 'bob')
+        other = bob.get(url + '?owner=user:alice').json
+        self.assertFalse(other['started'])
+        self.assertEqual(other['inventory'], [])
+        self.assertFalse(any(b['plant'] for b in other['beds']))
+
+    def test_farm_purchase_and_daily_retries_do_not_duplicate(self):
+        self.login()
+        self.farm('start')
+        first = self.farm('buy', 'purchase-fixed-token', item='pot', quantity=2)
+        self.assertEqual(first.status_code, 200)
+        repeated = self.farm('buy', 'purchase-fixed-token', item='pot', quantity=2)
+        self.assertEqual(repeated.json['balance'], first.json['balance'])
+        self.assertEqual(repeated.json['inventory'], first.json['inventory'])
+        self.assertIn('purchase-fixed-token', repeated.json['recentRequests'])
+        self.assertEqual(self.farm('buy', 'purchase-fixed-token', item='pot', quantity=1).status_code, 409)
+        self.assertEqual(self.farm('buy', 'purchase-too-large', item='pot', quantity=20).status_code, 409)
+        daily = self.farm('daily', 'daily-fixed-token').json
+        self.assertTrue(daily['dailyClaimed'])
+        self.assertEqual(daily['balance'], first.json['balance'] + 30)
+        self.assertEqual(self.farm('daily', 'daily-new-token').json['balance'], daily['balance'])
+
+    def test_farm_growing_harvest_and_cooking_share_web_inventory(self):
+        self.login()
+        self.farm('start')
+        planted = self.farm('plant', 'plant-pumpkin-test', bed='bed-1', species='pumpkin')
+        self.assertEqual(planted.status_code, 200)
+        plant = next(b['plant'] for b in planted.json['beds'] if b['id'] == 'bed-1')
+        data = dict(bed='bed-1', plant=plant['id'])
+        self.assertEqual(self.farm('harvest', 'harvest-early-test', **data).status_code, 409)
+        self.assertEqual(self.farm('water', 'water-pumpkin-test', **data).status_code, 200)
+        self.assertEqual(self.farm('fertilize', 'fertilize-pumpkin-test', **data).status_code, 200)
+        self.assertEqual(self.farm('water', 'water-repeat-test', **data).status_code, 409)
+        with self.app.app_context():
+            with get_db() as db:
+                db.execute('UPDATE farm_plants SET planted=planted-?', (48 * 3600,))
+        harvested = self.farm('harvest', 'harvest-mature-test', **data)
+        self.assertEqual(harvested.status_code, 200)
+        self.assertEqual(self.farm('cook', 'cook-pumpkin-test').status_code, 200)
+        self.assertEqual(self.client.get('/api/supplies').json['inventory']['treat'], 1)
+        web = self.client.get('/api/farm').json
+        self.assertEqual(web['inventory']['pumpkin'], 1)
+        self.assertFalse(next(b['plant'] for b in web['beds'] if b['id'] == 'bed-1'))
+        self.assertEqual(self.farm('harvest', 'harvest-stale-test', **data).status_code, 409)
+
     def test_bootstrap_has_public_contract_and_no_secrets(self):
         result = self.client.get('/api/mobile/v1/bootstrap')
         self.assertEqual(result.status_code, 200)

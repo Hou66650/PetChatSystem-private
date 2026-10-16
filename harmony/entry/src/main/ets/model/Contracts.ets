@@ -51,3 +51,20 @@ export interface CareState { petId: number; memoryEnabled: boolean; settings: Ca
 export interface CareEventInput { title: string; event_at: number; remind_at: number; }
 export interface CareNotice { id: string; title: string; message: string; }
 export interface CareClaim { notice: CareNotice | null; }
+
+export interface FarmSpecies { id: string; name: string; kind: string; hours: number; plantable: boolean; }
+export interface FarmShopItem { id: string; name: string; price: number; }
+export interface FarmStock { id: string; name: string; quantity: number; }
+export interface FarmPlant {
+  id: string; species: string; watered: boolean; fertilized: boolean;
+  stage: number; progress: number; remaining: number; ready: boolean;
+}
+export interface FarmBed { id: string; name: string; nursery: boolean; plant: FarmPlant | null; }
+export interface FarmState {
+  started: boolean; balance: number; dailyClaimed: boolean;
+  catalog: FarmSpecies[]; shop: FarmShopItem[]; beds: FarmBed[];
+  inventory: FarmStock[]; recentRequests: string[];
+}
+export interface FarmAction {
+  token: string; item?: string; quantity?: number; bed?: string; species?: string; plant?: string;
+}
