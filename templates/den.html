@@ -1632,7 +1632,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(id===3)petGrounding=new PetGrounding.Controller(THREE,petModel,model,navigation);
             locomotion = new PetLocomotion.Controller({navigation,model:petModel,speed:spec.pbr ? .34 : .46,
                 strideSpeed:spec.pbr ? .42 * spec.h / origH : .46,
-                gaits:actions.run?{walk:.348*spec.h/origH,trot:.682*spec.h/origH,run:1.0*spec.h/origH,turnLeft:1,turnRight:1}:null,
+                gaits:PetLocomotion.gaitSpeeds(actions,spec.h/origH),
                 animate(key,speed) { anim.state = key; anim.until = 0; playAction(key,speed); },
                 rest(random) {
                     if(catLife?.approach||catAgent?.goal){anim.state='idle';anim.until=0;playAction('idle',1);return;}

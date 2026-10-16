@@ -5,12 +5,14 @@ const layout=require('../static/js/den/mistwood-layout');
 vm.runInNewContext(fs.readFileSync('static/js/vendor/GLTFLoader.js','utf8'),{THREE,console,TextDecoder,URL,Blob,self:{URL},setTimeout,clearTimeout});
 THREE.TextureLoader.prototype.load=function(url,cb){const t=new THREE.Texture();queueMicrotask(()=>cb(t));return t;};
 (async()=>{
- const bytes=fs.readFileSync('static/models/petchat-cat-v3/cat.glb');
+ const custom=process.env.PET_LIFE_TEST_GLB;
+ const bytes=fs.readFileSync(custom||'static/models/petchat-cat-v3/cat.glb');
  const gltf=await new Promise((r,j)=>new THREE.GLTFLoader().parse(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'',r,j));
  const model=new THREE.Group();model.add(gltf.scene);
+ if(custom){const ctx={};vm.runInNewContext(fs.readFileSync('static/js/den/pet-model-bounds.js','utf8'),ctx);const box=ctx.PetModelBounds.measure(THREE,gltf.scene),scale=.85/(box.max.y-box.min.y);gltf.scene.scale.setScalar(scale);gltf.scene.position.set(-(box.min.x+box.max.x)*scale/2,-box.min.y*scale,-(box.min.z+box.max.z)*scale/2);model.userData.height=.85;}
  const nav=new Navigation({...layout,bodyRadius:.619}),move=new Move({navigation:nav,model,animate(){},rest(){}});
  const cat=new Controller(THREE,model,move,{walls:[{x:.8,z:-3.4,nx:-1,nz:0}],random:()=>.1});
- for(const name of ['head','neck','spine_front','ear_L','tail_tip','FL_lower'])assert(cat.byName[name],name);
+ for(const name of ['head','neck','spine','tail_tip','FL_lower',...(!custom?['spine_front','ear_L']:[])])assert(cat.byName[name],name);
  const frame=(blocked=false)=>{cat.beforeFrame();const owned=cat.step(1/60,blocked);move.update(1/60,blocked||owned);model.position.y=nav.surfaceHeight(model.position);cat.pose(1/60,'idle');assert(nav.isWalkable(model.position));};
  model.position.set(-2,0,-3);assert(cat.begin('jump'));let max=0;for(let i=0;i<105;i++){frame();max=Math.max(max,model.position.y-nav.surfaceHeight(model.position));}
  assert(max>.30);assert.equal(cat.active,null);assert(Math.abs(model.position.z+2.45)<.001);
