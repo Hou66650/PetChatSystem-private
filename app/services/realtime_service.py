@@ -62,17 +62,20 @@ def issue_realtime_token(ttl_seconds=600):
 
 def build_instructions(pet_id, gender=None, surface='chat', private_context=True):
     from . import companion_service
+    from .realtime_context import MAX_INSTRUCTION_BYTES, memory_summary, scene_summary
     pet = pet_registry.get_pet(pet_id)
-    text = (pet_registry.build_system_prompt(pet, gender) + VOICE_CONSTRAINTS
-            + (companion_service.context(companion_service.owner_key(), pet_id) if private_context else ''))
-    if private_context:
-        from . import cat_scene_service
-        text += cat_scene_service.prompt(companion_service.owner_key(),pet_id)
+    text = pet_registry.build_system_prompt(pet, gender) + VOICE_CONSTRAINTS
     if surface == 'den':
         text += ('\n你在3D小窝里陪伴用户。明确动作请求会由系统另行执行，'
                  '可简短回应“好呀”，不要声称动作已经完成；不要朗读动作指令或JSON。')
     else:
         text += '\n这是聊天界面，不要声称正在执行3D动作。'
+    if private_context:
+        owner=companion_service.owner_key()
+        remaining=max(0,MAX_INSTRUCTION_BYTES-len(text.encode('utf-8')))
+        text+=memory_summary(owner,pet_id,min(1100,remaining))
+        if pet_id==3:
+            text+=scene_summary(owner,max(0,MAX_INSTRUCTION_BYTES-len(text.encode('utf-8'))))
     return text
 
 

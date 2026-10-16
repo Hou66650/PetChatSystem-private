@@ -266,6 +266,7 @@ class RealtimeController {
       if (this.state === 'AI_SPEAKING' && this._player && !this._player.playing) {
         this._setState('READY');
       }
+      if(this.state==='READY'&&!this._player?.playing&&this._client?.needsContextRenewal)void this._client.renewContext();
     }, 250);
   }
 
@@ -329,6 +330,11 @@ class RealtimeController {
         break;
       case 'server.error': {
         const code = String(data.code || 'unknown').replace(/[^a-zA-Z0-9_.-]/g, '').slice(0,64);
+        if(code==='context_length_exceeded'){
+          this.stop();this._setState('ERROR',{reason:'context_limit',code});
+          this.onTranscripts({reset:true,userText:'',assistantText:'',done:false});
+          this.onError({code,message:'这次语音携带的信息超过服务上限，通话已停止。请重新开启语音；已保存的记忆和岛屿数据不会删除。'});break;
+        }
         if(code==='downstream_reconnect_exceeded'){
           this.stop();
           this._setState('ERROR',{reason:'provider_unavailable',code});

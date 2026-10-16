@@ -99,5 +99,38 @@ function setup(){
   assert.equal(reports[0].url,'/api/realtime/diagnostics');assert.deepEqual(reports[0].body,{petId:1,stage:'provider',code:'provider_busy',status:0});
   assert(!JSON.stringify(reports).includes('PRIVATE'));assert.equal(x.closed(),0);x.c.close();
  });
+ await test('token overflow disguised as reply text never becomes a saved conversation',()=>{
+  const x=setup();x.ready();x.emit('response.created',{response:{id:'overflow'}});
+  x.emit('response.audio_transcript.delta',{delta:'【错误信息】 tgi 请求解析非预期，'});
+  x.emit('response.audio_transcript.delta',{delta:'Input validation error: inputs tokens + max_new_tokens must be <= 8192'});
+  x.emit('response.done',{response:{id:'overflow',status:'completed'}});
+  assert.equal(x.controller.state,'ERROR');assert.equal(x.failures[0].code,'context_length_exceeded');assert.equal(x.closed(),1);
+  assert(!x.events.some(([t])=>t==='round.done'));assert(!x.events.some(([t])=>t==='response.audio_transcript.delta'));
+ });
+ await test('context renewal waits for response completion and carries bounded text without replay',async()=>{
+  const x=setup();x.ready();x.c._sessionTurns=6;x.c._speaking=true;assert(!x.c.needsContextRenewal);x.c._speaking=false;
+  x.c._activeResponses.add('active');assert(!x.c.needsContextRenewal);x.c._activeResponses.clear();assert(x.c.needsContextRenewal);
+  x.c._contextTail=[{user:'刚才聊到散步',pet:'一起去吧'}];let connected=0;
+  x.c.fetchSession=async()=>{x.c._session={config:{instructions:'fresh'}};};x.c.connect=async()=>{connected++;};
+  await x.c.renewContext();assert.equal(connected,1);assert.equal(x.closed(),1);assert.equal(x.c._sessionTurns,0);
+  assert(x.c._contextCarry.includes('刚才聊到散步'));assert(!x.frames.some(f=>f.type==='input_audio_buffer.append'));
+  x.c.close();
+ });
+ await test('renewal cannot reconnect after hangup or carry private text into a changed profile',async()=>{
+  for(const mode of ['hangup','profile']){
+   const x=setup();x.ready();x.c._sessionTurns=6;let connected=0;
+   x.c.fetchSession=async()=>{if(mode==='hangup')x.c.close();else x.c._session.profileScope='new-account';};
+   x.c.connect=async()=>{connected++;};await x.c.renewContext();assert.equal(connected,0);x.c.close();
+  }
+ });
+ await test('carried context is checked in acknowledgements without resending unchanged base instructions',()=>{
+  const x=setup();x.ready();x.c._contextCarry='\n近期对话摘选';x.c.updateInstructions('new profile');
+  x.emit('session.updated',{session:{instructions:'new profile\n近期对话摘选'}});
+  assert.equal(x.c._updatesDisabled,false);assert.equal(x.frames.length,2);assert.equal(x.c.updateInstructions('new profile'),false);x.c.close();
+ });
+ await test('JSON escaping cannot defeat the renewal carry budget',async()=>{
+  const x=setup();x.ready();x.c._sessionTurns=6;x.c._contextTail=[{user:'\u0000'.repeat(240),pet:'\u0001'.repeat(240)}];
+  x.c.fetchSession=async()=>{};x.c.connect=async()=>{};await x.c.renewContext();assert(Buffer.byteLength(x.c._contextCarry)<1200);x.c.close();
+ });
  console.log(JSON.stringify({passed,failed:0}));
 })().catch(e=>{console.error(e);process.exitCode=1;});
