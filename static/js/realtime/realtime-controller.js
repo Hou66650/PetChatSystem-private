@@ -329,6 +329,12 @@ class RealtimeController {
         break;
       case 'server.error': {
         const code = String(data.code || 'unknown').replace(/[^a-zA-Z0-9_.-]/g, '').slice(0,64);
+        if(code==='downstream_reconnect_exceeded'){
+          this.stop();
+          this._setState('ERROR',{reason:'provider_unavailable',code});
+          this.onError({code,message:'语音供应商的内部连接暂时失败，本次通话已停止。请稍后重新开启，也可以先用文字聊天。'});
+          break;
+        }
         if (code === 'rate_limit_error' || data.kind === 'rate_limit') {
           RealtimeController.retryAfter = Date.now() + 30000;
           this.stop();

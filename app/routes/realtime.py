@@ -5,7 +5,9 @@
 本路由只做鉴权前置、限流和人设组装，不中转音频帧（方案 §3/§4.2）。
 """
 import time
+import re
 from collections import defaultdict
+from urllib.parse import urlsplit
 
 from flask import Blueprint, current_app, jsonify, render_template, request
 
@@ -17,6 +19,7 @@ bp = Blueprint('realtime', __name__)
 _rate_hits = defaultdict(list)
 _RATE_LIMIT = 5
 _RATE_WINDOW = 60.0
+_diagnostic_hits = defaultdict(list)
 
 
 def _rate_limited(ip):
@@ -60,3 +63,31 @@ def realtime_session():
 def realtime_debug():
     """独立调试页：真实麦克风 + 合成语音注入两种端到端验证模式（方案 §9 第1天）。"""
     return render_template('realtime_debug.html')
+
+
+@bp.route('/api/realtime/diagnostics', methods=['POST'])
+def realtime_diagnostics():
+    """Browser-reported metadata only: never accept audio, text, tokens or URLs."""
+    origin = request.headers.get('Origin')
+    if origin and urlsplit(origin).netloc != request.host:
+        return jsonify(error='origin mismatch'), 403
+    if not request.content_length or request.content_length > 2048:
+        return jsonify(error='invalid size'), 413
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(error='invalid data'), 400
+    pet = data.get('petId'); stage = data.get('stage'); code = data.get('code'); status = data.get('status', 0)
+    if (type(pet) is not int or pet not in (1,2,3,4)
+            or stage not in ('session', 'socket', 'provider', 'custom_tts')
+            or not isinstance(code, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', code)
+            or type(status) is not int or not 0 <= status <= 4999):
+        return jsonify(error='invalid metadata'), 400
+    now = time.monotonic(); ip = request.remote_addr or 'unknown'
+    hits = [t for t in _diagnostic_hits.get(ip, ()) if now-t < 60]
+    if len(hits) >= 30:
+        return jsonify(error='too many reports'), 429
+    if len(_diagnostic_hits) > 1000:
+        _diagnostic_hits.clear()
+    _diagnostic_hits[ip] = hits + [now]
+    current_app.logger.warning('realtime browser-report petId=%s stage=%s code=%s status=%s', pet, stage, code, status)
+    return jsonify(ok=True), 200, {'Cache-Control': 'no-store'}

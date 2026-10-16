@@ -86,5 +86,18 @@ function setup(){
    assert.equal(x.failures[0].code,'rate_limit_error');assert.equal(x.warnings.length,0);
   }
  });
+ await test('provider internal reconnect exhaustion stops capture and does not invite another spoken turn',()=>{
+  const x=setup();x.ready();let stopped=0;x.controller._stream={getTracks:()=>[{stop(){stopped++;}}]};
+  x.emit('error',{error:{code:'downstream_reconnect_exceeded'}});
+  assert.equal(stopped,1);assert.equal(x.closed(),1);assert.equal(x.controller.state,'ERROR');assert.equal(x.warnings.length,0);
+  assert(x.failures[0].message.includes('供应商'));x.c._scheduleReconnect();assert.equal(x.c._reconnectTimer,null);
+ });
+ await test('diagnostics send metadata only, deduplicate and never break voice on logging failure',async()=>{
+  const x=setup(),reports=[];x.ctx.fetch=async(url,options)=>{reports.push({url,body:JSON.parse(options.body)});throw Error('offline');};x.ready();
+  for(let i=0;i<3;i++)x.emit('error',{error:{code:'provider_busy',message:'PRIVATE_TRANSCRIPT_TOKEN',url:'PRIVATE_URL'}});
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(reports.length,1);
+  assert.equal(reports[0].url,'/api/realtime/diagnostics');assert.deepEqual(reports[0].body,{petId:1,stage:'provider',code:'provider_busy',status:0});
+  assert(!JSON.stringify(reports).includes('PRIVATE'));assert.equal(x.closed(),0);x.c.close();
+ });
  console.log(JSON.stringify({passed,failed:0}));
 })().catch(e=>{console.error(e);process.exitCode=1;});

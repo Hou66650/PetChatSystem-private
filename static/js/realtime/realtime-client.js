@@ -43,6 +43,7 @@ class RealtimeClient {
     this._speaking = false;
     this._awaitingResponse = false;
     this._activeResponses = new Set();
+    this._diagnostics = new Set();
 
     // 一轮对话的累计器
     this._round = { userText: '', assistantText: '', responseId: '', itemId: '' };
@@ -68,14 +69,26 @@ class RealtimeClient {
   }
 
   /** 拉取短期会话（JWT 过期/重连时也会重新调用）。 */
+  _reportDiagnostic(stage, code, status=0) {
+    if(typeof fetch!=='function')return;
+    code=/^[A-Za-z0-9_-]{1,64}$/.test(String(code||''))?String(code):'unknown';
+    status=Number.isInteger(status)&&status>=0&&status<=4999?status:0;
+    const key=[stage,code,status].join(':');
+    if(this._diagnostics.has(key)||this._diagnostics.size>=12)return;
+    this._diagnostics.add(key);
+    // No provider message, transcript, microphone data, URL or credentials.
+    try { Promise.resolve(fetch('/api/realtime/diagnostics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({petId:this.petId,stage,code,status}),keepalive:true})).catch(()=>{}); } catch(e) {}
+  }
+
   async fetchSession() {
     const r = await fetch('/api/realtime/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ petId: this.petId, petGender: this.petGender, surface: this.surface }),
       cache: 'no-store',
-    });
+    }).catch(error=>{this._reportDiagnostic('session','network_error');throw error;});
     if (!r.ok) {
+      this._reportDiagnostic('session','http_error',r.status);
       let msg = `session http ${r.status}`;
       try { const j = await r.json(); if (j && j.error) msg = j.error; } catch (e) {}
       const err = new Error(msg);
@@ -127,6 +140,7 @@ class RealtimeClient {
         this._sessionReady = false;
         clearTimeout(this._updateTimer);
         if (this._closedByUser) { done(new Error('closed')); return; }
+        this._reportDiagnostic('socket','unexpected_close',ev.code);
         done(new Error(`ws closed (${ev.code})`));
         this._scheduleReconnect();
       };
@@ -139,6 +153,14 @@ class RealtimeClient {
     if (this._closedByUser) return;
     const serviceError = type === 'error' ? data.error :
       type === 'response.done' ? data.response?.status_details?.error : null;
+    if(serviceError)this._reportDiagnostic('provider',serviceError.code||serviceError.type||'unknown');
+    if(serviceError?.code==='downstream_reconnect_exceeded'){
+      this.metrics.error_code=serviceError.code;
+      this.close();
+      if(connectDone)connectDone(new Error('语音供应商连接暂时不可用'));
+      this.onEvent('server.error',{code:serviceError.code,recoverable:false,kind:'provider_unavailable'});
+      return;
+    }
     if (serviceError && /rate_limit|too_many_requests/i.test([serviceError.code,serviceError.type].join(' '))) {
       // A service throttle is not an invitation to immediately repeat the turn.
       this.metrics.error_code = 'rate_limit_error';
@@ -259,7 +281,7 @@ class RealtimeClient {
         const code = String(error.code || 'unknown');
         this.metrics.error_code = code;
         this.onMetrics(this.metrics);
-        console.warn('[realtime] server error:', code, error.type, error.message);
+        console.warn('[realtime] server error:', code, error.type);
         // GLM error events normally leave the socket open. A failed profile update
         // must not hang up an otherwise usable call (observed: 1210 + session.updated).
         const updateRejected = error.type === 'session_update_validate_error';
@@ -391,14 +413,14 @@ class RealtimeClient {
       if(!round.assistantText.trim())throw Error('这轮没有可朗读的回复文字，请再说一次。');
       const response=await fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json','X-Profile-Scope':voice.scope},
         body:JSON.stringify({petId:this.petId,text:round.assistantText,voiceProfileId:voice.id}),signal:abort.signal,cache:'no-store'});
-      if(!response.ok){let data;try{data=await response.json();}catch{}throw Error(data?.error||'专属声音生成失败，请稍后再试。');}
+      if(!response.ok){this._reportDiagnostic('custom_tts','http_error',response.status);let data;try{data=await response.json();}catch{}throw Error(data?.error||'专属声音生成失败，请稍后再试。');}
       const bytes=await response.arrayBuffer();if(!current())return;
       const played=await this.player.appendEncoded(bytes,current);
       if(played&&current()){
         if(this._tSpeechEnd){this.metrics.t_speech_end_to_first_audio_ms=Math.round(performance.now()-this._tSpeechEnd);this.onMetrics(this.metrics);}
         this.onEvent('custom.audio.ready',{response_id:round.responseId});
       }
-    }catch(e){if(epoch===this._voiceEpoch&&!this._closedByUser)this.onEvent('custom.audio.error',{message:e.name==='AbortError'?'专属声音生成超时，可以再说一次。':e.message});}
+    }catch(e){if(epoch===this._voiceEpoch&&!this._closedByUser){this._reportDiagnostic('custom_tts',e.name==='AbortError'?'timeout':'playback_or_synthesis_failed');this.onEvent('custom.audio.error',{message:e.name==='AbortError'?'专属声音生成超时，可以再说一次。':e.message});}}
     finally{clearTimeout(timeout);if(this._voiceAbort===abort)this._voiceAbort=null;}
   }
 
