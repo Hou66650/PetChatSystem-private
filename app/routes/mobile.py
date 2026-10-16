@@ -175,5 +175,104 @@ def companion():
         petId=pet['id'], name=detail['name'], species=detail['species'],
         role=pet['role'], companionStyle=detail['companionStyle'],
         interactionCount=detail['interactionCount'], enabled=profile['enabled'],
-        memories=[{'id': item['id'], 'label': companion_service.CATEGORIES.get(item['category'], item['category']),
+        memories=[{'id': item['id'], 'category': item['category'], 'petId': item['pet_id'], 'label': companion_service.CATEGORIES.get(item['category'], item['category']),
                    'value': item['value']} for item in profile['memories']])
+
+
+# All mobile mutations retain the signed-session guard above. No owner ID is accepted.
+def _selected_pet():
+    raw = request.args.get('petId', '')
+    if not raw.isdecimal():
+        raise ValueError('请选择有效宠物')
+    return pets.get_pet(raw)['id']
+
+
+@bp.post('/memories')
+@bp.post('/memories/<int:fact_id>')
+def save_memory(fact_id=None):
+    try:
+        pet_id = _selected_pet()
+    except (ValueError, LookupError):
+        return jsonify(error='请选择有效宠物'), 400
+    if fact_id is not None:
+        row = query_db('SELECT id FROM companion_memories WHERE id=? AND owner=? AND pet_id IN (0,?)',
+                       (fact_id, companion_service.owner_key(), pet_id), one=True)
+        if row is None:
+            return jsonify(error='记忆不存在'), 404
+    # Reuse the web editor validation, singleton/category rules and context invalidation.
+    from .companion import edit_memory
+    result = edit_memory(fact_id)
+    if isinstance(result, tuple) and result[1] == 200:
+        return jsonify(ok=True)
+    return result
+
+
+@bp.post('/memories/<int:fact_id>/remove')
+def remove_memory(fact_id):
+    try:
+        pet_id = _selected_pet()
+    except (ValueError, LookupError):
+        return jsonify(error='请选择有效宠物'), 400
+    owner = companion_service.owner_key()
+    db = get_db()
+    with db:
+        result = db.execute('DELETE FROM companion_memories WHERE id=? AND owner=? AND pet_id IN (0,?)',
+                            (fact_id, owner, pet_id))
+        if result.rowcount != 1:
+            return jsonify(error='记忆不存在'), 404
+        companion_service.invalidate_context(db, owner)
+    return jsonify(ok=True)
+
+
+@bp.route('/care', methods=['GET', 'POST'])
+def care_settings():
+    from ..services import pet_care_service as care
+    try:
+        pet_id = _selected_pet()
+        owner = companion_service.owner_key()
+        if request.method == 'POST':
+            care.save_settings(owner, pet_id, request.get_json())
+        return jsonify(care.state(owner, pet_id))
+    except (ValueError, LookupError) as error:
+        return jsonify(error=str(error)), 400
+
+
+@bp.post('/care/events')
+@bp.post('/care/events/<event_id>')
+def care_event(event_id=None):
+    from ..services import pet_care_service as care
+    try:
+        pet_id = _selected_pet()
+        owner = companion_service.owner_key()
+        care.save_event(owner, pet_id, request.get_json(), event_id)
+        return jsonify(care.state(owner, pet_id))
+    except (ValueError, LookupError) as error:
+        return jsonify(error=str(error)), 400
+
+
+@bp.post('/care/events/<event_id>/cancel')
+def cancel_care_event(event_id):
+    from ..services import pet_care_service as care
+    try:
+        pet_id = _selected_pet()
+    except (ValueError, LookupError):
+        return jsonify(error='请选择有效宠物'), 400
+    owner = companion_service.owner_key()
+    db = get_db()
+    with db:
+        result = db.execute("UPDATE pet_care_events SET state='cancelled',updated=? "
+                            "WHERE owner=? AND pet_id=? AND id=? AND state IN ('draft','scheduled')",
+                            (care.clock(), owner, pet_id, event_id))
+        if result.rowcount != 1:
+            return jsonify(error='计划不存在或已结束，请刷新'), 409
+    return jsonify(care.state(owner, pet_id))
+
+
+@bp.post('/care/claim')
+def claim_care():
+    from ..services import pet_care_service as care
+    try:
+        pet_id = _selected_pet()
+        return jsonify(notice=care.claim(companion_service.owner_key(), pet_id))
+    except (ValueError, LookupError) as error:
+        return jsonify(error=str(error)), 400

@@ -102,6 +102,73 @@ class MobileTests(unittest.TestCase):
         self.assertEqual(self.client.post(url, json={'enabled': False},
                                          headers={'Origin': 'https://other.example'}).status_code, 403)
 
+    def test_mobile_memory_editor_scopes_and_validation(self):
+        self.login()
+        base = '/api/mobile/v1/memories'
+        self.assertEqual(self.client.post(base + '?petId=1', json={'category': 'pet_name', 'value': '新名字'}).json, {'ok': True})
+        profile = self.client.get('/api/mobile/v1/companion?petId=1').json
+        item = profile['memories'][0]
+        self.assertEqual(profile['name'], '新名字')
+        self.assertEqual(item['petId'], 1)
+        url = base + '/' + str(item['id'])
+        bob = self.app.test_client(); self.login(bob, 'bob')
+        for client, pet in ((bob, 1), (self.client, 2)):
+            self.assertEqual(client.post(url + '?petId=' + str(pet), json={'value': 'wrong'}).status_code, 404)
+            self.assertEqual(client.post(url + '/remove?petId=' + str(pet), json={}).status_code, 404)
+        self.assertEqual(self.client.post(url + '?petId=1', json={'value': '更新名字'}).status_code, 200)
+        self.assertEqual(self.client.get('/api/companion?petId=1').json['pet']['name'], '更新名字')
+        for payload in ({'category': 'bad', 'value': 'x'}, {'category': 'likes', 'value': ''}, {'category': 'likes', 'value': 'x'*81}):
+            self.assertEqual(self.client.post(base + '?petId=1', json=payload).status_code, 400)
+        self.assertEqual(self.client.post(url + '/remove?petId=1', json={}).status_code, 200)
+        self.assertEqual(self.client.get('/api/mobile/v1/companion?petId=1').json['memories'], [])
+        self.client.post(base + '?petId=1', json={'category': 'likes', 'value': '散步'})
+        shared = self.client.get('/api/mobile/v1/companion?petId=2').json['memories']
+        self.assertEqual(shared[0]['value'], '散步')
+        self.assertEqual(shared[0]['petId'], 0)
+
+    def test_mobile_care_plans_settings_and_claim(self):
+        from datetime import datetime, timezone
+        now = datetime(2026, 10, 17, 4, tzinfo=timezone.utc).timestamp()
+        self.login()
+        base = '/api/mobile/v1/care'
+        with patch('app.services.pet_care_service.clock', return_value=now):
+            prefs = {'enabled': True, 'emotion': False, 'quiet_start': 22, 'quiet_end': 8}
+            self.assertEqual(self.client.post(base + '?petId=1', json=prefs).status_code, 200)
+            self.assertEqual(self.client.get(base + '?petId=1').json['settings']['emotion'], 0)
+            self.assertEqual(self.client.post(base + '?petId=1', json={'quiet_start': 24}).status_code, 400)
+            data = {'title': '面试', 'event_at': now+7200, 'remind_at': now+3600}
+            response = self.client.post(base + '/events?petId=1', json=data)
+            self.assertEqual(response.status_code, 200)
+            event_id = response.json['events'][0]['id']
+            url = base + '/events/' + event_id
+            bob = self.app.test_client(); self.login(bob, 'bob')
+            self.assertEqual(bob.get(base + '?petId=1').json['events'], [])
+            self.assertEqual(bob.post(url + '?petId=1', json=data).status_code, 400)
+            self.assertEqual(bob.post(url + '/cancel?petId=1', json={}).status_code, 409)
+            self.assertEqual(self.client.post(url + '/cancel?petId=2', json={}).status_code, 409)
+            self.assertIsNone(self.client.post(base + '/claim?petId=1', json={}).json['notice'])
+            data['remind_at'] = now
+            self.assertEqual(self.client.post(url + '?petId=1', json=data).status_code, 200)
+            notice = self.client.post(base + '/claim?petId=1', json={}).json['notice']
+            self.assertEqual(notice['id'], event_id)
+            self.assertIsNone(self.client.post(base + '/claim?petId=1', json={}).json['notice'])
+            data['title'] = '考试'
+            response = self.client.post(base + '/events?petId=1', json=data)
+            next_id = next(e['id'] for e in response.json['events'] if e['title'] == '考试')
+            result = self.client.post(base + '/events/' + next_id + '/cancel?petId=1', json={})
+            self.assertEqual(next(e['state'] for e in result.json['events'] if e['id'] == next_id), 'cancelled')
+            self.client.post('/api/mobile/v1/companion?petId=1', json={'enabled': False})
+            self.assertEqual(self.client.post(base + '/events?petId=1', json=data).status_code, 400)
+
+    def test_mobile_new_routes_require_login_and_json(self):
+        for path in ('memories?petId=1', 'memories/1/remove?petId=1', 'care?petId=1',
+                     'care/events?petId=1', 'care/events/x/cancel?petId=1', 'care/claim?petId=1'):
+            self.assertEqual(self.client.post('/api/mobile/v1/' + path, json={}).status_code, 401)
+        self.login()
+        self.assertEqual(self.client.post('/api/mobile/v1/care', data='x').status_code, 415)
+        self.assertEqual(self.client.post('/api/mobile/v1/memories?petId=1', json={},
+                                         headers={'Origin': 'https://other.example'}).status_code, 403)
+
     def test_login_and_logout(self):
         response = self.login()
         self.assertEqual(response.status_code, 200)

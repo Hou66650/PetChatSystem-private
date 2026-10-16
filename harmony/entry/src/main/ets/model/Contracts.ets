@@ -28,7 +28,7 @@ export interface ChatMessage {
 }
 export interface History { messages: ChatMessage[]; }
 
-export interface CompanionMemory { id: number; label: string; value: string; }
+export interface CompanionMemory { id: number; category: string; petId: number; label: string; value: string; }
 export interface CompanionProfile {
   petId: number;
   name: string;
@@ -40,3 +40,14 @@ export interface CompanionProfile {
   memories: CompanionMemory[];
 }
 export interface MemorySettings { enabled: boolean; }
+
+export interface MemoryInput { category: string; value: string; }
+export interface CareSettings { enabled: number; emotion: number; quiet_start: number; quiet_end: number; }
+export interface CareSettingsInput { enabled: boolean; emotion: boolean; quiet_start: number; quiet_end: number; }
+export interface CareEvent {
+  id: string; title: string; source: string; event_at: number; remind_at: number; state: string;
+}
+export interface CareState { petId: number; memoryEnabled: boolean; settings: CareSettings; events: CareEvent[]; }
+export interface CareEventInput { title: string; event_at: number; remind_at: number; }
+export interface CareNotice { id: string; title: string; message: string; }
+export interface CareClaim { notice: CareNotice | null; }

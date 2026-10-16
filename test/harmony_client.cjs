@@ -90,6 +90,22 @@ const bootstrap = () => response({ apiVersion: 1, appVersion: 'test', pets: [{ i
   assert.equal(calls.at(-1).method, 'POST');
   assert.deepEqual(JSON.parse(calls.at(-1).extraData), { enabled: false });
 
+  queue.push(response({ ok: true })); await api.saveMemory(1, 12, 'pet_name', '球球');
+  assert.ok(calls.at(-1).url.endsWith('/memories/12?petId=1'));
+  assert.deepEqual(JSON.parse(calls.at(-1).extraData), { category: 'pet_name', value: '球球' });
+  queue.push(response({ ok: true })); await api.removeMemory(1, 12);
+  assert.ok(calls.at(-1).url.endsWith('/memories/12/remove?petId=1'));
+  assert.equal(calls.at(-1).method, 'POST');
+  queue.push(response({ events: [] })); await api.care(2);
+  assert.ok(calls.at(-1).url.endsWith('/care?petId=2'));
+  queue.push(response({ events: [] })); await api.saveCare(2, { enabled: false, emotion: true, quiet_start: 22, quiet_end: 8 });
+  assert.equal(JSON.parse(calls.at(-1).extraData).enabled, false);
+  queue.push(response({ events: [] })); await api.saveEvent(2, '', { title: '面试', event_at: 100, remind_at: 90 });
+  assert.ok(calls.at(-1).url.endsWith('/care/events?petId=2'));
+  queue.push(response({ events: [] })); await api.cancelEvent(2, 'abc');
+  assert.ok(calls.at(-1).url.endsWith('/care/events/abc/cancel?petId=2'));
+  queue.push(response({ notice: null })); assert.equal((await api.claimCare(2)).notice, null);
+
   let finish;
   queue.push(() => new Promise(resolve => { finish = resolve; }));
   const pending = api.history(1);

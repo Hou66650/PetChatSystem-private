@@ -1,5 +1,5 @@
 import { http } from '@kit.NetworkKit';
-import { Account, CompanionProfile, MemorySettings, ApiError, Bootstrap, ChatReply, ChatRequest, History, LoginRequest } from '../model/Contracts';
+import { Account, CareState, CareSettingsInput, CareEventInput, CareClaim, MemoryInput, CompanionProfile, MemorySettings, ApiError, Bootstrap, ChatReply, ChatRequest, History, LoginRequest } from '../model/Contracts';
 
 // Memory-only session: never write passwords, cookies or conversations to logs/preferences.
 export class PetApi {
@@ -127,6 +127,39 @@ export class PetApi {
     const data: MemorySettings = { enabled: enabled };
     return JSON.parse(await this.request('/companion?petId=' + petId.toString(), http.RequestMethod.POST,
       JSON.stringify(data))) as CompanionProfile;
+  }
+
+  async saveMemory(petId: number, id: number, category: string, value: string): Promise<void> {
+    const data: MemoryInput = { category: category, value: value };
+    await this.request('/memories' + (id > 0 ? '/' + id.toString() : '') + '?petId=' + petId.toString(),
+      http.RequestMethod.POST, JSON.stringify(data));
+  }
+
+  async removeMemory(petId: number, id: number): Promise<void> {
+    await this.request('/memories/' + id.toString() + '/remove?petId=' + petId.toString(), http.RequestMethod.POST, '{}');
+  }
+
+  async care(petId: number): Promise<CareState> {
+    return JSON.parse(await this.request('/care?petId=' + petId.toString(), http.RequestMethod.GET)) as CareState;
+  }
+
+  async saveCare(petId: number, data: CareSettingsInput): Promise<CareState> {
+    return JSON.parse(await this.request('/care?petId=' + petId.toString(), http.RequestMethod.POST,
+      JSON.stringify(data))) as CareState;
+  }
+
+  async saveEvent(petId: number, id: string, data: CareEventInput): Promise<CareState> {
+    return JSON.parse(await this.request('/care/events' + (id ? '/' + encodeURIComponent(id) : '') +
+      '?petId=' + petId.toString(), http.RequestMethod.POST, JSON.stringify(data))) as CareState;
+  }
+
+  async cancelEvent(petId: number, id: string): Promise<CareState> {
+    return JSON.parse(await this.request('/care/events/' + encodeURIComponent(id) + '/cancel?petId=' +
+      petId.toString(), http.RequestMethod.POST, '{}')) as CareState;
+  }
+
+  async claimCare(petId: number): Promise<CareClaim> {
+    return JSON.parse(await this.request('/care/claim?petId=' + petId.toString(), http.RequestMethod.POST, '{}')) as CareClaim;
   }
 
   async chat(data: ChatRequest): Promise<ChatReply> {
