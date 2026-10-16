@@ -4,6 +4,19 @@
     else root.PetLocomotion=api;
 })(typeof window!=='undefined'?window:globalThis,function(){
     'use strict';
+    function gaitSpeeds(actions,scale){
+        if(!actions.run)return null;
+        const gaits={walk:.348*scale},clips=new Map();
+        if(actions.walk)clips.set(actions.walk.getClip().name,gaits.walk);
+        for(const [key,stride] of [['trot',.682],['run',1]])if(actions[key]){
+            // Imported cats alias trot to walk. Cloned actions still share the
+            // authored clip name, so their metres per cycle must remain equal.
+            const name=actions[key].getClip().name;
+            gaits[key]=clips.get(name)??stride*scale;clips.set(name,gaits[key]);
+        }
+        for(const key of ['turnLeft','turnRight'])if(actions[key])gaits[key]=1;
+        return gaits;
+    }
     class Controller {
         constructor({navigation,model,animate,rest,random=Math.random,speed=.55,strideSpeed=.55,forwardOffset=0,gaits=null}) {
             Object.assign(this,{navigation,model,animate,rest,random,speed,strideSpeed,forwardOffset});
@@ -106,5 +119,5 @@
         }
         debug(){return {enabled:this.enabled,owner:this.owner,gait:this.gait,requestedGait:this.requestedGait,path:this.path.map(p=>({x:p.x,z:p.z})),speed:this.velocity,wait:this.wait,moves:this.moves,legal:this.navigation.isWalkable(this.model.position),radius:this.navigation.radius};}
     }
-    return {Controller};
+    return {Controller,gaitSpeeds};
 });

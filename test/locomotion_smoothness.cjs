@@ -1,8 +1,17 @@
 /* Motion regressions without external GLBs; use the shipped Three.js mixer. */
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const {Controller}=require('../static/js/den/pet-locomotion');
+const {Controller,gaitSpeeds}=require('../static/js/den/pet-locomotion');
 const {Navigation}=require('../static/js/den/scene-navigation');
 const T=require('../static/js/vendor/three.min.js');
+{
+ const action=name=>({getClip:()=>({name})});
+ const native=gaitSpeeds({walk:action('walk'),trot:action('trot'),run:action('run'),turnLeft:action('left')},2);
+ assert.equal(native.walk,.696);assert.equal(native.trot,1.364);assert.equal(native.run,2);assert.equal(native.turnRight,undefined);
+ const custom=gaitSpeeds({walk:action('walk'),trot:action('walk'),run:action('run')},2);
+ assert.equal(custom.walk,custom.trot,'aliased cloned clips preserve distance per cycle');assert.equal(custom.run,2);
+ assert.equal(gaitSpeeds({walk:action('walk')},2),null,'legacy no-run fallback');
+ assert.equal(gaitSpeeds({walk:action('walk'),run:action('run')},1).trot,undefined,'do not advertise a missing gait');
+}
 function fixture(navigation=new Navigation({radius:10})){
  const model={position:{x:0,z:0},rotation:{y:0}},frames=[];
  const c=new Controller({navigation,model,speed:.34,gaits:{walk:.32,trot:.63,run:.93,turnLeft:1,turnRight:1},animate:(key,rate)=>frames.push({key,rate}),rest:()=>{}});
