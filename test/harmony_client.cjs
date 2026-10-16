@@ -65,6 +65,23 @@ const bootstrap = () => response({ apiVersion: 1, appVersion: 'test', pets: [{ i
   queue.push(response({ reply: 'hello back' })); await api.chat(request);
   assert.equal(calls.at(-1).extraData, calls.at(-2).extraData);
 
+  // Native response variants must all retain the session for subsequent requests.
+  for (const nativeResponse of [
+    { ...response({ username: 'alice' }), header: { 'Set-Cookie': 'session=native-session; HttpOnly; Path=/' } },
+    { ...response({ username: 'alice' }), header: { 'set-cookie': ['other=x; Path=/', 'session=native-session; HttpOnly'] } },
+    response({ username: 'alice' }, '#HttpOnly_192.168.1.5\tFALSE\t/\tFALSE\t0\tsession\tnative-session')
+  ]) {
+    queue.push(nativeResponse); await api.login('alice', 'password');
+    queue.push(response({ messages: [] })); await api.history(1);
+    assert.equal(calls.at(-1).header.Cookie, 'session=native-session');
+  }
+  queue.push({ ...response({ ok: true }, 'session=stale'), header: { 'set-cookie': 'session=; Max-Age=0' } });
+  await api.history(1);
+  queue.push(response({ messages: [] })); await api.history(1);
+  assert.equal(calls.at(-1).header.Cookie, '');
+  queue.push(response({ username: 'alice' }, 'other=irrelevant'));
+  await assert.rejects(() => api.login('alice', 'password'), /登录凭证/);
+
   let finish;
   queue.push(() => new Promise(resolve => { finish = resolve; }));
   const pending = api.history(1);

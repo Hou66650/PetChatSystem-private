@@ -54,15 +54,43 @@ export class PetApi {
         } catch (_) { /* Non-JSON proxy errors keep the status-only message. */ }
         throw new Error(reason);
       }
-      if (response.cookies) {
-        const escapedName = this.cookieName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const cookieMatch = new RegExp('(?:^|[;,\\s])' + escapedName + '=([^;\\s,]*)').exec(response.cookies);
-        if (cookieMatch) { this.cookie = this.cookieName + '=' + cookieMatch[1]; }
+      // Prefer the actual response header; NetworkKit cookies may use a cookie-list format.
+      const headers = response.header as Record<string, string | string[]>;
+      let found = false;
+      if (headers) {
+        for (const key of Object.keys(headers)) {
+          if (key.toLowerCase() !== 'set-cookie') { continue; }
+          const value = headers[key];
+          const values: string[] = typeof value === 'string' ? [value] : value;
+          for (const item of values) {
+            if (this.readSessionCookie(item)) { found = true; }
+          }
+        }
       }
+      if (!found && response.cookies) { this.readSessionCookie(response.cookies); }
       return result;
     } finally {
       task.destroy();
     }
+  }
+
+  private readSessionCookie(raw: string): boolean {
+    const escapedName = this.cookieName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = new RegExp('(?:^|[;,\\s])' + escapedName + '=([^;\\s,]*)').exec(raw);
+    if (match) {
+      this.cookie = match[1] ? this.cookieName + '=' + match[1] : '';
+      return true;
+    }
+    // libcurl cookie-list: domain, includeSubdomains, path, secure, expiry, name, value.
+    for (const line of raw.split(/\r?\n/)) {
+      const fields = line.split('\t');
+      if (fields.length === 7 && fields[5] === this.cookieName &&
+        !/[;\s,]/.test(fields[6])) {
+        this.cookie = fields[6] ? this.cookieName + '=' + fields[6] : '';
+        return true;
+      }
+    }
+    return false;
   }
 
   async bootstrap(): Promise<Bootstrap> {
