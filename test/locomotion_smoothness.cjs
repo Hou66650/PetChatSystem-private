@@ -27,6 +27,12 @@ assert(run.time<walk.time*.7);for(const gait of ['walk','trot','run'])assert(run
 const times=[30,60,120].map(fps=>trip('run',1/fps).time);
 assert(Math.max(...times)-Math.min(...times)<.25,'comparable travel across frame rates');
 {
+ const {c}=fixture();c.goTo({x:0,z:4},{gait:'run'});for(let i=0;i<100;i++)c.update(.02);
+ assert(c.velocity>.9);c.goTo({x:0,z:6},{gait:'walk'});
+ for(let i=0;i<100;i++){const before=c.velocity;c.update(.02);assert(Math.abs(c.velocity-before)<=1.6*.02+1e-8,'run-to-walk command must decelerate, not clamp speed in one frame');}
+ assert(Math.abs(c.velocity-c.speed)<.01);
+}
+{
  const {c,model}=fixture();c.path=[{x:0,z:0},{x:0,z:.005},{x:0,z:2}];const path=c.path;c.velocity=.3;
  c.update(.02);assert.equal(c.path,path);assert.equal(c.path.length,1);assert(model.position.z>.005,'no stationary waypoint frame');
  c.interrupt();const before=JSON.stringify(c.debug());c.update(0);c.update(NaN);assert.equal(JSON.stringify(c.debug()),before);

@@ -86,7 +86,10 @@
             const desired=Math.min(maximum,cornerLimit,remaining*1.8,Math.sqrt(2*.8*remaining))*Math.max(0,Math.cos(angle))**2;
             const acceleration=Math.max(-1.6,Math.min(1.1,(desired-this.velocity)*7));
             this.acceleration+=(acceleration-this.acceleration)*(1-Math.exp(-dt*12));
-            this.velocity=Math.max(0,Math.min(maximum,this.velocity+this.acceleration*dt));
+            // A slower command lowers the target, not the current velocity.
+            // Brake through the same bounded acceleration instead of snapping
+            // from run speed to walk speed in the first frame after goTo().
+            this.velocity=Math.max(0,Math.min(Math.max(maximum,this.velocity),this.velocity+this.acceleration*dt));
             const alignment=Math.max(0,Math.cos(angle)),step=Math.min(distance,this.velocity*dt*alignment), next={x:p.x+dx/distance*step,z:p.z+dz/distance*step};
             if (!this.navigation.segmentClear(p,next)) {this.interrupt(2);this.animate('idle',1);return;}
             p.x=next.x;p.z=next.z;
