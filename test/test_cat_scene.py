@@ -19,6 +19,16 @@ class CatSceneTests(unittest.TestCase):
     def world(self, client=None):
         return (client or self.a).get('/api/cat-agent/scene').json['world']
 
+    def test_all_arrangements_are_available_not_only_latest_sixteen(self):
+        from unittest.mock import patch
+        plants=[dict(id='fixture-'+str(i),species='cosmos',container='soil',x=i*.1,z=8,
+                     stage=3,ready=False,watered=False,fertilized=False,revision=1) for i in range(24)]
+        with patch('app.services.farm_service.arrangements',return_value=plants):
+            world=self.world()
+            targets={p['id'] for p in world['places']}
+            self.assertTrue({'plant:fixture-'+str(i) for i in range(24)} <= targets)
+            self.assertEqual(len([p for p in world['places'] if p['dynamic']]),24)
+
     def plant(self):
         self.post('farm','start')
         response = self.post('farm','plant',dict(bed='bed-1',species='cosmos',token='stable-plant-request'))

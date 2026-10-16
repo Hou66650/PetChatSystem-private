@@ -1,9 +1,12 @@
 const {app,BrowserWindow}=require('electron'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),{pathToFileURL}=require('node:url'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),temp=fs.mkdtempSync(path.join(os.tmpdir(),'cat-scene-monitor-'));app.setPath('userData',path.join(temp,'profile'));
-let html=fs.readFileSync(path.join(root,'templates/cat-agent-monitor.html'),'utf8').replaceAll('{{ app_version }}','test').replace('{{ scope|tojson }}','"fixture"').replace(/(?:src|href)="(\/static\/[^"?]+)(?:\?[^\"]*)?"/g,(m,p)=>m.split('=')[0]+'="'+pathToFileURL(path.join(root,p)).href+'"');
+let html=fs.readFileSync(path.join(root,'templates/cat-agent-monitor.html'),'utf8').replaceAll('{{ app_version }}','test').replace('{{ scope|tojson }}','"fixture"').replace('{{ farm_layout|tojson }}',fs.readFileSync(path.join(root,'static/data/farm-layout.json'),'utf8')).replace(/{% for d in farm_layout.expansion.domains %}[\s\S]*?{% endfor %}/g,'').replace(/(?:src|href)="(\/static\/[^"?]+)(?:\?[^\"]*)?"/g,(m,p)=>m.split('=')[0]+'="'+pathToFileURL(path.join(root,p)).href+'"');
 const world={revision:'garden-new',asOf:100,beds:Array.from({length:8},(_,i)=>({name:'种植床'+(i+1),plant:i%2?null:{name:'波斯菊',stageName:'花苞初生',stage:7,wateredToday:true}})),decorations:[{place:'温室花盆',plant:'波斯菊'}],recentChanges:[{created:100,summary:'主人给波斯菊浇了水'}]};
 const snap={phase:'walking',text:'想去种植园观察花苞',reason:'留意种植园变化',energy:.8,hunger:.2,pathLength:1,x:0,z:0,target:'farm_path',action:'observe',candidates:['farm_path'],route:[[1,1]],trail:[[0,0,100],[.5,0,500]],enabled:true};
 const data={scope:'fixture',serverTime:100,streams:[{stream:'cat-one',updated:100,snapshot:snap},{stream:'cat-two',updated:100,snapshot:snap}],catalog:JSON.parse(fs.readFileSync(path.join(root,'static/data/cat-world.json'),'utf8')),events:[],memory:[],scene:{current:world,used:{'cat-one':{...world,revision:'garden-old'}},experiences:[{created:98,summary:'猫咪完成种植园观察；出发时场景记录：波斯菊（花苞初生）'}],decisions:[{stream:'cat-one',created:100,modelUsed:true,inputs:{scene:world},result:{source:'model',target:'farm_path',action:'observe'}}]}};
+snap.decision={id:'decision-fixture-1',created:100000,worldRevision:'garden-old',needs:{energy:.8,hunger:.2,thirst:.4},attention:['主人移栽了一株波斯菊'],candidateCount:12,excludedCount:1,ranked:[{target:'farm_path',name:'种植园步道',score:1.5,parts:{recency:.5,novelty:1,preference:.1,repeat:0,distance:-.1}}],excluded:[{name:'水盆',reason:'暂无可用水'}],selection:{name:'种植园步道',action:'observe',source:'local',trigger:'场景变化',reason:'留意新花苞 <img src=x onerror=alert(1)>'},model:'后台建议已返回，等待下次选择',outcome:'completed',memory:{before:2,after:3,synced:true,note:'服务器已确认本次完成记录'}};
+data.streams[1].snapshot={...snap,decision:null};
+data.events=[{stream:'cat-one',updated:100,snapshot:snap}];
 html=html.replace('<body>','<body><script>window.fixture='+JSON.stringify(data)+';window.fetch=async()=>({ok:true,json:async()=>fixture});</script>');fs.writeFileSync(path.join(temp,'index.html'),html);
 app.whenReady().then(async()=>{
  const w=new BrowserWindow({show:false,width:1280,height:1100,webPreferences:{offscreen:true,backgroundThrottling:false,sandbox:true}}),errors=[];
@@ -15,16 +18,29 @@ app.whenReady().then(async()=>{
   assert.equal(await run(`document.querySelectorAll('#scene-beds li').length`),9);
   assert(await run(`document.getElementById('scene-model-input').textContent.includes('garden-new')`));
   assert(await run(`document.getElementById('scene-experiences').textContent.includes('完成种植园观察')`));
+  assert(await run(`document.getElementById('decision-choice').textContent.includes('本地规则')`));
+  assert(await run(`document.getElementById('decision-memory').textContent.includes('2 → 3')`));
+  assert.equal(await run(`document.querySelectorAll('#decision-choice img').length`),0,'evidence is text, never HTML');
+  await run(`document.querySelector('.decision-card').scrollIntoView()`);await pause(100);
+  fs.writeFileSync(path.join(os.tmpdir(),'pait-decision-desktop.png'),(await w.webContents.capturePage()).toPNG());
   await run(`document.querySelector('.scene-context').scrollIntoView()`);await pause(100);
   fs.writeFileSync(path.join(os.tmpdir(),'pait-scene-monitor-desktop.png'),(await w.webContents.capturePage()).toPNG());
   w.setContentSize(390,844);await pause(100);
+  await run(`document.querySelector('.decision-card').scrollIntoView()`);await pause(100);
+  assert(await run(`document.querySelector('.decision-card').scrollWidth<=document.querySelector('.decision-card').clientWidth+1`));
+  fs.writeFileSync(path.join(os.tmpdir(),'pait-decision-mobile.png'),(await w.webContents.capturePage()).toPNG());
   assert(await run(`document.querySelector('.scene-context').scrollWidth<=document.querySelector('.scene-context').clientWidth+1`),'scene card fits mobile');
   fs.writeFileSync(path.join(os.tmpdir(),'pait-scene-monitor-mobile.png'),(await w.webContents.capturePage()).toPNG());
   await run(`document.getElementById('streams').value='cat-two';document.getElementById('streams').dispatchEvent(new Event('change'))`);
   assert(await run(`document.getElementById('scene-received').textContent.includes('尚未收到')`));
   assert.equal(await run(`document.getElementById('scene-model-input').textContent`),'');
+  assert(await run(`document.getElementById('decision-meta').textContent.includes('暂无详细')`));
+  assert.equal(await run(`document.getElementById('decision-choice').textContent`),'—');
+  await run(`document.getElementById('streams').value='cat-one';document.getElementById('streams').dispatchEvent(new Event('change'))`);
   await run(`fixture.scope='changed'`);await pause(2200);
   assert(!await run(`document.querySelector('.scene-context').textContent.includes('波斯菊')`),'account change clears private scene data');
+  assert.equal(await run(`document.getElementById('decision-ranking').children.length`),0);
+  assert.equal(await run(`document.getElementById('decision-choice').textContent`),'—');
   assert.equal(errors.length,0,errors.join('\n'));
   console.log('PASS scene monitor browser: snapshot lag, model payload, completed observations, mobile fit, stream and account isolation');app.exit(0);
  }catch(e){console.error(e);app.exit(1);}

@@ -26,7 +26,7 @@
   }
   get acting(){return !!this.goal&&['acting','aligning'].includes(this.phase);}
   status(text){this.text=text;this.emit(true);this.onStatus({text,phase:this.phase,source:this.source||'local',energy:this.energy,visited:Object.values(this.memory).filter(m=>m.visits>0).length,total:this.catalog.length});}
-  snapshot(){this.trace.sample(this.model.position,this.now());return {worldRevision:this.goal?.worldRevision||this.world?.revision||'',trail:this.trace.points.map(p=>[...p]),route:this.locomotion.path.slice(0,64).map(p=>[+p.x.toFixed(3),+p.z.toFixed(3)]),phase:this.disposed?'stopped':this.phase,text:this.text||'',reason:this.reason||'',source:this.source||'local',target:this.goal?.target||'',action:this.goal?.action||'',energy:this.energy,hunger:this.hunger,thirst:this.thirst,x:this.model.position.x,z:this.model.position.z,pathLength:this.locomotion.path.length,candidates:this.perceived,enabled:this.locomotion.enabled};}
+  snapshot(){this.trace.sample(this.model.position,this.now());return {worldRevision:this.goal?.worldRevision||this.world?.revision||'',trail:this.trace.points.map(p=>[...p]),route:this.locomotion.path.slice(0,64).map(p=>[+p.x.toFixed(3),+p.z.toFixed(3)]),phase:this.disposed?'stopped':this.phase,text:this.text||'',reason:this.reason||'',source:this.source||'local',target:this.goal?.target||'',action:this.goal?.action||'',energy:this.energy,hunger:this.hunger,thirst:this.thirst,x:this.model.position.x,z:this.model.position.z,pathLength:this.locomotion.path.length,candidates:this.perceived,enabled:this.locomotion.enabled,decision:this.decision?JSON.parse(JSON.stringify(this.decision)):null};}
   emit(event=false){
    if(!this.telemetry||this.scopeLost)return;
    if(event){this.events.push(this.snapshot());this.events=this.events.slice(-12);}
@@ -84,7 +84,17 @@
    if(!this.catalog.length){this.locomotion.autonomous=true;this.life.autonomous=true;}
   }
   point(p){const dock=p.station&&this.life.feedingDock?.(p);if(dock)return dock.entry;if(p.approaches){const nav=this.locomotion.navigation,points=[];if(p.bounds||Number.isFinite(p.radius)){for(const extra of [.08,.32,.65])for(let i=0;i<8;i++){const a=i*Math.PI/4,r=nav.clearance+extra;points.push({x:p.x+Math.cos(a)*((p.bounds?.w/2||p.radius||0)+r),z:p.z+Math.sin(a)*((p.bounds?.d/2||p.radius||0)+r)});}}else points.push(...p.approaches);return points.filter(q=>nav.isWalkable(q)).sort((a,b)=>distance(this.model.position,a)-distance(this.model.position,b)).find(q=>nav.route(this.model.position,q))||{x:p.x,z:p.z};}return p.normal?{x:p.x+p.normal.x*(this.locomotion.navigation.clearance+.04),z:p.z+p.normal.z*(this.locomotion.navigation.clearance+.04)}:{x:p.x,z:p.z};}
-  candidates(){return this.catalog.filter(p=>(p.id!=='food'||this.canEat())&&(p.id!=='water'||this.canDrink())&&this.now()>=(this.cooldowns[p.id]||0)&&this.locomotion.navigation.route(this.model.position,this.point(p)));}
+  candidates(){
+   this.excluded=[];return this.catalog.filter(p=>{const why=p.id==='food'&&!this.canEat()?'食盆暂无可用食物':p.id==='water'&&!this.canDrink()?'水盆暂无可用水':this.now()<(this.cooldowns[p.id]||0)?'目标冷却中':!this.locomotion.navigation.route(this.model.position,this.point(p))?'目前没有可达路线':'';if(why)this.excluded.push({target:p.id,name:p.name,reason:why});return !why;});
+  }
+  scoreCandidate(p){
+   const m=this.memory[p.id]||{},r=this.relationship?.()||{},parts={recency:Math.max(0,Math.min(1,(this.now()/1000-(m.updated||0))/300))*1.5,novelty:(.8+(r.personality?.curiosity||.5))/(1+(m.visits||0)),preference:(p.id===r.preferredPlace?.35:0)+(p.id==='toys'&&r.favoriteToy?.3:0),repeat:p.id===this.lastTarget?-2:0,distance:-distance(this.model.position,this.point(p))*.025};
+   return {target:p.id,name:p.name,score:Object.values(parts).reduce((a,b)=>a+b,0),parts};
+  }
+  beginDecision(candidates){
+   const ranked=candidates.map(p=>this.scoreCandidate(p)).sort((a,b)=>b.score-a.score);
+   this.decision={id:globalThis.crypto?.randomUUID?.()||`${this.now()}-${Math.random()}`,created:this.now(),worldRevision:this.world?.revision||'',needs:{energy:this.energy,hunger:this.hunger,thirst:this.thirst},attention:(this.world?.attention||[]).slice(0,6).map(a=>a.reason.slice(0,160)),candidateCount:candidates.length,excludedCount:this.excluded?.length||0,ranked:ranked.slice(0,8),excluded:(this.excluded||[]).slice(0,8),selection:null,model:'本次尚未采用后台建议',outcome:'pending',memory:null};
+  }
   saveNeeds(){try{this.storage?.setItem(this.key+':needs',JSON.stringify({energy:this.energy,hunger:this.hunger,thirst:this.thirst,position:this.locomotion.navigation.isWalkable(this.model.position)?{x:this.model.position.x,z:this.model.position.z}:undefined}));}catch(e){}}
   care(candidates){
    if(this.now()<this.careUntil)return null;
@@ -99,41 +109,41 @@
    const care=this.care(candidates);if(care)return care;
    const interest=this.world&&this.now()-this.worldReadAt<45000?this.world.attention.find(a=>candidates.some(p=>p.id===a.target&&p.actions.includes(a.action))):null;
    if(interest)return {...interest,source:'local',worldRevision:this.world.revision,reason:'留意种植园变化：'+interest.reason};
-   const relation=this.relationship?.()||{};
-   const score=p=>{const m=this.memory[p.id]||{},age=Math.min(1,(this.now()/1000-(m.updated||0))/300),novelty=1/(1+(m.visits||0));return age*1.5+novelty*(.8+(relation.personality?.curiosity||.5))+(p.id===relation.preferredPlace? .35:0)+(p.id==='toys'&&relation.favoriteToy? .3:0)-(p.id===this.lastTarget?2:0)-distance(this.model.position,this.point(p))*.025;};
-   const ordered=[...candidates].sort((a,b)=>score(b)-score(a));
+   const ordered=candidates.map(place=>({place,score:this.scoreCandidate(place).score})).sort((a,b)=>b.score-a.score).map(row=>row.place);
    const p=this.energy<.3?ordered.find(p=>p.actions.includes('rest'))||ordered[0]:ordered[0];
    const action=this.energy<.3&&p.actions.includes('rest')?'rest':p.actions[(this.memory[p.id]?.visits||0)%p.actions.length];
-   return {target:p.id,action:['eat','sleep','drink'].includes(action)?p.actions.includes('observe')?'observe':'sniff':action,source:'local'};
+   return {target:p.id,action:['eat','sleep','drink'].includes(action)?p.actions.includes('observe')?'observe':'sniff':action,source:'local',reason:'按本地评分选择：综合新鲜度、访问间隔、偏好、重复惩罚和距离'};
   }
   async plan(forced=null){
-   const candidates=this.candidates();this.perceived=candidates.map(p=>p.id);this.reason='已按当前位置检查地点可达性；本地策略优先较少访问地点，低精力优先休息';if(!candidates.length){this.next=this.now()+12000;this.status('先等等，寻找可以安全到达的地方');return;}
+   const candidates=this.candidates();this.beginDecision(candidates);this.perceived=candidates.map(p=>p.id);this.reason='已按当前位置检查地点可达性；本地策略优先较少访问地点，低精力优先休息';if(!candidates.length){this.decision.outcome='unavailable';this.next=this.now()+12000;this.status('先等等，寻找可以安全到达的地方');return;}
    this.lastDecision=this.now();const epoch=++this.epoch;this.pending=new AbortController();const abort=this.pending;this.phase='planning';this.status('看看附近还有什么没探索过');
-   const continuation=this.agenda?.shift();const urgent=forced||this.care(candidates)||(continuation&&candidates.some(p=>p.id===continuation.target&&p.actions.includes(continuation.action))?continuation:null)||this.entryChoice;this.entryChoice=null;let plan=urgent||{reason:'结合需求、相处偏好、近期经历与路线选择目标',...this.fallback(candidates)};
+   const continuation=this.agenda?.shift(),care=this.care(candidates);const urgent=forced||care||(continuation&&candidates.some(p=>p.id===continuation.target&&p.actions.includes(continuation.action))?continuation:null)||this.entryChoice;this.entryChoice=null;let plan=urgent||{reason:'结合需求、相处偏好、近期经历与路线选择目标',...this.fallback(candidates)};
    // Model advice never suspends the body. Consume a fresh proposal at a goal boundary.
    if(!urgent&&!plan.worldRevision&&this.advice&&(!this.advice.plan.worldRevision||this.advice.plan.worldRevision===this.world?.revision)&&this.now()-this.advice.at<45000&&candidates.some(p=>p.id===this.advice.plan.target&&p.actions.includes(this.advice.plan.action))){plan=this.advice.plan;this.advice=null;}
    this.pending=null;
+   const decision=this.decision;decision.model=plan.source==='model'?'已采用此前收到的有效建议':this.advice?'已有后台建议，本轮优先级更高或建议已过期':'尚无可采用的后台建议';
    if(!urgent&&!this.adviceBusy&&this.now()>=this.networkAfter){
-    this.adviceBusy=true;this.adviceAbort=new AbortController();const signal=this.adviceAbort.signal;
+    decision.model+='；后台正在请求下一轮建议';this.adviceBusy=true;this.adviceAbort=new AbortController();const signal=this.adviceAbort.signal;
     const timer=setTimeout(()=>this.adviceAbort?.abort(),28000);this.networkAfter=this.now()+30000;
-    this.request('/api/cat-agent/decide',{stream:this.stream,candidates:candidates.map(p=>p.id),energy:this.energy,hunger:this.hunger,position:{x:this.model.position.x,z:this.model.position.z}},signal)
-     .then(remote=>{if(this.disposed||this.scopeLost)return;if(remote.source==='model')this.advice={plan:remote,at:this.now()};this.networkFailures=0;this.networkAfter=this.now()+Math.max(15,Math.min(300,Number(remote.retryAfter)||0))*1000;})
-     .catch(()=>{this.networkFailures=Math.min(4,this.networkFailures+1);this.networkAfter=this.now()+Math.min(120,8*2**this.networkFailures)*1000;})
+    this.request('/api/cat-agent/decide',{stream:this.stream,candidates:candidates.map(p=>p.id),energy:this.energy,hunger:this.hunger,thirst:this.thirst,position:{x:this.model.position.x,z:this.model.position.z}},signal)
+     .then(remote=>{if(this.disposed||this.scopeLost)return;if(remote.source==='model')this.advice={plan:remote,at:this.now()};if(this.decision===decision){decision.model=remote.source==='model'?'后台建议已返回，等待下次选择；不表示本轮已采用':(remote.reason||'后台使用规则回退').slice(0,220);this.emit(true);}this.networkFailures=0;this.networkAfter=this.now()+Math.max(15,Math.min(300,Number(remote.retryAfter)||0))*1000;})
+     .catch(()=>{if(this.decision===decision){decision.model='下一轮后台建议请求失败，当前已选行动不变';this.emit(true);}this.networkFailures=Math.min(4,this.networkFailures+1);this.networkAfter=this.now()+Math.min(120,8*2**this.networkFailures)*1000;})
      .finally(()=>{clearTimeout(timer);this.adviceBusy=false;});
    }
    if(this.disposed||this.scopeLost||epoch!==this.epoch||!this.locomotion.enabled)return;
    const place=candidates.find(p=>p.id===plan.target);
    if(!place||!place.actions.includes(plan.action)||(!urgent&&['eat','sleep','drink'].includes(plan.action))){plan=this.fallback(candidates);}
    const target=candidates.find(p=>p.id===plan.target),point=this.point(target);
+   decision.selection={target:target.id,name:target.name,action:plan.action,source:forced?'user':plan.source==='model'?'model':'local',trigger:forced?'主人指令':care?'身体需求':urgent?'继续行为链或相处习惯':plan.source==='model'?'后台建议':plan.worldRevision?'场景变化':'本地评分',reason:(plan.reason||'通过地点与动作校验').slice(0,220)};
    // Results are proposals. Revalidate against the live navigator before execution.
-   if(!this.locomotion.goTo(point,{gait:this.energy>.65&&distance(this.model.position,point)>2?'trot':'walk'})){this.phase='idle';this.cooldowns[target.id]=this.now()+60000;this.next=this.now()+5000;this.reason='目标路线重新校验失败';this.status('路线受阻，稍后重新规划');return;}
+   if(!this.locomotion.goTo(point,{gait:this.energy>.65&&distance(this.model.position,point)>2?'trot':'walk'})){decision.outcome='blocked';this.phase='idle';this.cooldowns[target.id]=this.now()+60000;this.next=this.now()+5000;this.reason='目标路线重新校验失败';this.status('路线受阻，稍后重新规划');return;}
    this.reason=plan.reason||'候选地点及动作已通过本地校验';this.locomotion.owner='agent';this.source=plan.source==='model'?'model':'local';
    this.goal={target:target.id,place:{...target,yaw:target.dynamic?Math.atan2(target.x-point.x,target.z-point.z):target.yaw},subject:target.subject,action:plan.action,worldRevision:this.world?.revision||'',user:!!forced?.user,point,time:0,progress:0,lastPosition:{x:this.model.position.x,z:this.model.position.z},event:globalThis.crypto?.randomUUID?.()||`${this.now()}-${Math.random().toString(36).slice(2)}`};
    this.lastTarget=target.id;this.phase='walking';this.next=this.lastDecision+8000;this.status('想去'+target.name+words[plan.action]);
   }
   interrupt(text='先陪你，探索等一会儿',preserveAgenda=false){
    ++this.epoch;if(!preserveAgenda)this.agenda=[];this.pending?.abort();this.pending=null;
-   if(this.goal){const external=this.locomotion.owner==='command'&&this.locomotion.path!==this.life.approach?.path;if(!external)this.animate('idle');if(this.locomotion.owner==='agent'||(!external&&this.locomotion.navigation.dock))this.locomotion.interrupt(3);this.life.cancel(external);}
+   if(this.goal){if(this.decision?.outcome==='pending'){this.decision.outcome='interrupted';this.decision.memory={before:this.memory[this.goal.target]?.visits||0,after:this.memory[this.goal.target]?.visits||0,synced:false,note:'行动被打断，不计为完成经历'};}const external=this.locomotion.owner==='command'&&this.locomotion.path!==this.life.approach?.path;if(!external)this.animate('idle');if(this.locomotion.owner==='agent'||(!external&&this.locomotion.navigation.dock))this.locomotion.interrupt(3);this.life.cancel(external);}
    this.goal=null;this.phase='idle';this.next=Math.max(this.lastDecision+8000,this.now()+500);this.status(text);
   }
   finish(result){
@@ -144,14 +154,14 @@
     if(g.worldRevision===this.world?.revision)this.world.attention=[];
    }
    if(result==='completed'){this.onComplete({...g});if(g.place?.dynamic&&g.action==='observe'&&this.energy>.35)this.agenda=[{target:g.target,action:'sniff',source:'local',reason:'刚看过这株花，留在旁边轻轻闻一闻'}];else if(g.action==='eat'&&this.thirst>.35&&this.canDrink())this.agenda=[{target:'water',action:'drink',source:'local',reason:'吃过饭，接着去喝一点水'}];else if(g.action==='drink')this.agenda=[{target:'home',action:'groom',source:'local',reason:'喝过水，找安静的地方整理毛发'}];}
-   const previous=this.memory[g.target]||{visits:0};this.memory[g.target]={target:g.target,visits:previous.visits+(result==='completed'?1:0),result,updated:this.now()/1000};this.save();
+   const previous=this.memory[g.target]||{visits:0},decision=this.decision;if(decision){decision.outcome=result;decision.memory={before:previous.visits,after:previous.visits+(result==='completed'?1:0),synced:false,note:result==='completed'?'本机完成次数已增加，等待服务器确认':'本次未增加完成次数；目标冷却 90 秒'};}this.memory[g.target]={target:g.target,visits:previous.visits+(result==='completed'?1:0),result,updated:this.now()/1000};this.save();
    if(result==='blocked')this.cooldowns[g.target]=this.now()+90000;
    this.energy=Math.max(.1,Math.min(1,this.energy+(result==='completed'?(g.action==='rest'?.25:['eat','sleep','drink'].includes(g.action)?0:-.06):0)));
    if(['eat','sleep','drink'].includes(g.action))this.careUntil=this.now()+120000;this.saveNeeds();
    this.interrupt(result==='completed'?'记住这里了，待会儿再去别处看看':'这边不太好走，待会儿换个地方',result==='completed');this.animate('idle');
    // Fixed bounded payload; idempotent report never feeds personal chat archives.
    const reportAbort=new AbortController(),timer=setTimeout(()=>reportAbort.abort(),8000);
-   this.request('/api/cat-agent/report',{target:g.target,action:g.action,worldRevision:g.worldRevision,result,event:g.event},reportAbort.signal).then(d=>{if(!this.disposed&&!this.scopeLost)this.merge(d.memory);}).catch(()=>{}).finally(()=>clearTimeout(timer));
+   this.request('/api/cat-agent/report',{target:g.target,action:g.action,worldRevision:g.worldRevision,result,event:g.event},reportAbort.signal).then(d=>{if(!this.disposed&&!this.scopeLost){this.merge(d.memory);if(this.decision===decision&&decision?.memory){decision.memory.synced=true;decision.memory.note=result==='completed'?'服务器已确认本次完成记录':'服务器已确认本次受阻记录';this.emit(true);}}}).catch(()=>{if(this.decision===decision&&decision?.memory){decision.memory.note='仅保存本机结果，本次上报未确认';this.emit(true);}}).finally(()=>clearTimeout(timer));
   }
   step(dt,blocked){
    if(this.disposed||this.scopeLost||!this.catalog.length)return;this.externalBlocked=!!blocked;this.trace.sample(this.model.position,this.now(),blocked);this.emit();

@@ -68,7 +68,9 @@ def _decide(owner, data, world, trace):
         raise ValueError('精力值不正确')
     hunger=data.get('hunger',0)
     if type(hunger) not in (int,float) or not math.isfinite(hunger) or not 0<=hunger<=1:raise ValueError('饥饿值不正确')
-    care=('home','sleep','精力偏低，优先回窝休息') if energy<.3 and 'home' in candidates else ('food','eat','饥饿值较高，优先进食') if hunger>=.65 and 'food' in candidates else None
+    thirst=data.get('thirst',0)
+    if type(thirst) not in (int,float) or not math.isfinite(thirst) or not 0<=thirst<=1:raise ValueError('口渴值不正确')
+    care=('home','sleep','精力偏低，优先回窝休息') if energy<.3 and 'home' in candidates else ('food','eat','饥饿值较高，优先进食') if hunger>=.65 and 'food' in candidates else ('water','drink','口渴值较高，优先饮水') if thirst>=.65 and 'water' in candidates else None
     if care:
         target,action,reason=care
         return {'target':target,'action':action,'source':'local','reason':reason,'intent':reason,'interval':8}
@@ -95,7 +97,7 @@ def _decide(owner, data, world, trace):
                     bond=relationship_state(owner)
                     from .cat_scene_service import remembered
                     from .companion_service import settings
-                    inputs={'personality':bond['personality'],'favoritePlace':bond['preferredPlace'],'favoriteToy':bond['favoriteToy'],'familiarity':bond['familiarity'],'energy':energy,'hunger':hunger,'position':position,
+                    inputs={'personality':bond['personality'],'favoritePlace':bond['preferredPlace'],'favoriteToy':bond['favoriteToy'],'familiarity':bond['familiarity'],'energy':energy,'hunger':hunger,'thirst':thirst,'position':position,
                             'candidates':[{'id':i,'name':TARGETS[i]['name'],'actions':options[i],'visits':rows.get(i,{}).get('visits',0),'lastResult':rows.get(i,{}).get('result','')} for i in ordered],
                             'scene':world,'completedExperiences':remembered(owner) if settings(owner)['enabled'] else []}
                     trace.update(inputs=inputs,modelUsed=True)
@@ -173,6 +175,8 @@ def monitor_record(owner, data):
     revision=snap.get('worldRevision','')
     if not isinstance(revision,str) or len(revision)>20:raise ValueError('场景版本错误')
     clean['worldRevision']=revision
+    from .cat_decision_trace import clean_trace
+    clean['decision']=clean_trace(snap.get('decision'))
     for key,limit,width in [('route',64,2),('trail',32,4)]:
         points=snap.get(key,[])
         if not isinstance(points,list) or len(points)>limit:raise ValueError('路径点数量错误')

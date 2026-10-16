@@ -36,7 +36,7 @@ def snapshot(owner):
             places.append(dict(id='garden:'+key,name=farm.bed_name(key)+'的'+plant['name'],x=b['x'],z=b['z'],actions=['observe','sniff'],bounds=dict(w=b['w'],d=b['d']),subject=subject,description=plant['stageName']+(' · 梦幻变异' if plant['variant'] else ''),priority=3 if plant['variant'] else 2 if plant['ready'] else 1,approaches=[dict(x=b['x']+dx,z=b['z']+dz) for dx,dz in [(0,offset),(0,-offset),(b['w']/2+.65,0),(-b['w']/2-.65,0)]],dynamic=True))
     decor=[dict(slot=r['slot'],place=farm.SLOTS[r['slot']]['name'],plant=farm.SPECIES[r['species']]['name']) for r in db.execute('SELECT * FROM farm_decor WHERE owner=? ORDER BY slot',(owner,))]
     decor.extend(dict(slot=r['id'],place=('土栽' if r['container']=='soil' else '花盆')+f"（{r['x']:.1f}, {r['z']:.1f}）",plant=farm.SPECIES[r['species']]['name'],stage=r['stage'],ready=r['ready'],wateredToday=r['watered'],fertilizedToday=r['fertilized']) for r in farm.arrangements(db,owner))
-    for r in farm.arrangements(db,owner)[-16:]:
+    for r in farm.arrangements(db,owner):
         name=farm.SPECIES[r['species']]['name'];distance=farm.placement.radius(r['species'],r['container'])+.70
         places.append(dict(id='plant:'+r['id'],name=name+'旁',x=r['x'],z=r['z'],actions=['observe','sniff'],radius=farm.placement.radius(r['species'],r['container']),subject=r['id']+':'+str(r['revision'])+':'+str(r['stage'])+':'+r['species'],description=('梦幻变异 · ' if farm.SPECIES[r['species']].get('variantOf') else '')+'主人移栽的'+name+' · '+farm.SPECIES[r['species']]['stages'][r['stage']-1]+(' · 已成熟' if r['ready'] else ' · 正在缓慢生长'),priority=2,approaches=[dict(x=r['x']+distance*math.cos(i*math.tau/8),z=r['z']+distance*math.sin(i*math.tau/8)) for i in range(8)],dynamic=True))
     from .cat_agent_service import CATALOG

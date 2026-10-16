@@ -1,0 +1,32 @@
+const assert=require('node:assert/strict'),{Controller}=require('../static/js/den/cat-agent'),catalog=require('../static/data/cat-world.json');
+(async()=>{
+ let now=4000,resolveAdvice;const requests=[];
+ const move={enabled:true,owner:'idle',path:[],navigation:{clearance:.4,route:()=>[{x:1,z:1}],isWalkable:()=>true},goTo(){this.path=[{x:1,z:1}];return true;},interrupt(){this.path=[];this.owner='idle';}};
+ const world={revision:'revision-a',attention:[],places:[]};
+ const agent=new Controller({model:{position:{x:0,z:0}},locomotion:move,life:{cancel(){}},scope:'test',animate(){},storage:null,now:()=>now,
+  canDrink:()=>false,fetcher:async(url,opt)=>{requests.push({url,body:opt?.body&&JSON.parse(opt.body)});if(url.endsWith('/decide'))return resolveAdvice?{ok:true,json:async()=>({source:'local'})}:new Promise(resolve=>resolveAdvice=resolve);return {ok:true,json:async()=>({scope:'test',catalog,world,memory:[]})};}});
+ await agent.ready;agent.thirst=.4;await agent.plan();
+ assert.equal(agent.decision.selection.source,'local');assert.equal(agent.decision.outcome,'pending');
+ assert(agent.decision.excluded.some(p=>p.target==='water'));
+ assert(agent.decision.ranked.length<=8);
+ for(const row of agent.decision.ranked)assert(Math.abs(row.score-Object.values(row.parts).reduce((a,b)=>a+b,0))<1e-9);
+ assert.equal(requests.find(r=>r.url.endsWith('/decide')).body.thirst,.4);
+ const snapshot=agent.snapshot();resolveAdvice({ok:true,json:async()=>({source:'model',target:'bridge',action:'observe',worldRevision:'revision-a'})});
+ await new Promise(r=>setImmediate(r));
+ assert.equal(agent.decision.selection.source,'local','late advice cannot rewrite executed decision source');
+ assert(agent.decision.model.includes('等待下次'));
+ assert.notEqual(snapshot.decision.model,agent.decision.model,'queued telemetry is immutable');
+ agent.finish('completed');await new Promise(r=>setImmediate(r));
+ assert.equal(agent.decision.outcome,'completed');assert.equal(agent.decision.memory.after,1);assert(agent.decision.memory.synced);
+ now+=9000;agent.agenda=[];await agent.plan();
+ assert.equal(agent.decision.selection.source,'model');assert.equal(agent.decision.selection.trigger,'后台建议');
+ agent.interrupt();agent.advice={plan:{source:'model',target:'bridge',action:'observe',worldRevision:'revision-a'},at:now};
+ agent.setWorld({revision:'revision-b',attention:[],places:[]});now+=9000;await agent.plan();
+ assert.equal(agent.decision.selection.source,'local','changed world invalidates stored proposal');
+ agent.interrupt();assert.equal(agent.decision.outcome,'interrupted');assert.equal(agent.decision.memory.before,agent.decision.memory.after);
+ agent.canDrink=()=>true;agent.thirst=.9;now+=9000;await agent.plan();
+ assert.equal(agent.decision.selection.trigger,'身体需求');assert.equal(agent.decision.selection.action,'drink');
+ agent.fetcher=async()=>{throw Error('offline');};agent.finish('completed');await new Promise(r=>setImmediate(r));
+ assert.equal(agent.decision.memory.synced,false);assert(agent.decision.memory.note.includes('未确认'));
+ agent.dispose();console.log('PASS decision evidence: scores, exclusions, thirst, delayed advice, immutable snapshots, stale revision, completion, interruption, unconfirmed report');
+})().catch(e=>{console.error(e);process.exitCode=1});

@@ -3,6 +3,25 @@
  const cutoffs=new Map();
  let paused=false,busy=false,latest=null,selected='',timer,scopeLost=false,receivedAt=0;
  const text=(id,value)=>$(id).textContent=value;
+ function decisionContext(s,events=[]){
+  const d=s?.decision,source={local:'本地规则',model:'后台模型建议',user:'主人指令'},outcome={pending:'执行中，尚未完成',completed:'动作已完成',blocked:'受阻或超时',interrupted:'行动被打断',unavailable:'暂无可执行目标'};
+  for(const id of ['attention','needs','choice','model','outcome','memory'])text('decision-'+id,'—');
+  $('decision-ranking').replaceChildren();$('decision-excluded').replaceChildren();$('decision-history').replaceChildren();text('decision-counts','');
+  text('decision-meta',d?new Date(d.created).toLocaleTimeString()+' · 决策 '+d.id.slice(0,8)+' · 场景 '+(d.worldRevision||'基础地图'):'此实例暂无详细决策记录；请刷新猫咪小岛并等待一次自主行动。');
+  if(d){
+   text('decision-attention',d.attention.length?d.attention.join('；'):'未收到新的环境变化，本轮依据状态与访问记录选择。');
+   text('decision-needs',`精力 ${Math.round(d.needs.energy*100)}% · 饥饿 ${Math.round(d.needs.hunger*100)}% · 口渴 ${Math.round(d.needs.thirst*100)}%（选择时快照）`);
+   const c=d.selection;
+   text('decision-choice',c?`${c.name} → ${actions[c.action]||c.action}\n${source[c.source]||c.source} · ${c.trigger}\n${c.reason}`:'正在筛选可执行目标');
+   text('decision-model',d.model||'暂无后台建议状态');
+   text('decision-outcome',(outcome[d.outcome]||d.outcome)+(d.outcome==='pending'?' · '+(phases[s.phase]||s.phase):''));
+   text('decision-memory',d.memory?`完成次数 ${d.memory.before} → ${d.memory.after}\n${d.memory.note}`:'尚未产生完成记录；计划不会提前计入经历。');
+   text('decision-counts',`${d.candidateCount} 个可达候选，${d.excludedCount} 个被排除。以下展示分数最高的 ${d.ranked.length} 个候选、最多 8 条排除原因。`);
+   $('decision-ranking').replaceChildren(...d.ranked.map(r=>{const tr=document.createElement('tr'),parts=r.parts;for(const value of [r.name,r.score.toFixed(2),`间隔 ${parts.recency.toFixed(2)} / 新鲜 ${parts.novelty.toFixed(2)} / 偏好 ${parts.preference.toFixed(2)} / 重复 ${parts.repeat.toFixed(2)} / 距离 ${parts.distance.toFixed(2)}`]){const td=document.createElement('td');td.textContent=value;tr.append(td);}return tr;}));
+   $('decision-excluded').replaceChildren(...d.excluded.map(r=>{const li=document.createElement('li');li.textContent=r.name+'：'+r.reason;return li;}));
+  }
+  const seen=new Set();for(const e of events){const item=e.snapshot?.decision;if(!item||seen.has(item.id)||item.outcome==='pending')continue;seen.add(item.id);if(seen.size>8)break;const row=document.createElement('p');row.className='event';row.textContent=new Date(item.created).toLocaleTimeString()+' · '+(item.selection?.name||'筛选目标')+' · '+(outcome[item.outcome]||item.outcome)+(item.memory?' · '+item.memory.note:'');$('decision-history').append(row);}
+ }
  function sceneContext(d){
   const scene=d.scene||{},current=scene.current,used=scene.used?.[selected],decision=scene.decisions?.find(r=>r.stream===selected);
   const list=(id,items)=>$(id).replaceChildren(...(items.length?items:['暂无记录']).map(value=>{const li=document.createElement('li');li.textContent=value;return li;}));
@@ -25,7 +44,7 @@
   const options=d.streams.map(s=>{const o=document.createElement('option');o.value=s.stream;o.textContent=s.stream.slice(0,8)+' · '+new Date(s.updated*1000).toLocaleTimeString();return o;});
   $('streams').replaceChildren(...options);if(!d.streams.some(s=>s.stream===selected))selected=d.streams[0]?.stream||'';$('streams').value=selected;
   const stream=d.streams.find(s=>s.stream===selected),s=stream?.snapshot,age=stream?d.serverTime-stream.updated:Infinity;
-  sceneContext(d);
+  sceneContext(d);decisionContext(s,d.events.filter(e=>e.stream===selected));
   $('share-card').disabled=!stream;
   for(const id of ['agent-pause','agent-resume','agent-home'])if($(id))$(id).disabled=scopeLost||!stream||age>10||s.phase==='stopped';
   const control=d.controls?.find(c=>c.stream===selected);if(control&&$('control-status'))text('control-status',({pending:d.serverTime-control.created>30?'指令已过期':'等待猫咪页面确认…',applied:'猫咪已响应指令',busy:'猫咪正在与你互动，请稍后再试',unavailable:'当前无法执行，请检查自由活动和猫窝',expired:'指令已过期，请重新发送'})[control.result]||'');
@@ -37,7 +56,7 @@
   const events=d.events.filter(e=>e.stream===selected);text('count',events.length+' 条');$('events').replaceChildren(...events.map(e=>{const a=document.createElement('div');a.className='event';const time=document.createElement('time'),p=document.createElement('p'),reason=document.createElement('small');time.textContent=new Date(e.updated*1000).toLocaleTimeString()+' · '+(phases[e.snapshot.phase]||e.snapshot.phase);p.textContent=(e.snapshot.source==='model'?'[AI] ':'[本地] ')+e.snapshot.text;reason.textContent=e.snapshot.reason;a.append(time,p,reason);return a;}));
   $('memory').replaceChildren(...d.catalog.map(p=>{const m=d.memory.find(m=>m.target===p.id),tr=document.createElement('tr');for(const value of [p.name,m?.visits||0,results[m?.result]||'尚未探索']){const td=document.createElement('td');td.textContent=value;tr.append(td);}return tr;}));
  }
- async function poll(){if(paused||busy||document.hidden||scopeLost)return;busy=true;const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),5000);try{const r=await fetch('/api/cat-agent/monitor',{cache:'no-store',signal:abort.signal});if(!r.ok)throw Error();const d=await r.json();if(d.scope!==window.MONITOR_SCOPE){scopeLost=true;for(const id of ['agent-pause','agent-resume','agent-home'])if($(id))$(id).disabled=true;latest=null;sceneContext({});$('share-card').disabled=true;$('share-preview').close();cutoffs.clear();$('walked-path').setAttribute('d','');$('planned-path').setAttribute('d','');text('path-stats','');$('events').replaceChildren();$('memory').replaceChildren();$('places').replaceChildren();$('cat').setAttribute('visibility','hidden');for(const id of ['life-story','life-imprints','intent','reason','phase','source','energy','hunger','thirst','tired','route','task'])text(id,'—');text('connection','账号已切换，请刷新监控页');return;}latest=d;receivedAt=Date.now();render(d);}catch(e){text('connection','监控连接暂时中断，正在重试');}finally{clearTimeout(timeout);busy=false;}}
+ async function poll(){if(paused||busy||document.hidden||scopeLost)return;busy=true;const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),5000);try{const r=await fetch('/api/cat-agent/monitor',{cache:'no-store',signal:abort.signal});if(!r.ok)throw Error();const d=await r.json();if(d.scope!==window.MONITOR_SCOPE){scopeLost=true;for(const id of ['agent-pause','agent-resume','agent-home'])if($(id))$(id).disabled=true;latest=null;sceneContext({});decisionContext(null);$('share-card').disabled=true;$('share-preview').close();cutoffs.clear();$('walked-path').setAttribute('d','');$('planned-path').setAttribute('d','');text('path-stats','');$('events').replaceChildren();$('memory').replaceChildren();$('places').replaceChildren();$('cat').setAttribute('visibility','hidden');for(const id of ['life-story','life-imprints','intent','reason','phase','source','energy','hunger','thirst','tired','route','task'])text(id,'—');text('connection','账号已切换，请刷新监控页');return;}latest=d;receivedAt=Date.now();render(d);}catch(e){text('connection','监控连接暂时中断，正在重试');}finally{clearTimeout(timeout);busy=false;}}
  async function control(action){if(scopeLost||!selected)return;try{const r=await fetch('/api/cat-agent/control',{method:'POST',headers:{'Content-Type':'application/json','X-Profile-Scope':window.MONITOR_SCOPE},body:JSON.stringify({stream:selected,action}),signal:AbortSignal.timeout(6000)});const d=await r.json();if(!r.ok)throw Error(d.error||'发送失败');if(d.scope!==window.MONITOR_SCOPE)throw Error('账号已变化，请刷新');text('control-status','已发送，等待猫咪页面确认…');await poll();}catch(e){text('control-status',e.message);}}
  for(const [id,action] of [['agent-pause','pause'],['agent-resume','resume'],['agent-home','home']])if($(id))$(id).onclick=()=>control(action);
  $('share-card').onclick=()=>{const s=CatShareCard.summary(latest?{...latest,serverTime:latest.serverTime+(Date.now()-receivedAt)/1000}:null,selected,cutoffs.get(selected)??-Infinity);if(!s)return;CatShareCard.draw($('share-canvas'),s);text('share-status',s.points?'预览已生成，保存后可自行分享。':'当前还没有轨迹，卡片会如实显示 0 个采样点。');$('share-preview').showModal();};

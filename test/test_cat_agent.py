@@ -84,6 +84,22 @@ class CatAgentTests(unittest.TestCase):
         r=self.post('decide',{'candidates':['home','food'],'hunger':.9,'energy':.1})
         self.assertEqual(r.json['action'],'sleep')
         self.assertEqual(self.post('decide',{'candidates':['food'],'hunger':2}).status_code,400)
+    def test_thirst_reaches_planner_and_can_override_exploration(self):
+        import json
+        captured=[]
+        def plan(messages):
+            captured.append(json.loads(messages[1]['content']))
+            return '{"target":"bridge","action":"observe"}'
+        self.model.plan_once=plan
+        response=self.post('decide',{'candidates':['bridge','water'],'thirst':.45})
+        self.assertEqual(response.json['source'],'model')
+        self.assertEqual(captured[0]['thirst'],.45)
+        response=self.post('decide',{'candidates':['bridge','water'],'thirst':.8})
+        self.assertEqual(response.json['action'],'drink')
+        self.assertEqual(response.json['source'],'local')
+        self.assertEqual(len(captured),1)
+        for value in [True,-1,2,float('nan')]:
+            self.assertEqual(self.post('decide',{'candidates':['bridge'],'thirst':value}).status_code,400)
     def test_memory_idempotence_and_isolation(self):
         data={'target':'bridge','result':'completed','event':'test-event-123'}
         self.assertEqual(self.post('report',data).status_code,200);self.post('report',data)
