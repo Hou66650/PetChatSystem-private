@@ -55,3 +55,18 @@ export const NATIVE_ASSETS: NativeAsset[] = [
     "triangles": 236854
   }
 ];
+
+export const NATIVE_PETS: NativeAsset[] = [
+  { id: 'cat', name: '团子 · 猫咪', path: '/static/models/petchat-cat-v3/cat.glb',
+    cx: 0.020420233719050884, cy: 0.49986473633907735, cz: 0.004636526107788086,
+    scale: 1.4262879932274934, triangles: 154155 },
+  { id: 'shiba', name: '球球 · 柴犬', path: '/static/models/petchat-shiba-v4/qiuqiu.glb',
+    cx: -0.009536638855934143, cy: 0.5295296667318325, cz: -0.0243472158908844,
+    scale: 1.596365467929971, triangles: 160839 },
+  { id: 'husky', name: '雪球 · 哈士奇', path: '/static/models/petchat-husky-v3/xueqiu.glb',
+    cx: -0.0030482448637485504, cy: 0.5893443611857947, cz: -0.024509400129318237,
+    scale: 1.2961548146872839, triangles: 169146 },
+  { id: 'shepherd', name: '德牧', path: '/static/models/petchat-shepherd-v2/shepherd.glb',
+    cx: -0.01590704917907715, cy: 0.5894881194108166, cz: -0.06000429391860962,
+    scale: 1.3179154062696679, triangles: 163530 }
+];

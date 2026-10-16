@@ -16,6 +16,8 @@ struct WebPage {
   @State private allowLan: boolean = true;
   @State private error: string = '';
   @State private nativePreview: boolean = false;
+  @State private petMode: boolean = false;
+  @State private foreground: boolean = true;
   private controller: webview.WebviewController = new webview.WebviewController();
   private fullScreen: FullScreenExitHandler | null = null;
 
@@ -23,6 +25,9 @@ struct WebPage {
     webview.WebviewController.setWebDebuggingAccess(BuildProfile.DEBUG);
     this.restore();
   }
+
+  onPageShow(): void { this.foreground = true; }
+  onPageHide(): void { this.foreground = false; }
 
   private async restore(): Promise<void> {
     try {
@@ -101,7 +106,8 @@ struct WebPage {
   build() {
     Column() {
       if (this.nativePreview) {
-        NativePreview({ origin: this.address.trim().replace(/\/$/, ''), onClose: () => { this.nativePreview = false; } })
+        NativePreview({ origin: this.address.trim().replace(/\/$/, ''), petMode: this.petMode,
+          active: this.foreground, onClose: () => { this.nativePreview = false; } })
       } else if (this.settings) {
         Column({ space: 20 }) {
           Text('打开原版派特岛').fontSize(28).fontWeight(FontWeight.Bold)
@@ -115,8 +121,12 @@ struct WebPage {
           }
           if (this.error) { Text(this.error).fontColor('#A32929') }
           Button('进入网页版').onClick(() => { this.open(); })
+          Button('原生宠物互动').onClick(() => {
+            try { new PetApi().configure(this.address, this.allowLan); this.petMode = true; this.nativePreview = true; }
+            catch (failure) { this.error = (failure as Error).message; }
+          })
           Button('原生 3D 对照入口').onClick(() => {
-            try { new PetApi().configure(this.address, this.allowLan); this.nativePreview = true; }
+            try { new PetApi().configure(this.address, this.allowLan); this.petMode = false; this.nativePreview = true; }
             catch (failure) { this.error = (failure as Error).message; }
           })
           Text('登录使用网页原有账号。在首页按系统返回键可修改连接地址。摄像头和麦克风需要 HTTPS 与系统授权。')
