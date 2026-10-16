@@ -95,10 +95,15 @@ def build_realtime_session(pet_id, gender=None, surface='chat'):
     from . import companion_service
     from . import voiceprint_service
     speaker_enabled = voiceprint_service.enabled(companion_service.owner_key())
+    from . import pet_voice_service
+    custom_voice = pet_voice_service.active(companion_service.owner_key(), pet_id)
     instructions = build_instructions(pet_id, gender, surface,private_context=not speaker_enabled)
     if speaker_enabled:
         instructions += voiceprint_service.instruction({'kind':'uncertain','name':None})
     return {
+        # Realtime's documented voice list does not accept GLM-TTS clone IDs.
+        # Keep native comprehension; synthesize its completed text through TTS.
+        'customVoice': {'id': custom_voice['id'], 'scope': companion_service.browser_scope(), 'name': custom_voice['name']} if custom_voice else None,
         'speakerEnabled': speaker_enabled,
         'profileScope': companion_service.browser_scope(),
         'profileRevision': companion_service.settings(companion_service.owner_key())['revision'],

@@ -43,6 +43,7 @@
     this._aiText = '';
     this._injectStyle();
     document.addEventListener?.('voiceprint-settings-open',()=>this.stop());
+    document.addEventListener?.('pet-voice-settings-open',()=>this.stop());
   }
 
   RealtimeUI.prototype._injectStyle = function () {

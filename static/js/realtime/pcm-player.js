@@ -117,6 +117,19 @@ class PCMPlayer {
    * 插话打断：立即停掉全部已调度的音频并清空未播放队列。
    * 返回被打断时剩余的近似秒数（供打断延迟观测）。
    */
+  async appendEncoded(bytes, current = () => true) {
+    const ctx=this.ensureContext();
+    const buffer=await ctx.decodeAudioData(bytes);
+    if(this._ctx!==ctx||!current())return false;
+    this.unlock();
+    const source=ctx.createBufferSource();source.buffer=buffer;source.connect(this._gain);
+    const when=Math.max(ctx.currentTime+.02,this._nextTime);
+    source.start(when);this._nextTime=when+buffer.duration;this.receivedChunks++;
+    this.queuedDuration=Math.max(0,this._nextTime-ctx.currentTime);this._sources.add(source);
+    source.onended=()=>{this._sources.delete(source);this.queuedDuration=Math.max(0,this._nextTime-ctx.currentTime);};
+    return true;
+  }
+
   interrupt() {
     let remain = this.queuedDuration;
     this._sources.forEach((s) => {

@@ -6,6 +6,8 @@
 
     var KEY = 'petProfilesV1:' + (window.COMPANION_SCOPE || 'legacy');
     var VALID = ['male', 'female', 'unspecified'];
+    var voiceVersion = document.currentScript?.src ? new URL(document.currentScript.src).search : '';
+    var voiceLoad;
 
     function loadAll() {
         try {
@@ -105,6 +107,20 @@
                 if (prevFocus && prevFocus.focus) prevFocus.focus();
             }
             var onKey = function (e) { if (e.key === 'Escape') close(); };
+            var voiceButton = document.createElement('button');
+            voiceButton.type = 'button';voiceButton.textContent = '专属声音 · 上传录音';
+            voiceButton.style.cssText = 'width:100%;padding:12px;margin-top:12px;border:1px solid #b8cec7;border-radius:12px;background:#eef7f2;color:#315c51;cursor:pointer;font:inherit;';
+            voiceButton.onclick = async function () {
+                voiceButton.disabled=true;
+                try {
+                    if(!window.PetVoiceUI){
+                        if(!voiceLoad)voiceLoad=new Promise(function(resolve,reject){var s=document.createElement('script');s.src='/static/js/realtime/pet-voice-ui.js'+voiceVersion;s.onload=resolve;s.onerror=function(){voiceLoad=null;reject(Error('声音设置加载失败，请重试'));};document.head.append(s);});
+                        await voiceLoad;
+                    }
+                    close();window.PetVoiceUI.open(petId,petName);
+                } catch(e) {voiceButton.textContent=e.message;} finally {voiceButton.disabled=false;}
+            };
+            card.appendChild(voiceButton);
             mkBtn('取消', false, close);
             mkBtn('保存', true, function () {
                 var sel = card.querySelector('input[name="pet-gender"]:checked');

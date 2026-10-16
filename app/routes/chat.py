@@ -192,46 +192,27 @@ def pet_sound():
 
 @bp.route('/api/tts', methods=['POST'])
 def tts():
-    """GLM-TTS 语音合成：POST {text, petId} → audio/wav 二进制。
-
-    音色由服务端按 petId 从配置白名单选择（S1-04）；
-    客户端传入的 voice 字段被忽略，避免无效值打到上游。
-    """
-    data = request.get_json(silent=True) or {}
+    """Resolve the current account's selected pet voice; never trust a provider ID."""
+    from ..services import pet_voice_service as voice, companion_service as companion
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(error='无效的语音请求'), 400
     text = str(data.get('text') or '').strip()[:500]
     if not text:
-        return jsonify({'error': 'empty text'}), 400
+        return jsonify(error='empty text'), 400
     try:
         pet_id = int(data.get('petId', 1))
     except (TypeError, ValueError):
-        pet_id = 1
-    voice = (current_app.config.get('PET_TTS_VOICES') or {}).get(pet_id) \
-        or current_app.config.get('PET_TTS_DEFAULT_VOICE', 'tongtong')
+        pet_id = 0
+    if pet_id not in (1,2,3,4):
+        return jsonify(error='无效的宠物'), 400
+    selected = voice.active(companion.owner_key(), pet_id)
+    expected = data.get('voiceProfileId')
+    if expected is not None and (not selected or selected['id'] != expected or
+            request.headers.get('X-Profile-Scope') != companion.browser_scope()):
+        return jsonify(error='宠物声音或账号已变化，请重新开启通话'), 409
     try:
-        import requests as _req
-        session = _req.Session()
-        session.trust_env = False   # bigmodel.cn 直连不走系统代理
-        resp = session.post(
-            f"{current_app.config['GLM_BASE_URL']}/audio/speech",
-            headers={
-                'Authorization': f"Bearer {current_app.config['GLM_API_KEY']}",
-                'Content-Type': 'application/json',
-            },
-            json={
-                'model': 'glm-tts',
-                'input': text,
-                'voice': voice,
-                'response_format': 'wav',
-                'speed': 0.9,
-                'volume': 1.0,
-            },
-            timeout=20,
-        )
-        if resp.status_code != 200:
-            current_app.logger.warning('GLM TTS failed [%s]: %s', resp.status_code, resp.text[:200])
-            return jsonify({'error': f'tts failed: {resp.status_code}'}), 502
-        return current_app.response_class(resp.content, mimetype='audio/wav',
-                                          headers={'Cache-Control': 'public, max-age=3600'})
-    except Exception as e:
-        current_app.logger.warning('GLM TTS error: %s', e)
-        return jsonify({'error': str(e)}), 502
+        raw = voice.synthesize(text, selected['voice'] if selected else voice.default_voice(pet_id))
+        return current_app.response_class(raw, mimetype='audio/wav', headers={'Cache-Control':'private, no-store'})
+    except voice.VoiceError as error:
+        return jsonify(error=str(error)), error.status

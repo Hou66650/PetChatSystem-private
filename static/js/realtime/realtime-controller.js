@@ -303,9 +303,14 @@ class RealtimeController {
         if (this.state === 'AI_THINKING' || this.state === 'READY') this._setState('AI_SPEAKING');
         break;
       case 'response.done':
-        if (data.response?.id === this._playbackResponseId && !this._roundAudioChunks && data.response?.status !== 'cancelled')
+        if (!data.customVoice && data.response?.id === this._playbackResponseId && !this._roundAudioChunks && data.response?.status !== 'cancelled')
           this.onWarning({code:'reply_audio_missing',message:'这轮没有收到回复音频，请再说一次。'});
         break;
+      case 'custom.audio.ready':
+        this._roundAudioChunks=1;this._setState('AI_SPEAKING');this._reportPlayback();break;
+      case 'custom.audio.error':
+        this.onWarning({code:'custom_voice_failed',message:data.message});
+        if(this.state==='AI_THINKING')this._setState('READY');break;
       case 'playback.error':
         this.onPlayback({state:'error',message:'回复声音播放失败，请点击“试听声音”检查播放。'});
         break;

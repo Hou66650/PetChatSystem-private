@@ -61,6 +61,8 @@ def create_app(config_object=Config):
         cat_scene_service.init_schema()
         from .services import voiceprint_service
         voiceprint_service.init_schema()
+        from .services import pet_voice_service
+        pet_voice_service.init_schema()
         from .routes.pet_studio import init_schema as init_pet_studio
         init_pet_studio()
         from .services import pet_adaptation_service

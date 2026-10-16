@@ -121,6 +121,8 @@ class RealtimeClient {
       };
       ws.onerror = () => { /* onclose 会跟进 */ };
       ws.onclose = (ev) => {
+        this._cancelCustomSpeech();
+        if(this._session?.customVoice)this.player.interrupt();
         this._ws = null;
         this._sessionReady = false;
         clearTimeout(this._updateTimer);
@@ -145,11 +147,12 @@ class RealtimeClient {
       this.onEvent('server.error', {code:'rate_limit_error',recoverable:false,kind:'rate_limit'});
       return;
     }
-    if (type === 'input_audio_buffer.speech_started') { this._turnId++; this._resetRound(); }
+    if (type === 'input_audio_buffer.speech_started') { this._cancelCustomSpeech(); this._turnId++; this._resetRound(); }
+    if (this._session?.customVoice && type === 'response.audio.delta') return;
     // ASR can arrive after the next turn starts; retain the committed item's turn.
     const eventTurn = type === 'conversation.item.input_audio_transcription.completed'
       ? this._items.get(data.item_id)?.turnId : this._turnId;
-    this.onEvent(type, {...data, turnId:eventTurn});
+    this.onEvent(type, {...data, turnId:eventTurn, customVoice:!!this._session?.customVoice});
     switch (type) {
       case 'session.created':
         this._sid = (data.session && data.session.id) || '';
@@ -242,6 +245,8 @@ class RealtimeClient {
       case 'response.done': {
         this._activeResponses.delete((data.response && data.response.id) || '');
         const round = this._responses.get(data.response && data.response.id) || this._round;
+        if(this._session?.customVoice && !round.done && round.turnId===this._turnId && data.response?.status==='completed')this._speakCustom(round);
+        else if(this._session?.customVoice && !round.done && round.turnId===this._turnId && !['completed','cancelled'].includes(data.response?.status))this.onEvent('custom.audio.error',{message:'这轮回复未完成，请再说一次。'});
         round.done = true;
         this._finishRound(round);
         this._flushInstructions();
@@ -371,7 +376,34 @@ class RealtimeClient {
   }
 
   /** 用户主动结束：停重连、关 WS。 */
+  _cancelCustomSpeech() {
+    this._voiceEpoch=(this._voiceEpoch||0)+1;
+    this._voiceAbort?.abort();this._voiceAbort=null;
+  }
+
+  async _speakCustom(round) {
+    this._cancelCustomSpeech();
+    const epoch=this._voiceEpoch, voice=this._session.customVoice, abort=new AbortController();
+    this._voiceAbort=abort;
+    const current=()=>!this._closedByUser&&!abort.signal.aborted&&epoch===this._voiceEpoch&&round.turnId===this._turnId;
+    const timeout=setTimeout(()=>abort.abort(),45000);
+    try {
+      if(!round.assistantText.trim())throw Error('这轮没有可朗读的回复文字，请再说一次。');
+      const response=await fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json','X-Profile-Scope':voice.scope},
+        body:JSON.stringify({petId:this.petId,text:round.assistantText,voiceProfileId:voice.id}),signal:abort.signal,cache:'no-store'});
+      if(!response.ok){let data;try{data=await response.json();}catch{}throw Error(data?.error||'专属声音生成失败，请稍后再试。');}
+      const bytes=await response.arrayBuffer();if(!current())return;
+      const played=await this.player.appendEncoded(bytes,current);
+      if(played&&current()){
+        if(this._tSpeechEnd){this.metrics.t_speech_end_to_first_audio_ms=Math.round(performance.now()-this._tSpeechEnd);this.onMetrics(this.metrics);}
+        this.onEvent('custom.audio.ready',{response_id:round.responseId});
+      }
+    }catch(e){if(epoch===this._voiceEpoch&&!this._closedByUser)this.onEvent('custom.audio.error',{message:e.name==='AbortError'?'专属声音生成超时，可以再说一次。':e.message});}
+    finally{clearTimeout(timeout);if(this._voiceAbort===abort)this._voiceAbort=null;}
+  }
+
   close() {
+    this._cancelCustomSpeech();
     this._closedByUser = true;
     this._sessionReady = false;
     clearTimeout(this._updateTimer);
