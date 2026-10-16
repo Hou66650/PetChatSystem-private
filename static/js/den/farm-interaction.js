@@ -34,10 +34,14 @@
   renderPlaced(){
    const p=this.data.arrangements.find(p=>p.id===this.inspectedPlacement);if(!p){this.open();return;}const spec=this.data.catalog.find(s=>s.id===p.species);
    document.getElementById('farm-detail').hidden=false;for(const e of this.dialog.querySelectorAll('[data-guide-only]'))e.hidden=true;
-   document.getElementById('farm-detail-title').textContent=spec.name+' · '+(p.container==='pot'?'花盆':'土栽');document.getElementById('farm-detail-status').textContent='已经在你的岛上安家 · 位置与朝向已存入账号。可以搬动，或完整收回仓库。';document.getElementById('farm-detail-growth').hidden=true;
-   document.getElementById('farm-detail-actions').replaceChildren(this.button('移动到新位置',()=>this.beginPlacement(p)),this.button('收回仓库',()=>this.act('recover-arrangement',{id:p.id,revision:p.revision})));
-   document.getElementById('farm-preview-species').value=p.species;document.getElementById('farm-preview-stage').value=10;if(this.previewKey!==FarmGarden.modelKey(p.species,10,false))void this.preview();
+   document.getElementById('farm-detail-title').textContent=spec.name+' · '+(p.container==='pot'?'花盆':'土栽');
+   document.getElementById('farm-detail-status').textContent=p.ready?'已经成熟 · 位置与朝向已存入账号，可搬动或收回仓库。':`${spec.stages[p.stage-1]} · ${p.stage}/10 · ${FarmGarden.remaining(p.remaining)}（未照料估计） · 以种植床的 1/4 速度持续生长，离线也生长。浇水推进 8%，施肥推进 6%，每天各一次。${p.watered?'今日已浇水。':''}${p.fertilized?'今日已施肥。':''}`;
+   const meter=document.getElementById('farm-detail-growth');meter.hidden=false;meter.value=p.progress;
+   const actions=document.getElementById('farm-detail-actions');actions.replaceChildren(this.button('移动到新位置',()=>this.beginPlacement(p)),this.button(p.ready?'收回仓库':'移回空种植床',()=>this.act('recover-arrangement',{id:p.id,revision:p.revision})));
+   if(!p.ready)actions.append(this.button(p.watered?'今日已浇水':'拿洒水壶',()=>this.takeTool('water',p.id),p.watered),this.button(p.fertilized?'今日已施肥':'拿肥料 · '+(this.data.inventory.fertilizer||0)+' 份',()=>this.takeTool('fertilize',p.id),p.fertilized||!this.data.inventory.fertilizer));
+   document.getElementById('farm-preview-species').value=p.species;document.getElementById('farm-preview-stage').value=p.stage;if(this.previewKey!==FarmGarden.modelKey(p.species,p.stage,false))void this.preview();
   }
+
   renderInspector(){
    if(!this.inspectedBed||!this.data)return;const bed=this.data.beds.find(b=>b.id===this.inspectedBed);if(!bed)return;
    document.getElementById('farm-detail').hidden=false;for(const e of this.dialog.querySelectorAll('[data-guide-only]'))e.hidden=true;
@@ -48,10 +52,11 @@
    const actions=document.getElementById('farm-detail-actions');actions.replaceChildren();
    if(plant){
     actions.append(this.button('拿洒水壶',()=>this.takeTool('water',bed.id),plant.watered||plant.ready),this.button('拿肥料 · '+(this.data.inventory.fertilizer||0)+' 份',()=>this.takeTool('fertilize',bed.id),plant.fertilized||plant.ready||!this.data.inventory.fertilizer));
-    if(plant.ready){actions.append(this.button('直接栽入土壤',()=>this.beginPlacement({bed:bed.id,plant:plant.id,species:plant.species,container:'soil'})));
-     if(spec.kind==='flower')actions.append(this.button('装盆自由摆放',()=>this.beginPlacement({bed:bed.id,plant:plant.id,species:plant.species,container:'pot'}),!this.data.inventory.pot));
-     actions.append(this.button('收进仓库',()=>this.act('harvest',{bed:bed.id,plant:plant.id})));
+    actions.append(this.button('直接栽入土壤',()=>this.beginPlacement({bed:bed.id,plant:plant.id,species:plant.species,stage:plant.stage,container:'soil'})));
+     actions.append(this.button('装盆自由摆放',()=>this.beginPlacement({bed:bed.id,plant:plant.id,species:plant.species,stage:plant.stage,container:'pot'}),!this.data.inventory.pot));
+    if(plant.ready){actions.append(this.button('收进仓库',()=>this.act('harvest',{bed:bed.id,plant:plant.id})));
     }
+    if(!plant.ready)actions.append(this.element('p','可以现在移栽：保留生长阶段，以 1/4 速度持续生长；浇水施肥可加速。'));
     document.getElementById('farm-preview-species').value=plant.species;document.getElementById('farm-preview-stage').value=plant.stage;
     if(this.previewKey!==FarmGarden.modelKey(plant.species,plant.stage,false))void this.preview();
    }else{
@@ -66,10 +71,10 @@
    const stock=document.getElementById('farm-stock'),s=this.data;stock.replaceChildren();
    for(const spec of s.catalog.filter(p=>!p.variantOf||s.inventory[p.id])){const qty=s.inventory[spec.id]||0,c=this.card(spec.name+' · '+qty+' 株',spec.kind==='food'?'存入补给，或把成熟植株栽进岛屿土壤。':'自由选择落点，位置与朝向随账号保存。');
     c.append(this.button('栽入土壤',()=>this.beginPlacement({species:spec.id,container:'soil'}),!qty));
-    if(spec.kind==='flower')c.append(this.button('装盆摆放 · '+(s.inventory.pot||0)+' 个盆',()=>this.beginPlacement({species:spec.id,container:'pot'}),!qty||!s.inventory.pot));
+    c.append(this.button('装盆摆放 · '+(s.inventory.pot||0)+' 个盆',()=>this.beginPlacement({species:spec.id,container:'pot'}),!qty||!s.inventory.pot));
     if(spec.kind==='food')c.append(this.button('制作零食',()=>this.act('cook'),!qty));stock.append(c);
    }
-   for(const d of s.arrangements||[]){const c=this.card(s.catalog.find(s=>s.id===d.species).name+' · '+(d.container==='pot'?'花盆':'土栽'),`岛上位置 ${d.x.toFixed(1)}, ${d.z.toFixed(1)} · 已保存在账号`);c.append(this.button('搬到新位置',()=>this.beginPlacement(d)),this.button('收回仓库',()=>this.act('recover-arrangement',{id:d.id,revision:d.revision})));stock.append(c);}
+   for(const d of s.arrangements||[]){const c=this.card(s.catalog.find(s=>s.id===d.species).name+' · '+(d.container==='pot'?'花盆':'土栽'),`岛上位置 ${d.x.toFixed(1)}, ${d.z.toFixed(1)} · ${d.ready?'已成熟':d.stage+'/10 · 缓慢生长中'}`);c.append(this.button('查看与照料',()=>this.inspectPlaced(d)),this.button('搬到新位置',()=>this.beginPlacement(d)),this.button(d.ready?'收回仓库':'移回空种植床',()=>this.act('recover-arrangement',{id:d.id,revision:d.revision})));stock.append(c);}
    for(const d of s.decorations){const c=this.card(s.placements.find(p=>p.id===d.slot).name,'此前安放的植物仍保留，可收回后自由摆放。');c.append(this.button('收回仓库',()=>this.act('recover',{slot:d.slot})));stock.append(c);}
   }
   async initTools(){
@@ -83,7 +88,7 @@
   takeTool(kind,bed){
    if(this.busy||this.scopeLost||!this.data||this.data.guest)return;this.cancelDirect();if(!this.toolModels.has(kind)){this.note('工具还在准备，请稍后再试。');return;}
    this.mode='care';this.toolKind=kind;const controls=this.a.controls;if(controls){this.savedControls={middle:controls.mouseButtons.MIDDLE,pan:controls.enablePan};controls.mouseButtons.MIDDLE=this.T.MOUSE.PAN;controls.enablePan=true;}this.dialog.close();this.hud.hidden=false;this.hud.dataset.mode='care';document.getElementById('farm-direct-cancel').textContent='放回 · Esc';this.showRotation(false);this.meter.hidden=false;this.meter.value=0;this.hint.textContent=(kind==='water'?'洒水壶':'肥料罐')+' · 左键照料 / 中键拖动';
-   const b=this.data.beds.find(b=>b.id===bed);if(b){this.hoverBed=b.id;this.toolTarget.set(b.x-.3,.95,b.z);this.a.focus?.();}else this.toolTarget.copy(this.toolModels.get(kind).position).add(new this.T.Vector3(0,.8,0));
+   const b=this.data.beds.find(b=>b.id===bed)||(this.data.arrangements||[]).find(p=>p.id===bed);if(b){this.hoverBed=b.id;this.toolTarget.set(b.x-.3,.95,b.z);if(!b.container)this.a.focus?.();}else this.toolTarget.copy(this.toolModels.get(kind).position).add(new this.T.Vector3(0,.8,0));
    this.makeParticles();
   }
   makeParticles(){
@@ -91,7 +96,7 @@
   }
   showRotation(on){for(const id of ['farm-rotate-left','farm-rotate-right'])document.getElementById(id).hidden=!on;}
   async beginPlacement(spec){
-   if(this.busy||this.scopeLost||this.data?.guest)return;this.cancelDirect();this.mode='place';this.placement={...spec,yaw:spec.yaw||0,x:spec.x??0,z:spec.z??0};this.placementKey=FarmGarden.modelKey(spec.species,10,false);this.dialog.close();this.hud.hidden=false;this.hud.dataset.mode='place';document.getElementById('farm-direct-cancel').textContent='取消 · Esc';this.showRotation(true);this.meter.hidden=true;this.hint.textContent='正在准备落点预览…';
+   if(this.busy||this.scopeLost||this.data?.guest)return;this.cancelDirect();this.mode='place';this.placement={...spec,yaw:spec.yaw||0,x:spec.x??0,z:spec.z??0};this.placementKey=FarmGarden.modelKey(spec.species,spec.stage??10,false);this.dialog.close();this.hud.hidden=false;this.hud.dataset.mode='place';document.getElementById('farm-direct-cancel').textContent='取消 · Esc';this.showRotation(true);this.meter.hidden=true;this.hint.textContent='正在准备落点预览…';
    const epoch=++this.toolEpoch,progress=window.PaitLoading?.start('正在准备摆放预览');
    try{
     const model=await this.asset(this.placementKey),pot=spec.container==='pot'?await this.asset('flowerpot'):null;if(this.disposed||epoch!==this.toolEpoch){progress?.done();return;}
@@ -135,10 +140,10 @@
    if(this.disposed||!this.a.active()||this.dialog.open){this.hover.hidden=true;return;}if(this.panning||e.altKey||click&&performance.now()<(this.ignoreClick||0))return;
    const {ray,point}=this.rayPoint(e,this.mode==='care'?.23:.035);if(!point)return;
    if(this.mode==='place'){this.hover.hidden=true;if(!this.busy)this.updatePlacement(point);if(click){e.stopImmediatePropagation();void this.confirmPlacement();}return;}
-   if(this.mode==='care'){this.hover.hidden=true;const bed=this.layout.beds.find(b=>Math.abs(point.x-b.x)<b.w/2+.15&&Math.abs(point.z-b.z)<b.d/2+.15);this.hoverBed=bed?.id;this.toolTarget.set(point.x-.4,.95,point.z);if(click)e.stopImmediatePropagation();return;}
+   if(this.mode==='care'){this.hover.hidden=true;const bed=this.layout.beds.find(b=>Math.abs(point.x-b.x)<b.w/2+.15&&Math.abs(point.z-b.z)<b.d/2+.15);const placed=(this.data.arrangements||[]).find(p=>{const g=this.groups.get(p.id);return g&&ray.intersectObject(g,true).length||Math.hypot(point.x-p.x,point.z-p.z)<P.radius(p.species,p.container)+.18;});this.hoverBed=placed?.id||bed?.id;this.toolTarget.set(point.x-.4,.95,point.z);if(click)e.stopImmediatePropagation();return;}
    const tool=[...this.toolModels].find(([,m])=>ray.intersectObject(m,true).length||ray.ray.distanceSqToPoint(m.position.clone().add(new this.T.Vector3(0,.25,0)))<.14);if(tool){this.hover.hidden=false;this.hover.textContent=tool[0]==='water'?'洒水壶 · 点击拿起':'肥料罐 · 点击拿起';this.hover.style.left=e.clientX+12+'px';this.hover.style.top=e.clientY-44+'px';if(click){e.stopImmediatePropagation();this.takeTool(tool[0]);}return;}
    const placed=(this.data?.arrangements||[]).find(p=>{const g=this.groups.get(p.id);return g&&ray.intersectObject(g,true).length;});
-   if(placed){this.hover.hidden=false;this.hover.textContent=this.data.catalog.find(s=>s.id===placed.species).name+' · 点击查看或搬动';this.hover.style.left=Math.min(innerWidth-270,e.clientX+12)+'px';this.hover.style.top=Math.max(8,e.clientY-44)+'px';if(click){e.stopImmediatePropagation();this.inspectPlaced(placed);}return;}
+   if(placed){this.hover.hidden=false;this.hover.textContent=this.data.catalog.find(s=>s.id===placed.species).name+' · '+(placed.ready?'已成熟':placed.stage+'/10 · 生长中')+' · 点击照料或搬动';this.hover.style.left=Math.min(innerWidth-270,e.clientX+12)+'px';this.hover.style.top=Math.max(8,e.clientY-44)+'px';if(click){e.stopImmediatePropagation();this.inspectPlaced(placed);}return;}
    super.point(e,click);
   }
   update(dt){
@@ -149,15 +154,15 @@
    if(this.ghost&&this.targetPoint){const target=new this.T.Vector3(this.targetPoint.x,.035,this.targetPoint.z);this.ghost.position.lerp(target,reduced?1:1-Math.exp(-dt*22));this.ghost.rotation.y=this.placement.yaw;}
    if(this.mode!=='care')return;
    const model=this.toolModels.get(this.toolKind);model.position.lerp(this.toolTarget,1-Math.exp(-dt*18));
-   const bed=this.data?.beds.find(b=>b.id===this.hoverBed),p=bed?.plant;
+   const bed=this.data?.beds.find(b=>b.id===this.hoverBed)||(this.data?.arrangements||[]).find(p=>p.id===this.hoverBed),p=bed?.container?bed:bed?.plant;
    const eligible=p&&!p.ready&&(this.toolKind==='water'?!p.watered:!p.fertilized&&this.data.inventory.fertilizer>0);
    const active=this.pressed&&!this.panning&&eligible&&!this.busy;
    model.rotation.z+=( (active?-.65:0)-model.rotation.z)*(1-Math.exp(-dt*12));
    if(this.careBed!==bed?.id){this.careTime=0;this.careBed=bed?.id;}
-   if(active){this.careTime+=Math.min(dt,.05);this.hint.textContent=(this.toolKind==='water'?'正在浇水':'正在施肥')+' · 松开可停止';if(this.careTime>=1){this.pressed=false;this.careTime=0;void this.act(this.toolKind,{bed:bed.id,plant:p.id});}}
-   else if(this.pressed){this.careTime=0;this.hint.textContent=!p?'请对准有植物的种植床':p.ready?'植物已成熟':this.toolKind==='fertilize'&&!this.data.inventory.fertilizer?'肥料用完了，可在园艺商店补充':'今天已照料过了';}
+   if(active){this.careTime+=Math.min(dt,.05);this.hint.textContent=(this.toolKind==='water'?'正在浇水':'正在施肥')+' · 松开可停止';if(this.careTime>=1){this.pressed=false;this.careTime=0;void this.act(this.toolKind,bed.container?{id:p.id,revision:p.revision}:{bed:bed.id,plant:p.id});}}
+   else if(this.pressed){this.careTime=0;this.hint.textContent=!p?'请对准种植床或岛上的幼苗':p.ready?'植物已成熟':this.toolKind==='fertilize'&&!this.data.inventory.fertilizer?'肥料用完了，可在园艺商店补充':'今天已照料过了';}
    this.meter.value=this.careTime;this.particles.visible=!!active;
-   if(active){this.particles.material.color.set(this.toolKind==='water'?0xa9e5ec:0xc7a66e);model.updateMatrixWorld(true);const start=model.localToWorld(new this.T.Vector3(.56,.48,0));for(let i=0;i<64;i++){const t=(now*.0018+i/64)%1,spread=.12*Math.sin(i*18.3);this.particleMatrix.position.set(start.x+(bed.x-start.x)*t+spread*t,start.y+(.23-start.y)*t*t,start.z+(bed.z-start.z)*t+Math.cos(i*13)*.12*t);this.particleMatrix.scale.setScalar(this.toolKind==='water'?.7:1);this.particleMatrix.updateMatrix();this.particles.setMatrixAt(i,this.particleMatrix.matrix);}this.particles.instanceMatrix.needsUpdate=true;}
+   if(active){this.particles.material.color.set(this.toolKind==='water'?0xa9e5ec:0xc7a66e);model.updateMatrixWorld(true);const start=model.localToWorld(new this.T.Vector3(.56,.48,0));for(let i=0;i<64;i++){const t=(now*.0018+i/64)%1,spread=.12*Math.sin(i*18.3);this.particleMatrix.position.set(start.x+(bed.x-start.x)*t+spread*t,start.y+((bed.container==='pot'?.325:bed.container?.035:.23)-start.y)*t*t,start.z+(bed.z-start.z)*t+Math.cos(i*13)*.12*t);this.particleMatrix.scale.setScalar(this.toolKind==='water'?.7:1);this.particleMatrix.updateMatrix();this.particles.setMatrixAt(i,this.particleMatrix.matrix);}this.particles.instanceMatrix.needsUpdate=true;}
   }
   cancelDirect(){
    if(this.savedControls&&this.a.controls){this.a.controls.mouseButtons.MIDDLE=this.savedControls.middle;this.a.controls.enablePan=this.savedControls.pan;this.savedControls=null;}this.panning=false;

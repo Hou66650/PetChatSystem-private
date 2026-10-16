@@ -92,11 +92,15 @@ class DirectGardenTests(unittest.TestCase):
             with sqlite3.connect(database) as db:
                 db.execute("CREATE TABLE farm_plants(owner TEXT,bed TEXT,id TEXT,species TEXT,planted REAL,bonus REAL DEFAULT 0,water_day TEXT DEFAULT '',PRIMARY KEY(owner,bed))")
                 db.execute("INSERT INTO farm_plants(owner,bed,id,species,planted) VALUES ('user:legacy','bed-1','kept-plant','cosmos',?)",(time.time(),))
+                db.execute("CREATE TABLE farm_arrangements(owner TEXT,id TEXT,species TEXT,container TEXT,x REAL,z REAL,yaw REAL,revision INTEGER DEFAULT 1,created REAL,PRIMARY KEY(owner,id))")
+                db.execute("INSERT INTO farm_arrangements VALUES ('user:legacy','kept-decor','cosmos','pot',0,4,0,1,1)")
             db.close()
             class Migrated(Config):DATABASE_PATH=str(database);TESTING=True
             restored=create_app(Migrated)
             with restored.app_context():
                 row=get_db().execute('SELECT * FROM farm_plants').fetchone()
                 self.assertEqual(row['id'],'kept-plant');self.assertEqual(row['fertilizer_day'],'')
+                placed=farm.arrangements(get_db(),'user:legacy')[0]
+                self.assertEqual(placed['id'],'kept-decor');self.assertTrue(placed['ready']);self.assertEqual(placed['stage'],10)
 
 if __name__=='__main__':unittest.main()

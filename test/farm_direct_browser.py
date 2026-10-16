@@ -33,6 +33,10 @@ with tempfile.TemporaryDirectory() as folder:
         from unittest.mock import patch
         with patch.object(farm_service.secrets,'randbelow',return_value=0):farm_service.resolve_blooms(get_db(),companion_service.owner_key())
         return {'ok':True}
+    @app.post('/fixture-transplant-age')
+    def transplant_age():
+        with get_db() as db:db.execute('UPDATE farm_arrangements SET planted=planted-?',(24*3600,))
+        return {'ok':True}
     server=make_server('127.0.0.1',0,app,threaded=True)
     worker=threading.Thread(target=server.serve_forever,daemon=True);worker.start()
     try:

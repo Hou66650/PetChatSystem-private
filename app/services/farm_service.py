@@ -45,6 +45,10 @@ def init_schema():
         db.execute("ALTER TABLE farm_plants ADD COLUMN fertilizer_day TEXT NOT NULL DEFAULT ''")
     if 'bloom_resolved' not in [r['name'] for r in db.execute('PRAGMA table_info(farm_plants)')]:
         db.execute("ALTER TABLE farm_plants ADD COLUMN bloom_resolved INTEGER NOT NULL DEFAULT 0")
+    # NULL planted marks existing mature decorations; never regress legacy plants.
+    columns={r['name'] for r in db.execute('PRAGMA table_info(farm_arrangements)')}
+    for name,definition in [('planted','REAL'),('bonus','REAL NOT NULL DEFAULT 0'),('water_day',"TEXT NOT NULL DEFAULT ''"),('fertilizer_day',"TEXT NOT NULL DEFAULT ''"),('bloom_resolved','INTEGER NOT NULL DEFAULT 1')]:
+        if name not in columns:db.execute('ALTER TABLE farm_arrangements ADD COLUMN '+name+' '+definition)
     db.commit()
 
 def stock(db,owner,item,n):
@@ -56,23 +60,26 @@ def stock(db,owner,item,n):
 
 def growth(row,now):
     duration=SPECIES[row['species']]['hours']*3600
-    age=max(0,now-row['planted'])+row['bonus'];progress=min(1,age/duration)
+    rate=.25 if 'container' in row.keys() else 1
+    age=duration if row['planted'] is None else max(0,now-row['planted'])*rate+row['bonus'];progress=max(0,min(1,age/duration))
     # Stage 10 always means harvestable; no confusing near-mature harvest button.
     stage=10 if progress>=1 else 1+min(8,int(progress*9))
-    return dict(stage=stage,progress=progress,remaining=max(0,duration-age),ready=progress>=1)
+    return dict(stage=stage,progress=progress,remaining=max(0,duration-age)/rate,ready=progress>=1,growthRate=rate)
 
 def resolve_blooms(db,owner):
     # One atomic maturity roll per plant. All consumers use the persisted cultivar.
     own=not db.in_transaction
     if own:db.execute('BEGIN IMMEDIATE')
     try:
-        for row in db.execute('SELECT * FROM farm_plants WHERE owner=? AND bloom_resolved=0',(owner,)).fetchall():
-            spec=SPECIES[row['species']]
-            if not growth(row,time.time())['ready']:continue
-            variant=row['species']+'-dream' if spec.get('mutationChance') and not spec.get('variantOf') and secrets.randbelow(10)==0 else row['species']
-            db.execute('UPDATE farm_plants SET species=?,bloom_resolved=1 WHERE owner=? AND id=?',(variant,owner,row['id']))
-            if variant!=row['species']:
-                db.execute('INSERT INTO farm_events(owner,created,kind,summary) VALUES (?,?,?,?)',(owner,time.time(),'mutation',bed_name(row['bed'])+'的'+spec['name']+'成熟时变异为'+SPECIES[variant]['name']))
+        for table in ('farm_plants','farm_arrangements'):
+            for row in db.execute('SELECT * FROM '+table+' WHERE owner=? AND bloom_resolved=0',(owner,)).fetchall():
+                spec=SPECIES[row['species']]
+                if not growth(row,time.time())['ready']:continue
+                variant=row['species']+'-dream' if spec.get('mutationChance') and not spec.get('variantOf') and secrets.randbelow(10)==0 else row['species']
+                db.execute('UPDATE '+table+' SET species=?,bloom_resolved=1 WHERE owner=? AND id=?',(variant,owner,row['id']))
+                if variant!=row['species']:
+                    location=bed_name(row['bed']) if table=='farm_plants' else '岛上移栽'
+                    db.execute('INSERT INTO farm_events(owner,created,kind,summary) VALUES (?,?,?,?)',(owner,time.time(),'mutation',location+'的'+spec['name']+'成熟时变异为'+SPECIES[variant]['name']))
         if own:db.commit()
     except Exception:
         if own:db.rollback()
@@ -94,7 +101,8 @@ def state(owner):
 
 
 def arrangements(db,owner):
-    return [dict(r) for r in db.execute('SELECT id,species,container,x,z,yaw,revision,created FROM farm_arrangements WHERE owner=? ORDER BY created,id',(owner,))]
+    now=time.time()
+    return [dict(**{k:r[k] for k in ('id','species','container','x','z','yaw','revision','created')},**growth(r,now),watered=r['water_day']==wallet.day(),fertilized=r['fertilizer_day']==wallet.day()) for r in db.execute('SELECT * FROM farm_arrangements WHERE owner=? ORDER BY created,id',(owner,))]
 
 def operate(owner,op,data):
     if not owner.startswith('user:'):raise Error('请登录后保存你的花园',403)
@@ -132,6 +140,16 @@ def operate(owner,op,data):
             stock(db,owner,'seed:'+p['id'],-1)
             db.execute('INSERT INTO farm_plants(owner,bed,id,species,planted) VALUES (?,?,?,?,?)',(owner,bed['id'],uuid.uuid4().hex,p['id'],time.time()))
             event_text='主人在'+bed_name(bed['id'])+'种下了'+p['name']
+        elif op in ('water','fertilize') and data.get('id'):
+            row=db.execute('SELECT * FROM farm_arrangements WHERE owner=? AND id=?',(owner,str(data['id']))).fetchone()
+            if not row or type(data.get('revision'))!=int or data['revision']!=row['revision']:raise Error('植物已变化，请刷新后重试',409)
+            if growth(row,time.time())['ready']:raise Error('植物已成熟，不需要继续加速生长',409)
+            column='water_day' if op=='water' else 'fertilizer_day'
+            if row[column]==wallet.day():raise Error('今天已照料过了，不需要重复添加',409)
+            if op=='fertilize':stock(db,owner,'fertilizer',-1)
+            bonus=SPECIES[row['species']]['hours']*3600*(.08 if op=='water' else .06)
+            db.execute('UPDATE farm_arrangements SET bonus=bonus+?,'+column+'=?,revision=revision+1 WHERE owner=? AND id=?',(bonus,wallet.day(),owner,row['id']))
+            event_text='主人给岛上的'+SPECIES[row['species']]['name']+('浇了水' if op=='water' else '施了肥')
         elif op in ('water','fertilize','harvest'):
             if not isinstance(data.get('bed'),str) or not isinstance(data.get('plant'),str):raise Error('缺少植物编号')
             row=db.execute('SELECT * FROM farm_plants WHERE owner=? AND bed=? AND id=?',(owner,data['bed'],data['plant'])).fetchone()
@@ -161,7 +179,7 @@ def operate(owner,op,data):
                 species=previous['species'];container=previous['container']
             elif data.get('bed'):
                 source=db.execute('SELECT * FROM farm_plants WHERE owner=? AND bed=? AND id=?',(owner,str(data['bed']),str(data.get('plant','')))).fetchone()
-                if not source or not growth(source,time.time())['ready']:raise Error('请选择当前种植床里已经成熟的植物',409)
+                if not source:raise Error('植物已变化，请重新选择种植床里的植物',409)
                 species=source['species'];container=data.get('container')
             else:species=data.get('species');container=data.get('container')
             point=dict(species=species,container=container,x=data.get('x'),z=data.get('z'),yaw=data.get('yaw',0))
@@ -176,15 +194,22 @@ def operate(owner,op,data):
                 if source:db.execute('DELETE FROM farm_plants WHERE owner=? AND bed=?',(owner,source['bed']))
                 else:stock(db,owner,species,-1)
                 if container=='pot':stock(db,owner,'pot',-1)
-                db.execute('INSERT INTO farm_arrangements VALUES (?,?,?,?,?,?,?,?,?)',(owner,uuid.uuid4().hex,species,container,point['x'],point['z'],point['yaw']%6.28318530718,1,time.time()))
+                now=time.time();age=growth(source,now)['progress']*SPECIES[species]['hours']*3600 if source else 0
+                db.execute('INSERT INTO farm_arrangements(owner,id,species,container,x,z,yaw,revision,created,planted,bonus,water_day,fertilizer_day,bloom_resolved) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(owner,uuid.uuid4().hex,species,container,point['x'],point['z'],point['yaw']%6.28318530718,1,now,now if source else None,age,source['water_day'] if source else '',source['fertilizer_day'] if source else '',source['bloom_resolved'] if source else 1))
                 event_text='主人把'+SPECIES[species]['name']+('连盆摆放在岛上' if container=='pot' else '栽进岛屿土壤')
         elif op=='recover-arrangement':
             row=db.execute('SELECT * FROM farm_arrangements WHERE owner=? AND id=?',(owner,str(data.get('id','')))).fetchone()
             if not row or type(data.get('revision'))!=int or row['revision']!=data['revision']:raise Error('植物已变化，请刷新后重试',409)
-            stock(db,owner,row['species'],1)
+            g=growth(row,time.time())
+            if not g['ready']:
+                occupied={r['bed'] for r in db.execute('SELECT bed FROM farm_plants WHERE owner=?',(owner,))}
+                bed=next((b for b in BEDS.values() if b['id'] not in occupied and bool(b.get('nursery'))==(SPECIES[row['species']]['kind']=='tree')),None)
+                if not bed:raise Error('请先空出一块对应的种植床，幼苗将保留进度移回种植床',409)
+                db.execute('INSERT INTO farm_plants(owner,bed,id,species,planted,bonus,water_day,fertilizer_day,bloom_resolved) VALUES (?,?,?,?,?,?,?,?,?)',(owner,bed['id'],row['id'],row['species'],time.time(),g['progress']*SPECIES[row['species']]['hours']*3600,row['water_day'],row['fertilizer_day'],row['bloom_resolved']))
+            else:stock(db,owner,row['species'],1)
             if row['container']=='pot':stock(db,owner,'pot',1)
             db.execute('DELETE FROM farm_arrangements WHERE owner=? AND id=?',(owner,row['id']))
-            event_text='主人把岛上的'+SPECIES[row['species']]['name']+'收回仓库'
+            event_text='主人把岛上的'+SPECIES[row['species']]['name']+('收回仓库' if g['ready'] else '移回'+bed_name(bed['id'])+'继续生长')
         elif op=='place':
             slot=SLOTS.get(data.get('slot')) if isinstance(data.get('slot'),str) else None
             p=SPECIES.get(data.get('species')) if isinstance(data.get('species'),str) else None
