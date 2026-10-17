@@ -30,6 +30,8 @@ private:
     void UpdateCursor();
     void FocusPet();
     void ToggleInterface();
+    void MovePetToCursor();
+    void GreetPet();
     bool bOrbit = false;
     bool bPan = false;
     float TargetDistance = 2200.f;

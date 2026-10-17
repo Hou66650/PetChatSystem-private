@@ -1,4 +1,5 @@
 #include "PaitPreviewPawn.h"
+#include "PaitMeadowPet.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -41,6 +42,8 @@ void APaitPreviewPawn::SetupPlayerInputComponent(UInputComponent* Input)
     Input->BindAction(TEXT("ResetView"), IE_Pressed, this, &APaitPreviewPawn::ResetView);
     Input->BindKey(EKeys::C, IE_Pressed, this, &APaitPreviewPawn::FocusPet);
     Input->BindKey(EKeys::H, IE_Pressed, this, &APaitPreviewPawn::ToggleInterface);
+    Input->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &APaitPreviewPawn::MovePetToCursor);
+    Input->BindKey(EKeys::G, IE_Pressed, this, &APaitPreviewPawn::GreetPet);
 }
 void APaitPreviewPawn::Tick(float DeltaSeconds)
 {
@@ -107,4 +110,17 @@ void APaitPreviewPawn::ToggleInterface()
 {
     if (APlayerController* PC = Cast<APlayerController>(Controller))
         if (AHUD* HUD = PC->GetHUD()) HUD->bShowHUD = !HUD->bShowHUD;
+}
+void APaitPreviewPawn::MovePetToCursor()
+{
+    if (bOrbit || bPan) return;
+    APlayerController* PC=Cast<APlayerController>(Controller);
+    FHitResult Hit;
+    if (!PC || !PC->GetHitResultUnderCursor(ECC_Visibility,true,Hit) || !Hit.GetActor() ||
+        !Hit.GetActor()->ActorHasTag(TEXT("PaitGround"))) return;
+    for (TActorIterator<APaitMeadowPet> It(GetWorld()); It; ++It) { It->RequestMove(Hit.ImpactPoint); break; }
+}
+void APaitPreviewPawn::GreetPet()
+{
+    for (TActorIterator<APaitMeadowPet> It(GetWorld()); It; ++It) { It->Greet(); break; }
 }

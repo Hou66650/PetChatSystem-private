@@ -1,6 +1,8 @@
 #include "PaitQualificationGameMode.h"
 #include "PaitPreviewPawn.h"
 #include "PaitQualificationRun.h"
+#include "PaitMeadowPet.h"
+#include "EngineUtils.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -40,6 +42,8 @@ void APaitQualificationGameMode::BeginPlay()
         return;
     }
     bSmokeRun = FParse::Param(FCommandLine::Get(), TEXT("PaitSmoke"));
+    if (GetWorld()->GetMapName().Contains(TEXT("P1_MeadowV2")))
+        GetWorld()->SpawnActor<APaitMeadowPet>();
     if (bSmokeRun)
     {
         SmokeStarted = FPlatformTime::Seconds();
@@ -101,7 +105,7 @@ void APaitQualificationHUD::DrawHUD()
 {
     Super::DrawHUD();
     if (!Canvas) return;
-    DrawRect(FLinearColor(0.025f, .07f, .06f, .8f), 20.f, 20.f, 650.f, 106.f);
+    DrawRect(FLinearColor(0.025f, .07f, .06f, .8f), 20.f, 20.f, 720.f, 132.f);
     const bool bMeadow = GetWorld()->GetMapName().Contains(TEXT("P1_MeadowV2"));
     DrawText(bMeadow ? TEXT("PAIT ISLAND | V2 meadow - interactive scene preview") : TEXT("PAIT ISLAND | P0 engine qualification only"), FLinearColor::White,
         36.f, 32.f, nullptr, 1.2f);
@@ -110,4 +114,7 @@ void APaitQualificationHUD::DrawHUD()
     DrawText(FString::Printf(TEXT("GPU: %s | %s"), *GRHIAdapterName,
         bMeadow ? TEXT("Materials and gameplay in progress") : TEXT("Not the final cat island")),
         FLinearColor(.9f, .8f, .5f), 36.f, 91.f, nullptr, 1.f);
+    if (bMeadow)
+        for (TActorIterator<APaitMeadowPet> It(GetWorld()); It; ++It)
+        { DrawText(It->GetStatus(),FLinearColor(.9f,.95f,.9f),36.f,118.f,nullptr,1.f); break; }
 }

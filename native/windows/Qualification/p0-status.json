@@ -2,7 +2,7 @@
   "schema_version": 1,
   "date": "2026-10-17",
   "phase": "P1",
-  "status": "complete_v2_scene_browsing_preview_gameplay_pending",
+  "status": "p1_basic_grounded_pet_interaction_preview",
   "branch": "codex/windows-client",
   "client_version": "0.1.0",
   "framework": {
@@ -55,7 +55,10 @@
     "v2_static_mesh_count": 304,
     "v2_shipping_launch_actual_map_checked": true,
     "v2_base_palette_restored": true,
-    "v2_non_power_of_two_texture_repair": true
+    "v2_non_power_of_two_texture_repair": true,
+    "p1_shipping_out_and_back_movement": true,
+    "p1_greeting_clip_runtime": true,
+    "p1_outside_target_rejected": true
   },
   "not_validated": {
     "interactive_editor_ui": false,
@@ -69,10 +72,10 @@
   },
   "blockers": [],
   "next": [
-    "Ground contact and selective terrain/obstacle collision, then isolated click-to-move and pet interaction",
-    "Rebuild/bake V2 procedural material detail and improve cloud composition",
-    "Connect pet Agent using isolated state; migrate business features incrementally",
-    "Focused launch/input/clipping checks and actual performance sampling"
+    "Improve close-up canopy lighting, grass shadows and non-Nanite VSM pressure",
+    "Refine bridge/greenhouse/cat-bed navigation and animation blending; inspect foot contact",
+    "Connect pet Agent to isolated native scene state and local actions",
+    "Migrate care/planting/voice business features incrementally; sample actual performance"
   ],
   "notes": [
     "Unit tests use synthetic data and fake temporary engine files; these are not device performance or compile results.",
@@ -115,13 +118,22 @@
     "runtime_evidence": "meadow-v2-runtime-evidence.json",
     "launcher": "打开猫岛预览.cmd",
     "notes": [
-      "Complete scene browsing preview, not complete gameplay.",
-      "Palette constants restored from frozen Blender source; procedural microtexture is not baked.",
-      "Static mesh collision, distance fields and Lumen mesh cards disabled for first look; re-enable selectively with navigation.",
-      "Cat is fixed-location idle animation; Agent and grounded navigation pending.",
-      "C/H bindings compiled but not yet manually exercised. No measured FPS claim.",
-      "Latest screenshot: island fully framed; cloud sea visible but grainy and flat, not final lighting quality."
+      "V2 layout and basic click-to-move/G greeting implemented; no autonomous pet Agent yet.",
+      "34 authored solid/ground meshes have query collision and dynamic Recast navigation. Distance fields, Lumen mesh cards and LODs still pending.",
+      "Route precheck rejects unsupported surface changes and unsafe crossings. Some narrow/stepped routes remain unavailable pending refinement.",
+      "Physical-ground motion anchor and anatomical facing offset replace fixed-position idle. Per-foot IK and animation blending pending.",
+      "Canopy shade too dark; editor close-up showed non-Nanite VSM queue overflow. Needs targeted rendering optimization.",
+      "Mouse/key events are compiled but not manually tested; no FPS claim."
     ],
-    "last_shipping_run": "Saved/Qualification/Launch-Shipping-20261017-171645"
+    "last_shipping_run": "Saved/Qualification/Launch-Shipping-20261017-171645",
+    "interaction_work": {
+      "status": "shipping_automated_route_and_greeting_passed",
+      "collision_meshes": 34,
+      "evidence": "meadow-interaction-evidence.json",
+      "travel_cm": 688.914306640625,
+      "actual_map": "P1_MeadowV2",
+      "manual_input_validated": false,
+      "full_island_routes_validated": false
+    }
   }
 }

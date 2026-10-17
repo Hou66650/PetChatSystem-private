@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)][string]$EngineRoot,
-    [ValidateSet("Generate", "Editor", "CreateMap", "ImportAsset", "ImportPet", "RepairFur", "RepairLighting", "ImportMeadow", "FinishMeadow", "Package")][string]$Mode = "Editor",
+    [ValidateSet("Generate", "Editor", "CreateMap", "ImportAsset", "ImportPet", "RepairFur", "RepairLighting", "ImportMeadow", "FinishMeadow", "PrepareNavigation", "Package")][string]$Mode = "Editor",
     [ValidateSet("Development", "Shipping")][string]$Configuration = "Development",
     [string]$PythonExe = "python"
 )
@@ -123,6 +123,16 @@ switch ($Mode) {
             $result = Get-Content -LiteralPath $evidence -Raw | ConvertFrom-Json
             if ($result.status -ne "saved_requires_runtime_review") { throw "Meadow finishing did not save." }
         }
+    }
+    "PrepareNavigation" {
+        $started = [DateTime]::UtcNow
+        $script = Join-Path $projectRoot 'Scripts/prepare_meadow_navigation.py'
+        $evidence = Join-Path $projectRoot 'Saved/Qualification/meadow-navigation-setup.json'
+        & $editor $projectFile "-ExecutePythonScript=$script" -unattended -nosplash -nullrhi -stdout
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $evidence) -or
+            (Get-Item -LiteralPath $evidence).LastWriteTimeUtc -lt $started) { throw 'Navigation setup evidence missing.' }
+        $result = Get-Content -LiteralPath $evidence -Raw | ConvertFrom-Json
+        if ($result.status -ne 'saved_requires_runtime_navigation_check') { throw 'Navigation setup did not save.' }
     }
     "Package" {
         if (-not (Test-Path -LiteralPath $mapFile)) { throw "Build editor and CreateMap first." }

@@ -1,0 +1,78 @@
+{
+  "scope": "Isolated standard cat on complete V2 island; one automated out-and-back route and greeting, not complete Agent/gameplay",
+  "runtime": {
+    "passed": true,
+    "error": "",
+    "actual_map": "P1_MeadowV2",
+    "elapsed_seconds": 30.003938674926758,
+    "travel_cm": 688.914306640625,
+    "max_root_ground_error_cm": 2.842170943040401e-14,
+    "root_lift_cm": -3.582104206085205,
+    "heading_offset_deg": 86.5910415649414,
+    "end_feet_cm": "X=-190.000 Y=-203.456 Z=2.500",
+    "test_start_cm": "X=-190.000 Y=-200.000 Z=2.500",
+    "test_destination_cm": "X=-190.000 Y=-550.000 Z=10.000",
+    "outside_destination_rejected": true,
+    "manual_input_validated": false,
+    "performance_qualified": false
+  },
+  "launch": {
+    "executable_sha256": "7710AA489033372DA39275F5D16484C17B08947D350E6FA51A34BD429E663A5E",
+    "packaged_content": [
+      {
+        "file": "global.ucas",
+        "bytes": 3204496,
+        "sha256": "6CC6AB101AE1918029D99FC530CB6C38A3B95E93396F847CEA5C0BE6FCB71D21"
+      },
+      {
+        "file": "global.utoc",
+        "bytes": 782,
+        "sha256": "FC8A92952E7A0B2276F2C762D0DCE4EAE6D0D95BAD0E1547186DFF44D057024E"
+      },
+      {
+        "file": "PaitIsland-Windows.pak",
+        "bytes": 10943966,
+        "sha256": "ED18C1A27575E011C4F6D537984F9BAF44470AB0C9937320BE59249A04E71685"
+      },
+      {
+        "file": "PaitIsland-Windows.ucas",
+        "bytes": 666537440,
+        "sha256": "CAD62F267E6C1403ADA12474DF27294B448D2E06E62ECE1284558C2703EF3B66"
+      },
+      {
+        "file": "PaitIsland-Windows.utoc",
+        "bytes": 465325,
+        "sha256": "146311B0502B77FEF1B968F9237D2F5478BDF6B4AC5535D6579ED30A1511A86D"
+      }
+    ],
+    "exit_code": 0,
+    "manual_input_validated": false,
+    "performance_qualified": false
+  },
+  "captures": [
+    {
+      "file": "meadow-walking.png",
+      "sha256": "42608d7df53c2db03d6c7e48eb4a04be4f17f78209972c6dc10caa9f7af8971b"
+    },
+    {
+      "file": "meadow-greeting.png",
+      "sha256": "16a2c1bd49e0a07a8844eefa71627a33612b573914b6fcd3e263f96a0ce33bc9"
+    }
+  ],
+  "collider_count": 34,
+  "build_log": "Saved/Qualification/package-meadow-navigation-r4.log",
+  "visual_review": [
+    "Walking and raised paw are visible; no major body/ground penetration seen in these two captures.",
+    "Canopy shade remains too dark; grass shadows and microgeometry need refinement.",
+    "Editor-game close-up emitted a non-Nanite VSM marking queue overflow warning. Shipping screenshot silence does not prove this performance issue fixed."
+  ],
+  "limitations": [
+    "Only one accepted route tested; not every bridge, greenhouse passage or cat-bed path.",
+    "Root ground metric measures the motion anchor, not per-paw IK or foot clearance.",
+    "Mouse/key event flow not manually exercised; test calls the same movement/greeting functions.",
+    "Animation switching has no blended state machine yet.",
+    "No autonomous Agent, account, care, planting or portal migration in this batch.",
+    "No FPS or long-run performance acceptance."
+  ],
+  "production_writes": false
+}
