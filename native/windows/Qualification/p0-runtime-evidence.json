@@ -1,0 +1,36 @@
+{
+  "configuration": "Shipping",
+  "executable_sha256": "E570FA6E5B12068C9B017E1AA5D147DD545EF4B8646B19FCF615925CD1B911A4",
+  "exit_code": 0,
+  "screenshot_sha256": "612AA3EAA994BCA4AA8FC367281D1681D39371BFE0CE1D79E1C0B26806AFA35B",
+  "status": "rendered_capture_saved_requires_visual_review",
+  "performance_qualified": false,
+  "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+  "utc": "2026-10-17T06:20:13.6646196Z",
+  "schema_version": 1,
+  "resolution": [
+    1600,
+    900
+  ],
+  "rhi": "DX12",
+  "shader_model": "SM6",
+  "source_asset_sha256": "05d8c8c1291c60575335feddf122e6b17bc033bd1cd76607853a8a4e8842d100",
+  "imported_static_meshes": 7,
+  "screenshot": "shipping-runtime-20261017.png",
+  "visual_review": {
+    "geometry_visible": true,
+    "exposure_clipping_corrected": true,
+    "final_visual_qualified": false,
+    "findings": [
+      "Visible greenhouse frame, glass panels and bridge masonry",
+      "Diagnostic cubes overlap bridge; fixture layout must be separated before visual comparison",
+      "Environment is dark with black sky; glass and indirect lighting need dedicated qualification"
+    ]
+  },
+  "limitations": [
+    "Short diagnostic only, no FPS claim",
+    "V1 public architecture import, not latest V2 full island",
+    "Editor offline import does not validate runtime private GLB support",
+    "Other machines and GPUs untested"
+  ]
+}

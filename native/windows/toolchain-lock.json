@@ -1,29 +1,33 @@
 {
   "schema_version": 1,
-  "status": "unqualified",
+  "status": "qualification_in_progress",
   "engine": {
     "candidate_series": "5.8",
-    "exact_version": null,
-    "build_id": null,
-    "build_version_sha256": null,
+    "exact_version": "5.8.3",
+    "build_id": 58210709,
+    "build_version_sha256": "eab58750e84719489f3ee0d42d05a533ceb357eb3ee511777e9408d27a85f43c",
     "preview_allowed": false
   },
   "compiler": {
     "visual_studio_version": "17.14.37806.7",
     "msvc_toolset": "14.44.35207",
     "cl_file_version": "19.44.35229.0",
-    "status": "installed_smoke_passed_ue_unqualified"
+    "status": "ue_editor_development_shipping_compiled"
   },
   "windows_sdk": {
     "version": "10.0.26100.0",
-    "status": "installed_smoke_passed_ue_unqualified"
+    "status": "ue_build_cook_passed"
   },
   "qualification": {
-    "editor_build": false,
-    "shipping_build": false,
-    "cook": false,
-    "launch": false,
-    "real_asset_import": false
+    "editor_build": true,
+    "shipping_build": true,
+    "cook": true,
+    "launch": true,
+    "real_asset_import": true,
+    "skeletal_animation": false,
+    "transparent_material_visual": false,
+    "five_minute_run": false,
+    "clean_build_machine": false
   },
-  "note": "Compiler/SDK installed and standalone smoke passed. UE 5.8.3 download/install is in progress at D:\\Epic Games\\UE_5.8. Freeze exact engine build after actual UE compile, Cook and launch qualification."
+  "note": "Exact installed build recorded from Build.version and real UBT/Cook/Shipping run. Overall P0 remains incomplete: skeleton, transparency, five-minute stability, clean-machine reproduction and visual/performance gates pending."
 }

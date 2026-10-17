@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)][string]$EngineRoot,
-    [ValidateSet("Generate", "Editor", "CreateMap", "Package")][string]$Mode = "Editor",
+    [ValidateSet("Generate", "Editor", "CreateMap", "ImportAsset", "Package")][string]$Mode = "Editor",
     [ValidateSet("Development", "Shipping")][string]$Configuration = "Development",
     [string]$PythonExe = "python"
 )
@@ -28,6 +28,20 @@ switch ($Mode) {
         & $editor $projectFile "-ExecutePythonScript=$script" -unattended -nosplash -nullrhi -log
         if ($LASTEXITCODE -eq 0 -and -not (Test-Path -LiteralPath $mapFile)) {
             throw "Editor exited without creating the map. Inspect Saved/Logs."
+        }
+    }
+    "ImportAsset" {
+        if (-not (Test-Path -LiteralPath $mapFile)) { throw "CreateMap first." }
+        $importReport = Join-Path $projectRoot "Saved/Qualification/asset-import.json"
+        if (Test-Path -LiteralPath $importReport) { throw "Import already recorded; inspect it rather than overwriting." }
+        $script = Join-Path $projectRoot "Scripts/import_qualification_asset.py"
+        & $editor $projectFile "-ExecutePythonScript=$script" -unattended -nosplash -nullrhi -log
+        if ($LASTEXITCODE -eq 0) {
+            if (-not (Test-Path -LiteralPath $importReport)) { throw "Import evidence is missing. Inspect Saved/Logs." }
+            $result = Get-Content -LiteralPath $importReport -Raw | ConvertFrom-Json
+            if ($result.status -ne "editor_import_saved" -or $result.static_meshes.Count -lt 1) {
+                throw "Import did not produce verified static meshes."
+            }
         }
     }
     "Package" {

@@ -18,4 +18,12 @@ class PAITISLAND_API APaitQualificationGameMode : public AGameModeBase
 public:
     APaitQualificationGameMode();
     virtual void BeginPlay() override;
+    virtual void Tick(float DeltaSeconds) override;
+private:
+    bool bSmokeRun = false;
+    bool bCaptureRequested = false;
+    double SmokeStarted = 0.0;
+    double CaptureRequestedAt = 0.0;
+    uint64 SmokeFrames = 0;
+    FString SmokeScreenshot;
 };

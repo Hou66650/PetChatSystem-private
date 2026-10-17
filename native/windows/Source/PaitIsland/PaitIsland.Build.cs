@@ -8,6 +8,6 @@ public class PaitIsland : ModuleRules
         PublicDependencyModuleNames.AddRange(new string[] {
             "Core", "CoreUObject", "Engine", "InputCore"
         });
-        PrivateDependencyModuleNames.AddRange(new string[] { "RHI" });
+        PrivateDependencyModuleNames.AddRange(new string[] { "RHI", "Json" });
     }
 }

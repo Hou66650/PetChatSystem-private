@@ -2,11 +2,11 @@
   "schema_version": 1,
   "date": "2026-10-17",
   "phase": "P0",
-  "status": "engine_installation_in_progress",
+  "status": "compile_cook_shipping_launch_passed_visual_qualification_pending",
   "branch": "codex/windows-client",
   "client_version": "0.1.0",
   "framework": {
-    "engine": "Unreal Engine 5.8 candidate",
+    "engine": "Unreal Engine 5.8.3 / CL 58210709",
     "runtime": "C++ / Blueprint",
     "rendering": "DX12 SM6; software Lumen baseline; HWRT and Nanite require separate qualification",
     "backend": "Existing Python backend retained; no production API access in P0"
@@ -27,31 +27,40 @@
     "public_meadow_modules_inventoried": 10,
     "source_bytes": 451619008,
     "msvc_cpp_compile_and_link": true,
-    "dx12_adapter_device_smoke": true
+    "dx12_adapter_device_smoke": true,
+    "ue_cpp_compile": true,
+    "editor_script_execution": true,
+    "development_package": true,
+    "shipping_package": true,
+    "shipping_launch": true,
+    "asset_import_mesh_count": 7,
+    "gpu_render": true
   },
   "not_validated": {
-    "ue_cpp_compile": false,
-    "editor_script_execution": false,
-    "editor_launch": false,
-    "development_package": false,
-    "shipping_package": false,
-    "asset_import": false,
-    "gpu_render": false,
-    "visual_quality": false,
-    "real_frame_rate": false
+    "latest_development_package_launch": false,
+    "interactive_editor_ui": false,
+    "five_minute_stability": false,
+    "skeletal_animation": false,
+    "transparent_material_quality": false,
+    "six_camera_visual_quality": false,
+    "runtime_ugc": false,
+    "real_frame_rate": false,
+    "final_v2_island": false
   },
-  "blockers": [
-    "UE 5.8.3 download/install is in progress at D:\\Epic Games\\UE_5.8; not ready to compile"
-  ],
+  "blockers": [],
   "next": [
-    "Wait for Epic engine installation and verification to finish",
-    "Rerun preflight, compile editor, create test map, package and launch",
-    "Record exact engine version and import one real asset before expanding P1"
+    "Rebuild and launch latest Development package after Blender renders release memory/GPU",
+    "Qualify glass/sky lighting, skeletal animation, six cameras and five-minute stability",
+    "Export latest dark-green/dark-wood V2 Blender assets with runtime materials and LOD; do not treat baseline V1 import as final art",
+    "Complete isolated P0/P1 interaction and real performance qualification before production feature migration"
   ],
   "notes": [
     "Unit tests use synthetic data and fake temporary engine files; these are not device performance or compile results.",
     "No webpage process restarted; no account or original art files modified.",
-    "A standalone C++ DXGI/D3D12 program compiled, linked and created a device on the discrete GPU. This does not validate Unreal Engine or frame rate."
+    "A standalone C++ DXGI/D3D12 program compiled, linked and created a device on the discrete GPU. This does not validate Unreal Engine or frame rate.",
+    "EOS InstallHelper completed with ProcessSuccess TRUE and ErrorCode OK at 2026-10-17 13:46 CST. Legacy LauncherInstalled.dat was empty; actual build and launch now confirm installation.",
+    "Shipping screenshot has visible greenhouse and bridge. Exposure clipping corrected; black background, glass, diagnostic cube overlap and environment lighting remain visual qualification work.",
+    "Shipping launch is a short 1600x900 diagnostic capture, not the planned 2560x1600 performance acceptance. Development first launch predates latest exposure/import changes."
   ],
   "installed_tools": {
     "epic_launcher": "D:\\Epic Games\\Launcher",
@@ -68,6 +77,8 @@
     "destination": "D:\\Epic Games\\UE_5.8",
     "download_gb_approx": 11.55,
     "installed_gb_approx": 29.51,
-    "complete": false
-  }
+    "complete": true,
+    "completed_local": "2026-10-17T13:46:05+08:00"
+  },
+  "runtime_evidence": "p0-runtime-evidence.json"
 }
