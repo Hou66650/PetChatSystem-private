@@ -24,3 +24,8 @@ body:has(.island-home){overflow:hidden}.island-home{position:fixed;inset:var(--n
 .island-home.is-entering .island-intro{opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
 @media(max-width:700px){.island-home.is-focused .island-intro{top:20px}.island-selection{width:100%;max-width:none;margin-bottom:14px;padding:14px 16px;gap:12px}.island-selection h2{font-size:23px;letter-spacing:2px}.island-selection p{max-width:230px}.island-selection #island-enter{padding:12px;gap:8px}.island-home.is-focused .island-shortcut-menu>summary{padding:9px 13px;font-size:11px}}
 @media(max-height:500px){.island-home.is-focused .island-intro,.island-tools{top:12px}.island-selection{padding:10px 14px;margin-bottom:10px}.island-selection h2{font-size:22px;margin:4px 0}.island-selection p{display:none}.island-choice{padding-top:8px;padding-bottom:8px}.island-home.is-focused .island-shortcuts{max-height:calc(100dvh - 180px)}}
+
+/* Five destinations retain readable touch targets. */
+.island-choices{width:min(850px,100%);grid-template-columns:repeat(5,minmax(0,1fr))}.island-choice[data-theme=park] i{background:#e6c477}.island-choice{min-height:44px;box-sizing:border-box}@media(max-width:700px){.island-choices{display:flex;overflow-x:auto;justify-content:flex-start}.island-choice{flex:0 0 110px}}
+
+@media(min-width:1000px){.island-home:not(.is-focused) .island-intro{width:290px;top:6%}.island-home:not(.is-focused) .island-heading h1{font-size:40px;letter-spacing:5px}.island-home:not(.is-focused) .island-shortcuts{max-width:260px;gap:7px}.island-home:not(.is-focused) .island-shortcuts a{font-size:11px;padding:10px 13px}}

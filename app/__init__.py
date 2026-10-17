@@ -53,6 +53,8 @@ def create_app(config_object=Config):
         diary_service.init_schema()
         from .services import growth_service
         growth_service.init_schema()
+        from .services import park_service
+        park_service.init_schema()
         from .services import portal_service
         portal_service.init_schema()
         from .services import cat_market_service

@@ -8,16 +8,17 @@
 <main class="island-home" data-version="{{ app_version }}" data-cat-model="{{ cat_model }}">
  <canvas id="island-home-canvas" tabindex="0" aria-label="三维群岛：拖动旋转，滚轮或双指缩放。也可使用下方岛屿按钮选择。"></canvas>
  <div class="island-intro"><header class="island-heading"><span class="island-eyebrow">ABOVE THE CLOUDS / 云海之上</span><h1>在云海尽头，<br>与你相遇。</h1><p>穿过山风与晨雾，抵达它等你的地方。</p></header>
- <details class="island-shortcut-menu" open><summary>常用入口 <span aria-hidden="true">⌄</span></summary><nav class="island-shortcuts" aria-label="岛屿功能"><a href="/cat-agent-monitor">猫咪探索观测台 ↗</a><a href="/cat-market">猫咪外观市场 ↗</a><a href="/supplies">派特补给站 ↗</a><a href="/pet-studio">把我的宠物带到岛上 ↗</a></nav></details></div>
+ <details class="island-shortcut-menu" open><summary>常用入口 <span aria-hidden="true">⌄</span></summary><nav class="island-shortcuts" aria-label="岛屿功能"><a href="/park">去爪心乐园见伙伴 ↗</a><a href="/cat-agent-monitor">猫咪探索观测台 ↗</a><a href="/cat-market">猫咪外观市场 ↗</a><a href="/supplies">派特补给站 ↗</a><a href="/pet-studio">把我的宠物带到岛上 ↗</a></nav></details></div>
  <div class="island-tools" aria-label="视角控制"><button id="island-overview" type="button">群岛全景</button><button id="island-rotate" type="button" aria-pressed="false">自动环绕</button><button id="island-zoom-in" aria-label="拉近视角" type="button">＋</button><button id="island-zoom-out" aria-label="拉远视角" type="button">－</button></div>
  <div class="island-world-labels" aria-label="空间中的岛屿"></div>
  <section class="island-console" aria-label="选择小岛">
-  <div class="island-selection"><div><span id="island-kicker">四座岛屿 · 一片属于你的世界</span><h2 id="island-name">先四处看看吧</h2><p id="island-description">拖动环绕 · 滚轮缩放 · 点击岛屿近看</p></div><a id="island-enter" href="/den?pet=1&enter=island">去见球球 <span>↗</span></a></div>
+  <div class="island-selection"><div><span id="island-kicker">四座生活岛 · 一座公共乐园</span><h2 id="island-name">先四处看看吧</h2><p id="island-description">拖动环绕 · 滚轮缩放 · 点击岛屿近看</p></div><a id="island-enter" href="/den?pet=1&enter=island">去见球球 <span>↗</span></a></div>
   <div class="island-choices">
   {% set islands = [(1,'sakura','樱花庭院','球球 · 柴犬','风吹过花瓣，它跑过桥来迎接你。'),(2,'snow','雪境木屋','雪球 · 哈士奇','踩着松软的雪，一起去找新的快乐。'),(3,'room','雾林温室','团子 · 猫咪','阳光落在叶子上，留一会儿给慵懒。'),(4,'camp','山岭营地','德牧','山风与远方，还有始终陪着你的它。')] %}
   {% for id,theme,title,pet,description in islands %}
   <a class="island-choice" data-theme="{{ theme }}" data-title="{{ title }}" data-pet="{{ pet }}" data-description="{{ description }}" href="{{ url_for('chat.den',pet=id,enter='island') }}"><i></i><span>{{ title }}<small>{{ pet }}</small></span><b aria-hidden="true">↗</b></a>
   {% endfor %}
+  <a class="island-choice" data-theme="park" data-title="爪心乐园" data-pet="公共乐园 · 在线相遇" data-description="带伙伴来草坪上打招呼、玩彩球，和在线伙伴一起休息。" href="/park"><i></i><span>爪心乐园<small>一起玩一会儿</small></span><b aria-hidden="true">↗</b></a>
   </div>
  </section>
  <p id="island-preview-status" role="status">正在展开云端群岛…</p>
@@ -32,5 +33,6 @@
 <script src="/static/js/den/selected-assets.js?v={{ app_version }}"></script>
 <script src="/static/js/home-atmosphere.js?v={{ app_version }}"></script>
 <script src="/static/js/home-resident.js?v={{ app_version }}"></script>
+<script src="/static/js/park-scene.js?v={{ app_version }}"></script>
 <script src="/static/js/island-home.js?v={{ app_version }}"></script>
 {% endblock %}

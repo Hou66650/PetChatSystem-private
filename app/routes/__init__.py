@@ -24,5 +24,6 @@ from .mobile import bp as mobile_bp
 from .pet_care import bp as pet_care_bp
 from .vision import bp as vision_bp
 from .growth import bp as growth_bp
+from .park import bp as park_bp
 
-ALL_BLUEPRINTS = (growth_bp, vision_bp, pet_care_bp, mobile_bp, pet_voice_bp, farm_bp, pet_studio_bp, supplies_bp, cat_market_bp, portals_bp, cat_agent_bp, voiceprint_bp, main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)
+ALL_BLUEPRINTS = (park_bp, growth_bp, vision_bp, pet_care_bp, mobile_bp, pet_voice_bp, farm_bp, pet_studio_bp, supplies_bp, cat_market_bp, portals_bp, cat_agent_bp, voiceprint_bp, main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)
