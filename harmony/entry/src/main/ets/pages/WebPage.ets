@@ -3,6 +3,7 @@ import { preferences } from '@kit.ArkData';
 import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
 import { picker } from '@kit.CoreFileKit';
 import { PetApi } from '../service/PetApi';
+import { WebAudioCapture } from '../service/WebAudioCapture';
 import BuildProfile from '../../../../build/default/generated/profile/default/BuildProfile';
 import { NativePreview } from '../components/NativePreview';
 import { NativeDenNode } from '../components/NativeDenNode';
@@ -20,6 +21,7 @@ struct WebPage {
   @State private nativePreview: boolean = false;
   @State private petMode: boolean = false;
   @State private foreground: boolean = true;
+  @StorageLink('paitAppForeground') @Watch('appActivityChanged') private appForeground: boolean = true;
   @State private denAttached: boolean = false;
   @State private denWidth: number = 0;
   @State private denHeight: number = 0;
@@ -31,6 +33,9 @@ struct WebPage {
   private denEpoch: number = 0;
   private denPending: boolean = false;
   private controller: webview.WebviewController = new webview.WebviewController();
+  private webAudio: WebAudioCapture = new WebAudioCapture(
+    () => this.getUIContext().getHostContext() as common.UIAbilityContext,
+    () => this.trustedAudio());
   private fullScreen: FullScreenExitHandler | null = null;
 
   aboutToAppear(): void {
@@ -39,8 +44,19 @@ struct WebPage {
   }
 
   onPageShow(): void { this.foreground = true; this.denNode?.setActive(true); }
-  onPageHide(): void { this.foreground = false; this.denNode?.setActive(false); }
-  aboutToDisappear(): void { this.stopDen(); }
+  onPageHide(): void { this.foreground = false; this.webAudio.close(); this.denNode?.setActive(false); }
+  aboutToDisappear(): void { this.webAudio.close(); this.stopDen(); }
+
+  private trustedAudio(): boolean {
+    if (!this.foreground || !this.appForeground || this.settings || this.nativePreview) { return false; }
+    try {
+      const origin = this.denOrigin();
+      const page = this.controller.getUrl();
+      const caller = this.controller.getLastJavascriptProxyCallingFrameUrl();
+      return page.startsWith(origin + '/') && caller === page;
+    } catch (_) { return false; }
+  }
+  private appActivityChanged(): void { if (!this.appForeground) { this.webAudio.close(); } }
 
   private denOrigin(): string { return this.source.replace(/\/$/, ''); }
   private trustedDen(): boolean {
@@ -67,8 +83,9 @@ struct WebPage {
         if (epoch === this.denEpoch) { this.stopDen(); }
         return;
       }
-      const raw = await this.controller.runJavaScript('window.PaitNativeDen ? window.PaitNativeDen.exchange(' + JSON.stringify(ack) + ') : null');
+      const raw = await this.controller.runJavaScript('window.PaitNativeDen?.paths?.size === 0 ? "disabled" : window.PaitNativeDen ? window.PaitNativeDen.exchange(' + JSON.stringify(ack) + ') : null');
       if (epoch !== this.denEpoch || !this.trustedDen()) { return; }
+      if (raw === 'disabled' || raw === '"disabled"') { this.stopDen(); return; }
       const frame = parseDenFrame(raw);
       if (frame) { this.denNode?.accept(frame); }
       else { this.denNode?.setActive(false); }
@@ -130,6 +147,7 @@ struct WebPage {
   }
 
   onBackPress(): boolean {
+    this.webAudio.close();
     if (this.nativePreview) { this.nativePreview = false; return true; }
     if (this.settings) { return false; }
     if (this.fullScreen) { this.fullScreen.exitFullScreen(); this.fullScreen = null; return true; }
@@ -198,7 +216,7 @@ struct WebPage {
             try { new PetApi().configure(this.address, this.allowLan); this.petMode = false; this.nativePreview = true; }
             catch (failure) { this.error = (failure as Error).message; }
           })
-          Text('登录使用网页原有账号。在首页按系统返回键可修改连接地址。摄像头和麦克风需要 HTTPS 与系统授权。')
+          Text('登录使用网页原有账号。在首页按系统返回键可修改连接地址。语音对话需要系统麦克风授权；网页摄像头还需要 HTTPS。')
             .fontSize(14).fontColor('#665D57')
         }.padding(28).constraintSize({ maxWidth: 720 }).width('100%')
       } else {
@@ -219,6 +237,7 @@ struct WebPage {
           .enableNativeEmbedMode(true)
           .onNativeEmbedLifecycleChange((event: NativeEmbedDataInfo) => { this.embedChanged(event); })
           .javaScriptAccess(true).domStorageAccess(true).databaseAccess(true)
+          .javaScriptProxy({ object: this.webAudio, name: 'PaitHarmonyAudio', methodList: ['start', 'read', 'stop'], controller: this.controller })
           .onlineImageAccess(true).fileAccess(true)
           .mixedMode(MixedMode.None).multiWindowAccess(false)
           .onShowFileSelector((event) => {
@@ -228,7 +247,7 @@ struct WebPage {
           .onPermissionRequest((event) => { if (event) { this.permission(event.request); } })
           .onFullScreenEnter((event) => { if (event) { this.fullScreen = event.handler; } })
           .onFullScreenExit(() => { this.fullScreen = null; })
-          .onPageBegin(() => { this.error = ''; this.stopDen(); })
+          .onPageBegin(() => { this.error = ''; this.webAudio.close(); this.stopDen(); })
           .onPageEnd(() => { this.startDen(); })
           .onErrorReceive((event) => {
             if (event && event.request.isMainFrame()) { this.error = '网页加载失败，请检查电脑服务与网络连接。'; }

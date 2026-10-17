@@ -143,6 +143,8 @@
     var panel = this._panel;
     var sel = panel && panel.querySelector('#rt-dev');
     if (!sel) return;
+    if(this.controller?._nativeSession){sel.innerHTML='<option>鸿蒙系统麦克风</option>';sel.disabled=true;return;}
+    sel.disabled=false;
     var devs;
     try {
       devs = (await navigator.mediaDevices.enumerateDevices())
@@ -392,7 +394,7 @@
     var aiEl = panel.querySelector('#rt-ai');
     if (aiEl.textContent === '正在开启…') aiEl.textContent = '我在听——直接说话就好，说完它自动回答';
     // 权限到位后（label 可见）填充设备下拉；默认设备是虚拟麦克风时自动切换
-    if (this.controller._stream) this._populateDevices();
+    if (this.controller._stream || this.controller._nativeSession) this._populateDevices();
   };
 
   RealtimeUI.prototype.stop = function () {

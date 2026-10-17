@@ -17,7 +17,7 @@ pet.userData.height=1;scene.add(pet);scene.updateMatrixWorld(true);
 let state={scene,camera,petModel:pet,spec:{glb:path},busy:false,special:false,
  action:{getClip:()=>({name:'Armature|idle_breathe',duration:2}),time:.5,getEffectiveTimeScale:()=>1,loop:THREE.LoopRepeat}};
 const bridge=new context.NativeDenBridge.Bridge({canvas:{parentElement:parent},
- renderer:{render(){renders.push(pet.visible);if(throws)throw Error('render failure');}},read:()=>state});
+ renderer:{render(){renders.push(pet.visible);if(throws)throw Error('render failure');}},read:()=>state,paths:new Set([path])});
 bridge.render(scene,camera);assert.equal(renders.at(-1),true);assert.equal(parent.node,undefined,'desktop path must not insert native UI');
 bridge.exchange(null);bridge.render(scene,camera);assert.equal(renders.at(-1),true,'keep original until native acknowledges');
 assert.equal(bridge.packet.clip,'idle_breathe');assert.equal(bridge.packet.phase,.25);
@@ -89,12 +89,13 @@ assert(events.every(e=>['pagehide','visibilitychange'].includes(e[0])),'does not
 // Fresh page / reload: cat must remain visible before and after native polls,
 // without performing native-only occlusion queries for this unsupported model.
 state.spec.glb='/static/models/petchat-cat-v3/cat.glb';context.document.hidden=false;
-for(let reload=0;reload<2;reload++) {
+for(const modelPath of ['/static/models/petchat-cat-v3/cat.glb',path,'/static/models/petchat-husky-v3/xueqiu.glb','/static/models/petchat-shepherd-v2/shepherd.glb']) {
+ state.spec.glb=modelPath;
  const fresh=new context.NativeDenBridge.Bridge({canvas:{parentElement:parent},
   renderer:{render(){assert.equal(pet.visible,true);}},read:()=>state});
  let nativeChecks=0;fresh.occluded=()=>{nativeChecks++;return false;};
  fresh.render(scene,camera);fresh.exchange(null);fresh.render(scene,camera);
- assert.equal(fresh.packet.key,'');assert.equal(fresh.packet.visible,false);
+ assert.equal(fresh.packet,null);assert.equal(fresh.embed,null,'unverified pets must not create a native layer');
  fresh.exchange({session:fresh.session,key:pet.uuid+':'+state.spec.glb,ready:true});
  fresh.render(scene,camera);assert.equal(fresh.mode(),'宠物：网页');assert.equal(nativeChecks,0);fresh.dispose();
 }

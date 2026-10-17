@@ -1,18 +1,15 @@
 /* ArkWeb same-layer pet renderer. The existing den remains the business authority. */
 (function (root) {
   'use strict';
-  const PATHS = new Set([
-    // MatePad Air can acknowledge this cat's native scene while the cat is
-    // absent from the composed image. Keep the web cat until output is verified;
-    // a loaded scene / scheduled frame alone is not evidence of visible output.
-    '/static/models/petchat-shiba-v4/qiuqiu.glb',
-    '/static/models/petchat-husky-v3/xueqiu.glb', '/static/models/petchat-shepherd-v2/shepherd.glb'
-  ]);
+  // All four pets can acknowledge a native scene without visible output.
+  // Re-enable only after actual same-layer pixels/lifecycle are verified.
+  const PATHS = new Set();
   const vec = v => ({ x: v.x, y: v.y, z: v.z });
   const quat = q => ({ x: q.x, y: q.y, z: q.z, w: q.w });
   class Bridge {
-    constructor({ canvas, renderer, read, now = () => performance.now() }) {
+    constructor({ canvas, renderer, read, now = () => performance.now(), paths = PATHS }) {
       this.canvas = canvas; this.renderer = renderer; this.read = read; this.now = now;
+      this.paths = paths;
       this.enabled = false; this.embed = null; this.packet = null; this.ready = '';
       this.heartbeat = 0; this.blocked = true; this.occlusionAt = -Infinity;
       this.session = root.crypto.randomUUID();
@@ -22,6 +19,7 @@
     }
     enable() {
       if (this.enabled || this.unsupported) return;
+      if (!this.paths.size) return;
       this.enabled = true;
       this.occlusionIndex = root.NativeOcclusion ? new root.NativeOcclusion.Index() : null;
       const embed = document.createElement('embed');
@@ -106,7 +104,7 @@
       const state = this.read(), pet = state.petModel;
       let path = '';
       try { const url = new URL(state.spec?.glb, location.href); if (url.origin === location.origin) path = url.pathname; } catch (_) {}
-      const supported = pet && pet.visible && PATHS.has(path) && !state.busy && !state.special &&
+      const supported = pet && pet.visible && this.paths.has(path) && !state.busy && !state.special &&
         !state.spec.custom && !pet.userData.accessories?.some(a => a.visible);
       const key = supported ? pet.uuid + ':' + path : '';
       if (key !== this.lastKey) { this.fallback(); this.occlusionAt = -Infinity; this.lastKey = key; }

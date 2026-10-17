@@ -47,6 +47,9 @@ class RealtimeController {
     this._node = null;         // AudioWorkletNode
     this._watchTimer = null;
     this._tPermissionStart = 0;
+    this._nativeSession = null;
+    this._nativeTimer = null;
+    this._hidden = () => { if (window.document?.hidden) this.stop(); };
   }
 
   _setState(s, extra) {
@@ -62,12 +65,16 @@ class RealtimeController {
     this.stop();
     const name = (e && e.name) || '';
     let msg = '无法获得麦克风权限';
+    if(window.PaitHarmonyAudio){
+      msg=name==='NotAllowedError'?'请在平板设置中允许派特岛使用麦克风，然后重试。':'鸿蒙麦克风未能启动，请结束其他录音或通话后重试。';
+    } else {
     if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
       msg = '没有找到可用的麦克风设备';
     } else if (name === 'NotAllowedError' || name === 'SecurityError') {
       msg = '麦克风权限被拒绝：点浏览器地址栏的 🔒 图标，把麦克风设为允许后重试';
     } else if (name === 'NotReadableError') {
       msg = '麦克风被其他程序占用或系统层禁用，请检查 Windows 麦克风设置';
+    }
     }
     this._setState('ERROR', { reason: 'permission_denied', error: String(e) });
     this.onError({ code: name || 'permission_denied', message: msg });
@@ -84,6 +91,7 @@ class RealtimeController {
     }
     const generation = ++this._generation;
     const current = () => generation === this._generation;
+    window.document?.addEventListener('visibilitychange',this._hidden);
     let tPermission = 0;
     if (!this.synthetic) {
       // Preserve the user's activation: do this before the microphone promise.
@@ -93,6 +101,12 @@ class RealtimeController {
       }
       this._setState('REQUESTING_PERMISSION');
       this._tPermissionStart = performance.now();
+      if (window.PaitHarmonyAudio) {
+        try { await this._startHarmonyCapture(current); }
+        catch (e) { if(current())this._failPermission(e);return; }
+        if(!current())return;
+        tPermission = Math.round(performance.now() - this._tPermissionStart);
+      } else {
       try {
         // 麦克风约束（方案 §6）：AEC/NS/AGC 全开，单声道；sampleRate 仅作期望值；
         // 指定了 deviceId 时用 exact 强制（避开 ToDesk/OBS 等虚拟麦克风）
@@ -166,6 +180,7 @@ class RealtimeController {
       }
     }
 
+    }
     this._setState('CONNECTING');
     if (!this._player) this._player = new PCMPlayer({ sampleRate: 24000 });
     this._client = this._makeClient();
@@ -194,6 +209,37 @@ class RealtimeController {
     this._enableSpeaker(client._session);
     this._setState('READY');
     this._startWatch();
+  }
+
+  async _startHarmonyCapture(current) {
+    const bridge=window.PaitHarmonyAudio,session=crypto.randomUUID();
+    this._nativeSession=session;this.micLabel='鸿蒙系统麦克风';
+    if(bridge.start(session)==='denied')throw Object.assign(Error('permission'),{name:'NotAllowedError'});
+    const started=performance.now();
+    while(current()) {
+      const packet=JSON.parse(bridge.read(session));
+      if(packet.state==='ready')break;
+      if(['denied','error','stopped'].includes(packet.state)||performance.now()-started>30000)
+        throw Object.assign(Error('capture unavailable'),{name:packet.state==='denied'?'NotAllowedError':'NotReadableError'});
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }
+    if(!current()){bridge.stop(session);return;}
+    this._nativeTimer=setInterval(()=>{
+      if(!current())return;
+      try {
+        const packet=JSON.parse(bridge.read(session));
+        if(packet.state!=='ready')throw Error('capture stopped');
+        let energy=0,count=0;
+        for(const encoded of packet.chunks||[]) {
+          const raw=atob(encoded),bytes=new Uint8Array(raw.length);
+          for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+          const pcm=new Int16Array(bytes.buffer);
+          for(const value of pcm){energy+=(value/32768)**2;count++;}
+          this._captureChunk(bytes.buffer);
+        }
+        if(count){this.lastLevel=Math.round(20*Math.log10(Math.max(Math.sqrt(energy/count),1e-5)));this.onLevel(this.lastLevel);}
+      }catch(e){this.stop();this._setState('ERROR');this.onError({code:'capture_stopped',message:'麦克风已停止，请重新开启语音对话。'});}
+    },50);
   }
 
   _makeClient() {
@@ -382,6 +428,9 @@ class RealtimeController {
   /** 结束会话：销毁 WS、播放器、采集。 */
   stop() {
     ++this._generation;
+    window.document?.removeEventListener('visibilitychange',this._hidden);
+    if(this._nativeTimer){clearInterval(this._nativeTimer);this._nativeTimer=null;}
+    if(this._nativeSession){try{window.PaitHarmonyAudio?.stop(this._nativeSession);}catch(_){}this._nativeSession=null;}
     this._speakerGate?.close();this._speakerGate=null;this._speakerAbort?.abort();
     if (this._watchTimer) { clearInterval(this._watchTimer); this._watchTimer = null; }
     if (this._client) { this._client.close(); this._client = null; }
