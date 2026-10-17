@@ -7,13 +7,13 @@ const nav=require('../static/js/park-navigation.js').create(require('../static/m
   const page=await browser.newPage({viewport:{width:1440,height:1050}}),errors=[],sync=[];let fail=true;
   page.on('pageerror',e=>errors.push(e.message));
   // Read the actual camera; page layout/controls may adjust it after startup.
-  await page.route('**/static/js/public-park.js*',async route=>{const response=await route.fetch(),source=await response.text();assert(source.includes('const self={x:0,z:0,yaw:0};'));await route.fulfill({response,body:source.replace('const self={x:0,z:0,yaw:0};','const self={x:0,z:0,yaw:0};window.__parkTestCamera=camera;').replace('function destination(p,message){','function destination(p,message){window.__parkPicked={...p};')});});
+  await page.route('**/static/js/public-park.js*',async route=>{const response=await route.fetch(),source=await response.text();assert(source.includes('const self={x:0,z:0,yaw:0};'));await route.fulfill({response,body:source.replace('const self={x:0,z:0,yaw:0};','const self={x:0,z:0,yaw:0};window.__parkTestCamera=camera;').replace('function destination(p,message,fromOwner=true){','function destination(p,message,fromOwner=true){window.__parkPicked={...p};')});});
   await page.route('**/static/models/paw-commons-v2/play.glb*',route=>fail?route.abort():route.continue());
   await page.goto('http://127.0.0.1:5088/__qa/park-a');
   await page.waitForFunction(()=>document.querySelector('#pet-park').dataset.scene==='failed');
   assert(await page.locator('#park-join').isDisabled());assert(await page.locator('#park-retry').isVisible());
   fail=false;await page.locator('#park-retry').click();await page.waitForFunction(()=>document.querySelector('#pet-park').dataset.scene==='ready',null,{timeout:30000});
-  await page.locator('#park-join').click();await page.waitForTimeout(6500);
+  await page.locator('#park-join').click();await page.locator('#park-auto').click();await page.waitForTimeout(6500);
   const snapshot=async()=> (await (await page.request.get('http://127.0.0.1:5088/api/park')).json()).players.find(p=>p.mine);
   const start=await snapshot();assert(start);
   const target=nav.nearest({x:.6-start.x,z:-1.6-start.z});assert(!nav.segment(start,target),'journey must cross the tree without routing');

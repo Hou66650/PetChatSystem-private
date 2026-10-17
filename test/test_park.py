@@ -86,6 +86,25 @@ class ParkTests(unittest.TestCase):
             self.assertEqual(self.post('sync',blocked).status_code,200)
         self.assertEqual(joined['layoutVersion'],'paw-v2-1')
 
+    def test_agent_behavior_validation_and_long_rest(self):
+        with patch.object(park,'clock',return_value=100):
+            joined=self.post('join',{'pet':1}).json
+        with patch.object(park,'clock',return_value=101):
+            data=self.sample(joined,action='sleep',behavior={'activity':'rest','autonomous':True})
+            self.assertEqual(self.post('sync',data).status_code,200)
+        with patch.object(park,'clock',return_value=108):
+            state=self.post('sync',data).json
+            mine=next(p for p in state['players'] if p['mine'])
+            self.assertEqual(mine['action'],'sleep')
+            self.assertEqual(mine['behavior']['activity'],'rest')
+            self.assertTrue(mine['behavior']['autonomous'])
+        with patch.object(park,'clock',return_value=109):
+            for behavior in ([],{'activity':[]},{'autonomous':'yes'},{'activity':'fly'}, {'activity':'play','goal':{'x':.3,'z':-.8}}, {'activity':'play','goal':{'x':True,'z':2}}):
+                self.assertEqual(self.post('sync',self.sample(joined,behavior=behavior)).status_code,400)
+            good=self.sample(joined,action='bow',behavior={'autonomous':True,'activity':'play','goal':{'x':3,'z':3},'private':'must not echo'})
+            state=self.post('sync',good).json
+            self.assertNotIn('private',str(state))
+
     def test_scene_asset_compression_cache_and_scope(self):
         import gzip
         for tier in ('preview','play'):

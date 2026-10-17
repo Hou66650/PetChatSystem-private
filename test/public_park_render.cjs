@@ -6,7 +6,7 @@ for(const p of[a,b])p.on('pageerror',e=>errors.push(e.message));
 await a.goto('http://127.0.0.1:5088/__qa/park-a');await b.goto('http://127.0.0.1:5088/__qa/park-b');
 await b.locator('#park-pet').selectOption('2');await a.locator('#park-join').click();await b.locator('#park-join').click();
 await a.waitForFunction(()=>document.querySelector('#park-count').textContent.includes('2 /'));
-await a.waitForTimeout(6500);
+await a.locator('#park-auto').click();await b.locator('#park-auto').click();await a.locator('.park-help summary').click();await a.waitForTimeout(6500);
 await a.locator('[data-action=ball]').click();await a.waitForTimeout(1000);
 let data=await (await b.request.get('http://127.0.0.1:5088/api/park')).json();assert.equal(data.players.find(p=>!p.mine).action,'ball');
 assert.equal(await a.locator('#pet-park').getAttribute('data-scene'),'ready');await a.evaluate(()=>window.scrollTo(0,0));await a.screenshot({path:path.join(output,'park-desktop.png')});

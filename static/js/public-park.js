@@ -10,21 +10,37 @@
  const actors=new Map(),ray=new T.Raycaster(),pointer=new T.Vector2(),plane=new T.Plane(new T.Vector3(0,1,0),0),hit=new T.Vector3();
  let token=null,mine=null,target=null,path=[],state=null,timer=null,epoch=0,disposed=false,raf,last=0,action='idle',actionUntil=0,lastGood=performance.now(),gesture=null,sceneReady=false,parkModel=null,dirty=true;
  const self={x:0,z:0,yaw:0};
+ const autoButton=document.getElementById('park-auto'),intent=document.getElementById('park-intent');
+ let agent=null,aiGoal=null,moveSpeed=1,nextDecision=0,lastDecision=0,blockedAt=0;
+ function manual(seconds=12){agent?.interrupt(performance.now()/1000,seconds);aiGoal=null;moveSpeed=1.1;if(intent)intent.textContent='先陪主人玩，稍后继续自主探索。';}
+ function behavior(){return {autonomous:!!agent?.enabled,activity:agent&&performance.now()/1000>=agent.until?agent.activity:'manual',goal:aiGoal};}
+ function cancelMove(){target=null;path=[];action='idle';actionUntil=0;aiGoal=null;}
+ function think(now){if(!agent||!token||!actors.get(mine)?.pet||now<nextDecision)return;nextDecision=now+.25;
+  const peers=(state?.players||[]).filter(p=>!p.mine),command=agent.tick({now,dt:lastDecision?now-lastDecision:.25,pos:self,peers,moving:!!target});lastDecision=now;
+  root.dataset.agent=agent.enabled?'auto':'paused';root.dataset.activity=behavior().activity;
+  if(!command)return;if(command.cancel){cancelMove();if(intent)intent.textContent=command.message;return;}
+  if(command.destination){destination(command.destination,command.message,false);if(!target){agent.failed(now);return;}}
+  else{target=null;path=[];}
+  moveSpeed=command.speed;action=command.action;actionUntil=(now+command.duration)*1000;aiGoal=command.goal;
+  if(command.face)self.yaw=Math.atan2(command.face.x-self.x,command.face.z-self.z);
+  if(intent)intent.textContent=command.message;
+ }
+ if(autoButton)autoButton.onclick=()=>{if(!agent||!token)return;agent.enable(!agent.enabled,performance.now()/1000);cancelMove();ui();if(intent)intent.textContent=agent.enabled?'让它自己决定接下来玩什么。':'自主游玩已暂停，可以陪它玩。';};
  async function request(operation,data){const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),4500);try{const response=await fetch('/api/park'+(operation?'/'+operation:''),{method:operation?'POST':'GET',headers:{'Content-Type':'application/json','X-Profile-Scope':root.dataset.scope},body:operation?JSON.stringify(data):undefined,signal:controller.signal,cache:'no-store'});const body=await response.json();if(!response.ok)throw Object.assign(new Error(body.error||'连接失败'),{status:response.status});return body;}finally{clearTimeout(timeout);}}
- function destination(p,message){path=navigation.route(self,p);target=path.shift()||null;action='idle';status.textContent=target?message:'这里暂时不能到达，请选择开阔草坪。';}
- function approach(p){if(!token)return;const dx=self.x-p.x,dz=self.z-p.z,d=Math.hypot(dx,dz)||1;destination({x:p.x+dx/d*.95,z:p.z+dz/d*.95},'走近'+p.spec.name+'，可以打个招呼。');}
+ function destination(p,message,fromOwner=true){if(fromOwner)manual(25);path=navigation.route(self,p);target=path.shift()||null;action='idle';status.textContent=target?message:'这里暂时不能到达，请选择开阔草坪。';}
+ function approach(p){if(!token)return;const dx=self.x-p.x,dz=self.z-p.z,d=Math.hypot(dx,dz)||1;destination({x:p.x+dx/d*1.5,z:p.z+dz/d*1.5},'走近'+p.spec.name+'，可以打个招呼。');}
  async function loadPark(){sceneReady=false;root.dataset.scene='loading';retry.hidden=true;ui();status.textContent='正在展开爪心乐园…';const ticket=sceneLoader.begin();
   try{const gltf=await PetParkScene.load(T,{tier:'play',loader:sceneLoader,ticket,version:root.dataset.version});if(disposed){SelectedAssets.disposeTree(gltf.scene);return;}parkModel=gltf.scene;scene.add(parkModel);sceneReady=true;dirty=true;root.dataset.scene='ready';status.textContent='乐园已就绪，可以带伙伴入园。';ui();poll();}
   catch(error){if(error.name==='AbortError'||disposed)return;root.dataset.scene='failed';retry.hidden=false;status.textContent='乐园未能加载，请检查连接后重试。';ui();}
  }
  retry.onclick=loadPark;
- function remove(id){const a=actors.get(id);if(!a)return;a.loader.begin();a.label.remove();if(a.pet){a.pet.mixer.stopAllAction();a.pet.mixer.uncacheRoot(a.pet.model);scene.remove(a.pet.root);SelectedAssets.disposeTree(a.pet.root);}actors.delete(id);dirty=true;}
+ function remove(id){const a=actors.get(id);if(!a)return;a.loader.begin();a.label.remove();if(a.ball){scene.remove(a.ball);SelectedAssets.disposeTree(a.ball);}if(a.pet){a.pet.mixer.stopAllAction();a.pet.mixer.uncacheRoot(a.pet.model);scene.remove(a.pet.root);SelectedAssets.disposeTree(a.pet.root);}actors.delete(id);dirty=true;}
  async function load(p){
   const loader=new SelectedAssets.Loader(new T.GLTFLoader()),ticket=loader.begin(),label=document.createElement('button');label.type='button';label.textContent=p.spec.name+(p.mine?' · 我':'');label.title='走近这位伙伴';document.getElementById('park-players').append(label);
   const a={loader,label,remote:p,pet:null};actors.set(p.id,a);label.onclick=()=>approach(p);
   try{const gltf=await loader.glb(p.spec.model+'?v='+encodeURIComponent(root.dataset.version),ticket);if(actors.get(p.id)!==a){SelectedAssets.disposeTree(gltf.scene);return;}
-   a.pet=new PortalPets.Pet(T,gltf,p.spec);a.pet.root.position.set(p.x,0,p.z);a.pet.root.rotation.y=p.yaw;scene.add(a.pet.root);
-   const ball=new T.Mesh(new T.SphereGeometry(.18,12,8),new T.MeshStandardMaterial({color:0xd39b58,roughness:.7}));ball.visible=false;a.pet.root.add(ball);a.ball=ball;
+   a.pet=new PortalPets.Pet(T,gltf,p.spec);a.pet.root.position.set(p.x,0,p.z);a.pet.root.rotation.y=p.yaw;scene.add(a.pet.root);a.motion=new ParkMotion.Motion(a.pet);a.label.dataset.ready="true";
+   const ball=new T.Mesh(new T.SphereGeometry(.18,12,8),new T.MeshStandardMaterial({color:0xd39b58,roughness:.7}));ball.visible=false;scene.add(ball);a.ball=ball;
   }catch(e){if(e.name!=='AbortError'&&actors.get(p.id)===a){a.label.textContent=p.spec.name+' · 加载失败';a.label.onclick=()=>{remove(p.id);load(a.remote);};if(p.mine)status.textContent='伙伴模型加载失败，可点右侧名字重试，或结束游玩。';}}
  }
  function apply(next,initial=false){if(next.layoutVersion&&next.layoutVersion!==navigation.config.version){stop('乐园已更新，请刷新页面后重新入园。');sceneReady=false;ui();return;}state=next;lastGood=performance.now();document.getElementById('park-count').textContent='在线伙伴 '+next.count+' / '+next.capacity;
@@ -33,17 +49,17 @@
    const a=actors.get(p.id);if(a){a.remote=p;a.label.onclick=()=>approach(a.remote);}else load(p);
   }
  }
- function ui(){if(join)join.disabled=!!token||!sceneReady;if(select)select.disabled=!!token;if(leave)leave.hidden=!token;buttons.forEach(b=>b.disabled=!token||!sceneReady);}
- function stop(message,notify=true){const old=token;token=null;mine=null;target=null;path=[];action='idle';epoch++;ui();if(old&&notify)fetch('/api/park/leave',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json','X-Profile-Scope':root.dataset.scope},body:JSON.stringify({token:old})}).catch(()=>{});for(const id of [...actors.keys()])remove(id);dirty=true;if(message)status.textContent=message;}
+ function ui(){if(join)join.disabled=!!token||!sceneReady;if(select)select.disabled=!!token;if(leave)leave.hidden=!token;buttons.forEach(b=>b.disabled=!token||!sceneReady);if(autoButton){autoButton.disabled=!token;autoButton.textContent='自主游玩：'+(agent?.enabled?'开':'关');autoButton.setAttribute('aria-pressed',String(!!agent?.enabled));}}
+ function stop(message,notify=true){const old=token;agent=null;aiGoal=null;lastDecision=0;token=null;mine=null;target=null;path=[];action='idle';epoch++;ui();if(old&&notify)fetch('/api/park/leave',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json','X-Profile-Scope':root.dataset.scope},body:JSON.stringify({token:old})}).catch(()=>{});for(const id of [...actors.keys()])remove(id);dirty=true;if(message)status.textContent=message;}
  async function poll(){if(disposed||!sceneReady)return;clearTimeout(timer);if(document.hidden){timer=setTimeout(poll,1000);return;}const generation=epoch;
-  try{const data=token?await request('sync',{token,...self,action:performance.now()<actionUntil?action:'idle'}):await request();if(generation!==epoch)return;apply(data);}
-  catch(e){if(generation!==epoch)return;if([401,409].includes(e.status))stop(e.message,false);else if(e.status===422){target=null;const data=await request().catch(()=>null);if(data)apply(data,true);status.textContent='移动已重新同步，请再点草坪。';}
-   else{target=null;status.textContent='连接暂时中断，正在重连。';if(performance.now()-lastGood>8000)stop('连接中断，已停止游玩；恢复后请重新入园。');}}
+  try{const data=token?await request('sync',{token,...self,action:performance.now()<actionUntil?action:'idle',behavior:behavior()}):await request();if(generation!==epoch)return;apply(data);}
+  catch(e){if(generation!==epoch)return;if([401,409].includes(e.status))stop(e.message,false);else if(e.status===422){cancelMove();agent?.failed(performance.now()/1000);const data=await request().catch(()=>null);if(data)apply(data,true);status.textContent='位置已同步，伙伴会重新选择路线。';}
+   else{cancelMove();agent?.interrupt(performance.now()/1000,5);status.textContent='连接暂时中断，正在重连。';if(performance.now()-lastGood>8000)stop('连接中断，已停止游玩；恢复后请重新入园。');}}
   finally{if(!disposed)timer=setTimeout(poll,token?500:3000);}
  }
- if(join)join.onclick=async()=>{if(!sceneReady||token)return;join.disabled=true;const generation=++epoch;try{const data=await request('join',{pet:Number(select.value)});if(generation!==epoch){request('leave',{token:data.token}).catch(()=>{});return;}token=data.token;apply(data,true);ui();status.textContent='点草坪散步，拖动旋转；伙伴会自动绕开树坛和设施。';}catch(e){status.textContent=e.message;ui();}};
+ if(join)join.onclick=async()=>{if(!sceneReady||token)return;join.disabled=true;const generation=++epoch;try{const data=await request('join',{pet:Number(select.value)});if(generation!==epoch){request('leave',{token:data.token}).catch(()=>{});return;}token=data.token;agent=new ParkAgent.Agent({navigation,personality:data.personality});nextDecision=0;lastDecision=0;apply(data,true);ui();status.textContent='伙伴会自己探索和游玩；拖动旋转，也可以随时陪它玩。';}catch(e){status.textContent=e.message;ui();}};
  if(leave)leave.onclick=()=>stop('已经结束游玩，伙伴会从公共乐园离开。');
- for(const button of buttons)button.onclick=()=>{if(!token)return;const next=button.dataset.action;if(next==='walk'){destination(navigation.config.restPoint,'一起去开阔草坪。');return;}target=null;path=[];action=next;actionUntil=performance.now()+4200;status.textContent=button.textContent+' · 同场伙伴也能看到这个动作';};
+ for(const button of buttons)button.onclick=()=>{if(!token)return;manual();const next=button.dataset.action;if(next==='walk'){destination(navigation.config.restPoint,'一起去开阔草坪。');return;}target=null;path=[];action=next;actionUntil=performance.now()+4200;status.textContent=button.textContent+' · 同场伙伴也能看到这个动作';};
  // OrbitControls calls focus() on pointerdown. Focus first without scrolling so
  // the canvas does not shift under the pointer and change the picked destination.
  canvas.addEventListener('pointerdown',()=>canvas.focus({preventScroll:true}),true);
@@ -53,9 +69,14 @@
  canvas.addEventListener('pointerup',e=>{const g=gesture;gesture=null;if(!g||g.id!==e.pointerId||!token||Math.hypot(e.clientX-g.x,e.clientY-g.y)>6)return;const r=canvas.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,1-(e.clientY-r.top)/r.height*2);ray.setFromCamera(pointer,camera);if(ray.ray.intersectPlane(plane,hit)&&(hit.x/8)**2+(hit.z/6)**2<=1){destination({x:hit.x,z:hit.z},'正在草坪上散步。');}});
  function frame(now){raf=requestAnimationFrame(frame);if(document.hidden||now-last<1000/30)return;const dt=last?Math.min((now-last)/1000,.08):0;last=now;
   const w=canvas.clientWidth,h=canvas.clientHeight;if(w&&h&&(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio()))){renderer.setPixelRatio(Math.min(devicePixelRatio,1.25,Math.sqrt(1800000/(w*h))));renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();dirty=true;}
-  let walking=false,budget=dt*2.5;if(token&&actors.get(mine)?.pet)while(target&&budget>0){const dx=target.x-self.x,dz=target.z-self.z,d=Math.hypot(dx,dz);if(d<.001){self.x=target.x;self.z=target.z;target=path.shift()||null;continue;}const step=Math.min(d,budget);self.x+=dx/d*step;self.z+=dz/d*step;self.yaw=Math.atan2(dx,dz);walking=true;budget-=step;}
+  think(now/1000);
+  let walking=false,budget=dt*moveSpeed;if(token&&actors.get(mine)?.pet)while(target&&budget>0){const dx=target.x-self.x,dz=target.z-self.z,d=Math.hypot(dx,dz);if(d<.001){self.x=target.x;self.z=target.z;target=path.shift()||null;continue;}const step=Math.min(d,budget),nx=self.x+dx/d*step,nz=self.z+dz/d*step;
+   const occupied=(state?.players||[]).some(p=>!p.mine&&Math.hypot(nx-p.x,nz-p.z)<1&&Math.hypot(nx-p.x,nz-p.z)<Math.hypot(self.x-p.x,self.z-p.z));
+   if(occupied){if(!blockedAt)blockedAt=now;if(now-blockedAt>1800){cancelMove();agent?.failed(now/1000);status.textContent='前面有伙伴，稍等一下再换个位置。';blockedAt=0;}break;}blockedAt=0;self.x+=dx/d*step;self.z+=dz/d*step;self.yaw=Math.atan2(dx,dz);walking=true;budget-=step;}
   for(const [id,a] of actors){if(!a.pet)continue;const p=a.pet.root.position,remote=a.remote,isMine=!!token&&id===mine,tx=isMine?self.x:remote.x,tz=isMine?self.z:remote.z,d=Math.hypot(tx-p.x,tz-p.z),k=isMine?1:1-Math.exp(-dt*10);p.x+=(tx-p.x)*k;p.z+=(tz-p.z)*k;const yaw=isMine?self.yaw:remote.yaw;a.pet.root.rotation.y+=Math.atan2(Math.sin(yaw-a.pet.root.rotation.y),Math.cos(yaw-a.pet.root.rotation.y))*(1-Math.exp(-dt*12));
-   const current=isMine?(now<actionUntil?action:'idle'):remote.action,moving=isMine?walking:d>.035;a.pet.play(moving?'walk':current==='ball'?'happy':current);a.pet.update(dt);a.ball.visible=current==='ball';if(a.ball.visible)a.ball.position.set(Math.sin(now*.004)*.6,.2+Math.abs(Math.sin(now*.006))*.35,1.1);
+   const current=isMine?(now<actionUntil?action:'idle'):remote.action,moving=isMine?walking:d>.035;a.motion.update(moving?((isMine?moveSpeed>1.4:remote.action==='ball')?'run':'walk'):current==='ball'?'sniff':current,dt,moving?.9:1);
+   const goal=isMine?aiGoal:remote.behavior?.goal;a.ball.visible=!!goal||current==='ball';if(a.ball.visible){if(goal)a.ball.position.set(goal.x,.18,goal.z);else a.ball.position.set(p.x+Math.sin(now*.004)*.6,.2+Math.abs(Math.sin(now*.006))*.35,p.z+1.1);}
+   const activity=isMine?behavior().activity:remote.behavior?.activity,label=ParkAgent.labels[activity];const caption=remote.spec.name+(isMine?' · 我':'')+(label?' · '+label:'');if(a.label.textContent!==caption)a.label.textContent=caption;
   }const changed=controls.update();if(dirty||changed||actors.size){renderer.render(scene,camera);dirty=false;}
  }
  document.addEventListener('visibilitychange',()=>{if(document.hidden)stop('已暂停公开游玩，回来后可以重新入园。');});

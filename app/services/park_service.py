@@ -9,7 +9,8 @@ from . import portal_service, growth_service, park_navigation
 clock = time.time
 TTL = 12
 CAPACITY = 12
-ACTIONS = {'idle', 'happy', 'sniff', 'ball', 'sleep'}
+ACTIONS = {'idle', 'happy', 'sniff', 'ball', 'sleep', 'bow', 'greet', 'look', 'sit', 'stretch'}
+ACTIVITIES = {'idle', 'explore', 'play', 'rest', 'greet', 'observe', 'manual'}
 
 class ParkError(ValueError):
     def __init__(self, message, status=400):
@@ -24,6 +25,14 @@ def init_schema():
     CREATE INDEX IF NOT EXISTS park_updated ON park_presence(updated);''')
     # Stale clients must rejoin if their old-layout position is now a flower bed.
     db = get_db()
+    db.execute('BEGIN IMMEDIATE')
+    try:
+        if 'behavior' not in {r['name'] for r in db.execute('PRAGMA table_info(park_presence)')}:
+            db.execute("ALTER TABLE park_presence ADD COLUMN behavior TEXT NOT NULL DEFAULT '{}'")
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     invalid = [r['owner'] for r in db.execute('SELECT owner,x,z FROM park_presence') if not park_navigation.inside(r['x'], r['z'])]
     if invalid:
         with db:
@@ -47,7 +56,7 @@ def snapshot(owner):
     return dict(capacity=CAPACITY, count=len(rows), serverTime=now, layoutVersion=park_navigation.LAYOUT['version'],
                 players=[dict(id=r['id'], mine=r['owner']==owner, spec=json.loads(r['spec']),
                               x=r['x'], z=r['z'], yaw=r['yaw'],
-                              action=r['action'] if now-r['action_at']<5 else 'idle',
+                              action=r['action'], behavior=json.loads(r['behavior']),
                               actionAt=r['action_at']) for r in rows])
 
 def join(owner, data):
@@ -69,10 +78,10 @@ def join(owner, data):
             raise ParkError('乐园暂时满员，请稍后再来。', 409)
         angle = secrets.randbelow(360)*math.pi/180
         token, identity = secrets.token_hex(24), secrets.token_hex(12)
-        db.execute('INSERT OR REPLACE INTO park_presence VALUES (?,?,?,?,?,?,?,?,?,?)',
+        db.execute('INSERT OR REPLACE INTO park_presence(owner,id,token,spec,x,z,yaw,action,action_at,updated) VALUES (?,?,?,?,?,?,?,?,?,?)',
                    (owner, identity, token, json.dumps(public, ensure_ascii=False),
                     math.cos(angle)*5, math.sin(angle)*3.5, 0, 'idle', now, now))
-    return dict(token=token, **snapshot(owner))
+    return dict(token=token, personality=profile['personality'] if profile else 'curious', **snapshot(owner))
 
 def update(owner, data, leave=False):
     now, db = clock(), get_db()
@@ -96,7 +105,21 @@ def update(owner, data, leave=False):
         action = data.get('action', 'idle')
         if not isinstance(action, str) or action not in ACTIONS:
             raise ParkError('互动无效')
+        behavior = data.get('behavior', {})
+        if not isinstance(behavior, dict):
+            raise ParkError('行为无效')
+        activity = behavior.get('activity', 'manual')
+        autonomous = behavior.get('autonomous', False)
+        if not isinstance(activity, str) or activity not in ACTIVITIES or type(autonomous) is not bool:
+            raise ParkError('行为无效')
+        goal = behavior.get('goal')
+        if goal is not None:
+            if not isinstance(goal, dict):raise ParkError('玩具位置无效')
+            gx, gz, _ = point(dict(x=goal.get('x'), z=goal.get('z'), yaw=0))
+            if activity != 'play':raise ParkError('玩具行为无效')
+            goal = dict(x=gx, z=gz)
+        safe_behavior = json.dumps(dict(activity=activity, autonomous=autonomous, goal=goal))
         at = now if action != row['action'] else row['action_at']
-        db.execute('UPDATE park_presence SET x=?,z=?,yaw=?,action=?,action_at=?,updated=? WHERE owner=?',
-                   (x, z, yaw, action, at, now, owner))
+        db.execute('UPDATE park_presence SET x=?,z=?,yaw=?,action=?,action_at=?,updated=?,behavior=? WHERE owner=?',
+                   (x, z, yaw, action, at, now, safe_behavior, owner))
     return snapshot(owner)
