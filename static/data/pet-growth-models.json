@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "stages": [
+    {
+      "pet": 1,
+      "stage": "幼年",
+      "height": 0.64,
+      "assets": {
+        "default": { "path": "/static/models/pet-growth-v1/shiba/default-juvenile.glb", "sha256": "35058299a88599721ece992d5b242198e70fc5429314eba321997329dded6c52" }
+      }
+    },
+    {
+      "pet": 1,
+      "stage": "少年",
+      "height": 0.82,
+      "assets": {
+        "default": { "path": "/static/models/pet-growth-v1/shiba/default-adolescent.glb", "sha256": "27e0eaa88c3e3fc79e047cfb9790da4b39bcd24e7de663feb3165061542df534" }
+      }
+    },
+    {
+      "pet": 1,
+      "stage": "成年",
+      "height": 0.95,
+      "assets": {
+        "default": { "path": "/static/models/pet-growth-v1/shiba/default-adult.glb", "sha256": "2a5e20be8eea7582fe5ad798da5d7efc28e5142b1c6dc600b9e650a86826f1ce" }
+      }
+    },
+    {
+      "pet": 2,
+      "stage": "幼年",
+      "height": 0.72,
+      "assets": {
+        "default": { "path": "/static/models/pet-growth-v1/husky/default-juvenile.glb", "sha256": "b91d2f51b48da79f8a3d9b47dcef61cf9079f1a302c62326c5ca12236b6f59ef" }
+      }
+    },
+    {
+      "pet": 2,
+      "stage": "少年",
+      "height": 0.91,
+      "assets": {
+        "default": { "path": "/static/models/pet-growth-v1/husky/default-adolescent.glb", "sha256": "47685a51e8f1cd6186a7845c1e568f9dce949c8f43bc3b6886040813d37aec62" }
+      }
+    },
+    {
+      "pet": 2,
+      "stage": "成年",
+      "height": 1.05,
+      "assets": {
+        "default": { "path": "/static/models/petchat-husky-v3/xueqiu.glb", "sha256": "a7ed55530ff84bccec933ec11581e627267a68b2d08739f1f68059b4cf2d53a1" }
+      }
+    },
+    {
+      "pet": 4,
+      "stage": "幼年",
+      "height": 0.76,
+      "assets": {
+        "default": { "path": "/static/models/pet-growth-v1/shepherd/default-juvenile.glb", "sha256": "4cccc32cd295c7857f45a036e9387886bd5cc62188bf991df33c7c6f787db00c" }
+      }
+    },
+    {
+      "pet": 4,
+      "stage": "少年",
+      "height": 0.96,
+      "assets": {
+        "default": { "path": "/static/models/pet-growth-v1/shepherd/default-adolescent.glb", "sha256": "612a7bbba7993e1577779e661b06927d15520b94f39f6d788ad1ee2733d82a15" }
+      }
+    },
+    {
+      "pet": 4,
+      "stage": "成年",
+      "height": 1.12,
+      "assets": {
+        "default": { "path": "/static/models/pet-growth-v1/shepherd/default-adult.glb", "sha256": "dd943974a2e4af8e8bf71699d6cfde130aed069e85b1838dd1c5823d0cf378da" }
+      }
+    },
+    {
+      "pet": 3,
+      "stage": "幼年",
+      "height": 0.58,
+      "assets": {
+        "tabby": { "path": "/static/models/pet-growth-v1/cat/tabby-juvenile.glb", "sha256": "933b46f40280990a13c81a07bc66f9e18d4e1cedff0d152b1565cbb412818689" },
+        "ginger": { "path": "/static/models/pet-growth-v1/cat/ginger-juvenile.glb", "sha256": "a2bee5ed4a05773142f23eb772c12928ecccb0765b322836eb669044abb6c673" },
+        "tuxedo": { "path": "/static/models/pet-growth-v1/cat/tuxedo-juvenile.glb", "sha256": "bc30c5cf30701e533270f908dba1d4d4df2acf2c6fcbf837cffdff1dbb5bd90d" },
+        "calico": { "path": "/static/models/pet-growth-v1/cat/calico-juvenile.glb", "sha256": "8946dc6a9e281b17a1e91d67ec7106a2ea4601bfe20b54c2dbb239dc450eba52" },
+        "ragdoll": { "path": "/static/models/pet-growth-v1/cat/ragdoll-juvenile.glb", "sha256": "a89ff383122353cdb0759e52b616e032a15c6174d0e3830aa0d28588944a649d" }
+      }
+    },
+    {
+      "pet": 3,
+      "stage": "少年",
+      "height": 0.72,
+      "assets": {
+        "tabby": { "path": "/static/models/pet-growth-v1/cat/tabby-adolescent.glb", "sha256": "40037f82c6ad391784872c28fa05bccaa2d43dd2827a39f3d64aa49dc40daff6" },
+        "ginger": { "path": "/static/models/pet-growth-v1/cat/ginger-adolescent.glb", "sha256": "a68cf6a29c71eee8cb31476997cb958a4bbc36f9f6e70544d723623da57d25a2" },
+        "tuxedo": { "path": "/static/models/pet-growth-v1/cat/tuxedo-adolescent.glb", "sha256": "b94ef8e53fada1d4c9edef1302e93df4bf5c2860244d82858c1ff639e69f5f0e" },
+        "calico": { "path": "/static/models/pet-growth-v1/cat/calico-adolescent.glb", "sha256": "5095c091fc7a0aa766d855e533a12a47738f67d00869dba8deb4ee0a37f01ed3" },
+        "ragdoll": { "path": "/static/models/pet-growth-v1/cat/ragdoll-adolescent.glb", "sha256": "f330eae000fbd1395fb89c1b04b5117ca02ef776d2495b7a3dfe500a6b91d173" }
+      }
+    },
+    {
+      "pet": 3,
+      "stage": "成年",
+      "height": 0.85,
+      "assets": {
+        "tabby": { "path": "/static/models/petchat-cat-v3/cat.glb", "sha256": "dca73dc58ffd5e3aa4b52a86eeefeebd6621d30a3e695fe540d5892250e901db" },
+        "ginger": { "path": "/static/models/petchat-cat-coats-v1/ginger.glb", "sha256": "49534c522238c04579b65ea2f0b495df874645719c4388fdbd6ebddd04cb654a" },
+        "tuxedo": { "path": "/static/models/petchat-cat-coats-v1/tuxedo.glb", "sha256": "3575164a69bfdf41d879afdbb083f9ec0d740fc251215747ae906c2f246da87e" },
+        "calico": { "path": "/static/models/petchat-cat-coats-v1/calico.glb", "sha256": "ff26fee4fcacc677ba62c13a098e5c8aecc1559e4dc85d436dd19b5e274031ee" },
+        "ragdoll": { "path": "/static/models/petchat-cat-coats-v1/ragdoll.glb", "sha256": "8a139c37ebd4f674a5b7a79b24ee9f02c453e4b07b7cba7ac1dfab743e8b8b13" }
+      }
+    }
+  ]
+}

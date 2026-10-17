@@ -1,0 +1,45 @@
+{
+  "species": "shepherd",
+  "stage": "juvenile",
+  "label": "幼年",
+  "source": "static/models/petchat-shepherd-v2/shepherd.glb",
+  "parameters": {
+    "label": "幼年",
+    "body": [
+      1.06,
+      0.8,
+      0.9
+    ],
+    "head": [
+      1.2,
+      0.95,
+      1.2
+    ],
+    "leg": 0.75,
+    "paw": 0.95,
+    "tail": 0.85
+  },
+  "bounds": {
+    "min": [
+      -0.28049713373184204,
+      -0.5676240921020508,
+      0.004403851460665464
+    ],
+    "max": [
+      0.27255871891975403,
+      0.5955692529678345,
+      1.049902319908142
+    ]
+  },
+  "weightCoverage": {
+    "FL": 6487,
+    "FR": 6195,
+    "HL": 7263,
+    "HR": 7253
+  },
+  "bones": 45,
+  "actions": 35,
+  "glb": "static\\models\\pet-growth-v1\\shepherd\\default-juvenile.glb",
+  "bytes": 17058228,
+  "sha256": "4cccc32cd295c7857f45a036e9387886bd5cc62188bf991df33c7c6f787db00c"
+}

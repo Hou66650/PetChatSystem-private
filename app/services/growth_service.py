@@ -117,7 +117,7 @@ def appearance(p, now=None):
     now=now or today();birth=date.fromisoformat(p['birthday']);adopted=date.fromisoformat(p['adopted'])
     age=max(0,(now-birth).days);days=max(0,(now-adopted).days)
     phase='幼年' if now<months_after(birth,6) else '少年' if now<months_after(birth,12) else '成年'
-    # One grounded rig, three size stages with gradual interpolation. No new mesh loading.
+    # Voice and legacy/private fallback keep gradual scaling; supported stage GLBs use manifest heights only.
     scale=round(.72+.28*min(1,max(0,(age-90)/275)),4)
     index=max(i for i,(d,_) in enumerate(NODES) if now>=node_date(adopted,d))
     unlocks=['回应名字','温柔互动']

@@ -1,0 +1,49 @@
+{
+  "species": "shepherd",
+  "natural": {
+    "juvenile": {
+      "height": 1.176984678255394,
+      "headHeightRatio": 0.5964537291742288,
+      "frontLegRatio": 0.31865714348873564,
+      "torsoLengthRatio": 0.5836364531871406,
+      "headWidthRatio": 0.3566402230604682
+    },
+    "adolescent": {
+      "height": 1.176984874648042,
+      "headHeightRatio": 0.6639033198291081,
+      "frontLegRatio": 0.37389111266128267,
+      "torsoLengthRatio": 0.6565910490365442,
+      "headWidthRatio": 0.3176676316365703
+    },
+    "adult": {
+      "height": 1.176984743680805,
+      "headHeightRatio": 0.7271041168211487,
+      "frontLegRatio": 0.42487633439656897,
+      "torsoLengthRatio": 0.7295456968465821,
+      "headWidthRatio": 0.2803775151617433
+    }
+  },
+  "equalHeightSourceMetrics": {
+    "juvenile": {
+      "height": 1.176984678255394,
+      "headHeightRatio": 0.5964537291742288,
+      "frontLegRatio": 0.31865714348873564,
+      "torsoLengthRatio": 0.5836364531871406,
+      "headWidthRatio": 0.3566402230604682
+    },
+    "adolescent": {
+      "height": 1.176984874648042,
+      "headHeightRatio": 0.6639033198291081,
+      "frontLegRatio": 0.37389111266128267,
+      "torsoLengthRatio": 0.6565910490365442,
+      "headWidthRatio": 0.3176676316365703
+    },
+    "adult": {
+      "height": 1.176984743680805,
+      "headHeightRatio": 0.7271041168211487,
+      "frontLegRatio": 0.42487633439656897,
+      "torsoLengthRatio": 0.7295456968465821,
+      "headWidthRatio": 0.2803775151617433
+    }
+  }
+}

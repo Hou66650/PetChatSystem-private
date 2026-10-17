@@ -1,0 +1,49 @@
+{
+  "species": "shiba",
+  "natural": {
+    "juvenile": {
+      "height": 1.0574722850578837,
+      "headHeightRatio": 0.5621485861220097,
+      "frontLegRatio": 0.2801491937260663,
+      "torsoLengthRatio": 0.5753342152011688,
+      "headWidthRatio": 0.41166964817137963
+    },
+    "adolescent": {
+      "height": 1.057472160377074,
+      "headHeightRatio": 0.6230010397090522,
+      "frontLegRatio": 0.32870832375861136,
+      "torsoLengthRatio": 0.6472513643325447,
+      "headWidthRatio": 0.3666838020018498
+    },
+    "adult": {
+      "height": 1.0574722295277752,
+      "headHeightRatio": 0.6801184685578768,
+      "frontLegRatio": 0.37353227791639243,
+      "torsoLengthRatio": 0.7191680040447217,
+      "headWidthRatio": 0.3236396113931852
+    }
+  },
+  "equalHeightSourceMetrics": {
+    "juvenile": {
+      "height": 1.0574722850578837,
+      "headHeightRatio": 0.5621485861220097,
+      "frontLegRatio": 0.2801491937260663,
+      "torsoLengthRatio": 0.5753342152011688,
+      "headWidthRatio": 0.41166964817137963
+    },
+    "adolescent": {
+      "height": 1.057472160377074,
+      "headHeightRatio": 0.6230010397090522,
+      "frontLegRatio": 0.32870832375861136,
+      "torsoLengthRatio": 0.6472513643325447,
+      "headWidthRatio": 0.3666838020018498
+    },
+    "adult": {
+      "height": 1.0574722295277752,
+      "headHeightRatio": 0.6801184685578768,
+      "frontLegRatio": 0.37353227791639243,
+      "torsoLengthRatio": 0.7191680040447217,
+      "headWidthRatio": 0.3236396113931852
+    }
+  }
+}

@@ -51,6 +51,17 @@ class GrowthTests(unittest.TestCase):
         self.assertEqual(self.call(method='patch',data=payload).json['profile']['certificate'],d['profile']['certificate'])
         self.assertEqual(self.a.get('/api/companion?petId=3').json['pet']['name'],'小白')
         self.assertEqual(self.call(method='patch',data={**payload,'personality':'curious'}).status_code,400)
+    def test_six_and_twelve_calendar_month_boundaries(self):
+        self.enroll(mode='real',birthday='2026-03-31',adopted='2026-03-31',estimated=False)
+        with self.app.app_context():
+            p=growth.get(get_db(),self.owner,3)
+            six=growth.months_after(date(2026,3,31),6)
+            twelve=growth.months_after(date(2026,3,31),12)
+            self.assertEqual((six.isoformat(),twelve.isoformat()),('2026-09-30','2027-03-31'))
+            self.assertEqual(growth.appearance(p,six-timedelta(days=1))['stage'],'幼年')
+            self.assertEqual(growth.appearance(p,six)['stage'],'少年')
+            self.assertEqual(growth.appearance(p,twelve-timedelta(days=1))['stage'],'少年')
+            self.assertEqual(growth.appearance(p,twelve)['stage'],'成年')
     def test_invalid_input_scope_and_account_isolation(self):
         self.assertEqual(self.enroll(personality=[]).status_code,400)
         self.assertEqual(self.enroll(name='<x>'*20).status_code,400)

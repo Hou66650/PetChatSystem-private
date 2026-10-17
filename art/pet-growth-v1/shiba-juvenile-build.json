@@ -1,0 +1,45 @@
+{
+  "species": "shiba",
+  "stage": "juvenile",
+  "label": "幼年",
+  "source": "static/models/petchat-shiba-v4/qiuqiu.glb",
+  "parameters": {
+    "label": "幼年",
+    "body": [
+      1.06,
+      0.8,
+      0.9
+    ],
+    "head": [
+      1.2,
+      0.95,
+      1.2
+    ],
+    "leg": 0.75,
+    "paw": 0.95,
+    "tail": 0.85
+  },
+  "bounds": {
+    "min": [
+      -0.3096783757209778,
+      -0.48949533700942993,
+      0.004003892187029123
+    ],
+    "max": [
+      0.2546361982822418,
+      0.47772377729415894,
+      0.960577130317688
+    ]
+  },
+  "weightCoverage": {
+    "FL": 9487,
+    "FR": 7842,
+    "HL": 11833,
+    "HR": 12843
+  },
+  "bones": 45,
+  "actions": 35,
+  "glb": "static\\models\\pet-growth-v1\\shiba\\default-juvenile.glb",
+  "bytes": 16183296,
+  "sha256": "35058299a88599721ece992d5b242198e70fc5429314eba321997329dded6c52"
+}

@@ -1,0 +1,415 @@
+{
+  "environment": "local headless Chromium; not a MatePad benchmark",
+  "report": [
+    {
+      "pet": 3,
+      "stage": "幼年",
+      "switchMs": 1702,
+      "frameMean": 4.164999999999994,
+      "p50": 4.199999999999818,
+      "p95": 4.300000000000182,
+      "p99": 4.300000000000182,
+      "memory": {
+        "heap": 31775705,
+        "geometries": 64,
+        "textures": 12,
+        "calls": 64,
+        "triangles": 160385
+      }
+    },
+    {
+      "pet": 3,
+      "stage": "少年",
+      "switchMs": 1443,
+      "frameMean": 4.164999999999994,
+      "p50": 4.199999999999818,
+      "p95": 4.300000000000182,
+      "p99": 4.300000000000182,
+      "memory": {
+        "heap": 32169993,
+        "geometries": 64,
+        "textures": 12,
+        "calls": 64,
+        "triangles": 160385
+      }
+    },
+    {
+      "pet": 3,
+      "stage": "成年",
+      "switchMs": 1309,
+      "frameMean": 4.166666666666667,
+      "p50": 4.199999999999818,
+      "p95": 4.300000000000182,
+      "p99": 4.300000000000182,
+      "memory": {
+        "heap": 32263993,
+        "geometries": 64,
+        "textures": 12,
+        "calls": 64,
+        "triangles": 160385
+      }
+    },
+    {
+      "pet": 1,
+      "stage": "幼年",
+      "switchMs": 1937,
+      "frameMean": 4.166666666666667,
+      "p50": 4.199999999998909,
+      "p95": 4.300000000001091,
+      "p99": 4.399999999999636,
+      "memory": {
+        "heap": 32945869,
+        "geometries": 48,
+        "textures": 6,
+        "calls": 63,
+        "triangles": 166399
+      }
+    },
+    {
+      "pet": 1,
+      "stage": "少年",
+      "switchMs": 1193,
+      "frameMean": 4.163333333333352,
+      "p50": 4.199999999998909,
+      "p95": 4.299999999999272,
+      "p99": 4.399999999999636,
+      "memory": {
+        "heap": 33109037,
+        "geometries": 48,
+        "textures": 6,
+        "calls": 63,
+        "triangles": 166399
+      }
+    },
+    {
+      "pet": 1,
+      "stage": "成年",
+      "switchMs": 1148,
+      "frameMean": 4.164999999999994,
+      "p50": 4.199999999998909,
+      "p95": 4.300000000001091,
+      "p99": 4.300000000001091,
+      "memory": {
+        "heap": 33184072,
+        "geometries": 48,
+        "textures": 6,
+        "calls": 63,
+        "triangles": 166399
+      }
+    },
+    {
+      "pet": 2,
+      "stage": "幼年",
+      "switchMs": 1657,
+      "frameMean": 4.236666666666649,
+      "p50": 4.199999999998909,
+      "p95": 4.299999999999272,
+      "p99": 4.300000000001091,
+      "memory": {
+        "heap": 34038251,
+        "geometries": 52,
+        "textures": 6,
+        "calls": 73,
+        "triangles": 175000
+      }
+    },
+    {
+      "pet": 2,
+      "stage": "少年",
+      "switchMs": 1181,
+      "frameMean": 4.168333333333339,
+      "p50": 4.199999999998909,
+      "p95": 4.299999999999272,
+      "p99": 4.300000000001091,
+      "memory": {
+        "heap": 34206707,
+        "geometries": 52,
+        "textures": 6,
+        "calls": 73,
+        "triangles": 175000
+      }
+    },
+    {
+      "pet": 2,
+      "stage": "成年",
+      "switchMs": 1203,
+      "frameMean": 4.304999999999988,
+      "p50": 4.19999999999709,
+      "p95": 4.299999999999272,
+      "p99": 4.30000000000291,
+      "memory": {
+        "heap": 34313755,
+        "geometries": 52,
+        "textures": 6,
+        "calls": 73,
+        "triangles": 175000
+      }
+    },
+    {
+      "pet": 4,
+      "stage": "幼年",
+      "switchMs": 1237,
+      "frameMean": 4.166666666666667,
+      "p50": 4.200000000000728,
+      "p95": 4.299999999999272,
+      "p99": 4.299999999999272,
+      "memory": {
+        "heap": 34001769,
+        "geometries": 60,
+        "textures": 6,
+        "calls": 78,
+        "triangles": 169562
+      }
+    },
+    {
+      "pet": 4,
+      "stage": "少年",
+      "switchMs": 1208,
+      "frameMean": 4.168333333333309,
+      "p50": 4.19999999999709,
+      "p95": 4.30000000000291,
+      "p99": 4.400000000001455,
+      "memory": {
+        "heap": 34103802,
+        "geometries": 60,
+        "textures": 6,
+        "calls": 78,
+        "triangles": 169562
+      }
+    },
+    {
+      "pet": 4,
+      "stage": "成年",
+      "switchMs": 1211,
+      "frameMean": 4.165000000000024,
+      "p50": 4.19999999999709,
+      "p95": 4.299999999999272,
+      "p99": 4.30000000000291,
+      "memory": {
+        "heap": 34090585,
+        "geometries": 60,
+        "textures": 6,
+        "calls": 78,
+        "triangles": 169562
+      }
+    }
+  ],
+  "hot": {
+    "pet": 3,
+    "stage": "幼年",
+    "switchMs": 1242,
+    "frameMean": 4.165000000000024,
+    "p50": 4.19999999999709,
+    "p95": 4.299999999999272,
+    "p99": 4.299999999999272,
+    "memory": {
+      "heap": 32808909,
+      "geometries": 65,
+      "textures": 12,
+      "calls": 64,
+      "triangles": 160385
+    }
+  },
+  "switches": [
+    {
+      "index": 1,
+      "stage": "幼年",
+      "switchMs": 678,
+      "memory": {
+        "heap": 32906483,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 2,
+      "stage": "成年",
+      "switchMs": 1266,
+      "memory": {
+        "heap": 32941903,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 3,
+      "stage": "幼年",
+      "switchMs": 1227,
+      "memory": {
+        "heap": 33016827,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 4,
+      "stage": "成年",
+      "switchMs": 1259,
+      "memory": {
+        "heap": 33026533,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 5,
+      "stage": "幼年",
+      "switchMs": 1330,
+      "memory": {
+        "heap": 33087657,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 6,
+      "stage": "成年",
+      "switchMs": 1245,
+      "memory": {
+        "heap": 33102488,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 7,
+      "stage": "幼年",
+      "switchMs": 1237,
+      "memory": {
+        "heap": 33130464,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 8,
+      "stage": "成年",
+      "switchMs": 1281,
+      "memory": {
+        "heap": 33132416,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 9,
+      "stage": "幼年",
+      "switchMs": 1222,
+      "memory": {
+        "heap": 33154872,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 10,
+      "stage": "成年",
+      "switchMs": 1234,
+      "memory": {
+        "heap": 33162004,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 11,
+      "stage": "幼年",
+      "switchMs": 1229,
+      "memory": {
+        "heap": 33234596,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 12,
+      "stage": "成年",
+      "switchMs": 1201,
+      "memory": {
+        "heap": 33228808,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 13,
+      "stage": "幼年",
+      "switchMs": 1230,
+      "memory": {
+        "heap": 33255440,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 14,
+      "stage": "成年",
+      "switchMs": 1207,
+      "memory": {
+        "heap": 33255988,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 15,
+      "stage": "幼年",
+      "switchMs": 1317,
+      "memory": {
+        "heap": 33268608,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 16,
+      "stage": "成年",
+      "switchMs": 1230,
+      "memory": {
+        "heap": 33267676,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 17,
+      "stage": "幼年",
+      "switchMs": 1257,
+      "memory": {
+        "heap": 33286420,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 18,
+      "stage": "成年",
+      "switchMs": 1225,
+      "memory": {
+        "heap": 33286980,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 19,
+      "stage": "幼年",
+      "switchMs": 1205,
+      "memory": {
+        "heap": 33302516,
+        "geometries": 65,
+        "textures": 12
+      }
+    },
+    {
+      "index": 20,
+      "stage": "成年",
+      "switchMs": 1227,
+      "memory": {
+        "heap": 33307536,
+        "geometries": 65,
+        "textures": 12
+      }
+    }
+  ]
+}

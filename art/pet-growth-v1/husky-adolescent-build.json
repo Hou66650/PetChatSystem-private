@@ -1,0 +1,45 @@
+{
+  "species": "husky",
+  "stage": "adolescent",
+  "label": "少年",
+  "source": "static/models/petchat-husky-v3/xueqiu.glb",
+  "parameters": {
+    "label": "少年",
+    "body": [
+      1.03,
+      0.9,
+      0.95
+    ],
+    "head": [
+      1.1,
+      1.0,
+      1.1
+    ],
+    "leg": 0.88,
+    "paw": 0.98,
+    "tail": 0.93
+  },
+  "bounds": {
+    "min": [
+      -0.269060343503952,
+      -0.6809758543968201,
+      0.0017886841669678688
+    ],
+    "max": [
+      0.2395385205745697,
+      0.6896604895591736,
+      1.1219758987426758
+    ]
+  },
+  "weightCoverage": {
+    "FL": 10548,
+    "FR": 9298,
+    "HL": 11194,
+    "HR": 11514
+  },
+  "bones": 45,
+  "actions": 35,
+  "glb": "static\\models\\pet-growth-v1\\husky\\default-adolescent.glb",
+  "bytes": 16851052,
+  "sha256": "47685a51e8f1cd6186a7845c1e568f9dce949c8f43bc3b6886040813d37aec62"
+}

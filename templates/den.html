@@ -629,6 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/pet-profile.js') }}?v={{ app_version }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/den_vision.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/diary-events.js') }}?v={{ app_version }}"></script>
+    <script src="/static/js/den/growth-assets.js?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/growth-runtime.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/pet-sounds.js?v={{ app_version }}"></script>
     <script src="/static/js/den/render-budget.js?v={{ app_version }}"></script>
@@ -681,6 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const state = loadState();
         const requestedPet=Number(new URLSearchParams(location.search).get('pet'));
         let currentPetId = SPECS[requestedPet] ? requestedPet : (SPECS[state.selectedPetId] ? Number(state.selectedPetId) : 1);
+        let currentSpec = null;
         let voiceUI=null, voiceBusy=false, companionBehavior=null;
         // 陪伴天数（S1-07）：每只宠物独立记录领养日；旧数据只补今天，不按亲密度倒推
         function localDateKey(d) {
@@ -743,7 +745,7 @@ document.addEventListener('DOMContentLoaded', () => {
         function frameAlpine(close){
             if(!petModel)return;
             const ticket=++cameraMoveEpoch,from=camera.position.clone(),fromTarget=controls.target.clone();
-            const target=close?petModel.position.clone().add(new THREE.Vector3(0,.55,0)):new THREE.Vector3(currentTheme==='room'?2:0,.65,currentTheme==='room'?3:0);
+            const target=close?petModel.position.clone().add(new THREE.Vector3(0,petModel.userData.cameraCenter||.55,0)):new THREE.Vector3(currentTheme==='room'?2:0,.65,currentTheme==='room'?3:0);
             const to=close?target.clone().add(new THREE.Vector3(1.25,.65,2.1)):
                 currentTheme==='room'?target.clone().add(new THREE.Vector3(17,22,36).multiplyScalar(Math.max(1,1.15/camera.aspect))):
                 currentTheme==='camp'?new THREE.Vector3(5.4,6.8,14):
@@ -1163,7 +1165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             for(const [key,act] of Object.entries(ShibaExpression.acts))spec.anims[key]=act.clip;
         const standardCatSpec={...SPECS[3],anims:{...SPECS[3].anims}};
         function applyCatAppearance(coat){
-            SPECS[3]={...standardCatSpec,anims:{...standardCatSpec.anims},glb:coat.model+'?v={{ app_version }}'};
+            SPECS[3]={...standardCatSpec,anims:{...standardCatSpec.anims},glb:coat.model+'?v={{ app_version }}',appearance:coat.id||'tabby'};
             if(coat.custom)Object.assign(SPECS[3],{name:coat.name,custom:true,expressive:false,fallback:null,
                 anims:{idle:'idle_breathe',walk:'walk',trot:'walk',run:'run',turnLeft:'turn_left',turnRight:'turn_right',eat:'eat',sleep:'sleep_loop',lieDown:'lie_down',sit:'sit_down',sitDown:'sit_down',standUp:'stand_up',sniff:'sniff',stretch:'stretch'}});
         }
@@ -1495,7 +1497,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        async function spawnPet(id, fromRollback = false, force = false) {
+        let growthRefreshEpoch=0;
+        async function resolveGrowthSpec(id,spec,growth){
+            if(!growth?.enrolled)return spec;
+            if(!window.GrowthAssets){spec.h*=growth.appearance.scale;spec.growthFallback='resolver-unavailable';return spec;}
+            const manifest=await GrowthAssets.load('{{ app_version }}');
+            const resolved=GrowthAssets.resolve(manifest,{petId:id,stage:growth.appearance.stage,appearance:spec.appearance,custom:!!spec.custom});
+            if(!resolved.supported){spec.h*=growth.appearance.scale;spec.growthFallback=resolved.reason;return spec;}
+            spec.glb=resolved.path+'?v={{ app_version }}';spec.h=resolved.height;spec.actualBounds=true;
+            spec.growthKey=resolved.key;spec.growthStage=resolved.stage;return spec;
+        }
+        async function spawnPet(id, fromRollback = false, force = false, prepared = null) {
+            growthRefreshEpoch++;
             if (!SPECS[id]) { toast('这只宠物还不认识我们哦', 'error'); return; }
             if (!force && id === currentPetId && (petModel || spawnBusy)) return;   // 快速连点同一只：忽略（含首载窗口）
             const prevId = (petModel && currentPetId !== id) ? currentPetId : null;   // 失败回滚目标（须在改写前捕获）
@@ -1504,7 +1517,7 @@ document.addEventListener('DOMContentLoaded', () => {
             petGrounding?.beforeFrame();petGrounding=null;
             catLife?.cancel();catLife=null;headLook?.beforeFrame();headLook=null;
             dialogueRunner.cancel('');endDialogueHold();
-            spawnBusy = true;
+            spawnBusy = true;currentSpec = null;
             const epoch = ++locomotionEpoch;
             const assetTicket=assetLoader.begin();
             if (locomotion) locomotion.interrupt(); locomotion = null;
@@ -1524,8 +1537,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if(voiceUI) voiceUI.restartForPet();
             stopDenSpeech();
             if (typeof denHistory !== 'undefined') denHistory = [];   // 聊天记忆逐宠隔离
-            const spec = {...SPECS[id]};
-            const growthReady = window.PetGrowth?.load(id);
+            let spec=prepared?.spec?{...prepared.spec}:{...SPECS[id]};
+            const growthReady=prepared?Promise.resolve(prepared.growth):window.PetGrowth?.load(id);
             actionTransition=null;
             const themeReady = applyTheme(spec.theme,assetTicket);
             // 先刷 UI（加载是异步的，界面不该等）
@@ -1536,20 +1549,32 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('ip-name-text').textContent = `${spec.name}的小窝`;
             let gltf;
             try {
-                try { gltf = await loadGlb(spec.glb,assetTicket); }
-                catch (error) {
-                    if(error.name==='AbortError'||!assetLoader.active(assetTicket))throw error;
-                    if (!spec.fallback) throw error;
-                    gltf = await loadGlb(spec.fallback,assetTicket);spec.pbr=id!==4&&id!==3&&!!spec.expressive;
-                    if(spec.expressive)spec.anims={...spec.anims,wave:'wave_paw'};
-                    if(spec.legacyAnims)spec.anims={...spec.legacyAnims};
-                    spec.expressive=false;
-                    toast('新模型暂时加载失败，已使用备用模型', 'info');
+                const growth=await growthReady;
+                if(!prepared)spec=await resolveGrowthSpec(id,spec,growth);
+                if(prepared?.gltf)gltf=prepared.gltf;
+                else{
+                    try{gltf=await loadGlb(spec.glb,assetTicket);}
+                    catch(error){
+                        if(error.name==='AbortError'||!assetLoader.active(assetTicket))throw error;
+                        if(spec.growthKey){
+                            spec={...SPECS[id]};if(growth?.enrolled)spec.h*=growth.appearance.scale;spec.growthFallback='asset-load';
+                            toast('成长模型暂时加载失败，已恢复当前成年外观','info');
+                            try{gltf=await loadGlb(spec.glb,assetTicket);}catch(second){error=second;}
+                        }
+                        if(!gltf){
+                            if(error.name==='AbortError'||!assetLoader.active(assetTicket))throw error;
+                            if(!spec.fallback)throw error;
+                            gltf=await loadGlb(spec.fallback,assetTicket);spec.pbr=id!==4&&id!==3&&!!spec.expressive;
+                            if(spec.expressive)spec.anims={...spec.anims,wave:'wave_paw'};
+                            if(spec.legacyAnims)spec.anims={...spec.legacyAnims};
+                            spec.expressive=false;
+                            toast('新模型暂时加载失败，已使用备用模型', 'info');
+                        }
+                    }
                 }
                 await themeReady;
-                const growth = await growthReady;
-                if(growth?.enrolled)spec.h *= growth.appearance.scale;
             } catch (e) {
+                if(gltf?.scene)disposeObjectTree(gltf.scene);
                 if (currentPetId !== id || epoch !== locomotionEpoch) return;
                 toast('宠物模型加载失败，请刷新重试', 'error');
                 spawnBusy = false; showPetLoading(false,true);          // 先复位再回滚：子级调用时标志状态正确
@@ -1565,7 +1590,7 @@ document.addEventListener('DOMContentLoaded', () => {
             model.position.set(0, 0, 0);
             // Imported skins retain their authored rest transforms. Skeleton.pose
             // in this Three.js version loses a transformed non-bone parent.
-            model.traverse(o=>{if(o.isSkinnedMesh&&!spec.custom) o.skeleton.pose();});
+            model.traverse(o=>{if(o.isSkinnedMesh&&!spec.custom&&!spec.actualBounds) o.skeleton.pose();});
             model.updateMatrixWorld(true);
             // 摘下骨骼上的配饰再量包围盒（Box3 不看 visible，帽尖会让狗二次出现时缩水 1/4）
             const detached = [];
@@ -1577,12 +1602,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const fxShells = [];
             model.traverse((o) => { if (o.userData && o.userData.__denFx) fxShells.push(o); });
             fxShells.forEach((o) => { if (o.parent) { detached.push([o, o.parent]); o.parent.remove(o); } });
-            const box = model.userData.__denBaseBounds ? model.userData.__denBaseBounds.clone() : spec.custom ? PetModelBounds.measure(THREE,model) : new THREE.Box3().setFromObject(model);
+            const box = model.userData.__denBaseBounds ? model.userData.__denBaseBounds.clone() : (spec.custom||spec.actualBounds) ? PetModelBounds.measure(THREE,model) : new THREE.Box3().setFromObject(model);
             model.userData.__denBaseBounds=box.clone();
             const origH = Math.max(0.01, box.max.y - box.min.y);
             model.scale.setScalar(spec.h / origH);
             model.updateMatrixWorld(true);
-            const box2 = spec.custom ? box.clone().applyMatrix4(new THREE.Matrix4().makeScale(model.scale.x,model.scale.y,model.scale.z)) : new THREE.Box3().setFromObject(model);
+            const box2 = (spec.custom||spec.actualBounds) ? box.clone().applyMatrix4(new THREE.Matrix4().makeScale(model.scale.x,model.scale.y,model.scale.z)) : new THREE.Box3().setFromObject(model);
             model.position.set(-(box2.min.x + box2.max.x) / 2, -box2.min.y, -(box2.min.z + box2.max.z) / 2);
             detached.forEach(([o, parentBone]) => parentBone.add(o));   // 配饰挂回原骨骼
             model.traverse((o) => {
@@ -1641,7 +1666,8 @@ document.addEventListener('DOMContentLoaded', () => {
             g.add(model);
             g.rotation.y = 0.35;                 // 朝向镜头略侧，展示立体感
             petModel = g;
-            petModel.userData = { pbr:!!spec.pbr, height: spec.h, headBone, mouthSocket: model.getObjectByName('SOCKET_mouth'), groundY: modeledStage ? .039 : 0, origH, animations: gltf.animations.map(a => clipShort(a.name)) };
+            petModel.userData = { pbr:!!spec.pbr, height: spec.h, cameraCenter:(box2.max.y-box2.min.y)/2, growthKey:spec.growthKey||'', growthStage:spec.growthStage||'', growthFallback:spec.growthFallback||'', headBone, mouthSocket: model.getObjectByName('SOCKET_mouth'), groundY: modeledStage ? .039 : 0, origH, animations: gltf.animations.map(a => clipShort(a.name)) };
+            currentSpec = spec;
             headLook=new PetHeadLook.Controller(THREE,petModel,{relaxBehind:id===3});petModel.userData.headLook=!!headLook.head;
             buildAccessories(model, headBone, neckBone, origH, spec);
             scene.add(petModel); petModel.position.y = petModel.userData.groundY; grabHomeY = petModel.userData.groundY;
@@ -1650,7 +1676,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 obstacles:modeledStage?MODELED_STAGES[spec.theme].navigation.obstacles.filter(o=>catHomeReady||o.tag!=='catHome'):PetNavigation.legacy[spec.theme],
                 surfaces:modeledStage?(MODELED_STAGES[spec.theme].navigation.surfaces||[]).filter(s=>catHomeReady||s.tag!=='catHome'):[],
                 bodyRadius:Math.hypot(box.max.x-box.min.x,box.max.z-box.min.z)*spec.h/origH/2+.015});
-            if(id===3)petGrounding=new PetGrounding.Controller(THREE,petModel,model,navigation);
+            if(id===3||spec.actualBounds)petGrounding=new PetGrounding.Controller(THREE,petModel,model,navigation);
             locomotion = new PetLocomotion.Controller({navigation,model:petModel,speed:spec.pbr ? .34 : .46,
                 strideSpeed:spec.pbr ? .42 * spec.h / origH : .46,
                 gaits:PetLocomotion.gaitSpeeds(actions,spec.h/origH),
@@ -3968,10 +3994,21 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('focus',refreshCatAppearance);
         window.addEventListener('storage',e=>{if(e.key==='pait-cat-coat-change')void refreshCatAppearance();});
         setInterval(()=>{if(currentPetId===3)void refreshCatAppearance();},15000);
+        async function refreshGrowthModel(d){
+            const id=currentPetId;if(!d?.enrolled||!petModel||spawnBusy||Number(d.petId)!==id)return;
+            const token=++growthRefreshEpoch;
+            try{
+                let spec=await resolveGrowthSpec(id,{...SPECS[id]},d);
+                if(!spec.growthKey||spec.growthKey===petModel.userData.growthKey||token!==growthRefreshEpoch)return;
+                const ticket=assetLoader.begin(),gltf=await loadGlb(spec.glb,ticket);
+                if(token!==growthRefreshEpoch||id!==currentPetId||spawnBusy||!petModel){disposeObjectTree(gltf.scene);return;}
+                await spawnPet(id,false,true,{spec,gltf,growth:d});
+            }catch(error){if(error.name!=='AbortError'&&token===growthRefreshEpoch)toast('新阶段模型暂未加载，继续保留当前外观','info');}
+        }
         window.PetGrowth?.bind({pet:()=>currentPetId,busy:()=>spawnBusy||!!voiceUI?.isActive()||chatBusy||!!petPlayer||!!(denAudio&&!denAudio.paused)||!!window.speechSynthesis?.speaking||!!portals?.away,
             walking:()=>!!locomotion&&locomotion.velocity>.02,surface:()=>locomotion?.navigation.dock?'wood':'ground',
             mood:label=>{document.getElementById('growth-mood').textContent='现在：'+label;},
-            changed:d=>{updateIntimacyUI();if(d.profile?.name&&SPECS[currentPetId].displayName!==d.profile.name){SPECS[currentPetId].displayName=d.profile.name;updatePetTitles();}},
+            changed:d=>{updateIntimacyUI();if(d.profile?.name&&SPECS[currentPetId].displayName!==d.profile.name){SPECS[currentPetId].displayName=d.profile.name;updatePetTitles();}void refreshGrowthModel(d);},
             capture:()=>{if(!petModel||spawnBusy||grabbed||dropping||anim.birth<1)return null;renderer.render(scene,camera);const shot=document.createElement('canvas');shot.width=600;shot.height=Math.max(1,Math.round(600*canvas.height/canvas.width));if(shot.height>800){shot.height=800;shot.width=Math.round(800*canvas.width/canvas.height);}shot.getContext('2d').drawImage(canvas,0,0,shot.width,shot.height);return shot.toDataURL('image/jpeg',.75).split(',')[1];}
         });
         spawnPet(currentPetId);
@@ -3982,6 +4019,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 调试/测试钩子
         window.__den = {
             get scene() { return scene; },
+            get renderer() { return renderer; },
             get petModel() { return petModel; },
             get mixer() { return mixer; },
             SPECS, spawnPet, setAnim, speak, petBlink, camera: () => camera,
@@ -3989,7 +4027,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         if (window.NativeDenBridge) {
             nativeDen = new NativeDenBridge.Bridge({canvas, renderer, read: () => ({
-                scene, camera, petModel, spec: SPECS[currentPetId], action: activeAction,
+                scene, camera, petModel, spec: currentSpec || SPECS[currentPetId], action: activeAction,
                 busy: spawnBusy, special: grabbed || dropping || !!gestureAction || visionOn ||
                     !!facePlay?.ball || !!toyWorkshop?.held
             })});

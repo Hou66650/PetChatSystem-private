@@ -1,0 +1,45 @@
+{
+  "species": "cat",
+  "stage": "adolescent",
+  "label": "少年",
+  "source": "static/models/petchat-cat-v3/cat.glb",
+  "parameters": {
+    "label": "少年",
+    "body": [
+      1.03,
+      0.9,
+      0.95
+    ],
+    "head": [
+      1.1,
+      1.0,
+      1.1
+    ],
+    "leg": 0.88,
+    "paw": 0.98,
+    "tail": 0.93
+  },
+  "bounds": {
+    "min": [
+      -0.22475628554821014,
+      -0.64518141746521,
+      0.0005539394915103912
+    ],
+    "max": [
+      0.29229307174682617,
+      0.5874472260475159,
+      0.9379376769065857
+    ]
+  },
+  "weightCoverage": {
+    "FL": 7599,
+    "FR": 7396,
+    "HL": 10838,
+    "HR": 9246
+  },
+  "bones": 45,
+  "actions": 35,
+  "glb": "static\\models\\pet-growth-v1\\cat\\tabby-adolescent.glb",
+  "bytes": 16409744,
+  "sha256": "40037f82c6ad391784872c28fa05bccaa2d43dd2827a39f3d64aa49dc40daff6"
+}

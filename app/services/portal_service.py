@@ -48,7 +48,8 @@ def pet_spec(owner,pet):
             from .pet_generation_service import appearance as private_appearance
             private=private_appearance(owner)
             if private:spec.update(model=private['model'],name=private['name'],custom=True,task=private['task'],height=.85)
-        return spec
+        from . import growth_asset_service
+        return growth_asset_service.apply_stage(owner,pet,spec)
     row=get_db().execute('SELECT * FROM portal_custom_pets WHERE id=? AND owner=?',(pet,owner)).fetchone()
     if not row:raise PortalError('宠物不存在或不属于你',404)
     return dict(id=pet,name=row['name'],model=row['model'],height=row['height'],theme='room',stage=PETS['3']['stage'])

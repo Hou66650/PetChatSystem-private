@@ -1,0 +1,49 @@
+{
+  "species": "cat",
+  "natural": {
+    "juvenile": {
+      "height": 0.9980941583053209,
+      "headHeightRatio": 0.6070005866690645,
+      "frontLegRatio": 0.3455749847057776,
+      "torsoLengthRatio": 0.5420604037300004,
+      "headWidthRatio": 0.30586297107801225
+    },
+    "adolescent": {
+      "height": 0.998093880887609,
+      "headHeightRatio": 0.6779293646406485,
+      "frontLegRatio": 0.40547469712522416,
+      "torsoLengthRatio": 0.6098179128127683,
+      "headWidthRatio": 0.2724394018052186
+    },
+    "adult": {
+      "height": 0.9996866419678554,
+      "headHeightRatio": 0.7430649531901727,
+      "frontLegRatio": 0.4600327771304899,
+      "torsoLengthRatio": 0.6764960602575211,
+      "headWidthRatio": 0.24007529121162796
+    }
+  },
+  "equalHeightSourceMetrics": {
+    "juvenile": {
+      "height": 0.9980941583053209,
+      "headHeightRatio": 0.6070005866690645,
+      "frontLegRatio": 0.3455749847057776,
+      "torsoLengthRatio": 0.5420604037300004,
+      "headWidthRatio": 0.30586297107801225
+    },
+    "adolescent": {
+      "height": 0.998093880887609,
+      "headHeightRatio": 0.6779293646406485,
+      "frontLegRatio": 0.40547469712522416,
+      "torsoLengthRatio": 0.6098179128127683,
+      "headWidthRatio": 0.2724394018052186
+    },
+    "adult": {
+      "height": 0.9996866419678554,
+      "headHeightRatio": 0.7430649531901727,
+      "frontLegRatio": 0.4600327771304899,
+      "torsoLengthRatio": 0.6764960602575211,
+      "headWidthRatio": 0.24007529121162796
+    }
+  }
+}

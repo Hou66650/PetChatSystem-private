@@ -1,0 +1,49 @@
+{
+  "species": "husky",
+  "natural": {
+    "juvenile": {
+      "height": 1.1778867425164208,
+      "headHeightRatio": 0.564706412911584,
+      "frontLegRatio": 0.3212561294316736,
+      "torsoLengthRatio": 0.6300744628363609,
+      "headWidthRatio": 0.34664797365493294
+    },
+    "adolescent": {
+      "height": 1.1778859526966698,
+      "headHeightRatio": 0.6306437423518937,
+      "frontLegRatio": 0.3769408670993043,
+      "torsoLengthRatio": 0.7088341605996855,
+      "headWidthRatio": 0.3087675831887325
+    },
+    "adult": {
+      "height": 1.1778863218496554,
+      "headHeightRatio": 0.6922975560507594,
+      "frontLegRatio": 0.42834180015234874,
+      "torsoLengthRatio": 0.7875933661494475,
+      "headWidthRatio": 0.27252206246107846
+    }
+  },
+  "equalHeightSourceMetrics": {
+    "juvenile": {
+      "height": 1.1778867425164208,
+      "headHeightRatio": 0.564706412911584,
+      "frontLegRatio": 0.3212561294316736,
+      "torsoLengthRatio": 0.6300744628363609,
+      "headWidthRatio": 0.34664797365493294
+    },
+    "adolescent": {
+      "height": 1.1778859526966698,
+      "headHeightRatio": 0.6306437423518937,
+      "frontLegRatio": 0.3769408670993043,
+      "torsoLengthRatio": 0.7088341605996855,
+      "headWidthRatio": 0.3087675831887325
+    },
+    "adult": {
+      "height": 1.1778863218496554,
+      "headHeightRatio": 0.6922975560507594,
+      "frontLegRatio": 0.42834180015234874,
+      "torsoLengthRatio": 0.7875933661494475,
+      "headWidthRatio": 0.27252206246107846
+    }
+  }
+}

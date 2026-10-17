@@ -91,7 +91,7 @@ assert(events.every(e=>['pagehide','visibilitychange'].includes(e[0])),'does not
 state.spec.glb='/static/models/petchat-cat-v3/cat.glb';context.document.hidden=false;
 for(const modelPath of ['/static/models/petchat-cat-v3/cat.glb',path,'/static/models/petchat-husky-v3/xueqiu.glb','/static/models/petchat-shepherd-v2/shepherd.glb']) {
  state.spec.glb=modelPath;
- const fresh=new context.NativeDenBridge.Bridge({canvas:{parentElement:parent},
+ const fresh=new context.NativeDenBridge.Bridge({canvas:{parentElement:parent},paths:new Set(),
   renderer:{render(){assert.equal(pet.visible,true);}},read:()=>state});
  let nativeChecks=0;fresh.occluded=()=>{nativeChecks++;return false;};
  fresh.render(scene,camera);fresh.exchange(null);fresh.render(scene,camera);

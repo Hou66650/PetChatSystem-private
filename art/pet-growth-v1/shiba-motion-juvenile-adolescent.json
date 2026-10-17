@@ -1,0 +1,746 @@
+{
+  "juvenile": {
+    "binding": {
+      "FL": {
+        "vertices": 2433,
+        "centroidDistanceRatio": 0.011214166830138053
+      },
+      "FR": {
+        "vertices": 2566,
+        "centroidDistanceRatio": 0.024247018824797597
+      },
+      "HL": {
+        "vertices": 2296,
+        "centroidDistanceRatio": 0.1358388608296531
+      },
+      "HR": {
+        "vertices": 2573,
+        "centroidDistanceRatio": 0.10350521169804665
+      }
+    },
+    "actions": {
+      "affection": {
+        "frames": [
+          1,
+          25,
+          50
+        ],
+        "maxEdgeRatio": 3.960859653227209,
+        "minZ": 0.0023239892907440662,
+        "error": null
+      },
+      "alert_scan": {
+        "frames": [
+          1,
+          29,
+          58
+        ],
+        "maxEdgeRatio": 1.539591591148945,
+        "minZ": 0.002344731241464615,
+        "error": null
+      },
+      "blink_L": {
+        "frames": [
+          1,
+          4,
+          7
+        ],
+        "maxEdgeRatio": 1.070656062457062,
+        "minZ": 0.0025544697418808937,
+        "error": null
+      },
+      "blink_R": {
+        "frames": [
+          1,
+          4,
+          7
+        ],
+        "maxEdgeRatio": 1.070656062457062,
+        "minZ": 0.0025544697418808937,
+        "error": null
+      },
+      "curious_listen": {
+        "frames": [
+          1,
+          23,
+          46
+        ],
+        "maxEdgeRatio": 6.66088165471785,
+        "minZ": 0.0023129673209041357,
+        "error": null
+      },
+      "ear_perk": {
+        "frames": [
+          1,
+          16,
+          31
+        ],
+        "maxEdgeRatio": 1.795864039533832,
+        "minZ": 0.0022453079000115395,
+        "error": null
+      },
+      "eat": {
+        "frames": [
+          1,
+          20,
+          39
+        ],
+        "maxEdgeRatio": 6.128178667430633,
+        "minZ": 0.0024477674160152674,
+        "error": null
+      },
+      "happy": {
+        "frames": [
+          1,
+          15,
+          29
+        ],
+        "maxEdgeRatio": 1.3606962123513167,
+        "minZ": 0.0023007404524832964,
+        "error": null
+      },
+      "idle_breathe": {
+        "frames": [
+          1,
+          29,
+          58
+        ],
+        "maxEdgeRatio": 1.0350933048132422,
+        "minZ": 0.0024497229605913162,
+        "error": null
+      },
+      "lie_down": {
+        "frames": [
+          1,
+          13,
+          26
+        ],
+        "maxEdgeRatio": 5.528326803973841,
+        "minZ": -0.004181094467639923,
+        "error": null
+      },
+      "motion_trot": {
+        "frames": [
+          1,
+          10,
+          20
+        ],
+        "maxEdgeRatio": 11.017543848972162,
+        "minZ": 0.008581498637795448,
+        "error": null
+      },
+      "motion_walk": {
+        "frames": [
+          1,
+          14,
+          27
+        ],
+        "maxEdgeRatio": 8.690227723251095,
+        "minZ": 0.010765837505459785,
+        "error": null
+      },
+      "nose_lick": {
+        "frames": [
+          1,
+          18,
+          35
+        ],
+        "maxEdgeRatio": 2.0544760627557026,
+        "minZ": 0.0022660025861114264,
+        "error": null
+      },
+      "paw_greeting": {
+        "frames": [
+          1,
+          23,
+          46
+        ],
+        "maxEdgeRatio": 10.922604419281958,
+        "minZ": 0.0020573348738253117,
+        "error": null
+      },
+      "play_bow": {
+        "frames": [
+          1,
+          27,
+          54
+        ],
+        "maxEdgeRatio": 4.891953762490543,
+        "minZ": 0.0010986514389514923,
+        "error": null
+      },
+      "run": {
+        "frames": [
+          1,
+          9,
+          17
+        ],
+        "maxEdgeRatio": 6.644336737862737,
+        "minZ": 0.007224672473967075,
+        "error": null
+      },
+      "shake_off": {
+        "frames": [
+          1,
+          20,
+          39
+        ],
+        "maxEdgeRatio": 3.041910673428012,
+        "minZ": 0.002394165378063917,
+        "error": null
+      },
+      "shy_look": {
+        "frames": [
+          1,
+          27,
+          54
+        ],
+        "maxEdgeRatio": 6.457013148722853,
+        "minZ": 0.0023342217318713665,
+        "error": null
+      },
+      "sit_down": {
+        "frames": [
+          1,
+          13,
+          25
+        ],
+        "maxEdgeRatio": 4.249047577590714,
+        "minZ": 5.762773798778653e-05,
+        "error": null
+      },
+      "sit_idle": {
+        "frames": [
+          1,
+          21,
+          41
+        ],
+        "maxEdgeRatio": 4.255601479566624,
+        "minZ": 5.837390199303627e-05,
+        "error": null
+      },
+      "sleep_loop": {
+        "frames": [
+          1,
+          29,
+          58
+        ],
+        "maxEdgeRatio": 5.538507970454641,
+        "minZ": -0.004182830452919006,
+        "error": null
+      },
+      "sleepy_yawn": {
+        "frames": [
+          1,
+          31,
+          61
+        ],
+        "maxEdgeRatio": 4.350276167527322,
+        "minZ": 0.0023666946217417717,
+        "error": null
+      },
+      "sniff": {
+        "frames": [
+          1,
+          20,
+          39
+        ],
+        "maxEdgeRatio": 6.128178667430633,
+        "minZ": 0.0024477674160152674,
+        "error": null
+      },
+      "speak": {
+        "frames": [
+          1,
+          20,
+          39
+        ],
+        "maxEdgeRatio": 1.5030414520830635,
+        "minZ": 0.0024477674160152674,
+        "error": null
+      },
+      "stand_up": {
+        "frames": [
+          1,
+          13,
+          25
+        ],
+        "maxEdgeRatio": 4.255601479566624,
+        "minZ": 5.837390199303627e-05,
+        "error": null
+      },
+      "stop": {
+        "frames": [
+          1,
+          8,
+          16
+        ],
+        "maxEdgeRatio": 1.110081999608202,
+        "minZ": 0.002455530222505331,
+        "error": null
+      },
+      "stretch": {
+        "frames": [
+          1,
+          25,
+          49
+        ],
+        "maxEdgeRatio": 2.2020290703116414,
+        "minZ": 0.0011154068633913994,
+        "error": null
+      },
+      "surprised": {
+        "frames": [
+          1,
+          16,
+          31
+        ],
+        "maxEdgeRatio": 2.3396371098448006,
+        "minZ": 0.0022453079000115395,
+        "error": null
+      },
+      "tail_greeting": {
+        "frames": [
+          1,
+          23,
+          46
+        ],
+        "maxEdgeRatio": 2.9913360216809357,
+        "minZ": 0.0023129673209041357,
+        "error": null
+      },
+      "touch_head": {
+        "frames": [
+          1,
+          20,
+          39
+        ],
+        "maxEdgeRatio": 1.856744510291258,
+        "minZ": 0.0024477674160152674,
+        "error": null
+      },
+      "trot": {
+        "frames": [
+          1,
+          7,
+          14
+        ],
+        "maxEdgeRatio": 9.337530159456776,
+        "minZ": 0.00271873502060771,
+        "error": null
+      },
+      "turn_left": {
+        "frames": [
+          1,
+          8,
+          16
+        ],
+        "maxEdgeRatio": 3.6460712199978933,
+        "minZ": 0.002455530222505331,
+        "error": null
+      },
+      "turn_right": {
+        "frames": [
+          1,
+          8,
+          16
+        ],
+        "maxEdgeRatio": 3.052770315034072,
+        "minZ": 0.002455530222505331,
+        "error": null
+      },
+      "walk": {
+        "frames": [
+          1,
+          10,
+          20
+        ],
+        "maxEdgeRatio": 9.272905064413155,
+        "minZ": 0.0027704525273293257,
+        "error": null
+      },
+      "wave_paw": {
+        "frames": [
+          1,
+          20,
+          39
+        ],
+        "maxEdgeRatio": 10.67229929085919,
+        "minZ": 0.0024477674160152674,
+        "error": null
+      }
+    }
+  },
+  "adolescent": {
+    "binding": {
+      "FL": {
+        "vertices": 2433,
+        "centroidDistanceRatio": 0.027150825941105503
+      },
+      "FR": {
+        "vertices": 2566,
+        "centroidDistanceRatio": 0.03360023085254945
+      },
+      "HL": {
+        "vertices": 2296,
+        "centroidDistanceRatio": 0.09930858509436558
+      },
+      "HR": {
+        "vertices": 2573,
+        "centroidDistanceRatio": 0.06472810064497743
+      }
+    },
+    "actions": {
+      "affection": {
+        "frames": [
+          1,
+          25,
+          50
+        ],
+        "maxEdgeRatio": 3.162357101146801,
+        "minZ": 0.0026768979150801897,
+        "error": null
+      },
+      "alert_scan": {
+        "frames": [
+          1,
+          29,
+          58
+        ],
+        "maxEdgeRatio": 1.4572155728712273,
+        "minZ": 0.0026848209090530872,
+        "error": null
+      },
+      "blink_L": {
+        "frames": [
+          1,
+          4,
+          7
+        ],
+        "maxEdgeRatio": 1.0629470221547712,
+        "minZ": 0.0028571661096066236,
+        "error": null
+      },
+      "blink_R": {
+        "frames": [
+          1,
+          4,
+          7
+        ],
+        "maxEdgeRatio": 1.0629470221547712,
+        "minZ": 0.0028571661096066236,
+        "error": null
+      },
+      "curious_listen": {
+        "frames": [
+          1,
+          23,
+          46
+        ],
+        "maxEdgeRatio": 5.514612627788326,
+        "minZ": 0.0026715740095824003,
+        "error": null
+      },
+      "ear_perk": {
+        "frames": [
+          1,
+          16,
+          31
+        ],
+        "maxEdgeRatio": 1.512050767204556,
+        "minZ": 0.002641622442752123,
+        "error": null
+      },
+      "eat": {
+        "frames": [
+          1,
+          20,
+          39
+        ],
+        "maxEdgeRatio": 5.206726739943887,
+        "minZ": 0.0027339940425008535,
+        "error": null
+      },
+      "happy": {
+        "frames": [
+          1,
+          15,
+          29
+        ],
+        "maxEdgeRatio": 1.3082497427511013,
+        "minZ": 0.00255983485840261,
+        "error": null
+      },
+      "idle_breathe": {
+        "frames": [
+          1,
+          29,
+          58
+        ],
+        "maxEdgeRatio": 1.0322609907098659,
+        "minZ": 0.0027356361970305443,
+        "error": null
+      },
+      "lie_down": {
+        "frames": [
+          1,
+          13,
+          26
+        ],
+        "maxEdgeRatio": 4.493147361886071,
+        "minZ": -0.004847243428230286,
+        "error": null
+      },
+      "motion_trot": {
+        "frames": [
+          1,
+          10,
+          20
+        ],
+        "maxEdgeRatio": 10.959275960377326,
+        "minZ": 0.010775525122880936,
+        "error": null
+      },
+      "motion_walk": {
+        "frames": [
+          1,
+          14,
+          27
+        ],
+        "maxEdgeRatio": 8.906764787588468,
+        "minZ": 0.012580525130033493,
+        "error": null
+      },
+      "nose_lick": {
+        "frames": [
+          1,
+          18,
+          35
+        ],
+        "maxEdgeRatio": 1.821010245578411,
+        "minZ": 0.0026517254300415516,
+        "error": null
+      },
+      "paw_greeting": {
+        "frames": [
+          1,
+          23,
+          46
+        ],
+        "maxEdgeRatio": 8.829701446974632,
+        "minZ": 0.0025834226980805397,
+        "error": null
+      },
+      "play_bow": {
+        "frames": [
+          1,
+          27,
+          54
+        ],
+        "maxEdgeRatio": 3.8377459023707927,
+        "minZ": 0.00209257286041975,
+        "error": null
+      },
+      "run": {
+        "frames": [
+          1,
+          9,
+          17
+        ],
+        "maxEdgeRatio": 7.383183754164963,
+        "minZ": 0.008254889398813248,
+        "error": null
+      },
+      "shake_off": {
+        "frames": [
+          1,
+          20,
+          39
+        ],
+        "maxEdgeRatio": 2.9207458803376434,
+        "minZ": 0.0026717153377830982,
+        "error": null
+      },
+      "shy_look": {
+        "frames": [
+          1,
+          27,
+          54
+        ],
+        "maxEdgeRatio": 5.127641835516628,
+        "minZ": 0.002681117970496416,
+        "error": null
+      },
+      "sit_down": {
+        "frames": [
+          1,
+          13,
+          25
+        ],
+        "maxEdgeRatio": 3.494452063557518,
+        "minZ": 0.001778522040694952,
+        "error": null
+      },
+      "sit_idle": {
+        "frames": [
+          1,
+          21,
+          41
+        ],
+        "maxEdgeRatio": 3.499471971496914,
+        "minZ": 0.001778656616806984,
+        "error": null
+      },
+      "sleep_loop": {
+        "frames": [
+          1,
+          29,
+          58
+        ],
+        "maxEdgeRatio": 4.500959629754651,
+        "minZ": -0.004850633442401886,
+        "error": null
+      },
+      "sleepy_yawn": {
+        "frames": [
+          1,
+          31,
+          61
+        ],
+        "maxEdgeRatio": 3.49631763915412,
+        "minZ": 0.0026878458447754383,
+        "error": null
+      },
+      "sniff": {
+        "frames": [
+          1,
+          20,
+          39
+        ],
+        "maxEdgeRatio": 5.206726739943887,
+        "minZ": 0.0027339940425008535,
+        "error": null
+      },
+      "speak": {
+        "frames": [
+          1,
+          20,
+          39
+        ],
+        "maxEdgeRatio": 1.520827017961932,
+        "minZ": 0.0027339940425008535,
+        "error": null
+      },
+      "stand_up": {
+        "frames": [
+          1,
+          13,
+          25
+        ],
+        "maxEdgeRatio": 3.499471971496914,
+        "minZ": 0.001778656616806984,
+        "error": null
+      },
+      "stop": {
+        "frames": [
+          1,
+          8,
+          16
+        ],
+        "maxEdgeRatio": 1.1006166447919568,
+        "minZ": 0.0027396492660045624,
+        "error": null
+      },
+      "stretch": {
+        "frames": [
+          1,
+          25,
+          49
+        ],
+        "maxEdgeRatio": 2.084985243210917,
+        "minZ": 0.002207213081419468,
+        "error": null
+      },
+      "surprised": {
+        "frames": [
+          1,
+          16,
+          31
+        ],
+        "maxEdgeRatio": 1.8886953381378706,
+        "minZ": 0.002641622442752123,
+        "error": null
+      },
+      "tail_greeting": {
+        "frames": [
+          1,
+          23,
+          46
+        ],
+        "maxEdgeRatio": 2.4498726058633298,
+        "minZ": 0.0026715740095824003,
+        "error": null
+      },
+      "touch_head": {
+        "frames": [
+          1,
+          20,
+          39
+        ],
+        "maxEdgeRatio": 1.8819551674934922,
+        "minZ": 0.0027339940425008535,
+        "error": null
+      },
+      "trot": {
+        "frames": [
+          1,
+          7,
+          14
+        ],
+        "maxEdgeRatio": 9.709944182946753,
+        "minZ": 0.002677903976291418,
+        "error": null
+      },
+      "turn_left": {
+        "frames": [
+          1,
+          8,
+          16
+        ],
+        "maxEdgeRatio": 3.719612163290388,
+        "minZ": 0.0027396492660045624,
+        "error": null
+      },
+      "turn_right": {
+        "frames": [
+          1,
+          8,
+          16
+        ],
+        "maxEdgeRatio": 2.9393103288283577,
+        "minZ": 0.0027396492660045624,
+        "error": null
+      },
+      "walk": {
+        "frames": [
+          1,
+          10,
+          20
+        ],
+        "maxEdgeRatio": 10.230632084688873,
+        "minZ": 0.002721830504015088,
+        "error": null
+      },
+      "wave_paw": {
+        "frames": [
+          1,
+          20,
+          39
+        ],
+        "maxEdgeRatio": 9.20595267608562,
+        "minZ": 0.0027339940425008535,
+        "error": null
+      }
+    }
+  }
+}

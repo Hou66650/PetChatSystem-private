@@ -1,0 +1,45 @@
+{
+  "species": "cat",
+  "stage": "juvenile",
+  "label": "幼年",
+  "source": "static/models/petchat-cat-v3/cat.glb",
+  "parameters": {
+    "label": "幼年",
+    "body": [
+      1.06,
+      0.8,
+      0.9
+    ],
+    "head": [
+      1.2,
+      0.95,
+      1.2
+    ],
+    "leg": 0.75,
+    "paw": 0.95,
+    "tail": 0.85
+  },
+  "bounds": {
+    "min": [
+      -0.23115912079811096,
+      -0.5779896974563599,
+      -0.006157024763524532
+    ],
+    "max": [
+      0.3257434368133545,
+      0.48120924830436707,
+      0.875868558883667
+    ]
+  },
+  "weightCoverage": {
+    "FL": 7599,
+    "FR": 7396,
+    "HL": 10838,
+    "HR": 9246
+  },
+  "bones": 45,
+  "actions": 35,
+  "glb": "static\\models\\pet-growth-v1\\cat\\tabby-juvenile.glb",
+  "bytes": 16411912,
+  "sha256": "933b46f40280990a13c81a07bc66f9e18d4e1cedff0d152b1565cbb412818689"
+}

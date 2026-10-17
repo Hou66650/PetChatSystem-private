@@ -1,0 +1,45 @@
+{
+  "species": "husky",
+  "stage": "juvenile",
+  "label": "幼年",
+  "source": "static/models/petchat-husky-v3/xueqiu.glb",
+  "parameters": {
+    "label": "幼年",
+    "body": [
+      1.06,
+      0.8,
+      0.9
+    ],
+    "head": [
+      1.2,
+      0.95,
+      1.2
+    ],
+    "leg": 0.75,
+    "paw": 0.95,
+    "tail": 0.85
+  },
+  "bounds": {
+    "min": [
+      -0.3049430847167969,
+      -0.6078229546546936,
+      0.003869956359267235
+    ],
+    "max": [
+      0.2494090497493744,
+      0.5848950147628784,
+      1.0569946765899658
+    ]
+  },
+  "weightCoverage": {
+    "FL": 10548,
+    "FR": 9298,
+    "HL": 11194,
+    "HR": 11514
+  },
+  "bones": 45,
+  "actions": 35,
+  "glb": "static\\models\\pet-growth-v1\\husky\\default-juvenile.glb",
+  "bytes": 16847480,
+  "sha256": "b91d2f51b48da79f8a3d9b47dcef61cf9079f1a302c62326c5ca12236b6f59ef"
+}

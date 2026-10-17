@@ -1,8 +1,7 @@
 /* ArkWeb same-layer pet renderer. The existing den remains the business authority. */
 (function (root) {
   'use strict';
-  // All four pets can acknowledge a native scene without visible output.
-  // Re-enable only after actual same-layer pixels/lifecycle are verified.
+  // No native path is enabled before same-layer pixels and lifecycle are verified.
   const PATHS = new Set();
   const vec = v => ({ x: v.x, y: v.y, z: v.z });
   const quat = q => ({ x: q.x, y: q.y, z: q.z, w: q.w });
