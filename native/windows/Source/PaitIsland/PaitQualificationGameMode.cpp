@@ -40,8 +40,9 @@ void APaitQualificationGameMode::BeginPlay()
     if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
     {
         PC->bShowMouseCursor = true;
-        FInputModeGameOnly Input;
-        Input.SetConsumeCaptureMouseDown(false);
+        FInputModeGameAndUI Input;
+        Input.SetHideCursorDuringCapture(false);
+        Input.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
         PC->SetInputMode(Input);
     }
     UE_LOG(LogTemp, Display, TEXT("PAIT P0 | Adapter=%s | No account or cloud writes"),

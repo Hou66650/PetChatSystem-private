@@ -3,12 +3,15 @@
 #include "Kismet/GameplayStatics.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/World.h"
+#include "Engine/GameViewportClient.h"
+#include "UnrealClient.h"
 #include "EngineUtils.h"
 #include "Animation/SkeletalMeshActor.h"
 #include "GameFramework/HUD.h"
 #include "Components/InputComponent.h"
 #include "InputCoreTypes.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerInput.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -35,6 +38,18 @@ void APaitPreviewPawn::BeginPlay()
 void APaitPreviewPawn::SetupPlayerInputComponent(UInputComponent* Input)
 {
     Super::SetupPlayerInputComponent(Input);
+    // BaseInput.ini scales MouseX/Y by 0.07. Our camera works in pixels;
+    // normalize at runtime too, so old per-user input settings cannot retain it.
+    if (APlayerController* PC = Cast<APlayerController>(Controller))
+        if (PC->PlayerInput)
+            for (const FKey Key : {EKeys::MouseX, EKeys::MouseY})
+            {
+                FInputAxisProperties Properties;
+                Properties.DeadZone = 0.f;
+                Properties.Exponent = 1.f;
+                Properties.Sensitivity = 1.f;
+                PC->PlayerInput->SetAxisProperties(Key, Properties);
+            }
     // Scripted runtime checks call the same gameplay functions directly.
     // Do not let desktop clicks contaminate an unattended action sequence.
     for(const TCHAR* Flag:{TEXT("PaitMeadowTest"),TEXT("PaitAgentTest"),TEXT("PaitCareTest"),TEXT("PaitSmoke")})
@@ -47,6 +62,7 @@ void APaitPreviewPawn::SetupPlayerInputComponent(UInputComponent* Input)
     Input->BindAction(TEXT("Pan"), IE_Pressed, this, &APaitPreviewPawn::StartPan);
     Input->BindAction(TEXT("Pan"), IE_Released, this, &APaitPreviewPawn::StopPan);
     Input->BindAction(TEXT("ResetView"), IE_Pressed, this, &APaitPreviewPawn::ResetView);
+    Input->BindKey(EKeys::Escape, IE_Pressed, this, &APaitPreviewPawn::CancelDrag);
     Input->BindKey(EKeys::C, IE_Pressed, this, &APaitPreviewPawn::FocusPet);
     Input->BindKey(EKeys::H, IE_Pressed, this, &APaitPreviewPawn::ToggleInterface);
     Input->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &APaitPreviewPawn::MovePetToCursor);
@@ -78,21 +94,36 @@ void APaitPreviewPawn::Tick(float DeltaSeconds)
         if (!PC->IsInputKeyDown(EKeys::RightMouseButton)) bOrbit = false;
         if (!PC->IsInputKeyDown(EKeys::MiddleMouseButton)) bPan = false;
     }
+    if (UGameViewportClient* Viewport = GetWorld()->GetGameViewport())
+        if (Viewport->Viewport && !Viewport->Viewport->HasFocus()) bOrbit = bPan = false;
     UpdateCursor();
+}
+void APaitPreviewPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    CancelDrag();
+    Super::EndPlay(EndPlayReason);
+}
+float APaitPreviewPawn::PanUnitsPerPixel() const
+{
+    int32 Width = 0, Height = 0;
+    if (const APlayerController* PC = Cast<APlayerController>(Controller)) PC->GetViewportSize(Width, Height);
+    // Horizontal FOV: dragging a screen fraction moves the same world-view
+    // fraction at both island overview and pet close-up distances.
+    return 2.f * Arm->TargetArmLength * FMath::Tan(FMath::DegreesToRadians(Camera->FieldOfView * .5f)) / FMath::Max(Width, 1);
 }
 void APaitPreviewPawn::Horizontal(float Value)
 {
     // Mouse deltas already integrate motion; do not multiply by DeltaSeconds.
     if (bPan)
-        SetActorLocation(GetActorLocation() + Camera->GetRightVector() * -Value * TargetDistance * .0008f);
-    else if (bOrbit) Yaw += Value * .25f;
+        SetActorLocation(GetActorLocation() + Camera->GetRightVector() * -Value * PanUnitsPerPixel());
+    else if (bOrbit) Yaw = FRotator::NormalizeAxis(Yaw + Value * .22f);
     Arm->SetRelativeRotation(FRotator(Pitch, Yaw, 0.f));
 }
 void APaitPreviewPawn::Vertical(float Value)
 {
     if (bPan)
-        SetActorLocation(GetActorLocation() + Camera->GetUpVector() * -Value * TargetDistance * .0008f);
-    else if (bOrbit) Pitch = FMath::Clamp(Pitch - Value * .25f, -80.f, -5.f);
+        SetActorLocation(GetActorLocation() + Camera->GetUpVector() * -Value * PanUnitsPerPixel());
+    else if (bOrbit) Pitch = FMath::Clamp(Pitch - Value * .22f, -80.f, -5.f);
     Arm->SetRelativeRotation(FRotator(Pitch, Yaw, 0.f));
 }
 void APaitPreviewPawn::Zoom(float Value)
@@ -103,10 +134,45 @@ void APaitPreviewPawn::StartOrbit() { bOrbit = true; UpdateCursor(); }
 void APaitPreviewPawn::StopOrbit() { bOrbit = false; UpdateCursor(); }
 void APaitPreviewPawn::StartPan() { bPan = true; UpdateCursor(); }
 void APaitPreviewPawn::StopPan() { bPan = false; UpdateCursor(); }
+void APaitPreviewPawn::CancelDrag() { bOrbit = bPan = false; UpdateCursor(); }
 void APaitPreviewPawn::UpdateCursor()
 {
-    if (APlayerController* PC = Cast<APlayerController>(Controller))
-        PC->bShowMouseCursor = !(bOrbit || bPan);
+    APlayerController* PC = Cast<APlayerController>(Controller);
+    const bool bDragging = bOrbit || bPan;
+    if (!PC || bDragging == bDragCaptured) return;
+    bDragCaptured = bDragging;
+    if (bDragging)
+    {
+        float X = 0.f, Y = 0.f;
+        bRestoreCursor = PC->GetMousePosition(X, Y);
+        DragStartCursor = FVector2D(X, Y);
+        PC->bShowMouseCursor = false;
+        // Hiding the cursor alone does not re-enable relative mouse input
+        // after a visible-cursor click has released Slate's capture.
+        FInputModeGameOnly Mode;
+        Mode.SetConsumeCaptureMouseDown(false);
+        PC->SetInputMode(Mode);
+    }
+    else
+    {
+        PC->bShowMouseCursor = true;
+        UGameViewportClient* Viewport = GetWorld()->GetGameViewport();
+        if (Viewport && Viewport->Viewport && Viewport->Viewport->HasFocus())
+        {
+            FInputModeGameAndUI Mode;
+            Mode.SetHideCursorDuringCapture(false);
+            Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+            PC->SetInputMode(Mode);
+            if (bRestoreCursor) PC->SetMouseLocation(FMath::RoundToInt(DragStartCursor.X), FMath::RoundToInt(DragStartCursor.Y));
+        }
+        else if (Viewport)
+        {
+            // Alt-Tab already released OS capture. Do not steal focus back.
+            Viewport->SetMouseCaptureMode(EMouseCaptureMode::CaptureDuringMouseDown);
+            Viewport->SetMouseLockMode(EMouseLockMode::DoNotLock);
+        }
+        bRestoreCursor = false;
+    }
 }
 void APaitPreviewPawn::ResetView()
 {

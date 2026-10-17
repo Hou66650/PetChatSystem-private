@@ -1,0 +1,32 @@
+{
+  "version": "1.88.1",
+  "date": "2026-10-18",
+  "package": "Saved/Packages/ShippingDaily",
+  "build_archive": "Saved/Packages/ShippingCamera",
+  "executable_sha256": "EC643D05AF4111EBD0DE16FF02178BEEAED1D70BA3DB1D50CC1E7535DD959723",
+  "changes": [
+    "Normalize MouseX/MouseY sensitivity to 1 at pawn input setup (UE inherited default was 0.07)",
+    "Explicit high-precision GameOnly capture while either drag button is held; GameAndUI on release",
+    "Screen-scaled pan based on horizontal FOV and actual arm distance",
+    "Escape cancels drag; focus loss does not re-focus the game"
+  ],
+  "verification": {
+    "editor_and_shipping_compile": true,
+    "package": true,
+    "cook": "Reused existing cooked maps/assets; only C++ changed",
+    "dx12_meadow_smoke": true,
+    "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "exit_code": 0,
+    "source": "Saved/Qualification/Meadow-Care-20261018-015205",
+    "ui_observed": [
+      "right-click release cursor visible",
+      "middle-click release cursor visible",
+      "wheel zoom changed view",
+      "Home restored overview"
+    ],
+    "held_button_drag_validated": false,
+    "window_edge_and_alt_tab_validated": false,
+    "performance_qualified": false
+  },
+  "limitation": "Computer Use drag API only exposes left drag; no claim of held right/middle drag verification. User feel still needs confirmation."
+}

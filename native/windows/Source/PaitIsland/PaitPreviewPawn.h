@@ -16,6 +16,7 @@ public:
     virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(UInputComponent* Input) override;
     virtual void Tick(float DeltaSeconds) override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     FString LoadingIsland;
 private:
     UPROPERTY(VisibleAnywhere) TObjectPtr<USpringArmComponent> Arm;
@@ -29,6 +30,8 @@ private:
     void StopPan();
     void ResetView();
     void UpdateCursor();
+    void CancelDrag();
+    float PanUnitsPerPixel() const;
     void FocusPet();
     void ToggleInterface();
     void MovePetToCursor();
@@ -41,6 +44,9 @@ private:
     float IslandLoadDelay = 0.f;
     bool bOrbit = false;
     bool bPan = false;
+    bool bDragCaptured = false;
+    bool bRestoreCursor = false;
+    FVector2D DragStartCursor;
     float TargetDistance = 2200.f;
     float Yaw = -45.f;
     float Pitch = -28.f;

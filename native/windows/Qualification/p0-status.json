@@ -180,5 +180,11 @@
       "launcher": "打开樱花岛预览.cmd",
       "final_visual_quality_accepted": false
     }
+  },
+  "camera_input_update": {
+    "version": "1.88.1",
+    "evidence": "Qualification/camera-input-evidence.json",
+    "package": "Saved/Packages/ShippingDaily",
+    "held_drag_manual_check_pending": true
   }
 }
