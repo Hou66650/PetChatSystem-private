@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)][string]$EngineRoot,
-    [ValidateSet("Generate", "Editor", "CreateMap", "ImportAsset", "Package")][string]$Mode = "Editor",
+    [ValidateSet("Generate", "Editor", "CreateMap", "ImportAsset", "ImportPet", "Package")][string]$Mode = "Editor",
     [ValidateSet("Development", "Shipping")][string]$Configuration = "Development",
     [string]$PythonExe = "python"
 )
@@ -41,6 +41,20 @@ switch ($Mode) {
             $result = Get-Content -LiteralPath $importReport -Raw | ConvertFrom-Json
             if ($result.status -ne "editor_import_saved" -or $result.static_meshes.Count -lt 1) {
                 throw "Import did not produce verified static meshes."
+            }
+        }
+    }
+    "ImportPet" {
+        if (-not (Test-Path -LiteralPath $mapFile)) { throw "CreateMap first." }
+        $petReport = Join-Path $projectRoot "Saved/Qualification/pet-import.json"
+        if (Test-Path -LiteralPath $petReport) { throw "Pet import already recorded; inspect it rather than overwriting." }
+        $script = Join-Path $projectRoot "Scripts/import_qualification_pet.py"
+        & $editor $projectFile "-ExecutePythonScript=$script" -unattended -nosplash -nullrhi -log
+        if ($LASTEXITCODE -eq 0) {
+            if (-not (Test-Path -LiteralPath $petReport)) { throw "Pet import evidence missing. Inspect Saved/Logs." }
+            $result = Get-Content -LiteralPath $petReport -Raw | ConvertFrom-Json
+            if ($result.status -ne "editor_import_saved" -or $result.skeletal_meshes.Count -lt 1 -or $result.animations.Count -lt 1) {
+                throw "Import did not produce skeletal meshes and animations."
             }
         }
     }

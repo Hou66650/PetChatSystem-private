@@ -1,0 +1,667 @@
+{
+  "title": "樱云长境 · Sakura Archipelago",
+  "revision": 2,
+  "source": "D:\\PetChatSystem\\art\\cinematic-islands-v1\\sakura\\island-master.blend",
+  "sourceSha256": "34d58ea3fc94cb0ea10c74baa2003613328bc8842805505ebdefec7d6d5a6533",
+  "master": "sakura-archipelago.blend",
+  "masterSha256": "88eb4d3fd808cb1b1f4fdb0935cd9f211634aea12bac1b7f4c626c68b8a93e86",
+  "masterBytes": 678310653,
+  "seed": 271017,
+  "units": "metres",
+  "upAxis": "Z",
+  "stats": {
+    "newBlossoms": 82101,
+    "newBranches": 752,
+    "roofTilePieces": 744,
+    "newGrassBlades": 27547,
+    "newIslands": 3,
+    "lanterns": 11,
+    "finiteVerticesChecked": 18465080
+  },
+  "palette": "deep chestnut / ink jade roofs / rose blush / moss green",
+  "renderer": "Cycles / OptiX",
+  "devices": [
+    "NVIDIA GeForce RTX 5060 Laptop GPU"
+  ],
+  "webSceneChanged": false,
+  "accountDataRead": false,
+  "runtimeReady": false,
+  "runtimeLimitations": [
+    "UE materials not baked or validated",
+    "LOD, collision and navmesh not built",
+    "No runtime FPS claim"
+  ],
+  "route": [
+    {
+      "name": "Arrival courtyard",
+      "position": [
+        0,
+        -8,
+        0.2
+      ]
+    },
+    {
+      "name": "Ascent bridge",
+      "position": [
+        -0.5,
+        1,
+        1.5
+      ]
+    },
+    {
+      "name": "Cherry threshold",
+      "position": [
+        -1,
+        4.7,
+        3
+      ]
+    },
+    {
+      "name": "Ancient cherry terrace",
+      "position": [
+        -5.6,
+        10,
+        3
+      ]
+    },
+    {
+      "name": "Tea pavilion",
+      "position": [
+        1,
+        12,
+        3.3
+      ]
+    },
+    {
+      "name": "Sky lookout",
+      "position": [
+        8,
+        22,
+        5.7
+      ]
+    },
+    {
+      "name": "Quiet blossom garden",
+      "position": [
+        -17,
+        18,
+        4.2
+      ]
+    }
+  ],
+  "collections": {
+    "Scene": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.001": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.002": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.003": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.004": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.005": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.006": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.007": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.008": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.009": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.010": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.011": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.012": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.013": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.014": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.015": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.016": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.017": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.018": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.019": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.020": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.021": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.022": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.023": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.024": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.025": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.026": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.027": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.028": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.029": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.030": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.031": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.032": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.033": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.034": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.035": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.036": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.037": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.038": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.039": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.040": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.041": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.042": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.043": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.044": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.045": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.046": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.047": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.048": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.049": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.050": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.051": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.052": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.053": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.054": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.055": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.056": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.057": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.058": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.059": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.060": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.061": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.062": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.063": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.064": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.065": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.066": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.067": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.068": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.069": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.070": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.071": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.072": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.073": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.074": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.075": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.076": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.077": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.078": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.079": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.080": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.081": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.082": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.083": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.084": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.085": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.086": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.087": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.088": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.089": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.090": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.091": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.092": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.093": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.094": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.095": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.096": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.097": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.098": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.099": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.100": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.101": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.102": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.103": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.104": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.105": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.106": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.107": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "Scene.108": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "01 Source landscape": {
+      "meshes": 10,
+      "baseTriangles": 112308
+    },
+    "02 Architecture": {
+      "meshes": 5,
+      "baseTriangles": 21700
+    },
+    "03 Botanical detail": {
+      "meshes": 11,
+      "baseTriangles": 5465772
+    },
+    "04 Water ice and snow": {
+      "meshes": 4,
+      "baseTriangles": 120220
+    },
+    "90 Presentation only": {
+      "meshes": 0,
+      "baseTriangles": 0
+    },
+    "V2 01 Terraces and geological structure": {
+      "meshes": 3,
+      "baseTriangles": 62784
+    },
+    "V2 02 Crafted architecture": {
+      "meshes": 6,
+      "baseTriangles": 56818
+    },
+    "V2 03 Root branch blossom ecology": {
+      "meshes": 11,
+      "baseTriangles": 16064806
+    },
+    "V2 04 Water and waterfalls": {
+      "meshes": 3,
+      "baseTriangles": 10622
+    },
+    "V2 05 Companion life and wayfinding": {
+      "meshes": 6,
+      "baseTriangles": 19132
+    },
+    "90 Presentation only.001": {
+      "meshes": 1,
+      "baseTriangles": 2
+    },
+    "V2 90 Distant mountains and layered mist - presentation only": {
+      "meshes": 11,
+      "baseTriangles": 43940
+    },
+    "V2 06 Intended walking route markers": {
+      "meshes": 0,
+      "baseTriangles": 0
+    }
+  },
+  "renders": [
+    {
+      "file": "01-grand-vista-preview.png",
+      "sha256": "733d5a8aabad7a8e910d9f6e03ca79c629e5252e8f85153470b018544e3cdf04",
+      "bytes": 1570279,
+      "width": 1200,
+      "height": 900,
+      "samples": 32
+    },
+    {
+      "file": "03-tea-pavilion-preview.png",
+      "sha256": "1f64125b2f6175d4cfd92b08402454c0e07580431a799dadd7afb17a9f895ac3",
+      "bytes": 1947088,
+      "width": 1200,
+      "height": 900,
+      "samples": 32
+    },
+    {
+      "file": "04-blossom-detail-preview.png",
+      "sha256": "593f8af26d17703200e7bf8adbc393288e8aaad16f48d9e4bb4781ff72ee57d5",
+      "bytes": 1459944,
+      "width": 1200,
+      "height": 900,
+      "samples": 32
+    },
+    {
+      "file": "01-grand-vista.png",
+      "sha256": "7589fbb9c5aa7f86fa0a4898a6f18944a573754f082d6d07881fb99d28b26339",
+      "bytes": 6033662,
+      "width": 2400,
+      "height": 1800,
+      "samples": 128
+    },
+    {
+      "file": "02-cherry-promenade.png",
+      "sha256": "01fc73e0891145c3e6d3e4d16b94f81b6c79239c1f87cf53bfa93c197aa827b0",
+      "bytes": 7309564,
+      "width": 2400,
+      "height": 1800,
+      "samples": 128
+    },
+    {
+      "file": "03-tea-pavilion.png",
+      "sha256": "41a2d07d71b30efb7c1d0c922aea08a9fdde766b898ab60f67dd58388f78b00d",
+      "bytes": 7343932,
+      "width": 2400,
+      "height": 1800,
+      "samples": 128
+    },
+    {
+      "file": "04-blossom-detail.png",
+      "sha256": "f2d714e240cf829945161f6212fdae71fb5cc9a3fa6172002fc5c23560280dcc",
+      "bytes": 5211492,
+      "width": 2400,
+      "height": 1800,
+      "samples": 128
+    },
+    {
+      "file": "05-plan.png",
+      "sha256": "759ebdd78f5455b7d2e9bfa7933ed396975092971ba844abe26fb3a09df6d7aa",
+      "bytes": 5849486,
+      "width": 2400,
+      "height": 1800,
+      "samples": 128
+    }
+  ],
+  "totalBaseTriangles": 21978104,
+  "supportingAssets": [
+    {
+      "file": "art/mistwood-v1/limestone-albedo.png",
+      "sha256": "b14aa2a633bf565d29c23cafffeb13be23e0e6241158bd2212ba5e9bfba105db"
+    }
+  ],
+  "reviewCorrections": [
+    "Hierarchical curved branches with connected flower pedicels and calyx/stamens",
+    "Roof rafters and brackets remain below the roof skin",
+    "Continuous rock rim, packed rock albedo, fissure bump and local erosion relief",
+    "Thin waterfall curtain, silver aeration and separate spray mist",
+    "Three atmospheric mountain ranges, finite cloud banks and distance haze"
+  ],
+  "visualLimitations": [
+    "Distant mountains remain stylized and need more natural silhouette and geological variation",
+    "Waterfall is a thin curtain but repeated aeration strands remain visible; fluid motion is not simulated",
+    "This is an art review master, not a photorealism acceptance or real-time performance signoff"
+  ]
+}

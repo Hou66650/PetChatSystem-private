@@ -26,7 +26,7 @@ if mesh is None:
     raise RuntimeError("Engine cube missing")
 floor.static_mesh_component.set_static_mesh(mesh)
 floor.set_actor_scale3d(unreal.Vector(60, 60, .5))
-for index, xyz in enumerate([(0, 0, 100), (350, 200, 75), (-300, 150, 150)]):
+for index, xyz in enumerate([(-1400, 0, 100), (-1400, 300, 75), (-1400, -300, 150)]):
     fixture = spawn(unreal.StaticMeshActor, "P0 shadow fixture " + str(index), xyz)
     fixture.static_mesh_component.set_static_mesh(mesh)
     fixture.set_actor_scale3d(unreal.Vector(1.5, 1.5, (xyz[2] * 2) / 100))

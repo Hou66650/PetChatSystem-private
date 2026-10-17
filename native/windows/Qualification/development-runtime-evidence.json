@@ -1,0 +1,27 @@
+{
+  "configuration": "Development",
+  "executable_sha256": "5589CD9D3E5CC2A8384129E066814DA10CB01F7BF528D0CE0EFDDA8EFB3F8D40",
+  "exit_code": 0,
+  "screenshot_sha256": "A28588EA60AC1BC5C36103A5398DC0A6CA201A4516FB4CF819B8EAC41C63A397",
+  "status": "rendered_capture_saved_requires_visual_review",
+  "performance_qualified": false,
+  "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+  "utc": "2026-10-17T06:41:03.8314856Z",
+  "resolution": [
+    1600,
+    900
+  ],
+  "visual_review": {
+    "geometry_visible": true,
+    "cat_visible": true,
+    "cat_full_framing": false,
+    "nanite_fallback_warning": false,
+    "cached_lighting_clipping_warning": false,
+    "remaining": [
+      "Black sky and environment lighting require dedicated qualification",
+      "Cat is near bottom crop; close-up and motion comparison still required",
+      "TSR 16-bit disabled by engine on current driver; no driver changes made"
+    ]
+  },
+  "runtime_animation_qualified": false
+}

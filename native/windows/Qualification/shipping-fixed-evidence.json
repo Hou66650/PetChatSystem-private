@@ -1,0 +1,51 @@
+{
+  "configuration": "Shipping",
+  "executable_sha256": "E570FA6E5B12068C9B017E1AA5D147DD545EF4B8646B19FCF615925CD1B911A4",
+  "exit_code": 0,
+  "screenshot_sha256": "D3568F63955329CA62C6259DAE5BFD414A4EC161A838C896516F589252141179",
+  "status": "rendered_capture_saved_requires_visual_review",
+  "performance_qualified": false,
+  "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+  "utc": "2026-10-17T06:44:33.9229795Z",
+  "resolution": [
+    1600,
+    900
+  ],
+  "runtime_animation_qualified": false,
+  "visual_review": {
+    "geometry_visible": true,
+    "cat_visible": true,
+    "final_visual_qualified": false,
+    "remaining": [
+      "Cat partially cropped at bottom; close-up and motion verification pending",
+      "Sky and indirect light require further work"
+    ]
+  },
+  "packaged_content": [
+    {
+      "file": "global.ucas",
+      "bytes": 3204256,
+      "sha256": "a17f0848d01543b37fc061b05e93345450d1bf9a3531d4a94ec1aee97e660218"
+    },
+    {
+      "file": "global.utoc",
+      "bytes": 782,
+      "sha256": "efa14e089501290f1002099cc42c4a1f9131d7aed4a306d624fae52648b0ccbd"
+    },
+    {
+      "file": "PaitIsland-Windows.pak",
+      "bytes": 11222845,
+      "sha256": "92430effc8acff3c82206840c91acbb6cc7daa6f3a95a3b90f4780849d708f27"
+    },
+    {
+      "file": "PaitIsland-Windows.ucas",
+      "bytes": 216210064,
+      "sha256": "cb12b01530b204ec6286394d5bd72208abe09ee5f2328a74ac74667838b1f313"
+    },
+    {
+      "file": "PaitIsland-Windows.utoc",
+      "bytes": 203327,
+      "sha256": "88ddc5fdded8ad7b3771db3fa76818cff47c70d509d472c695b0331a56afc755"
+    }
+  ]
+}

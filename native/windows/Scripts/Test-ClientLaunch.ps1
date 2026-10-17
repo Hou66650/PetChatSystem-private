@@ -29,10 +29,18 @@ $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
 if ($report.status -ne "rendered_capture_saved") { throw "Rendered capture was not confirmed." }
 $capture = Join-Path $evidence "runtime-smoke.png"
 if (-not (Test-Path -LiteralPath $capture)) { throw "Recorded screenshot does not exist: $capture" }
+$packagedProject = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $exe))
+$contentHashes = @(Get-ChildItem -LiteralPath (Join-Path $packagedProject "Content/Paks") -File | Where-Object {
+    $_.Extension -in @(".pak", ".utoc", ".ucas")
+} | ForEach-Object {
+    [ordered]@{ file = $_.Name; bytes = $_.Length; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
+})
+if ($contentHashes.Count -eq 0) { throw "Packaged content evidence is missing." }
 [ordered]@{
     configuration = $Configuration
     executable = $exe
     executable_sha256 = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
+    packaged_content = $contentHashes
     exit_code = $process.ExitCode
     screenshot_sha256 = (Get-FileHash -LiteralPath $capture -Algorithm SHA256).Hash
     status = "rendered_capture_saved_requires_visual_review"

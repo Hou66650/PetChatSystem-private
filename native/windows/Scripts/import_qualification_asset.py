@@ -34,7 +34,12 @@ actors = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 if not levels.load_level("/Game/Qualification/P0_Lighting"):
     raise RuntimeError("P0 fixture map is missing")
 records = []
+mesh_editor = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
 for mesh in meshes:
+    # Explicit conventional baseline. Nanite needs separate per-material qualification.
+    nanite = mesh_editor.get_nanite_settings(mesh)
+    nanite.set_editor_property("enabled", False)
+    mesh_editor.set_nanite_settings(mesh, nanite, True)
     bounds = mesh.get_bounds()
     extent = bounds.box_extent
     if max(extent.x, extent.y, extent.z) <= 0:

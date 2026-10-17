@@ -34,10 +34,15 @@
     "shipping_package": true,
     "shipping_launch": true,
     "asset_import_mesh_count": 7,
-    "gpu_render": true
+    "gpu_render": true,
+    "standard_cat_skeletal_mesh_import": 3,
+    "standard_cat_animation_import": 35,
+    "latest_development_package_launch": true,
+    "nanite_material_fallback_fixed": true,
+    "cached_lighting_clipping_fixed": true,
+    "latest_shipping_package_launch": true
   },
   "not_validated": {
-    "latest_development_package_launch": false,
     "interactive_editor_ui": false,
     "five_minute_stability": false,
     "skeletal_animation": false,
@@ -49,7 +54,7 @@
   },
   "blockers": [],
   "next": [
-    "Rebuild and launch latest Development package after Blender renders release memory/GPU",
+    "Frame standard cat close-up; verify motion, deformation and five-minute stability in packaged builds",
     "Qualify glass/sky lighting, skeletal animation, six cameras and five-minute stability",
     "Export latest dark-green/dark-wood V2 Blender assets with runtime materials and LOD; do not treat baseline V1 import as final art",
     "Complete isolated P0/P1 interaction and real performance qualification before production feature migration"
@@ -60,7 +65,9 @@
     "A standalone C++ DXGI/D3D12 program compiled, linked and created a device on the discrete GPU. This does not validate Unreal Engine or frame rate.",
     "EOS InstallHelper completed with ProcessSuccess TRUE and ErrorCode OK at 2026-10-17 13:46 CST. Legacy LauncherInstalled.dat was empty; actual build and launch now confirm installation.",
     "Shipping screenshot has visible greenhouse and bridge. Exposure clipping corrected; black background, glass, diagnostic cube overlap and environment lighting remain visual qualification work.",
-    "Shipping launch is a short 1600x900 diagnostic capture, not the planned 2560x1600 performance acceptance. Development first launch predates latest exposure/import changes."
+    "Shipping launch is a short 1600x900 diagnostic capture, not the planned 2560x1600 performance acceptance. Development first launch predates latest exposure/import changes.",
+    "Latest Development after fixture repair shows cat, greenhouse and unobstructed bridge. Nanite material fallback and cached-light clipping warnings removed. Cat framing partly cropped; no runtime animation pass claimed.",
+    "Latest Shipping fixture repair and standard-cat regression launched successfully; evidence in shipping-fixed-evidence.json includes packaged-content hashes."
   ],
   "installed_tools": {
     "epic_launcher": "D:\\Epic Games\\Launcher",
