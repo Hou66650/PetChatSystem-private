@@ -44,13 +44,15 @@ void APaitMeadowPet::BeginPlay()
         Nav->Build();
     }
     bTest = FParse::Param(FCommandLine::Get(), TEXT("PaitMeadowTest"));
-    if (bTest)
+    bAgentTest = FParse::Param(FCommandLine::Get(), TEXT("PaitAgentTest"));
+    if (bTest || bAgentTest)
     {
         FParse::Value(FCommandLine::Get(), TEXT("PaitEvidenceDir="), EvidenceDir);
         if (EvidenceDir.IsEmpty()) EvidenceDir = FPaths::ProjectSavedDir() / TEXT("Qualification/MeadowInteraction");
         EvidenceDir = FPaths::ConvertRelativePathToFull(EvidenceDir);
         IFileManager::Get().MakeDirectory(*EvidenceDir, true);
     }
+    InitializeAgent();
 }
 bool APaitMeadowPet::GroundAt(const FVector& Point, FVector& Surface) const
 {
@@ -101,7 +103,7 @@ void APaitMeadowPet::SetClip(UAnimSequence* Clip, bool Loop)
     CurrentClip=Clip;
     for (ASkeletalMeshActor* Cat : Cats) Cat->GetSkeletalMeshComponent()->PlayAnimation(Clip,Loop);
 }
-bool APaitMeadowPet::RequestMove(const FVector& Destination)
+bool APaitMeadowPet::RequestMove(const FVector& Destination, bool FromAgent)
 {
     if (!bReady) return false;
     UNavigationSystemV1* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
@@ -128,15 +130,19 @@ bool APaitMeadowPet::RequestMove(const FVector& Destination)
             Previous=Surface;
         }
     }
+    InterruptAction(TEXT("interrupted"));
     Route=Path->PathPoints; RouteIndex=1; GreetingRemaining=0;
-    Status=TEXT("Walking to your chosen spot");
+    bAgentRoute=FromAgent; bAgentAction=FromAgent;
+    ActiveAction=TEXT("walk"); TargetCell=CellAt(Projected.Location);
+    if (!FromAgent) PlayerLeaseUntil=AgentClock+15.f;
+    Status=FromAgent ? TEXT("Exploring: ")+PlaceAt(Projected.Location) : TEXT("Walking to your chosen spot");
+    Remember(TEXT("walk"),TEXT("started"));
     return true;
 }
 void APaitMeadowPet::Greet()
 {
     if (!bReady) return;
-    Route.Reset(); GreetingRemaining=Greeting->GetPlayLength();
-    CurrentClip=nullptr; SetClip(Greeting,false); Status=TEXT("Hello! A little paw greeting");
+    StartAction(TEXT("greet"),false);
 }
 void APaitMeadowPet::Tick(float DeltaSeconds)
 {
@@ -153,7 +159,7 @@ void APaitMeadowPet::Tick(float DeltaSeconds)
         if (Distance<4.f)
         {
             ++RouteIndex;
-            if (!Route.IsValidIndex(RouteIndex)) { Route.Reset(); SetClip(Idle); Status=TEXT("Arrived | Click another spot or G to greet"); }
+            if (!Route.IsValidIndex(RouteIndex)) { Route.Reset(); Arrived(); }
         }
         else
         {
@@ -166,7 +172,7 @@ void APaitMeadowPet::Tick(float DeltaSeconds)
                 const FVector Candidate=Feet+Delta/Distance*FMath::Min(Distance,65.f*FMath::Min(DeltaSeconds,.05f));
                 FVector Ground;
                 if (!GroundAt(Candidate,Ground) || FMath::Abs(Ground.Z-Feet.Z)>18.f)
-                { Route.Reset(); SetClip(Idle); Status=TEXT("Stopped at an unsafe edge"); }
+                { Route.Reset(); Blocked(); }
                 else
                 {
                     TravelCm+=FVector::Dist2D(Feet,Ground); Feet=Ground;
@@ -175,12 +181,10 @@ void APaitMeadowPet::Tick(float DeltaSeconds)
             }
         }
     }
-    else if (GreetingRemaining>0.f)
-    {
-        GreetingRemaining-=DeltaSeconds;
-        if (GreetingRemaining<=0.f) { SetClip(Idle); Status=TEXT("Click open ground to walk | G greeting"); }
-    }
+    else if (GreetingRemaining>0.f) TickAction(DeltaSeconds);
+    TickAgent(DeltaSeconds);
     if (bTest && !bTestFinished) TickInteractionTest(DeltaSeconds);
+    if (bAgentTest && !bTestFinished) TickAgentTest(DeltaSeconds);
 }
 void APaitMeadowPet::TickInteractionTest(float DeltaSeconds)
 {

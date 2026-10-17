@@ -2,7 +2,7 @@
   "schema_version": 1,
   "date": "2026-10-17",
   "phase": "P1",
-  "status": "p1_basic_grounded_pet_interaction_preview",
+  "status": "p1_native_local_agent_life_loop_preview",
   "branch": "codex/windows-client",
   "client_version": "0.1.0",
   "framework": {
@@ -58,7 +58,11 @@
     "v2_non_power_of_two_texture_repair": true,
     "p1_shipping_out_and_back_movement": true,
     "p1_greeting_clip_runtime": true,
-    "p1_outside_target_rejected": true
+    "p1_outside_target_rejected": true,
+    "native_local_agent_runtime": true,
+    "native_player_interrupt_and_pause_resume": true,
+    "native_seated_rest_and_pet_action_sequence": true,
+    "native_preview_visit_memory_disk_roundtrip": true
   },
   "not_validated": {
     "interactive_editor_ui": false,
@@ -72,10 +76,10 @@
   },
   "blockers": [],
   "next": [
-    "Improve close-up canopy lighting, grass shadows and non-Nanite VSM pressure",
-    "Refine bridge/greenhouse/cat-bed navigation and animation blending; inspect foot contact",
-    "Connect pet Agent to isolated native scene state and local actions",
-    "Migrate care/planting/voice business features incrementally; sample actual performance"
+    "Migrate bowl-side eating/drinking, shelter return and toy interaction into the isolated native scene",
+    "Connect authenticated backend/LLM planning after separating native world coordinates and read-only scene contract; keep local autonomy available offline",
+    "Improve canopy lighting, foliage camera occlusion and grass/VSM pressure; measure actual frame times",
+    "Refine full-island routes, seated/lying anatomy, animation blending and per-foot contact; then care/planting business migration"
   ],
   "notes": [
     "Unit tests use synthetic data and fake temporary engine files; these are not device performance or compile results.",
@@ -118,14 +122,14 @@
     "runtime_evidence": "meadow-v2-runtime-evidence.json",
     "launcher": "打开猫岛预览.cmd",
     "notes": [
-      "V2 layout and basic click-to-move/G greeting implemented; no autonomous pet Agent yet.",
+      "V2 scene now has native local-policy autonomy, grounded movement, sniff/rest/pet/greet actions and player priority; production Agent/cloud planning still pending.",
       "34 authored solid/ground meshes have query collision and dynamic Recast navigation. Distance fields, Lumen mesh cards and LODs still pending.",
       "Route precheck rejects unsupported surface changes and unsafe crossings. Some narrow/stepped routes remain unavailable pending refinement.",
       "Physical-ground motion anchor and anatomical facing offset replace fixed-position idle. Per-foot IK and animation blending pending.",
       "Canopy shade too dark; editor close-up showed non-Nanite VSM queue overflow. Needs targeted rendering optimization.",
       "Mouse/key events are compiled but not manually tested; no FPS claim."
     ],
-    "last_shipping_run": "Saved/Qualification/Launch-Shipping-20261017-171645",
+    "last_shipping_run": "Saved/Qualification/MeadowAgent-20261017-201336",
     "interaction_work": {
       "status": "shipping_automated_route_and_greeting_passed",
       "collision_meshes": 34,
@@ -134,6 +138,15 @@
       "actual_map": "P1_MeadowV2",
       "manual_input_validated": false,
       "full_island_routes_validated": false
+    },
+    "agent_work": {
+      "status": "shipping_local_life_loop_passed",
+      "evidence": "meadow-agent-evidence.json",
+      "run": "Saved/Qualification/MeadowAgent-20261017-201336",
+      "source": "native_local_policy_no_cloud_model",
+      "actual_travel_cm": 337.0646057128906,
+      "manual_input_validated": false,
+      "production_backend_connected": false
     }
   }
 }

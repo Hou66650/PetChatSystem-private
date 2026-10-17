@@ -105,7 +105,7 @@ void APaitQualificationHUD::DrawHUD()
 {
     Super::DrawHUD();
     if (!Canvas) return;
-    DrawRect(FLinearColor(0.025f, .07f, .06f, .8f), 20.f, 20.f, 720.f, 132.f);
+    DrawRect(FLinearColor(0.025f, .07f, .06f, .8f), 20.f, 20.f, FMath::Min(1000.f,Canvas->ClipX-40.f), 214.f);
     const bool bMeadow = GetWorld()->GetMapName().Contains(TEXT("P1_MeadowV2"));
     DrawText(bMeadow ? TEXT("PAIT ISLAND | V2 meadow - interactive scene preview") : TEXT("PAIT ISLAND | P0 engine qualification only"), FLinearColor::White,
         36.f, 32.f, nullptr, 1.2f);
@@ -116,5 +116,11 @@ void APaitQualificationHUD::DrawHUD()
         FLinearColor(.9f, .8f, .5f), 36.f, 91.f, nullptr, 1.f);
     if (bMeadow)
         for (TActorIterator<APaitMeadowPet> It(GetWorld()); It; ++It)
-        { DrawText(It->GetStatus(),FLinearColor(.9f,.95f,.9f),36.f,118.f,nullptr,1.f); break; }
+        {
+            DrawText(It->GetStatus(),FLinearColor(.9f,.95f,.9f),36.f,118.f,nullptr,1.f);
+            DrawText(TEXT("A autonomy on/off | P pet | R rest | G greet | Click ground to walk"),FLinearColor(.7f,.85f,.75f),36.f,144.f,nullptr,1.f);
+            DrawText(It->GetAgentSummary(),FLinearColor(.9f,.8f,.5f),36.f,170.f,nullptr,.85f);
+            DrawText(It->GetLastEvent(),FLinearColor(.8f,.9f,.85f),36.f,196.f,nullptr,1.f);
+            break;
+        }
 }

@@ -44,6 +44,9 @@ void APaitPreviewPawn::SetupPlayerInputComponent(UInputComponent* Input)
     Input->BindKey(EKeys::H, IE_Pressed, this, &APaitPreviewPawn::ToggleInterface);
     Input->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &APaitPreviewPawn::MovePetToCursor);
     Input->BindKey(EKeys::G, IE_Pressed, this, &APaitPreviewPawn::GreetPet);
+    Input->BindKey(EKeys::P, IE_Pressed, this, &APaitPreviewPawn::PetCat);
+    Input->BindKey(EKeys::R, IE_Pressed, this, &APaitPreviewPawn::RestPet);
+    Input->BindKey(EKeys::A, IE_Pressed, this, &APaitPreviewPawn::ToggleAgent);
 }
 void APaitPreviewPawn::Tick(float DeltaSeconds)
 {
@@ -123,4 +126,16 @@ void APaitPreviewPawn::MovePetToCursor()
 void APaitPreviewPawn::GreetPet()
 {
     for (TActorIterator<APaitMeadowPet> It(GetWorld()); It; ++It) { It->Greet(); break; }
+}
+void APaitPreviewPawn::PetCat()
+{
+    for (TActorIterator<APaitMeadowPet> It(GetWorld()); It; ++It) { It->Pet(); break; }
+}
+void APaitPreviewPawn::RestPet()
+{
+    for (TActorIterator<APaitMeadowPet> It(GetWorld()); It; ++It) { It->Rest(); break; }
+}
+void APaitPreviewPawn::ToggleAgent()
+{
+    for (TActorIterator<APaitMeadowPet> It(GetWorld()); It; ++It) { It->ToggleAutonomy(); break; }
 }

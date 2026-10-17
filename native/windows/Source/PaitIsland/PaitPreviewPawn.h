@@ -32,6 +32,9 @@ private:
     void ToggleInterface();
     void MovePetToCursor();
     void GreetPet();
+    void PetCat();
+    void RestPet();
+    void ToggleAgent();
     bool bOrbit = false;
     bool bPan = false;
     float TargetDistance = 2200.f;

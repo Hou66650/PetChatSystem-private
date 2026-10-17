@@ -1,0 +1,232 @@
+{
+  "scope": "Isolated native local-policy Agent on V2; no production account or cloud planning connection",
+  "version": "1.79.0",
+  "runtime": {
+    "passed": true,
+    "error": "",
+    "actual_map": "P1_MeadowV2",
+    "decision_source": "native_local_policy_no_cloud_model",
+    "elapsed_seconds": 48.403785705566406,
+    "travel_cm": 337.0646057128906,
+    "completed_explorations": 1,
+    "completed_rests": 1,
+    "completed_pet_responses": 1,
+    "player_priority": true,
+    "pause_resume": true,
+    "visit_memory_disk_roundtrip": true,
+    "manual_input_validated": false,
+    "performance_qualified": false,
+    "events": [
+      {
+        "session_seconds": 5.007347583770752,
+        "action": "walk",
+        "outcome": "started",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-190.000 Y=-200.000 Z=2.500"
+      },
+      {
+        "session_seconds": 6.202178478240967,
+        "action": "walk",
+        "outcome": "interrupted",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-162.255 Y=-229.464 Z=2.500"
+      },
+      {
+        "session_seconds": 6.202178478240967,
+        "action": "greet",
+        "outcome": "started",
+        "source": "player",
+        "place": "Forest clearing",
+        "position_cm": "X=-162.255 Y=-229.464 Z=2.500"
+      },
+      {
+        "session_seconds": 8.116166114807129,
+        "action": "greet",
+        "outcome": "completed",
+        "source": "player",
+        "place": "Forest clearing",
+        "position_cm": "X=-162.255 Y=-229.464 Z=2.500"
+      },
+      {
+        "session_seconds": 23.121002197265625,
+        "action": "walk",
+        "outcome": "started",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-162.255 Y=-229.464 Z=2.500"
+      },
+      {
+        "session_seconds": 27.768505096435547,
+        "action": "walk",
+        "outcome": "completed",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.573 Y=-525.491 Z=2.500"
+      },
+      {
+        "session_seconds": 27.768505096435547,
+        "action": "sniff",
+        "outcome": "started",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.573 Y=-525.491 Z=2.500"
+      },
+      {
+        "session_seconds": 29.060453414916992,
+        "action": "sniff",
+        "outcome": "completed",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.573 Y=-525.491 Z=2.500"
+      },
+      {
+        "session_seconds": 35.346832275390625,
+        "action": "rest",
+        "outcome": "started",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.573 Y=-525.491 Z=2.500"
+      },
+      {
+        "session_seconds": 45.017513275146484,
+        "action": "rest",
+        "outcome": "completed",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.573 Y=-525.491 Z=2.500"
+      },
+      {
+        "session_seconds": 45.02523422241211,
+        "action": "pet",
+        "outcome": "started",
+        "source": "player",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.573 Y=-525.491 Z=2.500"
+      },
+      {
+        "session_seconds": 48.395816802978516,
+        "action": "pet",
+        "outcome": "completed",
+        "source": "player",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.573 Y=-525.491 Z=2.500"
+      }
+    ]
+  },
+  "launch": {
+    "executable_sha256": "2ACECC8E249635FE253252758FD51E76FD595164F5838DCEA904AAF491F989D9",
+    "packaged_content": [
+      {
+        "file": "global.ucas",
+        "bytes": 3204496,
+        "sha256": "6CC6AB101AE1918029D99FC530CB6C38A3B95E93396F847CEA5C0BE6FCB71D21"
+      },
+      {
+        "file": "global.utoc",
+        "bytes": 782,
+        "sha256": "FC8A92952E7A0B2276F2C762D0DCE4EAE6D0D95BAD0E1547186DFF44D057024E"
+      },
+      {
+        "file": "PaitIsland-Windows.pak",
+        "bytes": 10943962,
+        "sha256": "EE384908DA2B71C11D11FF102A92C7941D07054A92B55E723704A1077B3BE03A"
+      },
+      {
+        "file": "PaitIsland-Windows.ucas",
+        "bytes": 666537440,
+        "sha256": "CAD62F267E6C1403ADA12474DF27294B448D2E06E62ECE1284558C2703EF3B66"
+      },
+      {
+        "file": "PaitIsland-Windows.utoc",
+        "bytes": 465325,
+        "sha256": "146311B0502B77FEF1B968F9237D2F5478BDF6B4AC5535D6579ED30A1511A86D"
+      }
+    ],
+    "exit_code": 0,
+    "manual_input_validated": false,
+    "performance_qualified": false
+  },
+  "captures": [
+    {
+      "file": "agent-exploring.png",
+      "sha256": "3c23299b4bd5f5d2c6253c3702c27f8fe24e72646077c581b75879e8b5ab3b9a"
+    },
+    {
+      "file": "agent-resting.png",
+      "sha256": "355db0323e922ad54bbbb9571c899c1ea80aff6ad5785e59dfd438c5eeb41a62"
+    }
+  ],
+  "run_directory": "Saved/Qualification/MeadowAgent-20261017-201336",
+  "build_logs": [
+    "Saved/Qualification/package-agent-seated.log",
+    "Saved/Qualification/package-agent-camera.log"
+  ],
+  "build_note": "Full Editor/Shipping build and Cook passed. Final capture-camera-only C++ change rebuilt both binaries and reused identical cooked assets with -skipcook.",
+  "movement_regression": {
+    "runtime": {
+      "passed": true,
+      "error": "",
+      "actual_map": "P1_MeadowV2",
+      "elapsed_seconds": 30.014854431152344,
+      "travel_cm": 698.322265625,
+      "max_root_ground_error_cm": 2.842170943040401e-14,
+      "root_lift_cm": -3.582104206085205,
+      "heading_offset_deg": 86.5910415649414,
+      "end_feet_cm": "X=-190.000 Y=-195.300 Z=2.500",
+      "test_start_cm": "X=-190.000 Y=-200.000 Z=2.500",
+      "test_destination_cm": "X=-190.000 Y=-550.000 Z=10.000",
+      "outside_destination_rejected": true,
+      "manual_input_validated": false,
+      "performance_qualified": false
+    },
+    "launch": {
+      "executable_sha256": "1D74B2F0EE123BDEE3676DB14F428596705AD219A22B1E1E2596F9F3A6C981C1",
+      "packaged_content": [
+        {
+          "file": "global.ucas",
+          "bytes": 3204496,
+          "sha256": "6CC6AB101AE1918029D99FC530CB6C38A3B95E93396F847CEA5C0BE6FCB71D21"
+        },
+        {
+          "file": "global.utoc",
+          "bytes": 782,
+          "sha256": "FC8A92952E7A0B2276F2C762D0DCE4EAE6D0D95BAD0E1547186DFF44D057024E"
+        },
+        {
+          "file": "PaitIsland-Windows.pak",
+          "bytes": 10943962,
+          "sha256": "EE384908DA2B71C11D11FF102A92C7941D07054A92B55E723704A1077B3BE03A"
+        },
+        {
+          "file": "PaitIsland-Windows.ucas",
+          "bytes": 666537440,
+          "sha256": "CAD62F267E6C1403ADA12474DF27294B448D2E06E62ECE1284558C2703EF3B66"
+        },
+        {
+          "file": "PaitIsland-Windows.utoc",
+          "bytes": 465325,
+          "sha256": "146311B0502B77FEF1B968F9237D2F5478BDF6B4AC5535D6579ED30A1511A86D"
+        }
+      ],
+      "exit_code": 0,
+      "manual_input_validated": false,
+      "performance_qualified": false
+    },
+    "note": "Passed before seated-clip and test-camera-only adjustments; movement/grounding code unchanged thereafter."
+  },
+  "visual_review": [
+    "Latest captures show unobstructed cat body and a changed seated resting pose compared with standing. Canopy shade remains too dark.",
+    "Imported sleep-loop sequence was visually inadequate; current rest uses sit_down / sit_idle / stand_up. True lying sleep and natural transitions remain unfinished.",
+    "Earlier alternate camera was blocked by foliage and was rejected; retained final captures use the clear camera."
+  ],
+  "limitations": [
+    "Local utility/novelty policy only; cloud LLM planning, production memories, account auth and economy are not connected.",
+    "Rest is on current safe ground, not a verified trip to the shelter. Food/water/toys/planting/portals still pending.",
+    "One autonomous route, one scripted fatigue case and direct action-function calls checked; manual input and every possible route not accepted.",
+    "Visit counters persist; relationship memory and daily diary are not migrated. Disk round-trip checked, full app-restart restore not tested.",
+    "No animation blending or per-foot IK; no claim of final animation quality or FPS."
+  ],
+  "production_writes": false
+}
