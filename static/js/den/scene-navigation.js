@@ -6,6 +6,15 @@
 })(typeof window !== 'undefined' ? window : globalThis, function () {
     'use strict';
     const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+    // Fixed erosion directions are reused by millions of path samples.
+    const edgeOffsets = Array.from({length:16}, (_,i) => [Math.cos(i*Math.PI/8),Math.sin(i*Math.PI/8)]);
+    function insideDomain(domains,x,z) {
+        for (const d of domains) {
+            if (d.kind==='rect' ? Math.abs(x-d.x)<=d.w/2 && Math.abs(z-d.z)<=d.d/2 :
+                ((x-d.x)/d.rx)**2+((z-d.z)/d.rz)**2<=1) return true;
+        }
+        return false;
+    }
     class Navigation {
         constructor({radius = 3.2, bodyRadius = .36, margin = .08, cell = .18, obstacles = [], water = [], bridges = [], rug = null, surfaces = [], domains = null} = {}) {
             this.radius = radius - bodyRadius - margin;
@@ -29,10 +38,10 @@
             const clearance=this.clearance+padding;
             if (!Number.isFinite(p.x + p.z) || Math.hypot(p.x, p.z) > this.radius-padding) return false;
             if(this.domains){
-                const inside=q=>this.domains.some(d=>d.kind==='rect'?Math.abs(q.x-d.x)<=d.w/2&&Math.abs(q.z-d.z)<=d.d/2:((q.x-d.x)/d.rx)**2+((q.z-d.z)/d.rz)**2<=1);
-                if(!inside(p))return false;
-                // Erode the union, not each piece: adjoining terraces remain connected.
-                for(let i=0;i<16;i++)if(!inside({x:p.x+clearance*Math.cos(i*Math.PI/8),z:p.z+clearance*Math.sin(i*Math.PI/8)}))return false;
+                if(!insideDomain(this.domains,p.x,p.z))return false;
+                // Same union erosion and sample coordinates, without per-query
+                // trigonometry, callback closures or temporary point objects.
+                for(const offset of edgeOffsets)if(!insideDomain(this.domains,p.x+clearance*offset[0],p.z+clearance*offset[1]))return false;
             }
             for (const w of this.water) {
                 const distanceToWater = Math.hypot(Math.max(0,Math.abs(p.x-w.x)-w.w/2),Math.max(0,Math.abs(p.z-w.z)-w.d/2));
@@ -139,7 +148,9 @@
                     const result = []; let cursor = from;
                     for (let i = 0; i < path.length;) {
                         let far = i;
-                        for (let j = i; j < path.length; j++) if (clear(cursor,path[j])) far=j;
+                        // The result is the farthest visible waypoint. Search backwards and
+                        // stop at the first match instead of checking every nearer point.
+                        for (let j = path.length - 1; j >= i; j--) if (clear(cursor,path[j])) {far=j;break;}
                         const point = {x:path[far].x,z:path[far].z}; result.push(point); cursor=point; i=far+1;
                     }
                     return result;

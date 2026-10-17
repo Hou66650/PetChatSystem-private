@@ -13,13 +13,14 @@
       this.enabled = false; this.embed = null; this.packet = null; this.ready = '';
       this.heartbeat = 0; this.blocked = true; this.occlusionAt = -Infinity;
       this.session = root.crypto.randomUUID();
-      this.onHide = () => this.fallback();
+      this.onHide = () => { this.fallback(); this.occlusionIndex?.dispose(); this.occlusionIndex = null; };
       document.addEventListener('visibilitychange', this.onHide);
       root.addEventListener('pagehide', this.onHide);
     }
     enable() {
       if (this.enabled || this.unsupported) return;
       this.enabled = true;
+      this.occlusionIndex = root.NativeOcclusion ? new root.NativeOcclusion.Index() : null;
       const embed = document.createElement('embed');
       embed.id = 'pait-native-pet'; embed.type = 'native/paitpet';
       embed.setAttribute('aria-hidden', 'true');
@@ -42,25 +43,57 @@
     unavailable() {
       this.fallback(); this.unsupported = true; this.enabled = false;
       this.embed?.remove(); this.embed = null; this.packet = null;
+      this.occlusionIndex?.dispose(); this.occlusionIndex = null;
     }
     occluded(state) {
+      if (!this.occlusionIndex && root.NativeOcclusion) this.occlusionIndex = new root.NativeOcclusion.Index();
       const { camera, petModel: pet, scene } = state;
       const T = root.THREE;
       const origin = camera.getWorldPosition(new T.Vector3());
       const base = pet.getWorldPosition(new T.Vector3());
       const height = pet.userData.height || 1;
+      // Prune excluded subtrees BEFORE triangle tests (especially the pet's
+      // skinned meshes). The previous full-scene raycast discarded these only
+      // after performing all intersection work.
+      const candidates = [];
+      const opaque = material => material && !material.transparent && material.opacity !== 0;
+      const collect = object => {
+        if (!object.visible || object === pet) return;
+        if (object.isMesh && (Array.isArray(object.material) ? object.material.some(opaque) : opaque(object.material))) {
+          candidates.push(object);
+        }
+        for (const child of object.children) collect(child);
+      };
+      collect(scene);
+      this.occlusionIndex?.prepare(candidates);
       const ray = new T.Raycaster();
+      const localRay = new T.Ray(), inverse = new T.Matrix4(), entry = new T.Vector3();
       // Separate native/web depth buffers cannot occlude each other. Keep the
       // original renderer whenever scenery is in front of any sampled body part.
       for (const y of [.12, .48, .86]) {
         const target = base.clone().add(new T.Vector3(0, height * y, 0));
         const direction = target.sub(origin); const distance = direction.length();
         ray.set(origin, direction.normalize()); ray.near = camera.near; ray.far = Math.max(0, distance - .08);
-        for (const hit of ray.intersectObjects(scene.children, true)) {
-          let object = hit.object, own = false, visible = true;
-          for (let p = object; p; p = p.parent) { if (p === pet) own = true; if (!p.visible) visible = false; }
-          const material = Array.isArray(object.material) ? object.material[hit.face?.materialIndex || 0] : object.material;
-          if (!own && visible && object.isMesh && material && !material.transparent && material.opacity !== 0) return true;
+        for (const object of candidates) {
+          const geometry = object.geometry;
+          // Three r128 checks far only after testing every triangle. Reject
+          // static bounds beyond the finite camera-to-pet segment first. An
+          // origin inside the bounds must still test geometry, not just its exit.
+          if (!object.isSkinnedMesh && !object.isInstancedMesh &&
+              !geometry.morphAttributes.position?.length && geometry.boundingBox) {
+            localRay.copy(ray.ray).applyMatrix4(inverse.copy(object.matrixWorld).invert());
+            if (!geometry.boundingBox.containsPoint(localRay.origin)) {
+              if (!localRay.intersectBox(geometry.boundingBox, entry) ||
+                  entry.applyMatrix4(object.matrixWorld).distanceTo(origin) > ray.far) continue;
+            }
+          }
+          const hits = this.occlusionIndex ? this.occlusionIndex.hits(object, ray) :
+            (geometry.index?.count || geometry.attributes.position.count) < 15000 ? ray.intersectObject(object, false) : null;
+          if (hits === null) return true; // keep web depth while indexing/unavailable
+          for (const hit of hits) {
+            const material = Array.isArray(object.material) ? object.material[hit.face?.materialIndex || 0] : object.material;
+            if (opaque(material)) return true;
+          }
         }
       }
       return false;
@@ -75,7 +108,11 @@
       const key = supported ? pet.uuid + ':' + path : '';
       if (key !== this.lastKey) { this.fallback(); this.occlusionAt = -Infinity; this.lastKey = key; }
       if (supported && this.now() - this.occlusionAt >= 180) {
-        this.blocked = this.occluded(state); this.occlusionAt = this.now();
+        // A diagnostic/unsupported scene object must not abort the page's draw.
+        // Keep the web depth buffer and bound retries to the normal interval.
+        try { this.blocked = this.occluded(state); }
+        catch (_) { this.blocked = true; }
+        this.occlusionAt = this.now();
       }
       if (supported) {
         const action = state.action, clip = action?.getClip();
@@ -103,6 +140,7 @@
     }
     dispose() {
       this.fallback(); this.enabled = false; this.embed?.remove(); this.embed = null;
+      this.occlusionIndex?.dispose(); this.occlusionIndex = null;
       document.removeEventListener('visibilitychange', this.onHide); root.removeEventListener('pagehide', this.onHide);
     }
   }

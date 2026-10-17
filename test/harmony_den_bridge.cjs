@@ -31,6 +31,33 @@ bridge.exchange(ack());state.special=true;bridge.render(scene,camera);assert.equ
 pet.userData.accessories=[{visible:true}];bridge.render(scene,camera);assert.equal(renders.at(-1),true);pet.userData.accessories=[];
 state.spec.glb='https://evil.test'+path;bridge.render(scene,camera);assert.equal(bridge.packet.key,'');state.spec.glb=path;
 bridge.render(scene,camera);bridge.exchange(ack());bridge.render(scene,camera);assert.equal(renders.at(-1),false);
+// Excluded geometry must never enter triangle/skinning raycasts. Filtering hits
+// afterwards wastes work even though it returns the same visual fallback result.
+const petRay=pet.children[0].raycast;pet.children[0].raycast=()=>{throw Error('raycast own pet');};
+const hiddenParent=new THREE.Group();hiddenParent.visible=false;
+const hiddenMesh=new THREE.Mesh(new THREE.BoxGeometry(3,3,1),new THREE.MeshBasicMaterial());
+hiddenMesh.raycast=()=>{throw Error('raycast hidden ancestor');};hiddenParent.add(hiddenMesh);scene.add(hiddenParent);
+const glass=new THREE.Mesh(new THREE.BoxGeometry(3,3,1),new THREE.MeshBasicMaterial({transparent:true}));
+glass.raycast=()=>{throw Error('raycast transparent scenery');};scene.add(glass);
+time+=200;bridge.render(scene,camera);assert.equal(bridge.packet.visible,true);
+scene.remove(hiddenParent,glass);pet.children[0].raycast=petRay;
+// Sprites need raycaster.camera and are not opaque-mesh occluders. Passing
+// them to the former full-scene raycast aborted rendering on the real tablet.
+const sprite=new THREE.Sprite(new THREE.SpriteMaterial());scene.add(sprite);
+time+=200;bridge.render(scene,camera);assert.equal(bridge.packet.visible,true);scene.remove(sprite);
+const checkOcclusion=bridge.occluded;let checks=0;
+bridge.occluded=()=>{checks++;throw Error('unsupported scene raycast');};
+time+=200;bridge.render(scene,camera);assert.equal(renders.at(-1),true,'draw web fallback after occlusion failure');
+bridge.render(scene,camera);assert.equal(checks,1,'failed check must not retry every frame');
+bridge.occluded=checkOcclusion;time+=200;bridge.render(scene,camera);
+const farMesh=new THREE.Mesh(new THREE.BoxGeometry(2,2,2),new THREE.MeshBasicMaterial());
+farMesh.position.set(0,0,-20);farMesh.geometry.computeBoundingBox();
+farMesh.raycast=()=>{throw Error('triangle tests beyond pet');};scene.add(farMesh);scene.updateMatrixWorld(true);
+time+=200;bridge.render(scene,camera);assert.equal(bridge.packet.visible,true);scene.remove(farMesh);
+const enclosing=new THREE.Mesh(new THREE.BoxGeometry(100,100,100),new THREE.MeshBasicMaterial());
+enclosing.geometry.computeBoundingBox();enclosing.raycast=(ray,hits)=>hits.push({object:enclosing,distance:.5,face:{materialIndex:0}});
+scene.add(enclosing);scene.updateMatrixWorld(true);time+=200;bridge.render(scene,camera);
+assert.equal(bridge.packet.visible,false,'camera inside bounds must not skip geometry within range');scene.remove(enclosing);
 const wall=new THREE.Mesh(new THREE.BoxGeometry(3,3,.3),new THREE.MeshBasicMaterial());wall.position.set(0,.7,2);
 scene.add(wall);scene.updateMatrixWorld(true);time+=200;bridge.render(scene,camera);
 assert.equal(bridge.packet.visible,false);assert.equal(renders.at(-1),true,'scenery occlusion returns to shared WebGL depth buffer');
