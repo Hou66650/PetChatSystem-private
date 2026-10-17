@@ -2,7 +2,10 @@
 (function (root) {
   'use strict';
   const PATHS = new Set([
-    '/static/models/petchat-cat-v3/cat.glb', '/static/models/petchat-shiba-v4/qiuqiu.glb',
+    // MatePad Air can acknowledge this cat's native scene while the cat is
+    // absent from the composed image. Keep the web cat until output is verified;
+    // a loaded scene / scheduled frame alone is not evidence of visible output.
+    '/static/models/petchat-shiba-v4/qiuqiu.glb',
     '/static/models/petchat-husky-v3/xueqiu.glb', '/static/models/petchat-shepherd-v2/shepherd.glb'
   ]);
   const vec = v => ({ x: v.x, y: v.y, z: v.z });

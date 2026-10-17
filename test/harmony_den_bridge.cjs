@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const {stripTypeScriptTypes}=require('node:module');
 const THREE=require('../static/js/vendor/three.min.js');
-const path='/static/models/petchat-cat-v3/cat.glb';
+const path='/static/models/petchat-shiba-v4/qiuqiu.glb';
 let time=0, renders=[], throws=false;
 const events=[], parent={insertBefore(node){this.node=node;}};
 const context={THREE,URL,performance:{now:()=>time},crypto:{randomUUID:()=> 'session-one'},
@@ -24,6 +24,22 @@ assert.equal(bridge.packet.clip,'idle_breathe');assert.equal(bridge.packet.phase
 const ack=()=>({session:bridge.session,key:bridge.packet.key,ready:true});
 bridge.exchange(ack());bridge.render(scene,camera);assert.equal(renders.at(-1),false);assert.equal(pet.visible,true);
 assert.equal(parent.node.style.opacity,'1');
+// A native ready acknowledgement was reproduced with an entirely invisible cat
+// on MatePad Air. Neither stale nor matching acknowledgements may hide that cat.
+const dogAck=ack();
+state.spec.glb='/static/models/petchat-cat-v3/cat.glb';
+bridge.render(scene,camera);
+assert.equal(bridge.packet.key,'');assert.equal(bridge.packet.visible,false);
+assert.equal(renders.at(-1),true);assert.equal(parent.node.style.opacity,'0');
+for(const reply of [dogAck,{session:bridge.session,key:pet.uuid+':'+state.spec.glb,ready:true}]) {
+ bridge.exchange(reply);bridge.render(scene,camera);
+ assert.equal(renders.at(-1),true,'native acknowledgement must never hide the web cat');
+ assert.equal(parent.node.style.opacity,'0');assert.equal(bridge.mode(),'宠物：网页');
+}
+context.document.hidden=true;bridge.render(scene,camera);
+context.document.hidden=false;bridge.render(scene,camera);assert.equal(renders.at(-1),true);
+state.spec.glb=path;bridge.render(scene,camera);assert.equal(renders.at(-1),true);
+bridge.exchange(ack());bridge.render(scene,camera);assert.equal(renders.at(-1),false,'supported dog can still take over after switching back');
 throws=true;assert.throws(()=>bridge.render(scene,camera));throws=false;assert.equal(pet.visible,true,'restore raycast model even on draw errors');
 bridge.exchange({...ack(),session:'previous-page'});bridge.render(scene,camera);assert.equal(renders.at(-1),true);
 bridge.exchange(ack());time+=1001;bridge.render(scene,camera);assert.equal(renders.at(-1),true,'lost heartbeat restores original');
@@ -69,6 +85,19 @@ const embed=parent.node;bridge.dispose();assert(embed.removed);assert.equal(brid
 bridge.enable();bridge.unavailable();bridge.exchange(null);assert.equal(bridge.enabled,false);assert.equal(bridge.embed,null);
 assert.match(bridge.mode(),/不可用/);
 assert(events.every(e=>['pagehide','visibilitychange'].includes(e[0])),'does not replace original business event handlers');
+
+// Fresh page / reload: cat must remain visible before and after native polls,
+// without performing native-only occlusion queries for this unsupported model.
+state.spec.glb='/static/models/petchat-cat-v3/cat.glb';context.document.hidden=false;
+for(let reload=0;reload<2;reload++) {
+ const fresh=new context.NativeDenBridge.Bridge({canvas:{parentElement:parent},
+  renderer:{render(){assert.equal(pet.visible,true);}},read:()=>state});
+ let nativeChecks=0;fresh.occluded=()=>{nativeChecks++;return false;};
+ fresh.render(scene,camera);fresh.exchange(null);fresh.render(scene,camera);
+ assert.equal(fresh.packet.key,'');assert.equal(fresh.packet.visible,false);
+ fresh.exchange({session:fresh.session,key:pet.uuid+':'+state.spec.glb,ready:true});
+ fresh.render(scene,camera);assert.equal(fresh.mode(),'宠物：网页');assert.equal(nativeChecks,0);fresh.dispose();
+}
 
 const source=fs.readFileSync('harmony/entry/src/main/ets/model/NativeDenProtocol.ets','utf8').replace(/^import .*;\r?\n/gm,'').replace(/export /g,'');
 const protocol={NATIVE_PETS:[{path}]};
