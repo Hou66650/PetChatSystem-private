@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>派特岛 · 云海之上的相遇</title><link rel="stylesheet" href="intro.css"></head>
+<body>
+<canvas id="world" aria-label="四座真实模型岛屿的三维开场动画"></canvas>
+<div class="shade"></div><div class="frame"></div>
+<header><img src="../images/pait-app-icon-f4.png" alt=""><span>派特岛 <small>PAIT ISLAND</small></span><span class="edition">云海之上的相遇</span></header>
+<main id="copy"><div id="eyebrow"></div><h1 id="title"></h1><p id="description"></p><span id="resident"></span></main>
+<div id="loading" role="status">正在展开四座岛屿… <span id="count">0 / 4</span></div>
+<footer><span id="chapter">序章 / 云海之上</span><span class="line"></span><span id="clock">00:00 / 01:00</span></footer>
+<nav id="controls" aria-label="播放控制"><button id="play" disabled>开始播放</button><button id="restart" disabled>重播</button><button id="next" disabled>下一幕 →</button><button id="fullscreen">全屏</button><span>空格暂停 · ← → 切换 · H 隐藏控制</span></nav>
+<script src="../js/vendor/three.min.js"></script><script src="../js/vendor/GLTFLoader.js"></script><script src="../js/home-atmosphere.js"></script><script src="intro.js"></script>
+</body></html>
