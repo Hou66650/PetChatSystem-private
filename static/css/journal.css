@@ -1,0 +1,42 @@
+/* Shared, scoped styles for growth and diary; no extra fonts or animation loop. */
+body.journal-theme {
+  --journal-paper: #f7f4ec;
+  --journal-surface: #fffdf8;
+  --journal-ink: #293e35;
+  --journal-muted: #627166;
+  --journal-green: #315c49;
+  --journal-soft: #e9eee5;
+  --journal-line: #d9dfd2;
+  --journal-amber: #9a602c;
+  color: var(--journal-ink);
+  background-color: var(--journal-paper);
+}
+.journal-theme main { overflow-wrap: anywhere; }
+.journal-theme main [hidden] { display: none !important; }
+.journal-theme main :is(button,input,select,textarea,.btn,.btn-outline) { font: inherit; font-size: 16px; }
+.journal-theme main :is(button,input:not([type=checkbox]),select,.btn,.btn-outline) { min-height: 44px; }
+.journal-theme main :is(button,.btn,.btn-outline) {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 20px; border: 1px solid var(--journal-line); border-radius: 999px;
+  background: var(--journal-surface); color: var(--journal-green); cursor: pointer;
+  text-decoration: none; transition: background-color .15s,border-color .15s;
+}
+.journal-theme main .btn { background: var(--journal-green); border-color: var(--journal-green); color: white; }
+.journal-theme main :is(button,.btn-outline):hover { border-color: var(--journal-green); background: var(--journal-soft); }
+.journal-theme main .btn:hover { background: #244936; color: white; }
+.journal-theme main :is(button,input,select,textarea,a):focus-visible { outline: 3px solid #8a633b; outline-offset: 3px; }
+.journal-theme main button:disabled { cursor: wait; opacity: .6; }
+.journal-theme main :is(input:not([type=checkbox]),select,textarea) {
+  min-width: 0; max-width: 100%; padding: 11px 14px; border: 1px solid #b7c4b5;
+  border-radius: 12px; background: var(--journal-surface); color: var(--journal-ink);
+}
+.journal-theme main input[type=checkbox] { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--journal-green); }
+.journal-theme main textarea { resize: vertical; min-height: 104px; }
+.journal-theme main a:not(.btn):not(.btn-outline) { color: var(--journal-green); text-underline-offset: 4px; }
+.journal-theme .journal-eyebrow { color: var(--journal-muted); font-size: 13px; letter-spacing: .16em; margin: 0 0 12px; }
+.journal-theme .journal-lead { color: var(--journal-muted); line-height: 1.8; max-width: 620px; margin: 12px 0 0; }
+.journal-theme main h1 { font: 600 clamp(30px,4vw,44px)/1.25 var(--font-body); letter-spacing: -.035em; margin: 0; }
+.journal-theme main h2 { font-size: 24px; line-height: 1.45; letter-spacing: -.025em; }
+.journal-theme main h3 { font-size: 17px; }
+.journal-theme .text-sub { color: var(--journal-muted); }
+@media(prefers-reduced-motion:reduce) { .journal-theme main * { transition: none !important; scroll-behavior: auto !important; } }
