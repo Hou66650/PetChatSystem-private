@@ -10,7 +10,7 @@ clock = time.time
 TTL = 12
 CAPACITY = 12
 ACTIONS = {'idle', 'happy', 'sniff', 'ball', 'sleep', 'bow', 'greet', 'look', 'sit', 'stretch'}
-ACTIVITIES = {'idle', 'explore', 'play', 'rest', 'greet', 'observe', 'manual'}
+ACTIVITIES = {'idle', 'explore', 'play', 'rest', 'greet', 'observe', 'manual', 'facility'}
 
 class ParkError(ValueError):
     def __init__(self, message, status=400):
@@ -97,11 +97,6 @@ def update(owner, data, leave=False):
         elapsed = now-row['updated']
         if elapsed < .35:
             raise ParkError('同步过于频繁', 429)
-        x, z, yaw = point(data)
-        if math.hypot(x-row['x'], z-row['z']) > min(elapsed, 2)*3.5+.4:
-            raise ParkError('移动距离过大，请重新同步位置。', 422)
-        if not park_navigation.segment(row['x'], row['z'], x, z):
-            raise ParkError('前方有树坛或设施，请绕行。', 422)
         action = data.get('action', 'idle')
         if not isinstance(action, str) or action not in ACTIONS:
             raise ParkError('互动无效')
@@ -112,13 +107,56 @@ def update(owner, data, leave=False):
         autonomous = behavior.get('autonomous', False)
         if not isinstance(activity, str) or activity not in ACTIVITIES or type(autonomous) is not bool:
             raise ParkError('行为无效')
+        facility = behavior.get('facility')
+        previous = json.loads(row['behavior']).get('facility')
+        if facility is not None:
+            if not isinstance(facility, dict) or not isinstance(facility.get('id'), str):
+                raise ParkError('设施无效')
+            f = park_navigation.FACILITIES.get(facility['id'])
+            progress = facility.get('progress')
+            if not f or type(progress) not in (int, float) or not math.isfinite(progress) or not 0 <= progress <= park_navigation.facility_length(f)+1e-6:
+                raise ParkError('设施路线无效')
+            if activity != 'facility' or json.loads(row['spec'])['height'] > f['maxHeight']:
+                raise ParkError('这项设施不适合当前伙伴的体型')
+            if previous:
+                if previous['id'] != f['id'] or not previous['progress'] <= progress <= previous['progress']+min(elapsed,2)*f['speed']+.25:
+                    raise ParkError('设施进度无效', 422)
+                started = previous['started']
+                if now-started > 120:
+                    raise ParkError('本次设施游玩已结束，请重新入园。', 409)
+            else:
+                entry = f['path'][0]
+                # The last 2 Hz snapshot can still be behind the entrance. Validate
+                # this request's approach before snapping to the authored start.
+                approach_x, approach_z, _ = point(data)
+                if progress != 0 or math.hypot(approach_x-entry[0],approach_z-entry[2]) > .65:
+                    raise ParkError('请先走到设施入口', 422)
+                if math.hypot(entry[0]-row['x'],entry[2]-row['z']) > min(elapsed,2)*3.5+.4 or not park_navigation.segment(row['x'],row['z'],entry[0],entry[2]):
+                    raise ParkError('请沿草坪走到设施入口', 422)
+                # Both facilities share an approach lane. Serialize the entire west zone.
+                for other in db.execute('SELECT behavior FROM park_presence WHERE owner!=? AND updated>?',(owner,now-TTL)):
+                    if json.loads(other['behavior']).get('facility'):
+                        raise ParkError('设施入口有伙伴，先玩别的吧。', 423)
+                started = now
+            facility = dict(id=f['id'],progress=progress,started=started)
+            p = park_navigation.facility_sample(f,progress)
+            x,z,yaw = p['x'],p['z'],p['yaw']
+        else:
+            if previous and previous['progress'] < park_navigation.facility_length(park_navigation.FACILITIES[previous['id']])-1e-5:
+                raise ParkError('请先沿设施路线回到草坪', 422)
+            if activity == 'facility':raise ParkError('缺少设施路线')
+            x, z, yaw = point(data)
+            if math.hypot(x-row['x'], z-row['z']) > min(elapsed, 2)*3.5+.4:
+                raise ParkError('移动距离过大，请重新同步位置。', 422)
+            if not park_navigation.segment(row['x'], row['z'], x, z):
+                raise ParkError('前方有树坛或设施，请绕行。', 422)
         goal = behavior.get('goal')
         if goal is not None:
             if not isinstance(goal, dict):raise ParkError('玩具位置无效')
             gx, gz, _ = point(dict(x=goal.get('x'), z=goal.get('z'), yaw=0))
             if activity != 'play':raise ParkError('玩具行为无效')
             goal = dict(x=gx, z=gz)
-        safe_behavior = json.dumps(dict(activity=activity, autonomous=autonomous, goal=goal))
+        safe_behavior = json.dumps(dict(activity=activity, autonomous=autonomous, goal=goal, facility=facility))
         at = now if action != row['action'] else row['action_at']
         db.execute('UPDATE park_presence SET x=?,z=?,yaw=?,action=?,action_at=?,updated=?,behavior=? WHERE owner=?',
                    (x, z, yaw, action, at, now, safe_behavior, owner))

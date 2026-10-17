@@ -9,7 +9,7 @@
  <section class="park-dock" aria-label="乐园活动">
   <p id="park-status" role="status" aria-live="polite">正在展开爪心乐园…</p><button id="park-retry" hidden>重新加载乐园</button>
   {% if park_logged_in %}<div class="park-entry"><label>今天和谁一起 <select id="park-pet"><option value="1">柴犬</option><option value="2">哈士奇</option><option value="3">猫咪</option><option value="4">德牧</option></select></label><button id="park-join" disabled>带它入园</button><button id="park-leave" hidden>结束游玩</button></div>
-  <div class="park-agent"><button id="park-auto" disabled aria-pressed="true">自主游玩：开</button><span id="park-intent" role="status">入园后，伙伴会自己探索、玩耍和休息。</span></div>
+  <div class="park-agent"><button id="park-auto" disabled aria-pressed="true">自主游玩：开</button><span id="park-intent" role="status">入园后，伙伴会自己探索、玩球，试试低桥和适合体型的猫耳隧道。</span></div>
   <details class="park-help"><summary>我也想陪它玩</summary><div class="park-actions"><button data-action="greet" disabled>打个招呼</button><button data-action="ball" disabled>玩彩球</button><button data-action="sniff" disabled>一起闻闻</button><button data-action="sleep" disabled>草坪休息</button><button data-action="walk" disabled>去开阔草坪</button></div></details>
   <small>入园后，其他登录用户可看到宠物昵称、标准外观和动作。首版同场最多 12 位，私人模型不公开。</small>
   {% else %}<a class="park-login" href="{{ url_for('auth.reader_login') }}">登录后带伙伴一起玩</a>{% endif %}
@@ -20,6 +20,7 @@
 <script src="/static/js/vendor/three.min.js"></script><script src="/static/js/vendor/GLTFLoader.js"></script><script src="/static/js/vendor/OrbitControls.js"></script>
 <script src="/static/js/den/selected-assets.js?v={{ app_version }}"></script><script src="/static/js/den/wardrobe.js?v={{ app_version }}"></script><script src="/static/js/den/portal-pets.js?v={{ app_version }}"></script>
 <script type="application/json" id="park-navigation">{{ park_navigation|tojson }}</script><script src="/static/js/park-navigation.js?v={{ app_version }}"></script>
+<script src="/static/js/park-facilities.js?v={{ app_version }}"></script>
 <script src="/static/js/park-agent.js?v={{ app_version }}"></script><script src="/static/js/park-motion.js?v={{ app_version }}"></script>
 <script src="/static/js/park-scene.js?v={{ app_version }}"></script><script src="/static/js/public-park.js?v={{ app_version }}"></script>
 {% endblock %}

@@ -5,6 +5,21 @@ from pathlib import Path
 
 LAYOUT = json.loads((Path(__file__).resolve().parents[2] / 'static/models/paw-commons-v2/navigation.json').read_text(encoding='utf-8'))
 
+FACILITIES = {f['id']: f for f in LAYOUT.get('facilities', [])}
+
+def facility_length(f):
+    return sum(math.hypot(b[0]-a[0], b[2]-a[2]) for a, b in zip(f['path'], f['path'][1:]))
+
+def facility_sample(f, progress):
+    distance = max(0, min(facility_length(f), progress))
+    for i, (a, b) in enumerate(zip(f['path'], f['path'][1:])):
+        n = math.hypot(b[0]-a[0], b[2]-a[2])
+        if distance <= n or i == len(f['path'])-2:
+            t = min(1, distance/n)
+            return dict(x=a[0]+(b[0]-a[0])*t, y=a[1]+(b[1]-a[1])*t,
+                        z=a[2]+(b[2]-a[2])*t, yaw=math.atan2(b[0]-a[0], b[2]-a[2]))
+        distance -= n
+
 
 def inside(x, z):
     return (math.isfinite(x) and math.isfinite(z)

@@ -59,7 +59,7 @@
 
 资源位于 `static/models/paw-commons-v2`，SHA-256 和真实字节数见 `runtime-report.json`。服务器按 Accept-Encoding 提供 gzip，保留 ETag 和 Vary；浏览器复用现有 IndexedDB 模型缓存，命中后条件验证。场景未就绪时禁用入园，失败显示重试。无人且视角静止时停止提交画面，有宠物时上限 30 FPS；这不是实测真机帧率承诺。
 
-`navigation.json` 同时驱动浏览器 A* 路线和服务端位置/线段校验，绕开中央树坛及活动区边缘的隧道、饮水区和坡道。点击不可通行处会投影到可达草坪；原有打招呼、玩球、闻闻、休息和多人同步继续使用。设施现阶段是精细场景，尚不能让宠物自动钻洞、登树屋或通过桥梁。
+`navigation.json` 同时驱动浏览器 A* 路线和服务端位置/线段校验，绕开中央树坛及活动区边缘的隧道、饮水区和坡道。点击不可通行处会投影到可达草坪；原有打招呼、玩球、闻闻、休息和多人同步继续使用。v1.93.0 已接入低桥上桥折返和大猫耳隧道往返自主游玩，路线、体型和占用由共享配置及服务端校验；树屋攀爬、跳圈和小隧道仍待适配。详见 `docs/public-park-agent.md`。
 
 验证命令：`node test/park_runtime_assets.cjs`、`node test/park_navigation.cjs`、`node test/selected_assets.cjs`、`venv/Scripts/python.exe -X utf8 -m unittest discover -s test -p test_park.py -v`。启动隔离的 `test/park_review_server.py` 后，运行 `test/public_park_render.cjs` 和 `test/park_runtime_browser.cjs` 做双账号、导航、失败重试和缓存检查。测试服务只监听本机 5088，使用临时数据库；不能把它作为正式服务部署到局域网。
 

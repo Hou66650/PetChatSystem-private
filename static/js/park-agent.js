@@ -1,7 +1,7 @@
 /* Owner-side utility agent. Decisions run at 4 Hz; animation never calls an LLM. */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.ParkAgent=api;})(globalThis,function(){
  'use strict';
- const labels={explore:'寻找草坪里的新气味',play:'想追一会儿球',rest:'找个安静地方歇一会儿',greet:'想认识附近的伙伴',observe:'停下来看看周围'};
+ const labels={explore:'寻找草坪里的新气味',play:'想追一会儿球',rest:'找个安静地方歇一会儿',greet:'想认识附近的伙伴',observe:'停下来看看周围',facility:'正在玩设施'};
  const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z),clamp=x=>Math.max(0,Math.min(1,x));
  class Agent{
   constructor({navigation,personality='curious',random=Math.random}){this.nav=navigation;this.personality=personality;this.random=random;this.enabled=true;this.until=0;this.energy=.8;this.curiosity=.65;this.social=.65;this.playfulness=.8;this.recent=new Map();this.visited=[];this.plan=null;this.phase=0;this.sent=false;this.deadline=0;this.activity='idle';this.goal=null;this.peer=null;this.reason='';this.blockedUntil=0;}
@@ -21,6 +21,12 @@
    const points=this.candidates(pos,peers),go=(p,speed=1)=>({point:p,speed}),act=(action,seconds)=>({action,seconds});
    const options=[],cool=k=>Math.max(0,1-(now-(this.recent.get(k)??-100))/35)*1.1;
    const add=(kind,score,steps,peer=null)=>options.push({kind,score:score-cool(kind)+this.random()*.12,steps,peer});
+   if(this.facilities&&this.energy>.35&&!peers.some(p=>p.behavior?.facility))for(const f of this.facilities){
+    if(this.height>f.maxHeight||now-(this.recent.get(f.id)??-100)<65)continue;
+    const entry={x:f.path[0][0],z:f.path[0][2]};
+    if(peers.some(p=>distance(entry,p)<1.5))continue;
+    add('facility',.65+this.playfulness*.7+this.curiosity*.25,[go(entry),{facility:f.id,seconds:120}]);
+   }
    if(points.length){
     add('explore',this.curiosity+(this.personality==='curious'?.3:0),[go(points[0]),act('sniff',3),act('look',2)]);
     const ball=points.find(p=>distance(pos,p)<6);
@@ -36,7 +42,7 @@
    }
    add('observe',.12,[act('look',2.5)]);
    if(this.energy<.22&&points.length)options.find(o=>o.kind==='rest').score+=3;
-   const chosen=options.sort((a,b)=>b.score-a.score)[0];this.plan=chosen.steps;this.activity=chosen.kind;this.peer=chosen.peer;this.reason=labels[chosen.kind];this.phase=0;this.sent=false;this.recent.set(chosen.kind,now);
+   const chosen=options.sort((a,b)=>b.score-a.score)[0];this.plan=chosen.steps;this.activity=chosen.kind;this.peer=chosen.peer;this.reason=chosen.kind==='facility'?'想去试试'+this.facilities.find(f=>f.id===chosen.steps[1].facility).name:labels[chosen.kind];this.phase=0;this.sent=false;this.recent.set(chosen.kind,now);
   }
   tick({now,dt,pos,peers=[],moving=false}){
    if(!this.enabled||now<this.until)return null;
@@ -56,7 +62,8 @@
     }
    }
    this.sent=true;this.deadline=now+(step.point?25:step.seconds);this.goal=step.ball||step.prop||null;
-   return {destination:step.point,action:step.ball?'ball':step.action||'idle',duration:step.point?25:step.seconds,speed:step.speed||1,goal:this.goal,face:step.face,activity:this.activity,message:this.reason};
+   if(step.facility)this.recent.set(step.facility,now);
+   return {destination:step.point,facility:step.facility,action:step.ball?'ball':step.action||'idle',duration:step.point?25:step.seconds,speed:step.speed||1,goal:this.goal,face:step.face,activity:this.activity,message:this.reason};
   }
  }
  return {Agent,labels};

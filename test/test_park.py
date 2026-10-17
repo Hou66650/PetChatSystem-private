@@ -84,7 +84,7 @@ class ParkTests(unittest.TestCase):
             self.assertEqual(self.post('sync',blocked).status_code,422)
             blocked.update(x=-3,z=1)
             self.assertEqual(self.post('sync',blocked).status_code,200)
-        self.assertEqual(joined['layoutVersion'],'paw-v2-1')
+        self.assertEqual(joined['layoutVersion'],'paw-v2-2')
 
     def test_agent_behavior_validation_and_long_rest(self):
         with patch.object(park,'clock',return_value=100):
@@ -104,6 +104,62 @@ class ParkTests(unittest.TestCase):
             good=self.sample(joined,action='bow',behavior={'autonomous':True,'activity':'play','goal':{'x':3,'z':3},'private':'must not echo'})
             state=self.post('sync',good).json
             self.assertNotIn('private',str(state))
+
+    def test_facility_reservation_progress_and_safe_release(self):
+        from app.db import get_db
+        nav=park.park_navigation
+        f=nav.FACILITIES['bridge']
+        with patch.object(park,'clock',return_value=100):
+            a=self.post('join',{'pet':1}).json
+            b=self.post('join',{'pet':3},self.b).json
+        with self.app.app_context():
+            db=get_db();db.execute('UPDATE park_presence SET x=?,z=?',(f['path'][0][0]+.7,f['path'][0][2]));db.commit()
+        def data(joined,progress=0,identity='bridge'):
+            return dict(token=joined['token'],x=f['path'][0][0] if progress==0 else 999,z=f['path'][0][2] if progress==0 else 999,yaw=0,action='idle',behavior={'activity':'facility','autonomous':True,'facility':{'id':identity,'progress':progress}})
+        with patch.object(park,'clock',return_value=101):
+            r=self.post('sync',data(a));self.assertEqual(r.status_code,200)
+            own=next(p for p in r.json['players'] if p['mine'])
+            self.assertEqual(own['x'],f['path'][0][0],'server derives position, ignores forged x')
+            self.assertEqual(self.post('sync',data(b,identity='tunnel'),self.b).status_code,423,'shared approach lane is exclusive')
+        with patch.object(park,'clock',return_value=102):
+            for progress in (True, float('nan'),-1,999,3):
+                self.assertIn(self.post('sync',data(a,progress)).status_code,(400,422))
+            self.assertEqual(self.post('sync',self.sample(a)).status_code,422,'cannot leave route early')
+            self.assertEqual(self.post('sync',data(a,0,identity='tunnel')).status_code,422)
+        total=nav.facility_length(f);progress=0;now=102
+        while progress<total:
+            progress=min(total,progress+.7)
+            with patch.object(park,'clock',return_value=now):
+                result=self.post('sync',data(a,progress));self.assertEqual(result.status_code,200,result.json)
+                own=next(p for p in result.json['players'] if p['mine'])
+                point=nav.facility_sample(f,progress);self.assertAlmostEqual(own['x'],point['x']);self.assertAlmostEqual(own['z'],point['z'])
+            now+=1
+        end=nav.facility_sample(f,total)
+        with patch.object(park,'clock',return_value=now):
+            self.assertEqual(self.post('sync',dict(token=a['token'],x=end['x'],z=end['z'],yaw=0)).status_code,200)
+
+    def test_facility_size_entry_expiry_and_leave(self):
+        from app.db import get_db
+        with patch.object(park,'clock',return_value=100):a=self.post('join',{'pet':4}).json
+        data=self.sample(a,behavior={'activity':'facility','autonomous':True,'facility':{'id':'tunnel','progress':0}})
+        data.update(x=-6,z=2.4)
+        with patch.object(park,'clock',return_value=101):
+            self.assertEqual(self.post('sync',data).status_code,400,'large shepherd excluded from tunnel')
+            data['behavior']['facility']['id']='bridge'
+            with self.app.app_context():
+                db=get_db();db.execute('UPDATE park_presence SET x=3,z=3');db.commit()
+            self.assertEqual(self.post('sync',data).status_code,422,'must arrive at entrance')
+            with self.app.app_context():
+                db=get_db();db.execute('UPDATE park_presence SET x=-6,z=2.4');db.commit()
+            self.assertEqual(self.post('sync',data).status_code,200)
+            self.assertEqual(self.post('leave',{'token':a['token']}).status_code,200,'leaving releases occupied facility')
+        with patch.object(park,'clock',return_value=102):a=self.post('join',{'pet':1}).json
+        with self.app.app_context():
+            db=get_db();db.execute('UPDATE park_presence SET x=-6,z=2.4');db.commit()
+        data['token']=a['token']
+        with patch.object(park,'clock',return_value=103):self.assertEqual(self.post('sync',data).status_code,200)
+        with patch.object(park,'clock',return_value=116):
+            self.assertEqual(self.a.get('/api/park').json['count'],0,'lost connection expires reservation')
 
     def test_scene_asset_compression_cache_and_scope(self):
         import gzip
