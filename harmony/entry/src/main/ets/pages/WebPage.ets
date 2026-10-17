@@ -204,9 +204,12 @@ struct WebPage {
           Row({ space: 12 }) {
             Toggle({ type: ToggleType.Switch, isOn: this.allowLan })
               .onChange((value: boolean) => { this.allowLan = value; })
-            Text('允许可信局域网 HTTP').fontSize(16)
+            Text('允许可信局域网 / USB 调试 HTTP').fontSize(16)
           }
           if (this.error) { Text(this.error).fontColor('#A32929') }
+          if (this.address.trim().startsWith('http://127.0.0.1')) {
+            Text('USB 调试地址需要保持数据线连接，并由电脑开启端口转发。').fontSize(14).fontColor('#665D57')
+          }
           Button('进入网页版').onClick(() => { this.open(); })
           Button('原生宠物互动').onClick(() => {
             try { new PetApi().configure(this.address, this.allowLan); this.petMode = true; this.nativePreview = true; }

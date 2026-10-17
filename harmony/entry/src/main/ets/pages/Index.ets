@@ -447,7 +447,7 @@ struct Index {
         Row({ space: 12 }) {
           Toggle({ type: ToggleType.Switch, isOn: this.allowLanHttp })
             .onChange((value: boolean) => { this.allowLanHttp = value; }).enabled(!this.busy)
-          Text('允许本地开发 HTTP（仅可信局域网）').fontSize(14).layoutWeight(1)
+          Text('允许本地开发 HTTP（可信局域网 / USB 调试）').fontSize(14).layoutWeight(1)
         }.width('100%')
         TextInput({ placeholder: '用户名', text: this.username })
           .onChange((value: string) => { this.username = value; }).maxLength(128).enabled(!this.busy)

@@ -29,6 +29,16 @@ const bootstrap = () => response({ apiVersion: 1, appVersion: 'test', pets: [{ i
 
 (async () => {
   const api = new PetApi();
+  // The USB reverse address follows the same explicit HTTP opt-in as LAN hosts.
+  assert.throws(() => api.configure('http://127.0.0.1:5005', false));
+  api.configure(' http://127.0.0.1:5005/ ', true);
+  queue.push(bootstrap()); await api.bootstrap();
+  assert.equal(calls.at(-1).url, 'http://127.0.0.1:5005/api/mobile/v1/bootstrap');
+  for (const address of ['http://127.0.0.1.evil.test:5005', 'http://127.0.0.1@evil.test',
+    'http://127.0.0.1:0', 'http://127.0.0.1:65536', 'http://127.1:5005',
+    'http://2130706433:5005', 'http://127.0.0.2:5005', 'http://127.0.0.1:5005/den']) {
+    assert.throws(() => api.configure(address, true), undefined, address);
+  }
   for (const address of ['http://example.com', 'http://8.8.8.8', 'http://192.168.1.5/path',
     'https://user:password@example.com', 'http://192.168.1.5:99999', 'file:///x']) {
     assert.throws(() => api.configure(address, true), undefined, address);

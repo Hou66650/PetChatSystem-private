@@ -25,8 +25,11 @@ export class PetApi {
     const privateIp = isIpv4 && (octets[0] === 10 ||
       (octets[0] === 192 && octets[1] === 168) ||
       (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31));
-    if (match[1] === 'http' && (!allowLanHttp || !privateIp)) {
-      throw new Error('HTTP 仅限显式开启的局域网开发；公网请使用 HTTPS');
+    // HDC reverse forwards the device's loopback port to the development computer.
+    // Keep this exact address opt-in; do not allow arbitrary public HTTP hosts.
+    const usbLoopback = match[2] === '127.0.0.1';
+    if (match[1] === 'http' && (!allowLanHttp || (!privateIp && !usbLoopback))) {
+      throw new Error('HTTP 仅限显式开启的可信局域网或 USB 调试（127.0.0.1）；公网请使用 HTTPS');
     }
     this.clear();
     this.origin = origin;
