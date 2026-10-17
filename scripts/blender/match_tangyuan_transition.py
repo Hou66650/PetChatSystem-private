@@ -25,7 +25,7 @@ scene = bpy.context.scene
 rig = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
 body = bpy.data.objects['Tangyuan | reconstructed surface, original UV retained']
 hair = bpy.data.objects['Tangyuan | animated review fibres']
-rig.animation_data_clear(); rig.location = (0, 0, 0)
+rig.animation_data_clear(); rig.location = (0, 0, 0); rig.rotation_euler = (0, 0, 0)
 for b in rig.pose.bones:
     b.matrix_basis.identity()
 
@@ -99,6 +99,13 @@ else:
         transform=Matrix.Translation(pivot) @ Euler(f['head_euler'],'XYZ').to_matrix().to_4x4() @ Matrix.Translation(-pivot)
         head.matrix=transform @ head.bone.matrix_local
         head.rotation_mode='QUATERNION';head.keyframe_insert('rotation_quaternion',frame=i);head.keyframe_insert('location',frame=i)
+        if 'jaw' in rig.pose.bones:
+            jaw=rig.pose.bones['jaw'];jaw.rotation_mode='XYZ'
+            jaw.rotation_euler=(float(f.get('jaw_open',0)),0,0)
+            jaw.keyframe_insert('rotation_euler',frame=i)
+        if 'tongue' in rig.pose.bones:
+            tongue=rig.pose.bones['tongue'];tongue.scale=(1,float(f.get('tongue_extension',.7)),1)
+            tongue.keyframe_insert('scale',frame=i)
         for name, xyz in f['feet'].items():
             goal=rig.pose.bones[name+'_goal']
             goal.location=goal.bone.matrix_local.to_3x3().inverted() @ (Vector(xyz)-goal.bone.head_local)
@@ -124,13 +131,14 @@ else:
     # Export baked FK evaluation, not Blender-only IK controls. UE import has
     # its own verification; successful FBX export alone is not an UE pass.
     bpy.ops.object.select_all(action='DESELECT')
-    for obj in (body,hair,rig):obj.select_set(True)
+    skinned=[o for o in scene.objects if o.type=='MESH' and any(m.type=='ARMATURE' and m.object==rig for m in o.modifiers)]
+    for obj in [*skinned,rig]:obj.select_set(True)
     bpy.context.view_layer.objects.active=rig
     bpy.ops.export_scene.fbx(filepath=str(out/'Tangyuan-matched.fbx'),use_selection=True,
         object_types={'ARMATURE','MESH'},axis_forward='-Y',axis_up='Z',
         add_leaf_bones=False,use_armature_deform_only=False,bake_anim=True,
         bake_anim_use_all_actions=False,bake_anim_use_nla_strips=False,
-        bake_anim_simplify_factor=0,path_mode='COPY',embed_textures=True)
+        bake_anim_simplify_factor=0,path_mode='COPY',embed_textures=True,mesh_smooth_type='FACE')
 
 if a.render:
     scene.cycles.samples=16;scene.render.use_persistent_data=True
