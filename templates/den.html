@@ -2520,7 +2520,9 @@ document.addEventListener('DOMContentLoaded', () => {
             button.textContent='自由活动：'+(enabled?'开':'关');button.setAttribute('aria-pressed',String(enabled));
         }
         function movementBlocked() {
-            if(document.querySelector('.bowl-panel[open],.cat-story[open]'))return true;
+            // Live class collections include newly opened/created panels without
+            // scanning the complete page with a selector on each animation tick.
+            for(const name of ['bowl-panel','cat-story'])for(const panel of document.getElementsByClassName(name))if(panel.hasAttribute('open'))return true;
             if(supplyCare?.phase==='using')return true;
             if(document.getElementById('greenhouse-dialog').open||document.getElementById('farm-dialog').open||farmGarden?.mode||portals?.away||portals?.holding)return true;
             return document.hidden || (toyWorkshop?.held?.state==='held' && !(toyWorkshop.held.spec.id==='rattle' && toyWorkshop.rattlePath)) || ['held','flight'].includes(facePlay?.ball?.phase) || spawnBusy || !petModel || anim.birth < 1 || grabbed || dropping || bounceBack > 0 || (interactionBusy() && !facePlay?.guiding) ||

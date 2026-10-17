@@ -54,7 +54,15 @@
    const box=this.q('[data-friends]'),selected=box.querySelector('select')?.value;box.replaceChildren();if(this.intent==='neighbor'){const select=document.createElement('select');select.dataset.destination='';select.setAttribute('aria-label','选择好友岛屿');for(const f of this.data.friends){const o=document.createElement('option');o.value=f.id;o.textContent='好友 ID '+(f.userId||'未知')+' · '+f.petSpec.name+'小岛'+(f.allow?'':'（不接待访客）');o.disabled=!f.allow;select.append(o);}box.append(select);if([...select.options].some(o=>o.value===selected&&!o.disabled))select.value=selected;else select.value=this.data.friends.find(f=>f.allow)?.id||'';if(!this.data.friends.some(f=>f.allow)){const p=document.createElement('p');p.textContent='暂无可访问的好友岛屿。请先交换邀请码，并让对方开启访客权限。';box.append(p);}}
    const incoming=this.q('[data-incoming]');incoming.replaceChildren();for(const t of this.data.trips.filter(t=>!t.mine&&t.status==='active')){const a=document.createElement('a');a.href='/visit/'+t.id;a.target='_blank';a.rel='noopener';a.textContent='好友 ID '+(t.visitorId||'未知')+' 的'+t.petSpec.name+'来访 · 打开互动现场 ↗';incoming.append(a);}this.renderJourney();
   }
-  syncConfirm(){const button=this.q('[data-confirm]');button.disabled=this.pending||!!this.trip||!this.intent||!this.view||this.scopeLost||this.approaching||this.approachError||!this.holding;button.textContent=this.pending?'正在处理…':this.approaching?'正在走向门口…':this.trip?.status==='pairing'?'等待桌面配对':this.trip?'宠物已出发':'确认出发';}
+  syncConfirm(){
+   // This button lives for the controller's lifetime. The pet still checks its
+   // arrival every frame, but unchanged state must not rewrite the dialog DOM.
+   const button=this.confirmButton||(this.confirmButton=this.q('[data-confirm]'));
+   const disabled=!!(this.pending||this.trip||!this.intent||!this.view||this.scopeLost||this.approaching||this.approachError||!this.holding);
+   const label=this.pending?'正在处理…':this.approaching?'正在走向门口…':this.trip?.status==='pairing'?'等待桌面配对':this.trip?'宠物已出发':'确认出发';
+   if(button.disabled!==disabled)button.disabled=disabled;
+   if(button.textContent!==label)button.textContent=label;
+  }
   renderJourney(){this.syncConfirm();const t=this.trip,pairing=t?.status==='pairing';this.q('[data-reissue]').hidden=!pairing;this.q('[data-reissue]').disabled=this.pending;this.q('[data-cancel-trip]').hidden=!t;this.q('[data-cancel-trip]').disabled=this.pending;this.q('[data-cancel-trip]').textContent=pairing?'取消本次传送':'召回宠物';this.q('[data-decline]').hidden=!!t;
    if(!t)return;this.q('[data-destination]').hidden=false;this.q('[data-heading]').textContent=t.kind==='desktop'?'现实传送门':'友邻传送门';const box=this.q('[data-pair]');box.replaceChildren();
    if(pairing){const code=this.pairCodes.get(t.id);if(code){const el=document.createElement('code');el.textContent=code;box.append(el);}const hint=document.createElement('p');hint.textContent=code?'打开 Start-Desktop.cmd，将此码粘贴到桌宠客户端。网站地址：'+location.origin:'此行程正在等待配对。刷新页面后不再显示旧码，请点击「重新生成配对码」。';box.append(hint);this.message('出发已确认，正在等待桌宠客户端配对。配对码两分钟内有效。');}

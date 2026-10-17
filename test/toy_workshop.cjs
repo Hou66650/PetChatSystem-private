@@ -91,7 +91,16 @@ console.log('PASS rattle run follows bridge, safe retargeting, invalid water, ca
 const vm=require('node:vm'),page=fs.readFileSync('templates/den.html','utf8');
 const guard=page.match(/function movementBlocked\(\) \{([\s\S]*?)\n        \}/)[1];
 const env={portals:null,catAgent:null,supplyCare:null,document:{hidden:false,querySelector:()=>null,getElementById:()=>({classList:{contains:()=>true}})},toyWorkshop:{held:{state:'held',spec:{id:'rattle'}},rattlePath:[{}]},facePlay:{},spawnBusy:false,petModel:{},anim:{birth:1,state:'run',until:0},grabbed:false,dropping:false,bounceBack:0,interactionBusy:()=>false,performing:()=>false,chatBusy:false,voiceBusy:false,dialogueRunner:{active:false},breathActive:false,gameOverlay:{hidden:true},gamesMask:{hidden:true},moodMask:{hidden:true},performance:{now:()=>5000}};
+env.document.getElementsByClassName=()=>[];env.farmGarden=null;
 const blocked=()=>vm.runInNewContext('(function(){'+guard+'})()',env);
 assert.equal(blocked(),false);env.toyWorkshop.rattlePath=null;assert.equal(blocked(),true);
 env.toyWorkshop.rattlePath=[{}];env.toyWorkshop.held.spec.id='brush';assert.equal(blocked(),true);
 console.log('PASS live page movement guard allows only active rattle pursuit while holding a prop');
+env.toyWorkshop.held=null;
+const panels=[];env.document.getElementsByClassName=name=>panels.filter(p=>p.className===name);
+for(const className of ['bowl-panel','cat-story']){
+ const panel={className,open:false,hasAttribute(name){return name==='open'&&this.open;}};panels.push(panel);
+ assert.equal(blocked(),false);panel.open=true;assert.equal(blocked(),true,'new/open panel blocks immediately');
+ panel.open=false;assert.equal(blocked(),false,'closing panel unblocks immediately');
+ panel.open=true;panels.pop();assert.equal(blocked(),false,'removed panel does not block');
+}

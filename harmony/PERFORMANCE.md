@@ -90,6 +90,23 @@ MatePad Air 同一服务地址的首次空缓存加载与刷新对照：
 
 已通过 `test/scene_picking.cjs`、`test/harmony_occlusion.cjs`、`test/harmony_den_bridge.cjs`、`test/farm_input.cjs` 与真实资产下的 `test/island_bowls.cjs`。脚本和对应模板改动已同步到电脑网页服务。真机验收期间遇到 WLAN 地址切换和应用退出，尚未取得本版本有效的真机帧率对比，不能宣称整页 FPS 提升。
 
+## v1.72.6：真机交互与界面更新验证
+
+本轮在 MatePad Air（Maleoon 920）通过 USB 访问电脑网页服务，发现运行服务仍缓存旧模板，当前页面未加载 v1.72.3 的场景查询模块。同步本轮改动并重启服务后，已在真机确认 `scene-picking.js?v=1.72.6` 生效，猫咪可见且网页渲染正常。
+
+在同一真实温室场景、同一相机快照中，用六条相同射线对比原递归查询与当前页面已建立的 46 个网格索引：五条命中、一条未命中，对象、距离与位置一致。原查询平均 60.87 ms、最高 94 ms；索引查询平均 0.92 ms、最高 1.10 ms。该对照在射线之间让出动画帧，不包含预建索引的成本，不代表整页 FPS 提升倍数。
+
+另外定位到传送门 `syncConfirm` 每帧查询按钮并重写相同文字。本轮复用固定按钮，只有禁用状态或文字改变才写 DOM；到达判断仍逐帧执行。真机 MutationObserver 的两个连续 8 秒窗口分别记录：旧逻辑调用 351 次、发生 351 次 DOM 改写；新逻辑调用 180 次、发生 0 次 DOM 改写。每次方法调用平均约 0.091/0.042 ms。两个窗口的帧数不同，不能据此推断帧率变化。移动阻挡检查同时改用实时类名集合，保持新建、打开、关闭和移除面板的即时行为。
+
+| 采样 | 时长 | 网页回调约 FPS | 实际 render 次数 | render 平均 CPU 耗时 | 超过 100 ms 的帧间隔 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 本轮开始的旧模板 | 8 秒 | 25.0 | 201 | 10.40 ms | 0 |
+| 新模板与界面优化 | 30 秒 | 33.2 | 998 | 6.44 ms | 2 |
+
+两次均为页面原有 auto 模式、像素比 0.85、画布 1058×584，采样末 189 draw calls、3,022,315 triangles；没有修改画质策略或手动降低分辨率。CPU Profiler 同时启用，镜头、宠物动作和设备负载未固定，采样时长不同；表格只记录观测值，不是严格 A/B，仍不能承诺稳定 60 FPS。最终样本最长帧间隔约 133 ms，剩余渲染成本及长帧仍需进一步定位。
+
+回归通过：`portal_confirm.cjs`、`portal_approach.cjs`、`portal_navigation.cjs`、`farm_input.cjs`、`harmony_den_bridge.cjs` 及真实资产下的 `toy_workshop.cjs`。用户在刷新后确认旋转、种植/食水盆操作和猫咪走动正常，响应有改善。
+
 ## 第三方依赖
 
 使用 [three-mesh-bvh 0.5.23](https://github.com/gkjohnson/three-mesh-bvh/tree/v0.5.23)，兼容当前 Three.js r128，MIT 许可证保存在 `static/js/vendor/three-mesh-bvh-LICENSE.txt`。浏览器构建来自 npm 固定版本，下载时核验发布包 SHA-512 integrity；建立查询索引时按需加载，不修改 Three.js 全局 raycast 原型。v1.72.3 起原网页的小窝交互也使用该索引。后台 Worker 同源加载固定脚本。

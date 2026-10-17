@@ -10,11 +10,11 @@ function setup({state='idle',chat=false,enabled=true,held=false}={}){
  let now=0,waiters=[],transition=null,cancelled=0,requests=0;
  const elements=new Map(),el=key=>{if(!elements.has(key))elements.set(key,{hidden:true,open:false,textContent:'',replaceChildren(){},classList:{contains:()=>!chat}});return elements.get(key);};
  const context={console,performance:{now:()=>now},DialogueActions,clearTimeout(){},setTimeout(){},
-  document:{hidden:false,querySelector:()=>null,querySelectorAll:()=>[],getElementById:el},window:{},
+  document:{hidden:false,querySelector:()=>null,querySelectorAll:()=>[],getElementsByClassName:()=>[],getElementById:el},window:{},
   petModel:{position:{x:0,y:0,z:2},rotation:{y:0}},spawnBusy:false,grabbed:false,dropping:false,bounceBack:0,
   anim:{state,birth:1,until:0,lastInteract:0},actionTransition:null,actions:{standUp:{}},
   catAgent:{acting:false,interrupt(){cancelled++;}},catLife:{cancel(){}},
-  toyWorkshop:{held:held?{state:'held'}:null,cancel(){this.held=null;}},facePlay:{reset(){}},supplyCare:null,
+  toyWorkshop:{held:held?{state:'held'}:null,cancel(){this.held=null;}},facePlay:{reset(){}},supplyCare:null,farmGarden:null,
   chatBusy:chat,voiceBusy:false,breathActive:false,gameOverlay:{hidden:true},gamesMask:{hidden:true},moodMask:{hidden:true},
   interactionBusy:()=>false,performing:()=>false,finishSupplyCare(){context.supplyCare=null;},updateRoamingButton(){},
   actionLabels:{},expressiveKeys:{},chainTimer:null,performingUntil:0,
