@@ -4,8 +4,8 @@
   "sourceMaster": "D:\\PetChatSystem\\art\\cloud-meadow-cinematic-v1\\cloud-meadow-master.blend",
   "sourceSha256": "3c8469b140dbca90222f61a7892c19f4c05deebfc38462a21862b3722fff423b",
   "master": "cloud-meadow-refined.blend",
-  "masterBytes": 366325126,
-  "masterSha256": "8f2c9c083859b7368b488626524b301437500aa8ee2b62eecc224f69e7df311d",
+  "masterBytes": 366321717,
+  "masterSha256": "531402009492e1c5600b628dacc73f81a100f915a4e934faca58d6bd9aaa5f80",
   "webSceneChanged": false,
   "accountDataRead": false,
   "units": "metres",
@@ -38,6 +38,8 @@
       ]
     ],
     "modeledFlowerWhorls": 1995,
+    "paletteRevision": "deep-botanical-2026-10-17",
+    "exposureEV": -0.5,
     "finitePositionsChecked": 11101516
   },
   "objects": 309,
@@ -50,13 +52,40 @@
   ],
   "renders": [
     {
+      "file": "02-greenhouse-preview.png",
+      "resolution": [
+        1200,
+        900
+      ],
+      "samples": 32,
+      "sha256": "58285f2a7e5491bc524a2df2f0edff80fbc79187dbaf17bcc1321481351993b4"
+    },
+    {
+      "file": "03-planters-preview.png",
+      "resolution": [
+        1200,
+        900
+      ],
+      "samples": 32,
+      "sha256": "89a6398ecdf3a865ca2e02505132757b570fe55d63717599735ed72dd12ff269"
+    },
+    {
+      "file": "04-home-preview.png",
+      "resolution": [
+        1200,
+        900
+      ],
+      "samples": 32,
+      "sha256": "3561c12ee8f8aabf9e14dda4118a54cf9354b7f105efd6b07967c70a3ea6641c"
+    },
+    {
       "file": "01-island.png",
       "resolution": [
         2400,
         1800
       ],
       "samples": 128,
-      "sha256": "c2dddf6af87d3f9242b725253be72127e8f16c03d0de9c30a9f2677514c56d6f"
+      "sha256": "d1b9af6911b710380343d08a9b04aa80bd984f4f32aaf41b56c4b68ddfeb2634"
     },
     {
       "file": "02-greenhouse.png",
@@ -65,7 +94,7 @@
         1800
       ],
       "samples": 128,
-      "sha256": "b9615d5fced8d14ba7147b04c226ee89e558b901839d0c4f5f38404165003140"
+      "sha256": "dc15c330e9cc8fe52656c5ff3022a765f69bcbb826587606b328d6932012186f"
     },
     {
       "file": "03-planters.png",
@@ -74,7 +103,7 @@
         1800
       ],
       "samples": 128,
-      "sha256": "c20149fde2117950ba3dc7083880ca2a9c9a18cfe7da4e1b5b31ac2ea3da4814"
+      "sha256": "48900437a1bc4dedde2fc5723cfab2869f65998e111b83edd1af246303a66a0d"
     },
     {
       "file": "04-home.png",
@@ -83,7 +112,7 @@
         1800
       ],
       "samples": 128,
-      "sha256": "5ddfc703ef11d0bcea95a2bec9eb12dbc17de2ee4bbe2e9251cbff65866fe497"
+      "sha256": "d4ec7ead6a9c7dafc5346b91e948ce38407284f76d8e68c63ec0d299ed466126"
     }
   ],
   "renderer": "Cycles / OptiX",

@@ -33,6 +33,8 @@ OUT.mkdir(parents=True, exist_ok=True)
 master = OUT / 'cloud-meadow-refined.blend'
 random.seed(271026)
 stats = {}
+EXPOSURE = -.5
+PALETTE_REVISION = 'deep-botanical-2026-10-17'
 
 
 def surface(name, colors, scale=8, relief=.001, rough=.7, stretch=(1, 1, 1)):
@@ -110,10 +112,13 @@ def build():
     craft_col=collection('07 V2 conservatory fittings')
     flora_col=collection('08 V2 botanical specimens')
     soil_col=collection('09 V2 mineral and organic detail')
-    clay=surface('V2 fired terracotta pores',[(.12,.033,.014),(.36,.14,.057)],18,.003,.88)
+    clay=surface('V2 fired terracotta pores',[(.065,.012,.005),(.23,.055,.018)],18,.003,.82)
     loam=surface('V2 damp crumbly loam',[(.025,.016,.009),(.085,.052,.026)],14,.003,.95)
-    bark=surface('V2 aged oak longitudinal grain',[(.085,.043,.018),(.28,.18,.085)],5,.0015,.76,(.6,32,5))
-    cedar=surface('V2 cedar warm heartwood',[(.13,.058,.024),(.34,.20,.10)],4,.001,.78,(.65,30,7))
+    bark=surface('V2 aged oak longitudinal grain',[(.022,.009,.004),(.10,.047,.018)],5,.0015,.76,(.6,32,5))
+    cedar=surface('V2 cedar warm heartwood',[(.035,.012,.005),(.13,.055,.018)],4,.001,.78,(.65,30,7))
+    roof=surface('V2 forest green roof',[(.012,.035,.026),(.035,.085,.055)],9,.0005,.58)
+    replace_material('sage_roof',roof)
+    replace_material('end_grain',bark)
     iron=surface('V2 aged conservatory enamel',[(.013,.038,.029),(.045,.085,.065)],11,.0003,.43)
     principled(iron).inputs['Metallic'].default_value=.62
     brass=surface('V2 oxidized fastener brass',[(.12,.085,.025),(.38,.26,.09)],17,.0002,.4)
@@ -219,7 +224,11 @@ def build():
         off=len(obstacle_vs);obstacle_vs.extend(o.matrix_world@v.co for v in o.data.vertices)
         obstacle_fs.extend(tuple(off+i for i in f.vertices) for f in o.data.polygons)
     obstacles=BVHTree.FromPolygons(obstacle_vs,obstacle_fs)
-    greens=[material('V2 fresh grass '+str(i),c,.75) for i,c in enumerate([(.055,.12,.025),(.09,.17,.038),(.15,.23,.065),(.22,.27,.09),(.31,.28,.13)])]
+    grass_colors=[(.018,.065,.012),(.033,.105,.018),(.065,.15,.028),(.11,.19,.045),(.16,.16,.06)]
+    greens=[material('V2 fresh grass '+str(i),c,.75) for i,c in enumerate(grass_colors)]
+    # Apply the same botanical range to the inherited extension lawn.
+    for i in range(4):replace_material('Fine grass '+str(i),greens[i])
+    for i in range(3):replace_material('Meadow_blades_'+str(i),greens[i+1])
     for m in greens:principled(m).inputs['Subsurface Weight'].default_value=.08
     b=Batch();count=0
     for i in range(260000):
@@ -317,7 +326,10 @@ def build():
     finish(litter,'V2 gathered leaf litter',soil_col)
     # Keep the inherited layout and scene units, save independently of v1.
     bpy.ops.file.pack_all();scene.render.image_settings.file_format='PNG'
-    scene.view_settings.exposure=-.2
+    scene.view_settings.look='AgX - Medium High Contrast'
+    scene.view_settings.exposure=EXPOSURE
+    stats['paletteRevision']=PALETTE_REVISION
+    stats['exposureEV']=EXPOSURE
     positions=0
     for o in scene.objects:
         if o.type!='MESH':continue
@@ -345,9 +357,9 @@ if not args.no_render:
     if not devices:raise RuntimeError('OptiX GPU is required')
     scene.render.engine='CYCLES';scene.cycles.device='GPU';scene.cycles.samples=32 if args.preview else 128
     scene.cycles.use_denoising=True;scene.render.resolution_percentage=100
-    scene.view_settings.look='AgX - Medium High Contrast';scene.view_settings.exposure=-.2
+    scene.view_settings.look='AgX - Medium High Contrast';scene.view_settings.exposure=EXPOSURE
     shots=[('01-island',(30,-44,29),(2,-2.5,.7),42),('02-greenhouse',(10,-9,6),(2.5,2.7,1.9),10),('03-planters',(7.8,-1.9,2.1),(5.48,1.7,.45),2.7),('04-home',(-10,-13,6),(-2.0,-4.7,.7),8)]
-    if args.preview:shots=[shots[1],shots[2]]
+    if args.preview:shots=shots[1:]
     report=json.loads((OUT/'build-report.json').read_text(encoding='utf-8'))
     for name,pos,target,scale in shots:
         cam.location=pos;cam.rotation_euler=(Vector(target)-cam.location).to_track_quat('-Z','Y').to_euler();cam.data.type='ORTHO';cam.data.ortho_scale=scale;cam.data.dof.use_dof=False

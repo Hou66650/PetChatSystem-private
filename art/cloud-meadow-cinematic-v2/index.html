@@ -7,8 +7,8 @@
 </style>
 <main>
 <small>PAIT ISLAND / BLENDER ART REVIEW / V2</small>
-<h1>近看，也是一座有生活痕迹的小岛。</h1>
-<p>这一版继续细化现有猫咪岛的地表、植物和建筑构件。下方画面全部由实际 Blender 场景渲染，保留原来的道路、温室、猫窝、农场和大草坪布局。</p>
+<h1>深绿与暖木，回到原来的小岛气质。</h1>
+<p>保留本轮草叶、陶盆、植物与建筑细节，重新校准木材、陶土、屋顶和草地颜色。恢复 −0.5 EV 曝光，让深色材质保留纹理，让石材与灯光自然提亮。下方全部为实际 Blender 场景渲染。</p>
 <nav aria-label="渲染视角">
 <button data-shot="0" aria-pressed="true">全岛</button><button data-shot="1" aria-pressed="false">温室</button><button data-shot="2" aria-pressed="false">陶盆与植物</button><button data-shot="3" aria-pressed="false">猫窝生活区</button>
 <a class="link" id="original" href="01-island.png" target="_blank">打开原尺寸图片 ↗</a>
@@ -19,7 +19,8 @@
 <article><h2>陶盆与土壤</h2><p>新盆有连续内壁、卷口、拉坯轮廓和托盘。土壤由起伏土面、团粒、矿物颗粒共同构成，已有蕨类盆也补充了土表细节。</p></article>
 <article><h2>温室与生活区</h2><p>增加雨槽、排水管、抱箍、柱脚固定件；调整玻璃粗糙度、木纹、织物和陶土表面，柔化木构件硬边。</p></article>
 </div>
-<details><summary>对照上一版温室</summary><div class="compare"><figure><img src="../cloud-meadow-cinematic-v1/02-conservatory-detail.png" alt="上一版温室"><figcaption>V1 · 原高精度母版</figcaption></figure><figure><img src="02-greenhouse.png" alt="本轮细化温室"><figcaption>V2 · 本轮细化，曝光与画幅亦有调整</figcaption></figure></div></details>
+<details open><summary>颜色修正前后 · 同一机位与建模</summary><div class="compare"><figure><img src="before-color-home.png" alt="颜色修正前的浅色猫窝"><figcaption>修正前 · 浅绿屋顶、浅木色边框，曝光 −0.2 EV</figcaption></figure><figure><img src="04-home.png" alt="恢复深绿色与暖木色的猫窝"><figcaption>修正后 · 森林绿屋顶、深木色边框、红棕陶盆，曝光 −0.5 EV</figcaption></figure></div></details>
+<details><summary>对照原高精度母版</summary><div class="compare"><figure><img src="../cloud-meadow-cinematic-v1/02-conservatory-detail.png" alt="上一版温室"><figcaption>V1 · 原高精度母版</figcaption></figure><figure><img src="02-greenhouse.png" alt="本轮细化温室"><figcaption>V2 · 保留细化几何并恢复深色系；机位与画幅有所不同</figcaption></figure></div></details>
 <footer>Blender 5.2 / Cycles / OptiX · 2400 × 1800 · 128 samples<br>本轮交付为可编辑的离线美术母版，未替换网页。UE 材质转换、碰撞、LOD 与实时性能仍需单独验证，渲染图不能代表客户端帧率。<br><a class="link" href="build-report.json">查看构建记录</a></footer>
 <details><summary>母版位置与重建命令</summary><p>本机母版：<code>D:\PetChatSystem-Client\art\cloud-meadow-cinematic-v2\cloud-meadow-refined.blend</code>。贴图已打包，V1 母版保留。</p><pre>"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b --python-exit-code 1 --python scripts/blender/refine_cinematic_meadow.py -- --source "D:\PetChatSystem\art\cloud-meadow-cinematic-v1\cloud-meadow-master.blend"</pre></details>
 </main>
