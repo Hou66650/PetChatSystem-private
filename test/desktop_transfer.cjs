@@ -31,7 +31,23 @@ async function until(test,timeout=60000){const end=Date.now()+timeout;while(Date
   const stats=await petPage.evaluate(()=>({calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,accessories:pet.root.userData.accessories.length,clipped:pet.model.getObjectByProperty('isSkinnedMesh',true)?.material.clippingPlanes?.length||0}));
   assert(stats.calls>0&&stats.triangles>0);assert.equal(stats.clipped,0);
   await petPage.screenshot({path:path.join(output,'roaming.png')});
-  await control.locator('#return').click();await until(async()=>await control.evaluate(async()=>!(await paitDesktop.command('state')).connected));await page.waitForFunction(()=>__den.petModel.visible);
+  const connectedState=await control.evaluate(()=>paitDesktop.command('state'));
+  assert(Number.isFinite(connectedState.expiresAt));
+  assert.match(await control.locator('#deadline').innerText(),/最迟返程/);
+  // Exercise real main.js request handling: an application conflict, including a
+  // legacy uncoded 409, must not recall the pet. Server-side recall must do so.
+  for(const code of ['FOCUS_CONFLICT','REQUEST_CONFLICT',null]){
+   await app.evaluate((_,code)=>{globalThis.conflictCount=0;globalThis.fetch=async(...args)=>{
+    if(String(args[0]).endsWith('/ping')){globalThis.conflictCount++;return Response.json({error:'测试业务冲突',...(code?{code}:{})},{status:409});}
+    return globalThis.transferTestFetch(...args);
+   };},code);
+   await until(async()=>await app.evaluate(()=>globalThis.conflictCount>0));
+   assert.equal((await control.evaluate(()=>paitDesktop.command('state'))).connected,true);
+   assert.equal((await control.evaluate(()=>paitDesktop.command('state'))).trip,connectedState.trip);
+  }
+  await app.evaluate(()=>{globalThis.fetch=globalThis.transferTestFetch;});
+  await page.evaluate(async trip=>{const d=await(await fetch('/api/portals')).json();const r=await fetch('/api/portals/return',{method:'POST',headers:{'Content-Type':'application/json','X-Profile-Scope':d.scope},body:JSON.stringify({trip})});if(!r.ok)throw Error('Recall failed');},connectedState.trip);
+  await until(async()=>await control.evaluate(async()=>!(await paitDesktop.command('state')).connected));await page.waitForFunction(()=>__den.petModel.visible);
   assert.deepEqual(errors,[]);
   // A failed equipped asset must never acknowledge ready or hide the island pet.
   await app.evaluate(()=>{const original=globalThis.fetch;globalThis.fetch=async(...args)=>String(args[0]).includes('/wardrobe-v1/')?new Response('unavailable',{status:503}):original(...args);});
@@ -46,6 +62,6 @@ async function until(test,timeout=60000){const end=Date.now()+timeout;while(Date
   await control.locator('#code').fill(await page.locator('[data-pair] code').innerText());await control.locator('#pair button').click();await until(async()=>await control.evaluate(async()=>(await paitDesktop.command('state')).phase==='preparing'));
   await control.locator('#return').click();await until(async()=>await control.evaluate(async()=>!(await paitDesktop.command('state')).connected));await page.waitForTimeout(3500);
   assert.equal(await app.evaluate(()=>globalThis.transferReadyCount),0);assert(await page.evaluate(()=>__den.petModel.visible));
-  console.log(JSON.stringify({passed:'Actual island approach, slow preparation, IPC wardrobe, entry acknowledgement, desktop emerging/settling, recall, accessory failure rollback, cancellation with bytes in flight',stats,output},null,2));
+  console.log(JSON.stringify({passed:'Actual island approach, slow preparation, IPC wardrobe, entry acknowledgement, desktop emerging/settling, deadline, business/legacy conflicts without recall, server recall, accessory failure rollback, cancellation with bytes in flight',stats,output},null,2));
  }finally{if(app)await app.close();await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

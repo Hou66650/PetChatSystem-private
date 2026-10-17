@@ -54,7 +54,12 @@ def owner_key():
 
 
 def browser_scope():
-    return hashlib.sha256(owner_key().encode()).hexdigest()[:24]
+    return owner_scope(owner_key())
+
+
+def owner_scope(owner):
+    """Stable scope for an already authenticated owner, independent of cookies."""
+    return hashlib.sha256(owner.encode()).hexdigest()[:24]
 
 
 def settings(owner):
@@ -126,7 +131,7 @@ def profile(owner, pet_id):
     if styles: rules.append('按“'+style+'”的方式交流')
     if interests: rules.append('合适时聊聊你喜欢的'+ '、'.join(interests))
     count = get_db().execute("SELECT COUNT(*) FROM companion_messages WHERE owner=? AND pet_id=? AND role='user'", (owner, pet_id)).fetchone()[0]
-    return {'scope': browser_scope(), 'guest': owner.startswith('guest:'),
+    return {'scope': owner_scope(owner), 'guest': owner.startswith('guest:'),
             'enabled': bool(state['enabled']), 'revision': state['revision'],
             'categories': CATEGORIES, 'memories': facts,
             'pet': {'id': pet_id, 'name': nickname, 'species': pet['name'],

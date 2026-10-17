@@ -113,6 +113,32 @@ class PortalTests(unittest.TestCase):
         state=self.a.get('/api/portals').json
         self.assertEqual(state['trips'][0]['status'],'returned');self.assertIn('连接中断',state['trips'][0]['reason'])
         self.assertEqual(len(state['rewards']),0,'no souvenir for a connection without actual exploration')
+
+    def test_desktop_deadline_is_fixed_and_error_codes_distinguish_lifecycle(self):
+        d=self.start().json
+        paired=self.a.post('/api/portals/desktop/pair',json={'code':d['code']}).json
+        auth={'Authorization':'Bearer '+paired['token']}
+        def call(op):return self.a.post('/api/portals/desktop/'+op,json={},headers=auth)
+        state=call('state').json
+        deadline=state['created']+1800
+        self.assertEqual(paired['expiresAt'],deadline)
+        self.assertEqual(state['expiresAt'],deadline)
+        self.assertLess(paired['serverTime'],deadline)
+        self.assertEqual(call('arrived').json['code'],'TRIP_NOT_READY')
+        self.assertEqual(call('sample').json['code'],'TRIP_NOT_READY')
+        self.assertEqual(self.start().json['code'],'PORTAL_ERROR')
+        call('ready');self.post('depart-complete',{'trip':d['trip']});call('arrived')
+        # A recent heartbeat cannot renew the absolute lifetime, including at equality.
+        with self.app.app_context():
+            db=get_db();db.execute('UPDATE portal_trips SET updated=? WHERE id=?',(deadline-10,d['trip']));db.commit()
+        with patch.object(portal.time,'time',return_value=deadline-1):
+            self.assertEqual(call('ping').json['expiresAt'],deadline)
+            self.assertEqual(call('state').json['expiresAt'],deadline)
+        with patch.object(portal.time,'time',return_value=deadline):
+            ended=call('ping')
+            self.assertEqual((ended.status_code,ended.json['code']),(409,'TRIP_ENDED'))
+            self.assertEqual(call('arrived').json['code'],'TRIP_ENDED')
+        self.assertEqual(self.a.get('/api/portals/trip/'+d['trip']).json['status'],'returned')
     def test_custom_memorial_contract_and_no_public_discovery(self):
         with self.app.app_context():portal.register_custom_pet('user:1','custom-test','纪念猫','/static/models/custom/test.glb')
         state=self.a.get('/api/portals').json;island=next(i for i in state['islands'] if i['pet']=='custom-test')

@@ -9,10 +9,22 @@ const messages={preparing:'已连接，正在准备宠物和饰品；请保留�
 function checkedOrigin(raw){const u=new URL(raw);if(u.username||u.password||u.pathname!=='/'||u.search||u.hash)throw Error('只填写网站根地址');if(u.protocol!=='https:'&&!(u.protocol==='http:'&&['127.0.0.1','localhost','[::1]'].includes(u.hostname)))throw Error('公网连接必须使用 HTTPS；HTTP 仅允许本机地址');return u.origin;}
 function trusted(e){return [control,petWindow].some(w=>w&&!w.isDestroyed()&&e.sender===w.webContents&&e.senderFrame===w.webContents.mainFrame&&e.senderFrame.url===pathToFileURL(path.join(__dirname,w===control?'index.html':'pet.html')).href);}
 function windowFor(file,options){const w=new BrowserWindow({icon:path.join(__dirname,'../static/images/pait-app-icon-f4.png'),...options,webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});w.webContents.setWindowOpenHandler(()=>({action:'deny'}));w.webContents.on('will-navigate',e=>e.preventDefault());w.loadFile(path.join(__dirname,file));return w;}
-function state(){return {connected:!!session,status,sensing,action,pet:session?.pet,trip:session?.trip,phase:session?.phase};}
+function state(){return {connected:!!session,status,sensing,action,pet:session?.pet,trip:session?.trip,phase:session?.phase,expiresAt:session?.expiresAt};}
 function publish(){for(const w of [control,petWindow])if(w&&!w.isDestroyed())w.webContents.send('desktop:state',state());}
 function stop(message){session=null;events=[];target=null;motion.halt();sensing=false;status=message;petWindow?.hide();publish();}
-async function request(op,body,current=session){if(!current)throw Error('尚未配对');const r=await fetch(current.origin+'/api/portals/desktop/'+op,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',Authorization:'Bearer '+current.token},body:body?JSON.stringify(body):undefined,redirect:'error',signal:AbortSignal.timeout(op==='plan'?32000:10000)});const d=await r.json();if(session!==current)throw Error('行程已变化');if(!r.ok){if(r.status===409)stop('宠物已返回小岛。');throw Error(d.error||'连接失败');}return d;}
+async function request(op,body,current=session){
+ if(!current)throw Error('尚未配对');
+ const r=await fetch(current.origin+'/api/portals/desktop/'+op,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',Authorization:'Bearer '+current.token},body:body?JSON.stringify(body):undefined,redirect:'error',signal:AbortSignal.timeout(op==='plan'?32000:10000)});
+ const d=await r.json();if(session!==current)throw Error('行程已变化');
+ if(!r.ok){
+  // Business conflicts must not destroy the pet's journey. Legacy uncoded 409s
+  // are reconciled by the next heartbeat, never guessed from translated text.
+  if(r.status===409&&d.code==='TRIP_ENDED')stop('宠物已返回小岛。');
+  const error=Error(d.error||'连接失败');error.code=d.code;error.status=r.status;throw error;
+ }
+ if(Number.isFinite(d.expiresAt))current.expiresAt=d.expiresAt;
+ return d;
+}
 function syncPhase(current,phase){if(session!==current||!phases.includes(phase)||phases.indexOf(phase)<phases.indexOf(current.phase))return;const changed=current.phase!==phase;current.phase=phase;status=messages[phase];if(changed){if(phase==='emerging')petWindow.showInactive();publish();}}
 async function bytes(url,current,limit,authenticated=false){
  const r=await fetch(url,{headers:authenticated?{Authorization:'Bearer '+current.token}:{},redirect:'error',signal:AbortSignal.timeout(30000)});
@@ -59,7 +71,7 @@ ipcMain.handle('desktop:command',async(e,command,data)=>{
   if(command==='menu'){Menu.buildFromTemplate([{label:'摸摸它',enabled:session?.phase==='roaming',click:petting},{label:'返回悬浮岛',click:async()=>{try{await request('return',{});stop('已返回悬浮岛。');}catch(e){status=e.message;publish();}}},{label:'显示传送控制台',click:()=>control.show()}]).popup({window:petWindow});return {ok:true};}
   if(command==='ignore'){if(e.sender===petWindow.webContents)petWindow.setIgnoreMouseEvents(data===true,{forward:true});return {ok:true};}
   throw Error('未知客户端操作');
- }catch(error){status=error.message;publish();return {error:status};}
+ }catch(error){status=error.message;publish();return {error:status,code:error.code};}
 });
 function sense(){
  if(!sensing||sensorBusy||Date.now()-lastSensor<6000)return;lastSensor=Date.now();sensorBusy=true;const current=session;

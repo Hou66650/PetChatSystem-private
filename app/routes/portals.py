@@ -17,7 +17,7 @@ def guard():
 def uncached(response):response.headers['Cache-Control']='no-store';return response
 
 @bp.errorhandler(portal.PortalError)
-def error(e):return jsonify(error=str(e)),e.status
+def error(e):return jsonify(error=str(e),code=e.code),e.status
 
 @bp.get('/api/portals')
 def state():return jsonify(**portal.state(companion.owner_key(),request.args.get("brief")=="1"),scope=companion.browser_scope())

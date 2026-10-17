@@ -17,25 +17,45 @@ def _sanitize_history(history):
 
 
 def handle_chat(data, observed_reply=None):
+    """Legacy Web/Harmony adapter: identity comes only from the signed session."""
     if not isinstance(data,dict): return {'error':'请求格式错误'},400
     origin=request.headers.get('Origin')
     if (origin and urlsplit(origin).netloc != request.host) or request.headers.get('Sec-Fetch-Site')=='cross-site':
         return {'error':'请在本站发送消息'},403
+    return chat_for_owner(memory.owner_key(), data.get('petId', 1), data,
+                          surface='den' if data.get('surface') == 'den' else 'chat',
+                          observed_reply=observed_reply)
+
+
+def chat_for_owner(owner, pet_id, data, *, surface, observed_reply=None):
+    """Internal entry. Caller must authenticate owner/pet; body cannot select identity.
+
+    Requires an application context, not a browser request/session. Desktop tools
+    and surface are deliberately unavailable until their authorization is wired.
+    """
+    if not isinstance(data,dict): return {'error':'请求格式错误'},400
+    if surface not in ('chat', 'den'):
+        return {'error':'该聊天入口尚未支持此场景'},400
+    from ..db import get_db
+    if not isinstance(owner,str) or not get_db().execute(
+            'SELECT 1 FROM companion_owners WHERE owner=?',(owner,)).fetchone():
+        return {'error':'聊天身份无效'},403
     if not isinstance(data.get('message'),str) or not data['message'].strip():
         return {'error':'请输入消息内容。'},400
     message=data['message'].strip()[:Config.MAX_MESSAGE_CHARS]
-    try: pet=pet_registry.get_pet(data.get('petId',1))
+    try:
+        if type(pet_id) is not int and not (isinstance(pet_id,str) and pet_id.isascii() and pet_id.isdecimal()):
+            raise LookupError('Invalid pet identity')
+        pet=pet_registry.get_pet(pet_id)
     except LookupError: return {'error':'宠物不存在'},400
     gender=data.get('petGender')
     if gender not in ('male','female'): gender=None
-    surface='den' if data.get('surface')=='den' else 'chat'
-    owner=memory.owner_key(); state=memory.settings(owner)
+    state=memory.settings(owner)
     if observed_reply is not None and (data.get('profileRevision', state['revision']) != state['revision']
-            or data.get('profileScope', memory.browser_scope()) != memory.browser_scope()):
+            or data.get('profileScope', memory.owner_scope(owner)) != memory.owner_scope(owner)):
         return {'error':'档案已更新，这轮旧语音未写入，请重新开始通话。'},409
     request_id=data.get('requestId')
     if not isinstance(request_id,str) or not 8<=len(request_id)<=80: request_id=uuid.uuid4().hex
-    from ..db import get_db
     previous=get_db().execute("SELECT content FROM companion_messages WHERE owner=? AND pet_id=? AND request_id=? AND role='assistant'",(owner,pet['id'],request_id)).fetchone()
     if previous:
         return {'reply':previous['content'],'pet':pet_registry.public_info(pet),'actions':[],
