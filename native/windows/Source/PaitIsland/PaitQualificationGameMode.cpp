@@ -78,6 +78,7 @@ void APaitQualificationGameMode::Tick(float DeltaSeconds)
         // Shipping disables normal logs: retain a small explicit evidence file.
         TSharedRef<FJsonObject> Report = MakeShared<FJsonObject>();
         Report->SetStringField(TEXT("status"), TEXT("rendered_capture_saved"));
+        Report->SetStringField(TEXT("actual_map"), GetWorld()->GetMapName());
         Report->SetStringField(TEXT("adapter"), GRHIAdapterName);
         Report->SetStringField(TEXT("screenshot"), SmokeScreenshot);
         Report->SetNumberField(TEXT("frames"), static_cast<double>(SmokeFrames));
@@ -101,10 +102,12 @@ void APaitQualificationHUD::DrawHUD()
     Super::DrawHUD();
     if (!Canvas) return;
     DrawRect(FLinearColor(0.025f, .07f, .06f, .8f), 20.f, 20.f, 650.f, 106.f);
-    DrawText(TEXT("PAIT ISLAND | P0 engine qualification only"), FLinearColor::White,
+    const bool bMeadow = GetWorld()->GetMapName().Contains(TEXT("P1_MeadowV2"));
+    DrawText(bMeadow ? TEXT("PAIT ISLAND | V2 meadow - interactive scene preview") : TEXT("PAIT ISLAND | P0 engine qualification only"), FLinearColor::White,
         36.f, 32.f, nullptr, 1.2f);
-    DrawText(TEXT("RMB orbit | MMB pan | Wheel zoom | Home reset"), FLinearColor(.7f, .85f, .75f),
+    DrawText(TEXT("RMB orbit | MMB pan | Wheel zoom | C pet | H hide | Home reset"), FLinearColor(.7f, .85f, .75f),
         36.f, 62.f, nullptr, 1.f);
-    DrawText(FString::Printf(TEXT("GPU: %s | Not the final cat island"), *GRHIAdapterName),
+    DrawText(FString::Printf(TEXT("GPU: %s | %s"), *GRHIAdapterName,
+        bMeadow ? TEXT("Materials and gameplay in progress") : TEXT("Not the final cat island")),
         FLinearColor(.9f, .8f, .5f), 36.f, 91.f, nullptr, 1.f);
 }

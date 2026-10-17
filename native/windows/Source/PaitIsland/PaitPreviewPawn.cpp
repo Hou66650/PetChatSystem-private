@@ -1,5 +1,9 @@
 #include "PaitPreviewPawn.h"
 #include "Camera/CameraComponent.h"
+#include "Engine/World.h"
+#include "EngineUtils.h"
+#include "Animation/SkeletalMeshActor.h"
+#include "GameFramework/HUD.h"
 #include "Components/InputComponent.h"
 #include "InputCoreTypes.h"
 #include "GameFramework/PlayerController.h"
@@ -18,6 +22,12 @@ APaitPreviewPawn::APaitPreviewPawn()
     Camera->SetupAttachment(Arm, USpringArmComponent::SocketName);
     Camera->FieldOfView = 50.f;
 }
+void APaitPreviewPawn::BeginPlay()
+{
+    Super::BeginPlay();
+    ResetView();
+    Arm->TargetArmLength = TargetDistance;
+}
 void APaitPreviewPawn::SetupPlayerInputComponent(UInputComponent* Input)
 {
     Super::SetupPlayerInputComponent(Input);
@@ -29,6 +39,8 @@ void APaitPreviewPawn::SetupPlayerInputComponent(UInputComponent* Input)
     Input->BindAction(TEXT("Pan"), IE_Pressed, this, &APaitPreviewPawn::StartPan);
     Input->BindAction(TEXT("Pan"), IE_Released, this, &APaitPreviewPawn::StopPan);
     Input->BindAction(TEXT("ResetView"), IE_Pressed, this, &APaitPreviewPawn::ResetView);
+    Input->BindKey(EKeys::C, IE_Pressed, this, &APaitPreviewPawn::FocusPet);
+    Input->BindKey(EKeys::H, IE_Pressed, this, &APaitPreviewPawn::ToggleInterface);
 }
 void APaitPreviewPawn::Tick(float DeltaSeconds)
 {
@@ -73,9 +85,26 @@ void APaitPreviewPawn::UpdateCursor()
 }
 void APaitPreviewPawn::ResetView()
 {
-    SetActorLocation(FVector(0.f, 0.f, 150.f));
+    const bool bMeadow = GetWorld() && GetWorld()->GetMapName().Contains(TEXT("P1_MeadowV2"));
+    SetActorLocation(bMeadow ? FVector(200.f, 200.f, 150.f) : FVector(0.f, 0.f, 150.f));
     Yaw = -45.f;
-    Pitch = -28.f;
-    TargetDistance = 2200.f;
+    Pitch = bMeadow ? -34.f : -28.f;
+    TargetDistance = bMeadow ? 5600.f : 2200.f;
     Arm->SetRelativeRotation(FRotator(Pitch, Yaw, 0.f));
+}
+void APaitPreviewPawn::FocusPet()
+{
+    for (TActorIterator<ASkeletalMeshActor> It(GetWorld()); It; ++It)
+    {
+        SetActorLocation(It->GetActorLocation() + FVector(0.f, 0.f, 65.f));
+        TargetDistance = 400.f;
+        Pitch = -18.f;
+        Arm->SetRelativeRotation(FRotator(Pitch, Yaw, 0.f));
+        break;
+    }
+}
+void APaitPreviewPawn::ToggleInterface()
+{
+    if (APlayerController* PC = Cast<APlayerController>(Controller))
+        if (AHUD* HUD = PC->GetHUD()) HUD->bShowHUD = !HUD->bShowHUD;
 }

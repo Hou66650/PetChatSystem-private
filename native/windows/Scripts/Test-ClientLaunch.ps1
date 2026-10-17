@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory=$true)][string]$Executable,
     [ValidateSet("Development", "Shipping")][string]$Configuration = "Development",
-    [int]$TimeoutSeconds = 240
+    [int]$TimeoutSeconds = 240,
+    [ValidateSet("/Game/Qualification/P0_Lighting", "/Game/Preview/P1_MeadowV2")][string]$Map = "/Game/Preview/P1_MeadowV2"
 )
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -14,7 +15,7 @@ if (Test-Path -LiteralPath $log) {
 }
 # This is a bounded automated render smoke, not a performance measurement.
 $process = Start-Process -FilePath $exe -WindowStyle Hidden -PassThru -ArgumentList @(
-    "-dx12", "-windowed", "-ResX=1600", "-ResY=900", "-PaitSmoke", "-unattended",
+    $Map, "-dx12", "-windowed", "-ResX=1600", "-ResY=900", "-PaitSmoke", "-unattended",
     "-nosplash", "-NoSound", "-abslog=`"$log`"", "-PaitEvidenceDir=`"$evidence`""
 )
 if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
@@ -27,6 +28,7 @@ $reportPath = Join-Path $evidence "runtime-smoke.json"
 if (-not (Test-Path -LiteralPath $reportPath)) { throw "Runtime evidence absent; launch is unverified." }
 $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
 if ($report.status -ne "rendered_capture_saved") { throw "Rendered capture was not confirmed." }
+if ($report.actual_map -ne ($Map.Split('/')[-1])) { throw "Opened the wrong scene: $($report.actual_map). Shipping uses the configured default map." }
 $capture = Join-Path $evidence "runtime-smoke.png"
 if (-not (Test-Path -LiteralPath $capture)) { throw "Recorded screenshot does not exist: $capture" }
 $packagedProject = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $exe))
@@ -38,6 +40,8 @@ $contentHashes = @(Get-ChildItem -LiteralPath (Join-Path $packagedProject "Conte
 if ($contentHashes.Count -eq 0) { throw "Packaged content evidence is missing." }
 [ordered]@{
     configuration = $Configuration
+    map = $Map
+    actual_map = $report.actual_map
     executable = $exe
     executable_sha256 = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
     packaged_content = $contentHashes

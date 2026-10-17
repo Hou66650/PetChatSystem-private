@@ -13,6 +13,7 @@ class PAITISLAND_API APaitPreviewPawn : public APawn
     GENERATED_BODY()
 public:
     APaitPreviewPawn();
+    virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(UInputComponent* Input) override;
     virtual void Tick(float DeltaSeconds) override;
 private:
@@ -27,6 +28,8 @@ private:
     void StopPan();
     void ResetView();
     void UpdateCursor();
+    void FocusPet();
+    void ToggleInterface();
     bool bOrbit = false;
     bool bPan = false;
     float TargetDistance = 2200.f;

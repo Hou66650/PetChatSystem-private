@@ -27,7 +27,8 @@
     "skeletal_animation": true,
     "transparent_material_visual": false,
     "five_minute_run": true,
-    "clean_build_machine": false
+    "clean_build_machine": false,
+    "v2_full_scene_shipping_launch": true
   },
-  "note": "UE Editor/Development/Shipping compile, Cook, RTX launch, three-clip skeletal playback and five-minute Shipping run passed. P0 remains incomplete: glass/environment visual gates, full animation catalog, runtime UGC, clean-machine reproduction and real performance."
+  "note": "UE Editor/Development/Shipping compile, Cook, RTX launch, three-clip skeletal playback and five-minute Shipping run passed. P0 remains incomplete: glass/environment visual gates, full animation catalog, runtime UGC, clean-machine reproduction and real performance. V2 complete 21-module/304-mesh scene now compiled, cooked and launched on RTX 5060, with actual-map evidence; gameplay and final visuals remain pending."
 }

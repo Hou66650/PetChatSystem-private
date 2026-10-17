@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "scope": "V2 complete layout scene browsing preview; not complete gameplay",
+  "source_sha256": "531402009492e1c5600b628dacc73f81a100f915a4e934faca58d6bd9aaa5f80",
+  "module_count": 21,
+  "static_mesh_count": 304,
+  "palette_material_count": 45,
+  "repaired_textures": 26,
+  "launch": {
+    "configuration": "Shipping",
+    "map": "/Game/Preview/P1_MeadowV2",
+    "actual_map": "P1_MeadowV2",
+    "executable": "D:\\PetChatSystem-Client\\native\\windows\\Saved\\Packages\\Shipping\\PaitIsland\\Binaries\\Win64\\PaitIsland-Win64-Shipping.exe",
+    "executable_sha256": "519F0A934069989AF695A07BE16E317773494400A050E71FFA7395AB728929E3",
+    "packaged_content": [
+      {
+        "file": "global.ucas",
+        "bytes": 3204384,
+        "sha256": "0D084B15954091178453B50EE903C76A50D7F93475E6EBA1FA15DD55BCB72C9D"
+      },
+      {
+        "file": "global.utoc",
+        "bytes": 782,
+        "sha256": "A6F490BF154D4C4A6326A8BA0AFD650203ED8A5A949B386E99339B0B058DBAA4"
+      },
+      {
+        "file": "PaitIsland-Windows.pak",
+        "bytes": 10943962,
+        "sha256": "AD67A3220EF48DDEC830A16F8B46BEC2B4A4A7EEB10F9142736C1956C74BA03B"
+      },
+      {
+        "file": "PaitIsland-Windows.ucas",
+        "bytes": 660854240,
+        "sha256": "6C88135F06222AB22758195BD7BC39673CC6608995162B6211677FF4361D69BF"
+      },
+      {
+        "file": "PaitIsland-Windows.utoc",
+        "bytes": 455761,
+        "sha256": "0ACA817097E8EBC7EE07971B9F580A0D7689760171C4A4DECBEF98A3425DF7E6"
+      }
+    ],
+    "exit_code": 0,
+    "screenshot_sha256": "49E7978A8C4B329504D3C49B43E9175953447DE6CB895224F168735429D13E3E",
+    "status": "rendered_capture_saved_requires_visual_review",
+    "performance_qualified": false,
+    "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "utc": "2026-10-17T09:17:28.0084590Z"
+  },
+  "capture": "meadow-v2-runtime.png",
+  "visual_review": {
+    "complete_layout_in_frame": true,
+    "dark_green_roof_dark_wood_and_greenhouse_palette_restored": true,
+    "cloud_layer_visible": true,
+    "final_visual_quality_accepted": false,
+    "issues": [
+      "Cloud sea remains grainy/flat; improve cloud shading/composition.",
+      "Procedural microtexture not baked; palette constants are an interim bridge.",
+      "Full island cat is too small to assess paws/grounding; close-up and interaction checks pending.",
+      "Selective collision, distance fields, Lumen cards and LODs pending; current first-look import disables them."
+    ]
+  },
+  "not_validated": [
+    "C/H and full manual mouse control flow",
+    "Pet Agent, navigation, care/garden/portal interactions",
+    "Ground contact and clipping at full-island terrain",
+    "Real FPS, frame-time distribution, memory and long stability"
+  ],
+  "checks": {
+    "editor_cpp_build": true,
+    "shipping_cpp_build": true,
+    "cook_package": true,
+    "shipping_exit_0": true,
+    "actual_map_checked": true,
+    "python_syntax": true,
+    "powershell_syntax": true
+  },
+  "build_log": "Saved/Qualification/package-meadow-v2-framing.log",
+  "production_writes": false
+}

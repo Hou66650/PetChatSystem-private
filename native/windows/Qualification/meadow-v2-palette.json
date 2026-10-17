@@ -1,0 +1,166 @@
+{
+  "source_sha256": "531402009492e1c5600b628dacc73f81a100f915a4e934faca58d6bd9aaa5f80",
+  "note": "Linear Principled base colors captured from frozen Blender master; not a bake of procedural textures.",
+  "materials": [
+    {
+      "name": "V2 aged conservatory enamel",
+      "base_color": [
+        0.013000000268220901,
+        0.03799999877810478,
+        0.028999999165534973,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 aged oak longitudinal grain",
+      "base_color": [
+        0.02199999988079071,
+        0.008999999612569809,
+        0.004000000189989805,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 canopy chlorophyll 0",
+      "base_color": [
+        0.10000000149011612,
+        0.20999999344348907,
+        0.03500000014901161,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 canopy chlorophyll 1",
+      "base_color": [
+        0.10000000149011612,
+        0.20999999344348907,
+        0.03500000014901161,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 canopy chlorophyll 2",
+      "base_color": [
+        0.10000000149011612,
+        0.20999999344348907,
+        0.03500000014901161,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 canopy chlorophyll 3",
+      "base_color": [
+        0.10000000149011612,
+        0.20999999344348907,
+        0.03500000014901161,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 cedar warm heartwood",
+      "base_color": [
+        0.03500000014901161,
+        0.012000000104308128,
+        0.004999999888241291,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 damp crumbly loam",
+      "base_color": [
+        0.02500000037252903,
+        0.01600000075995922,
+        0.008999999612569809,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 fern midrib and side veins",
+      "base_color": [
+        0.10999999940395355,
+        0.23000000417232513,
+        0.05000000074505806,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 fired terracotta pores",
+      "base_color": [
+        0.06499999761581421,
+        0.012000000104308128,
+        0.004999999888241291,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 forest green roof",
+      "base_color": [
+        0.012000000104308128,
+        0.03500000014901161,
+        0.026000000536441803,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 leaf veins 0",
+      "base_color": [
+        0.04500000178813934,
+        0.12999999523162842,
+        0.032999999821186066,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 leaf veins 1",
+      "base_color": [
+        0.10000000149011612,
+        0.1899999976158142,
+        0.054999999701976776,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 leaf veins 2",
+      "base_color": [
+        0.14000000059604645,
+        0.23999999463558197,
+        0.09000000357627869,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 oxidized fastener brass",
+      "base_color": [
+        0.11999999731779099,
+        0.08500000089406967,
+        0.02500000037252903,
+        1.0
+      ],
+      "color_linked": true
+    },
+    {
+      "name": "V2 woven natural linen",
+      "base_color": [
+        0.33000001311302185,
+        0.30000001192092896,
+        0.2199999988079071,
+        1.0
+      ],
+      "color_linked": true
+    }
+  ]
+}

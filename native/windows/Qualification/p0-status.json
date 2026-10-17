@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-10-17",
-  "phase": "P0",
-  "status": "p1_playable_scene_started_with_p0_followups",
+  "phase": "P1",
+  "status": "complete_v2_scene_browsing_preview_gameplay_pending",
   "branch": "codex/windows-client",
   "client_version": "0.1.0",
   "framework": {
@@ -49,7 +49,13 @@
     "thin_glass_clarity_improved": true,
     "sky_black_horizon_fixed": true,
     "trot_obstruction_fixed": true,
-    "overview_cat_fully_framed": true
+    "overview_cat_fully_framed": true,
+    "v2_editor_import": true,
+    "v2_module_count": 21,
+    "v2_static_mesh_count": 304,
+    "v2_shipping_launch_actual_map_checked": true,
+    "v2_base_palette_restored": true,
+    "v2_non_power_of_two_texture_repair": true
   },
   "not_validated": {
     "interactive_editor_ui": false,
@@ -63,10 +69,10 @@
   },
   "blockers": [],
   "next": [
-    "Integrate complete dark-green/dark-wood V2 island and basic playable interaction now, per relaxed stage gates",
-    "Recreate procedural material detail and refine cat movement while iterating the playable scene",
-    "Run focused startup, interaction, obvious clipping and crash checks; defer full qualification matrix",
-    "Runtime private-GLB PoC and formal performance remain pending; no production API writes"
+    "Ground contact and selective terrain/obstacle collision, then isolated click-to-move and pet interaction",
+    "Rebuild/bake V2 procedural material detail and improve cloud composition",
+    "Connect pet Agent using isolated state; migrate business features incrementally",
+    "Focused launch/input/clipping checks and actual performance sampling"
   ],
   "notes": [
     "Unit tests use synthetic data and fake temporary engine files; these are not device performance or compile results.",
@@ -103,16 +109,19 @@
     "v2_export_bytes": 610011964,
     "v2_base_triangles": 12770051,
     "manifest": "meadow-v2-staging.json",
-    "editor_import": "running_not_yet_complete",
-    "import_process_id": 22336,
-    "import_log": "Saved/Qualification/meadow-v2-import-r3.log",
-    "import_session": 95654,
+    "editor_import": "complete_304_static_meshes",
+    "map": "/Game/Preview/P1_MeadowV2",
+    "namespace": "/Game/Imported/P1MeadowV2_Conventional",
+    "runtime_evidence": "meadow-v2-runtime-evidence.json",
+    "launcher": "打开猫岛预览.cmd",
     "notes": [
-      "Current worker builds large canopy meshes; inspect CPU/log/checkpoints before retrying.",
-      "Do not start concurrent UE build/Cook or Blender while the import worker is active.",
-      "P1 camera, map cooking, launcher and import script changes remain uncommitted pending compile/runtime check.",
-      "Original default import attempts retained; current namespace /Game/Imported/P1MeadowV2_Conventional.",
-      "First-look mesh distance fields disabled for import; full material/lighting work remains."
-    ]
+      "Complete scene browsing preview, not complete gameplay.",
+      "Palette constants restored from frozen Blender source; procedural microtexture is not baked.",
+      "Static mesh collision, distance fields and Lumen mesh cards disabled for first look; re-enable selectively with navigation.",
+      "Cat is fixed-location idle animation; Agent and grounded navigation pending.",
+      "C/H bindings compiled but not yet manually exercised. No measured FPS claim.",
+      "Latest screenshot: island fully framed; cloud sea visible but grainy and flat, not final lighting quality."
+    ],
+    "last_shipping_run": "Saved/Qualification/Launch-Shipping-20261017-171645"
   }
 }

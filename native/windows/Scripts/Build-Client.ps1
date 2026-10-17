@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)][string]$EngineRoot,
-    [ValidateSet("Generate", "Editor", "CreateMap", "ImportAsset", "ImportPet", "RepairFur", "RepairLighting", "Package")][string]$Mode = "Editor",
+    [ValidateSet("Generate", "Editor", "CreateMap", "ImportAsset", "ImportPet", "RepairFur", "RepairLighting", "ImportMeadow", "FinishMeadow", "Package")][string]$Mode = "Editor",
     [ValidateSet("Development", "Shipping")][string]$Configuration = "Development",
     [string]$PythonExe = "python"
 )
@@ -86,6 +86,42 @@ switch ($Mode) {
             }
             $result = Get-Content -LiteralPath $evidence -Raw | ConvertFrom-Json
             if ($result.status -ne $step.Status) { throw "Lighting fixture did not save." }
+        }
+    }
+    "ImportMeadow" {
+        $sourceManifest = Join-Path $projectRoot "Saved/Art/P1MeadowV2/manifest.json"
+        if (-not (Test-Path -LiteralPath $sourceManifest)) { throw "Export the reviewed V2 Blender master first." }
+        $importReport = Join-Path $projectRoot "Saved/Qualification/meadow-v2-import.json"
+        if (Test-Path -LiteralPath $importReport) {
+            $prior = Get-Content -LiteralPath $importReport -Raw | ConvertFrom-Json
+            if ($prior.status -eq "editor_scene_saved_requires_runtime_review") {
+                throw "Complete island already imported; preserve it and proceed to Package."
+            }
+        }
+        $started = [DateTime]::UtcNow
+        $script = Join-Path $projectRoot "Scripts/import_meadow_v2.py"
+        & $editor $projectFile "-ExecutePythonScript=$script" "-ini:Engine:[/Script/Engine.RendererSettings]:r.GenerateMeshDistanceFields=False" -unattended -nosplash -nullrhi -stdout
+        if ($LASTEXITCODE -ne 0) { throw "Meadow import process failed." }
+        if (-not (Test-Path -LiteralPath $importReport) -or (Get-Item -LiteralPath $importReport).LastWriteTimeUtc -lt $started) { throw "Fresh import evidence missing." }
+        $result = Get-Content -LiteralPath $importReport -Raw | ConvertFrom-Json
+        $source = Get-Content -LiteralPath $sourceManifest -Raw | ConvertFrom-Json
+        if ($result.status -ne "editor_scene_saved_requires_runtime_review" -or $result.modules.Count -ne $source.modules.Count) { throw "Island import incomplete; inspect its checkpoints." }
+    }
+    "FinishMeadow" {
+        foreach ($step in @(
+            @{Script="repair_meadow_palette.py"; Report="meadow-palette-repair.json"},
+            @{Script="add_meadow_clouds.py"; Report="meadow-clouds.json"}
+        )) {
+            $started = [DateTime]::UtcNow
+            $script = Join-Path $projectRoot "Scripts/$($step.Script)"
+            $evidence = Join-Path $projectRoot "Saved/Qualification/$($step.Report)"
+            & $editor $projectFile "-ExecutePythonScript=$script" -unattended -nosplash -nullrhi -stdout
+            if ($LASTEXITCODE -ne 0) { throw "Meadow finishing failed: $($step.Script)" }
+            if (-not (Test-Path -LiteralPath $evidence) -or (Get-Item -LiteralPath $evidence).LastWriteTimeUtc -lt $started) {
+                throw "Fresh meadow finishing evidence missing: $($step.Script)"
+            }
+            $result = Get-Content -LiteralPath $evidence -Raw | ConvertFrom-Json
+            if ($result.status -ne "saved_requires_runtime_review") { throw "Meadow finishing did not save." }
         }
     }
     "Package" {
