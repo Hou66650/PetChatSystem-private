@@ -141,10 +141,10 @@
    const {ray,point}=this.rayPoint(e,this.mode==='care'?.23:.035);if(!point)return;
    if(this.mode==='place'){this.hover.hidden=true;if(!this.busy)this.updatePlacement(point);if(click){e.stopImmediatePropagation();void this.confirmPlacement();}return;}
    if(this.mode==='care'){this.hover.hidden=true;const bed=this.layout.beds.find(b=>Math.abs(point.x-b.x)<b.w/2+.15&&Math.abs(point.z-b.z)<b.d/2+.15);const placed=(this.data.arrangements||[]).find(p=>{const g=this.groups.get(p.id);return g&&ray.intersectObject(g,true).length||Math.hypot(point.x-p.x,point.z-p.z)<P.radius(p.species,p.container)+.18;});this.hoverBed=placed?.id||bed?.id;this.toolTarget.set(point.x-.4,.95,point.z);if(click)e.stopImmediatePropagation();return;}
-   const tool=[...this.toolModels].find(([,m])=>ray.intersectObject(m,true).length||ray.ray.distanceSqToPoint(m.position.clone().add(new this.T.Vector3(0,.25,0)))<.14);if(tool){this.hover.hidden=false;this.hover.textContent=tool[0]==='water'?'洒水壶 · 点击拿起':'肥料罐 · 点击拿起';this.hover.style.left=e.clientX+12+'px';this.hover.style.top=e.clientY-44+'px';if(click){e.stopImmediatePropagation();this.takeTool(tool[0]);}return;}
+   const tool=[...this.toolModels].find(([,m])=>ray.intersectObject(m,true).length||ray.ray.distanceSqToPoint(m.position.clone().add(new this.T.Vector3(0,.25,0)))<.14);if(tool){this.hover.hidden=false;this.hover.textContent=tool[0]==='water'?'洒水壶 · 点击拿起':'肥料罐 · 点击拿起';this.hover.style.left=e.clientX+12+'px';this.hover.style.top=e.clientY-44+'px';if(click){e.stopImmediatePropagation();this.takeTool(tool[0]);}return true;}
    const placed=(this.data?.arrangements||[]).find(p=>{const g=this.groups.get(p.id);return g&&ray.intersectObject(g,true).length;});
-   if(placed){this.hover.hidden=false;this.hover.textContent=this.data.catalog.find(s=>s.id===placed.species).name+' · '+(placed.ready?'已成熟':placed.stage+'/10 · 生长中')+' · 点击照料或搬动';this.hover.style.left=Math.min(innerWidth-270,e.clientX+12)+'px';this.hover.style.top=Math.max(8,e.clientY-44)+'px';if(click){e.stopImmediatePropagation();this.inspectPlaced(placed);}return;}
-   super.point(e,click);
+   if(placed){this.hover.hidden=false;this.hover.textContent=this.data.catalog.find(s=>s.id===placed.species).name+' · '+(placed.ready?'已成熟':placed.stage+'/10 · 生长中')+' · 点击照料或搬动';this.hover.style.left=Math.min(innerWidth-270,e.clientX+12)+'px';this.hover.style.top=Math.max(8,e.clientY-44)+'px';if(click){e.stopImmediatePropagation();this.inspectPlaced(placed);}return true;}
+   return super.point(e,click);
   }
   update(dt){
    super.update(dt);if(this.disposed)return;

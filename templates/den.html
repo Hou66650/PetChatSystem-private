@@ -2497,6 +2497,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const press=groundPress; groundPress=null;
             if(portals?.away)return;
             if (!press || press.id !== e.pointerId || press.travel > 8 || Math.hypot(e.clientX-press.x,e.clientY-press.y)>8 || performance.now()-press.time>700 || !petModel || spawnBusy || grabbed || dropping) return;
+            if(farmGarden?.handleTap(e))return;
             const bowlKind=islandBowls.pick(e);if(bowlKind){islandBowls.open(bowlKind);return;}const place=pickCatPlace(e);if(place){sceneHint.hidden=true;catCompanionUI.act(place);return;}
             const rect=canvas.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);
             raycaster.setFromCamera(pointer,camera);

@@ -21,7 +21,18 @@
    const result=await r.json();if(result.scope&&result.scope!==this.a.scope){this.scopeLost=true;throw Error('账号已变化，请刷新页面');}if(!r.ok)throw Object.assign(Error(result.error||'花园暂时无法连接'),{status:r.status});return result;
   }
   note(text,error=false){this.feedback.textContent=text;this.feedback.dataset.error=String(error);}
-  async refresh(){if(this.disposed||this.refreshing||this.busy||this.scopeLost)return;this.refreshing=true;const revision=this.stateRevision||0;try{const s=await this.request();if(this.disposed||revision!==(this.stateRevision||0))return;this.data=s;this.render();await this.sync();this.nextRefresh=performance.now()+30000;}catch(e){if(e.name!=='AbortError')this.note(e.message,true);}finally{this.refreshing=false;}}
+  async refresh(){
+   if(this.disposed||this.refreshing||this.busy||this.scopeLost)return;
+   this.refreshing=true;const revision=this.stateRevision||0;
+   try{
+    const s=await this.request();if(this.disposed||revision!==(this.stateRevision||0))return;
+    this.data=s;this.render();
+    this.note(s.guest?'花园已就绪，登录后可以保存种植进度。':!s.started?'花园已就绪，请先领取下方的园艺入门礼，再选择种子播种。':'花园已同步，可以播种、照料或查看生长进度。');
+    // Update the read status before loading meshes, so model errors remain visible.
+    await this.sync();this.nextRefresh=performance.now()+30000;
+   }catch(e){if(e.name!=='AbortError')this.note(e.message,true);}
+   finally{this.refreshing=false;}
+  }
   async act(op,data={}){if(this.busy||this.disposed||this.scopeLost)return false;this.busy=true;this.lastFailure=null;this.stateRevision=(this.stateRevision||0)+1;this.render();const progress=window.PaitLoading?.start('正在保存花园');try{this.data=await this.request(op,data);if(this.disposed)return false;window.dispatchEvent(new Event('pait:scene-changed'));this.note(({start:'种子和花盆已放进仓库。选一块种植床，开始吧。',plant:'已经种下，会在离线时继续生长。',water:'浇水完成，生长稍微加快了。',fertilize:'施肥完成，今天不用再添加了。',harvest:'收获已放进仓库，可以栽种、装盆或制作补给。',place:'植物已安放在岛上。',arrange:'已保存到你的账号，下次回来它仍在这里。','recover-arrangement':'已收回：幼苗移回种植床继续生长，成熟植物存入仓库，花盆保留。',recover:'植物已收回，花盆也会保留。',cook:'已制作 1 份游戏宠物零食，可去补给站送给它。',buy:'已放入仓库。'})[op]);await this.sync();progress?.done();return true;}catch(e){this.lastFailure=e;progress?.fail('保存未完成');if(e.name!=='AbortError')this.note(e.message,true);return false;}finally{this.busy=false;if(!this.disposed)this.render();}}
   open(bed){if(this.disposed)return;this.switchTab('beds');this.dialog.showModal();if(!this.data)this.refresh();if(bed)requestAnimationFrame(()=>document.getElementById('farm-'+bed)?.scrollIntoView({block:'nearest',behavior:'smooth'}));}
   switchTab(tab){this.tab=tab;for(const name of ['beds','stock','shop','guide']){document.getElementById('farm-'+name).hidden=name!==tab;this.dialog.querySelector('[data-farm-tab="'+name+'"]').setAttribute('aria-selected',String(name===tab));}if(tab==='guide'&&this.dialog.open)this.preview();else this.closePreview();}
@@ -59,11 +70,19 @@
    for(const [key,promise] of this.cache)if(!used.has(key)&&key!==this.previewKey&&key!==this.placementKey&&!(key==='flowerpot'&&this.placement)){this.cache.delete(key);promise.then(o=>SelectedAssets.disposeTree(o)).catch(()=>{});}
   }
   update(dt){if(this.disposed)return;const now=performance.now();if(now>this.nextRefresh&&!document.hidden){this.nextRefresh=now+30000;this.refresh();}if(now>this.nextLod){this.nextLod=now+1500;this.sync();}}
+  handleTap(e){
+   if(this.mode||performance.now()<(this.ignoreClick||0))return false;
+   // Pointer-up is shared with the island. Keep bubbling so camera controls can
+   // release their gesture, but consume a later compatibility click only once.
+   const hit=this.point({clientX:e.clientX,clientY:e.clientY,altKey:e.altKey,stopImmediatePropagation(){}},true);
+   if(hit)this.ignoreClick=performance.now()+500;
+   return !!hit;
+  }
   point(e,click){
-   if(this.disposed||!this.a.active()||this.dialog.open){this.hover.hidden=true;return;}
+   if(this.disposed||!this.a.active()||this.dialog.open){this.hover.hidden=true;return;}if(click&&performance.now()<(this.ignoreClick||0))return;
    const r=this.a.canvas.getBoundingClientRect(),ray=new this.T.Raycaster();ray.setFromCamera(new this.T.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),this.a.camera);const p=ray.ray.intersectPlane(new this.T.Plane(new this.T.Vector3(0,1,0),-.23),new this.T.Vector3());
    const bed=p&&this.layout.beds.find(b=>Math.abs(p.x-b.x)<b.w/2+.12&&Math.abs(p.z-b.z)<b.d/2+.12),fixture=p&&this.layout.fixtures.find(b=>Math.abs(p.x-b.x)<b.w/2+.2&&Math.abs(p.z-b.z)<b.d/2+.2);this.hover.hidden=!bed&&!fixture;
-   if(bed||fixture){const planted=this.data?.beds.find(b=>b.id===bed?.id)?.plant,spec=this.data?.catalog.find(s=>s.id===planted?.species);this.hover.textContent=spec?spec.name+' · '+spec.stages[planted.stage-1]+' · 点击照料':bed?'空种植床 · 点击选择种子':fixture.id==='storage'?'园艺仓库 · 点击查看':'园艺工作台 · 点击查看';this.hover.style.left=Math.max(8,Math.min(innerWidth-270,e.clientX+12))+'px';this.hover.style.top=Math.max(8,e.clientY-44)+'px';if(click){e.stopImmediatePropagation();this.open(bed?.id);if(fixture)this.switchTab(fixture.id==='storage'?'stock':'shop');}}
+   if(bed||fixture){const planted=this.data?.beds.find(b=>b.id===bed?.id)?.plant,spec=this.data?.catalog.find(s=>s.id===planted?.species);this.hover.textContent=spec?spec.name+' · '+spec.stages[planted.stage-1]+' · 点击照料':bed?'空种植床 · 点击选择种子':fixture.id==='storage'?'园艺仓库 · 点击查看':'园艺工作台 · 点击查看';this.hover.style.left=Math.max(8,Math.min(innerWidth-270,e.clientX+12))+'px';this.hover.style.top=Math.max(8,e.clientY-44)+'px';if(click){e.stopImmediatePropagation();this.open(bed?.id);if(fixture)this.switchTab(fixture.id==='storage'?'stock':'shop');}return true;}
   }
   async preview(){
    if(this.disposed||this.tab!=='guide'||!this.dialog.open)return;
