@@ -2,6 +2,9 @@
 #include "PaitPreviewPawn.h"
 #include "PaitQualificationRun.h"
 #include "PaitMeadowPet.h"
+#include "PaitGarden.h"
+#include "PaitAccountSubsystem.h"
+#include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
 #include "Engine/Canvas.h"
@@ -33,9 +36,10 @@ void APaitQualificationGameMode::BeginPlay()
     if(!StartupDestinationConsumed)
     {
         StartupDestinationConsumed=true; FString Destination;
-        if(FParse::Value(FCommandLine::Get(),TEXT("PaitIsland="),Destination) && Destination==TEXT("Sakura") &&
-           !GetWorld()->GetMapName().Contains(TEXT("Sakura")))
-        { UGameplayStatics::OpenLevel(this,TEXT("/Game/Preview/P1_SakuraV2")); return; }
+        if(FParse::Value(FCommandLine::Get(),TEXT("PaitIsland="),Destination) &&
+           (Destination==TEXT("Sakura") || Destination==TEXT("Snow") || Destination==TEXT("Camp")) &&
+           !GetWorld()->GetMapName().Contains(Destination))
+        { UGameplayStatics::OpenLevel(this,FName(*(TEXT("/Game/Preview/P1_")+Destination+TEXT("V2")))); return; }
     }
     if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
     {
@@ -45,7 +49,7 @@ void APaitQualificationGameMode::BeginPlay()
         Input.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
         PC->SetInputMode(Input);
     }
-    UE_LOG(LogTemp, Display, TEXT("PAIT P0 | Adapter=%s | No account or cloud writes"),
+    UE_LOG(LogTemp, Display, TEXT("PAIT | Adapter=%s | Account services require explicit login"),
         *GRHIAdapterName);
     if (FParse::Param(FCommandLine::Get(), TEXT("PaitQualification")))
     {
@@ -53,8 +57,11 @@ void APaitQualificationGameMode::BeginPlay()
         return;
     }
     bSmokeRun = FParse::Param(FCommandLine::Get(), TEXT("PaitSmoke"));
-    if (GetWorld()->GetMapName().Contains(TEXT("P1_MeadowV2")) || GetWorld()->GetMapName().Contains(TEXT("P1_SakuraV2")))
+    if (GetWorld()->GetMapName().StartsWith(TEXT("P1_")))
         GetWorld()->SpawnActor<APaitMeadowPet>();
+    if(GetWorld()->GetMapName().Contains(TEXT("Meadow")))GetWorld()->SpawnActor<APaitGarden>();
+    if(auto* Account=GetGameInstance()->GetSubsystem<UPaitAccountSubsystem>())
+        Account->SelectPet(GetWorld()->GetMapName().Contains(TEXT("Sakura"))?1:GetWorld()->GetMapName().Contains(TEXT("Snow"))?2:GetWorld()->GetMapName().Contains(TEXT("Camp"))?4:3);
     if (bSmokeRun)
     {
         SmokeStarted = FPlatformTime::Seconds();
@@ -119,6 +126,13 @@ void APaitQualificationHUD::DrawHUD()
 {
     Super::DrawHUD();
     if (!Canvas) return;
+    if(auto* Account=GetGameInstance()->GetSubsystem<UPaitAccountSubsystem>())if(Account->IsPanelVisible())return;
+    if(auto* Account=GetGameInstance()->GetSubsystem<UPaitAccountSubsystem>())if(Account->GardenLoading)
+    {
+        DrawRect(FLinearColor(.06f,.14f,.12f,.75f),Canvas->ClipX*.35f,Canvas->ClipY-120,Canvas->ClipX*.3f,40);
+        DrawText(TEXT("Loading garden models..."),FLinearColor::White,Canvas->ClipX*.35f+12,Canvas->ClipY-113,nullptr,1.f);
+        DrawRect(FLinearColor(.8f,.95f,.9f,.55f),Canvas->ClipX*.35f+12,Canvas->ClipY-88,(Canvas->ClipX*.3f-24)*(.2f+.7f*FMath::Frac(GetWorld()->GetTimeSeconds()*.5f)),4);
+    }
     if(const APaitPreviewPawn* Pawn=Cast<APaitPreviewPawn>(GetOwningPawn()))
         if(!Pawn->LoadingIsland.IsEmpty())
         {
@@ -131,7 +145,7 @@ void APaitQualificationHUD::DrawHUD()
     const bool bMeadow = GetWorld()->GetMapName().Contains(TEXT("P1_"));
     DrawText(bMeadow ? *FString(TEXT("PAIT ISLAND | ")+GetWorld()->GetMapName()+TEXT(" - local preview")) : TEXT("PAIT ISLAND | P0 engine qualification only"), FLinearColor::White,
         36.f, 32.f, nullptr, 1.2f);
-    DrawText(TEXT("RMB orbit | MMB pan | Wheel zoom | C pet | H hide | Home reset"), FLinearColor(.7f, .85f, .75f),
+    DrawText(TEXT("RMB orbit | MMB pan | Wheel zoom | I account | J garden | 1/2/3/4 islands | C pet | H hide | Home reset"), FLinearColor(.7f, .85f, .75f),
         36.f, 62.f, nullptr, 1.f);
     DrawText(FString::Printf(TEXT("GPU: %s | %s"), *GRHIAdapterName,
         bMeadow ? TEXT("Materials and gameplay in progress") : TEXT("Not the final cat island")),

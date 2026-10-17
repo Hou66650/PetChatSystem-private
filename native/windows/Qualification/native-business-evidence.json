@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-18",
+  "version": "1.94.0",
+  "branch": "codex/windows-client",
+  "status": "partial_business_migration_verified",
+  "complete_migration": false,
+  "package": "Saved/Packages/ShippingDaily",
+  "build": {
+    "editor_compile": true,
+    "shipping_compile": true,
+    "cook": true,
+    "package": true,
+    "full_cook_log": "Saved/Qualification/native-garden-material-final.log",
+    "final_package_log": "Saved/Qualification/native-business-delivery.log"
+  },
+  "backend_tests": {
+    "passed": 27,
+    "log": "Saved/Qualification/native-api-tests.log",
+    "data": "isolated temporary databases; fake model and voice services"
+  },
+  "account": {
+    "passed": true,
+    "error": "",
+    "scope": "compiled native HTTP: isolated accounts, farm persistence, chat and voice-state; no production writes or microphone test"
+  },
+  "garden": {
+    "mesh_components": 13,
+    "mesh_instances": 13,
+    "catalog_entries": 141,
+    "demonstration_meshes_suppressed": 117,
+    "account_bound": true
+  },
+  "runs": {
+    "account": {
+      "directory": "Saved/Qualification/NativeBusiness-20261018-043849",
+      "launch": {
+        "executable_sha256": "9854CC080BD1503780ACB57097DB5446ABCF6634CAC1698115DFB444DA739B72",
+        "exit_code": 0,
+        "fixture_port": 5013,
+        "microphone_validated": false,
+        "paid_provider_validated": false
+      }
+    },
+    "snow": {
+      "directory": "Saved/Qualification/Snow-Care-20261018-043938",
+      "launch": {
+        "executable_sha256": "9854CC080BD1503780ACB57097DB5446ABCF6634CAC1698115DFB444DA739B72",
+        "exit_code": 0,
+        "island": "Snow",
+        "performance_qualified": false,
+        "manual_input_validated": false
+      },
+      "runtime": {
+        "status": "rendered_capture_saved",
+        "actual_map": "P1_SnowV2",
+        "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+        "frames": 3670,
+        "performance_qualified": false
+      },
+      "assets": {
+        "source_master_sha256": "5c28c3985334e59f2bfedb63573f8fe4e46e9f5742e40e84a6e57c9afba3c7a3",
+        "module_count": 4
+      }
+    },
+    "camp": {
+      "directory": "Saved/Qualification/Camp-Care-20261018-044019",
+      "launch": {
+        "executable_sha256": "9854CC080BD1503780ACB57097DB5446ABCF6634CAC1698115DFB444DA739B72",
+        "exit_code": 0,
+        "island": "Camp",
+        "performance_qualified": false,
+        "manual_input_validated": false
+      },
+      "runtime": {
+        "status": "rendered_capture_saved",
+        "actual_map": "P1_CampV2",
+        "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+        "frames": 3707,
+        "performance_qualified": false
+      },
+      "assets": {
+        "source_master_sha256": "a73218d5796f17e86ba18589a732684367bda3ef7f53739dc5c4cf08487de680",
+        "module_count": 4
+      }
+    }
+  },
+  "images": {
+    "account": {
+      "file": "native-garden-runtime.png",
+      "sha256": "de226dc1ad7e239d47625d1f562bed8f2569bc324ce250a96ff7c0ab80d102cd",
+      "visually_reviewed": true
+    },
+    "snow": {
+      "file": "snow-v2-runtime.png",
+      "sha256": "8f4ac11572fee83c1bf8cf8299fcd75e192bd1278243903f29dbc41501405440",
+      "visually_reviewed": true
+    },
+    "camp": {
+      "file": "camp-v2-runtime.png",
+      "sha256": "6fe5036062a1d2be3c2470ed038ac81bef9a13551802500a17adbf562284492d",
+      "visually_reviewed": true
+    }
+  },
+  "plant_assets": {
+    "stage_models": 140,
+    "pot_models": 1,
+    "meshes": 609,
+    "instanced_materials_repaired": 609,
+    "source": "existing approved plant GLB assets; no model redesign"
+  },
+  "not_validated": [
+    "real microphone capture and permissions",
+    "paid voice cloning and TTS",
+    "continuous realtime voice",
+    "production account regression",
+    "complete manual controls",
+    "all island routes and care anchors",
+    "performance/FPS and long-duration stability",
+    "final visual quality"
+  ],
+  "remaining_scope": "../业务迁移范围与进度.md",
+  "production_user_mutations_during_tests": false,
+  "original_web_service_restarted": false
+}

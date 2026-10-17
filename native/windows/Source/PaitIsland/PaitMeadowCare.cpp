@@ -17,6 +17,9 @@
 
 void APaitMeadowPet::InitializeCare()
 {
+    // Existing detailed Snow/Camp art is retained. Do not reuse Meadow bowl
+    // coordinates until real interaction anchors are authored on those maps.
+    if(bAdditionalIsland) return;
     Stations.Add(TEXT("food"),bSakura?FVector(-100,1180,23):FVector(115,628,41));
     Stations.Add(TEXT("water"),bSakura?FVector(-55,1180,23):FVector(185,628,41));
     Stations.Add(TEXT("home"),bSakura?FVector(-40,600,38):FVector(-300,462,13));
@@ -68,7 +71,7 @@ void APaitMeadowPet::Refill()
 }
 FString APaitMeadowPet::GetCareSummary() const
 {
-    return FString::Printf(TEXT("Food %.0f%% | Water %.0f%% | F eat  V drink  N home  T toy  B refill | 1 Meadow  2 Sakura"),Food,Water);
+    return FString::Printf(TEXT("Local preview bowls: food %.0f%% / water %.0f%% | F eat  V drink  N home  T toy  B refill"),Food,Water);
 }
 void APaitMeadowPet::TickCareTest(float Dt)
 {

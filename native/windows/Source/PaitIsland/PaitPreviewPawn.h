@@ -12,6 +12,7 @@ class PAITISLAND_API APaitPreviewPawn : public APawn
 {
     GENERATED_BODY()
 public:
+    void FocusGarden();
     APaitPreviewPawn();
     virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(UInputComponent* Input) override;
@@ -34,6 +35,7 @@ private:
     float PanUnitsPerPixel() const;
     void FocusPet();
     void ToggleInterface();
+    void ToggleAccount();
     void MovePetToCursor();
     void GreetPet();
     void PetCat();
@@ -41,6 +43,7 @@ private:
     void ToggleAgent();
     void Eat(); void Drink(); void GoHome(); void Play(); void FillBowls();
     void Meadow(); void Sakura();
+    void Snow(); void Camp();
     float IslandLoadDelay = 0.f;
     bool bOrbit = false;
     bool bPan = false;

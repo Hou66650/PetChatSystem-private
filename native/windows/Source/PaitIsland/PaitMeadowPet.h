@@ -46,6 +46,7 @@ private:
     bool bCareTest = false;
     FString PetRoot, PetPrefix, IslandMap;
     bool bSakura = false;
+    bool bAdditionalIsland = false;
     bool InitializeGrounding();
     bool GroundAt(const FVector& Point, FVector& Surface) const;
     void SetClip(UAnimSequence* Clip, bool Loop = true);

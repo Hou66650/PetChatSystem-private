@@ -22,5 +22,6 @@ from .pet_voice import bp as pet_voice_bp
 from .mobile import bp as mobile_bp
 
 from .pet_care import bp as pet_care_bp
+from .native import bp as native_bp
 
-ALL_BLUEPRINTS = (pet_care_bp, mobile_bp, pet_voice_bp, farm_bp, pet_studio_bp, supplies_bp, cat_market_bp, portals_bp, cat_agent_bp, voiceprint_bp, main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)
+ALL_BLUEPRINTS = (native_bp, pet_care_bp, mobile_bp, pet_voice_bp, farm_bp, pet_studio_bp, supplies_bp, cat_market_bp, portals_bp, cat_agent_bp, voiceprint_bp, main_bp, auth_bp, chat_bp, reader_bp, manager_bp, realtime_bp, companion_bp)

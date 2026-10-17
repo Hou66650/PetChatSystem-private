@@ -32,7 +32,11 @@ void APaitMeadowPet::BeginPlay()
     IslandMap=bSakura ? TEXT("P1_SakuraV2") : TEXT("P1_MeadowV2");
     PetRoot=bSakura ? TEXT("/Game/Imported/P1Shiba/qiuqiu/SkeletalMeshes/") : TEXT("/Game/Imported/P0Cat/cat/SkeletalMeshes/");
     PetPrefix=bSakura ? TEXT("qiuqiu") : TEXT("cat");
-    if(!bSakura) for(TActorIterator<AStaticMeshActor> It(GetWorld());It;++It)
+    if(GetWorld()->GetMapName().Contains(TEXT("Snow")))
+    { IslandMap=TEXT("P1_SnowV2"); PetRoot=TEXT("/Game/Imported/P1Husky/xueqiu/SkeletalMeshes/"); PetPrefix=TEXT("xueqiu"); bAdditionalIsland=true; }
+    else if(GetWorld()->GetMapName().Contains(TEXT("Camp")))
+    { IslandMap=TEXT("P1_CampV2"); PetRoot=TEXT("/Game/Imported/P1Shepherd/shepherd/SkeletalMeshes/"); PetPrefix=TEXT("shepherd"); bAdditionalIsland=true; }
+    if(!bSakura && !bAdditionalIsland) for(TActorIterator<AStaticMeshActor> It(GetWorld());It;++It)
     {
         const UStaticMesh* Mesh=It->GetStaticMeshComponent()->GetStaticMesh();
         // Cedar batches include the low doorway threshold as well as walls.
@@ -99,7 +103,7 @@ bool APaitMeadowPet::GroundAt(const FVector& Point, FVector& Surface) const
 }
 bool APaitMeadowPet::InitializeGrounding()
 {
-    if (Cats.Num()!=(bSakura?2:3) || !Idle || !Walk || !Greeting) { Status=TEXT("Pet assets unavailable"); return false; }
+    if (Cats.Num()!=(bSakura || bAdditionalIsland?2:3) || !Idle || !Walk || !Greeting) { Status=TEXT("Pet assets unavailable"); return false; }
     UNavigationSystemV1* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
     if (!Nav) { Status=TEXT("Navigation system unavailable"); return false; }
     if (UNavigationSystemV1::IsNavigationBeingBuiltOrLocked(GetWorld())) { Status=TEXT("Preparing complete island paths..."); return false; }

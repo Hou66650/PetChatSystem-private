@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-10-18",
-  "phase": "P1",
-  "status": "p1_dual_island_local_care_preview",
+  "phase": "P2",
+  "status": "p2_partial_business_migration_four_islands",
   "branch": "codex/windows-client",
   "client_version": "0.1.0",
   "framework": {
@@ -66,7 +66,12 @@
     "meadow_shipping_care_sequence": true,
     "sakura_shipping_care_sequence": true,
     "sakura_runtime_import": true,
-    "sakura_shipping_actual_map_rendered": true
+    "sakura_shipping_actual_map_rendered": true,
+    "native_backend_checks_passed": 27,
+    "native_account_http_fixture": true,
+    "native_garden_account_stage_render": true,
+    "snow_shipping_actual_map_rendered": true,
+    "camp_shipping_actual_map_rendered": true
   },
   "not_validated": {
     "interactive_editor_ui": false,
@@ -80,10 +85,11 @@
   },
   "blockers": [],
   "next": [
-    "Finish material micro-surfaces, mouth/bowl alignment, grounded seated/lying poses and animation blending",
-    "Measure frame times and memory on both maps; check full-island routes and manual mouse/keyboard transitions",
-    "Connect authenticated read-only backend and cloud planning with a native scene contract; retain offline local autonomy",
-    "Continue account, planting, voice and portal business migration in the later approved phases; no production writes in P0/P1"
+    "Complete realtime voice and verify real microphone/provider flow",
+    "Connect native pet Agent with scene contract, memories and action receipts",
+    "Finish transplant placement, tools and inventory-linked care",
+    "Migrate portals, private pets, sharing and remaining business scope",
+    "Refine four-island lighting, navigation, animation and sample performance"
   ],
   "notes": [
     "Unit tests use synthetic data and fake temporary engine files; these are not device performance or compile results.",
@@ -95,7 +101,8 @@
     "Fur material repair required writing the modified Unreal struct back into its array; a fresh editor process verified asset and component binding before Cook. Runtime comparison confirms reduced white fibres.",
     "P0 is isolated fixed-clip playback, not the pet Agent; five minutes and frame counts are not FPS or long-duration memory qualification.",
     "2026-10-17 thin-glass Shipping: 300.009s, 791 changed pose samples, nine captures reviewed. Latest user relaxed stage gates; full P0 matrix no longer blocks P1 scene integration.",
-    "2026-10-18: final Shipping dual-island care and local Agent regression passed. Care paths and stock verified; pose quality, manual controls, full-island routes and FPS remain unaccepted. See two-island-care-evidence.json."
+    "2026-10-18: final Shipping dual-island care and local Agent regression passed. Care paths and stock verified; pose quality, manual controls, full-island routes and FPS remain unaccepted. See two-island-care-evidence.json.",
+    "2026-10-18 P2: account/garden/chat/voice foundations packaged; 27 backend checks and compiled HTTP fixture passed. Snow/Camp reuse existing fine models. Full migration is still incomplete; see scope matrix. P0/P1 care remains local preview."
   ],
   "installed_tools": {
     "epic_launcher": "D:\\Epic Games\\Launcher",
@@ -115,7 +122,7 @@
     "complete": true,
     "completed_local": "2026-10-17T13:46:05+08:00"
   },
-  "runtime_evidence": "two-island-care-evidence.json",
+  "runtime_evidence": "native-business-evidence.json",
   "p1_progress": {
     "v2_export_modules": 21,
     "v2_export_bytes": 610011964,
@@ -186,5 +193,17 @@
     "evidence": "Qualification/camera-input-evidence.json",
     "package": "Saved/Packages/ShippingDaily",
     "held_drag_manual_check_pending": true
+  },
+  "application_version": "1.94.0",
+  "p2_progress": {
+    "scope": "../业务迁移范围与进度.md",
+    "evidence": "native-business-evidence.json",
+    "complete": false,
+    "launcher": "打开派特岛客户端.cmd",
+    "api_port": 5012,
+    "fixture_port": 5013,
+    "api_data": "existing account service; automated checks use isolated fixture only",
+    "garden_catalog_entries": 141,
+    "voice": "recording/clone UI and playback compiled; real microphone/provider not validated"
   }
 }

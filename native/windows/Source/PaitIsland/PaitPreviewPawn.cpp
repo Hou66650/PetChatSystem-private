@@ -1,5 +1,8 @@
 #include "PaitPreviewPawn.h"
 #include "PaitMeadowPet.h"
+#include "PaitGarden.h"
+#include "PaitAccountSubsystem.h"
+#include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/World.h"
@@ -65,6 +68,8 @@ void APaitPreviewPawn::SetupPlayerInputComponent(UInputComponent* Input)
     Input->BindKey(EKeys::Escape, IE_Pressed, this, &APaitPreviewPawn::CancelDrag);
     Input->BindKey(EKeys::C, IE_Pressed, this, &APaitPreviewPawn::FocusPet);
     Input->BindKey(EKeys::H, IE_Pressed, this, &APaitPreviewPawn::ToggleInterface);
+    Input->BindKey(EKeys::I, IE_Pressed, this, &APaitPreviewPawn::ToggleAccount);
+    Input->BindKey(EKeys::J, IE_Pressed, this, &APaitPreviewPawn::FocusGarden);
     Input->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &APaitPreviewPawn::MovePetToCursor);
     Input->BindKey(EKeys::G, IE_Pressed, this, &APaitPreviewPawn::GreetPet);
     Input->BindKey(EKeys::P, IE_Pressed, this, &APaitPreviewPawn::PetCat);
@@ -76,6 +81,8 @@ void APaitPreviewPawn::SetupPlayerInputComponent(UInputComponent* Input)
     Input->BindKey(EKeys::B, IE_Pressed, this, &APaitPreviewPawn::FillBowls);
     Input->BindKey(EKeys::One, IE_Pressed, this, &APaitPreviewPawn::Meadow);
     Input->BindKey(EKeys::Two, IE_Pressed, this, &APaitPreviewPawn::Sakura);
+    Input->BindKey(EKeys::Three, IE_Pressed, this, &APaitPreviewPawn::Snow);
+    Input->BindKey(EKeys::Four, IE_Pressed, this, &APaitPreviewPawn::Camp);
     Input->BindKey(EKeys::A, IE_Pressed, this, &APaitPreviewPawn::ToggleAgent);
 }
 void APaitPreviewPawn::Tick(float DeltaSeconds)
@@ -183,6 +190,8 @@ void APaitPreviewPawn::ResetView()
     TargetDistance = bMeadow ? 5600.f : 2200.f;
     if(GetWorld()->GetMapName().Contains(TEXT("Sakura")))
     { SetActorLocation(FVector(-300,-650,180)); TargetDistance=6500; Pitch=-32; Yaw=55; }
+    else if(GetWorld()->GetMapName().Contains(TEXT("Snow")) || GetWorld()->GetMapName().Contains(TEXT("Camp")))
+    { SetActorLocation(FVector(0,0,120)); TargetDistance=2400; Pitch=-32; Yaw=-45; }
     Arm->SetRelativeRotation(FRotator(Pitch, Yaw, 0.f));
 }
 void APaitPreviewPawn::FocusPet()
@@ -201,8 +210,19 @@ void APaitPreviewPawn::ToggleInterface()
     if (APlayerController* PC = Cast<APlayerController>(Controller))
         if (AHUD* HUD = PC->GetHUD()) HUD->bShowHUD = !HUD->bShowHUD;
 }
+void APaitPreviewPawn::ToggleAccount()
+{
+    CancelDrag();
+    if (auto* Account=GetGameInstance()->GetSubsystem<UPaitAccountSubsystem>()) Account->TogglePanel();
+}
+void APaitPreviewPawn::FocusGarden()
+{
+    if(!GetWorld()->GetMapName().Contains(TEXT("Meadow")))return;
+    SetActorLocation(FVector(-950,450,35));TargetDistance=1350;Pitch=-58;Yaw=-55;Arm->SetRelativeRotation(FRotator(Pitch,Yaw,0));
+}
 void APaitPreviewPawn::MovePetToCursor()
 {
+    if (auto* Account=GetGameInstance()->GetSubsystem<UPaitAccountSubsystem>()) if(Account->IsPanelVisible()) return;
     if (bOrbit || bPan) return;
     APlayerController* PC=Cast<APlayerController>(Controller);
     if(!PC) return;
@@ -219,6 +239,7 @@ void APaitPreviewPawn::MovePetToCursor()
     if(PC->GetHUD() && PC->GetHUD()->bShowHUD && Y<270 && X<1020) return;
     FHitResult Hit;
     if (!PC->GetHitResultUnderCursor(ECC_Visibility,true,Hit) || !Hit.GetActor()) return;
+    for(TActorIterator<APaitGarden> It(GetWorld());It;++It)if(It->Click(Hit.ImpactPoint))return;
     for (TActorIterator<APaitMeadowPet> It(GetWorld()); It; ++It)
     {
         if(It->CareAt(Hit.ImpactPoint)) return;
@@ -250,3 +271,5 @@ void APaitPreviewPawn::Play() { for(TActorIterator<APaitMeadowPet> It(GetWorld()
 void APaitPreviewPawn::FillBowls() { for(TActorIterator<APaitMeadowPet> It(GetWorld());It;++It) { It->Refill(); break; } }
 void APaitPreviewPawn::Meadow() { if(!GetWorld()->GetMapName().Contains(TEXT("Meadow"))) { LoadingIsland=TEXT("/Game/Preview/P1_MeadowV2"); IslandLoadDelay=.2f; } }
 void APaitPreviewPawn::Sakura() { if(!GetWorld()->GetMapName().Contains(TEXT("Sakura"))) { LoadingIsland=TEXT("/Game/Preview/P1_SakuraV2"); IslandLoadDelay=.2f; } }
+void APaitPreviewPawn::Snow() { if(!GetWorld()->GetMapName().Contains(TEXT("Snow"))) { LoadingIsland=TEXT("/Game/Preview/P1_SnowV2"); IslandLoadDelay=.2f; } }
+void APaitPreviewPawn::Camp() { if(!GetWorld()->GetMapName().Contains(TEXT("Camp"))) { LoadingIsland=TEXT("/Game/Preview/P1_CampV2"); IslandLoadDelay=.2f; } }

@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Meadow','Sakura')][string]$Island='Meadow',
+    [ValidateSet('Meadow','Sakura','Snow','Camp')][string]$Island='Meadow',
     [string]$Package='ShippingDaily',
     [int]$TimeoutSeconds=360,
     [switch]$Smoke
