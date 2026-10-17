@@ -7,7 +7,7 @@ vm.runInNewContext(stripTypeScriptTypes(source, {mode:'transform'}) +
   '\nglobalThis.Controller = NativePetController; globalThis.readSnapshot = readPetSnapshot;', context);
 function clip(name) {
   return {name, enabled:false, starts:0, stops:0, pauses:0, callback:null,
-    stop(){this.stops++;},pause(){this.pauses++;},restart(){this.starts++;},onFinished(fn){this.callback=fn;}};
+    progress:0,stop(){this.stops++;},pause(){this.pauses++;},restart(){this.starts++;},seek(v){this.progress=v;},onFinished(fn){this.callback=fn;}};
 }
 function make(names = ['idle_breathe','motion_walk','run','touch_head','sleep_loop','stand_up','happy']) {
   const clips = names.map(clip), root = {}, messages = [];
@@ -60,6 +60,14 @@ const snapshot=context.readSnapshot(JSON.stringify({version:1,petId:'cat',x:99,z
 assert.equal(snapshot.x,1.2); assert.equal(snapshot.z,-.6);
 const restored=make();restored.pet.restore(snapshot);assert.equal(restored.pet.action,'sleep');
 assert.equal(restored.root.position.x,1.2);
+const follower=make();
+assert(follower.pet.follow('touch_head',.4,1,false));assert.equal(follower.get('touch_head').progress,.4);
+const finished=follower.get('touch_head').callback, count=follower.get('touch_head').starts;
+finished();assert.equal(follower.get('touch_head').starts,count,'web one-shot completion must not start a second native business action');
+assert(follower.pet.follow('motion_walk',.2,.8,true));finished();assert.equal(follower.get('touch_head').starts,count);
+follower.get('motion_walk').callback();assert.equal(follower.get('motion_walk').starts,2);
+assert.equal(follower.pet.moving,false,'web following cannot start autonomous standalone roaming');
+assert.equal(follower.pet.follow('unknown',0,1,true),false);
 
 // Check semantic aliases against actual shipped GLB animation names, not mock names only.
 for(const path of ['petchat-cat-v3/cat.glb','petchat-shiba-v4/qiuqiu.glb','petchat-husky-v3/xueqiu.glb','petchat-shepherd-v2/shepherd.glb']) {

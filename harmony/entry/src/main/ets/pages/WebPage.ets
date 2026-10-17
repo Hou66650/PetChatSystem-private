@@ -5,6 +5,8 @@ import { picker } from '@kit.CoreFileKit';
 import { PetApi } from '../service/PetApi';
 import BuildProfile from '../../../../build/default/generated/profile/default/BuildProfile';
 import { NativePreview } from '../components/NativePreview';
+import { NativeDenNode } from '../components/NativeDenNode';
+import { DenAck, parseDenFrame, isDenPage } from '../model/NativeDenProtocol';
 
 // Render the existing site directly: no replacement UI, injected CSS or copied business logic.
 @Entry
@@ -18,6 +20,16 @@ struct WebPage {
   @State private nativePreview: boolean = false;
   @State private petMode: boolean = false;
   @State private foreground: boolean = true;
+  @State private denAttached: boolean = false;
+  @State private denWidth: number = 0;
+  @State private denHeight: number = 0;
+  @State private denX: number = 0;
+  @State private denY: number = 0;
+  private denNode: NativeDenNode | null = null;
+  private denEmbedId: string = '';
+  private denTimer: number = -1;
+  private denEpoch: number = 0;
+  private denPending: boolean = false;
   private controller: webview.WebviewController = new webview.WebviewController();
   private fullScreen: FullScreenExitHandler | null = null;
 
@@ -26,8 +38,65 @@ struct WebPage {
     this.restore();
   }
 
-  onPageShow(): void { this.foreground = true; }
-  onPageHide(): void { this.foreground = false; }
+  onPageShow(): void { this.foreground = true; this.denNode?.setActive(true); }
+  onPageHide(): void { this.foreground = false; this.denNode?.setActive(false); }
+  aboutToDisappear(): void { this.stopDen(); }
+
+  private denOrigin(): string { return this.source.replace(/\/$/, ''); }
+  private trustedDen(): boolean {
+    try { return !this.settings && !this.nativePreview && isDenPage(this.controller.getUrl(), this.denOrigin()); }
+    catch (_) { return false; }
+  }
+  private stopDen(): void {
+    this.denEpoch++; this.denPending = false;
+    if (this.denTimer !== -1) { clearInterval(this.denTimer); this.denTimer = -1; }
+    this.denAttached = false; this.denNode?.dispose(); this.denNode = null; this.denEmbedId = '';
+  }
+  private startDen(): void {
+    if (!this.trustedDen() || this.denTimer !== -1) { return; }
+    this.denTimer = setInterval(() => { this.pollDen(); }, 33);
+    this.pollDen();
+  }
+  private async pollDen(): Promise<void> {
+    if (!this.foreground || this.denPending || !this.trustedDen()) { return; }
+    const epoch = this.denEpoch; this.denPending = true;
+    const ack: DenAck = this.denNode?.ack() || { session: '', key: '', ready: false };
+    try {
+      if (ack.status?.startsWith('unavailable:')) {
+        await this.controller.runJavaScript('window.PaitNativeDen?.unavailable()');
+        if (epoch === this.denEpoch) { this.stopDen(); }
+        return;
+      }
+      const raw = await this.controller.runJavaScript('window.PaitNativeDen ? window.PaitNativeDen.exchange(' + JSON.stringify(ack) + ') : null');
+      if (epoch !== this.denEpoch || !this.trustedDen()) { return; }
+      const frame = parseDenFrame(raw);
+      if (frame) { this.denNode?.accept(frame); }
+      else { this.denNode?.setActive(false); }
+      if (frame && this.foreground) { this.denNode?.setActive(true); }
+    } catch (_) { this.denNode?.setActive(false); }
+    finally { if (epoch === this.denEpoch) { this.denPending = false; } }
+  }
+  private embedChanged(event: NativeEmbedDataInfo): void {
+    if (event.status === NativeEmbedStatus.DESTROY) {
+      if (event.embedId === this.denEmbedId) {
+        this.denAttached = false; this.denNode?.dispose(); this.denNode = null; this.denEmbedId = '';
+      }
+      return;
+    }
+    if (!this.trustedDen() || event.info?.id !== 'pait-native-pet' || event.info?.type !== 'native/paitpet') { return; }
+    const context = this.getUIContext();
+    const width = context.px2vp(event.info.width || 0); const height = context.px2vp(event.info.height || 0);
+    if (width <= 0 || height <= 0 || width > 8000 || height > 8000) { return; }
+    this.denWidth = width; this.denHeight = height;
+    this.denX = context.px2vp(Number(event.info.position?.x || 0));
+    this.denY = context.px2vp(Number(event.info.position?.y || 0));
+    if (event.status === NativeEmbedStatus.CREATE && event.surfaceId) {
+      this.denNode?.dispose();
+      const host = context.getHostContext(); if (!host) { return; }
+      this.denNode = new NativeDenNode(event.surfaceId, width, height, this.denOrigin(), host.cacheDir);
+      this.denEmbedId = event.embedId || ''; this.denAttached = true;
+    } else if (event.embedId === this.denEmbedId) { this.denNode?.resize(width, height); }
+  }
 
   private async restore(): Promise<void> {
     try {
@@ -67,7 +136,7 @@ struct WebPage {
     try {
       if (this.controller.accessBackward()) { this.controller.backward(); return true; }
     } catch (_) { /* A failed page can still return to connection settings. */ }
-    this.settings = true;
+    this.stopDen(); this.settings = true;
     return true;
   }
 
@@ -140,8 +209,15 @@ struct WebPage {
             Button('重试').onClick(() => { this.error = ''; this.controller.refresh(); })
           }.padding(12)
         }
+        Stack({ alignContent: Alignment.TopStart }) {
+          if (this.denAttached && this.denNode) {
+            NodeContainer(this.denNode).width(this.denWidth).height(this.denHeight)
+              .position({ x: this.denX, y: this.denY }).hitTestBehavior(HitTestMode.None)
+          }
         Web({ src: this.source, controller: this.controller })
-          .width('100%').layoutWeight(1)
+          .width('100%').height('100%')
+          .enableNativeEmbedMode(true)
+          .onNativeEmbedLifecycleChange((event: NativeEmbedDataInfo) => { this.embedChanged(event); })
           .javaScriptAccess(true).domStorageAccess(true).databaseAccess(true)
           .onlineImageAccess(true).fileAccess(true)
           .mixedMode(MixedMode.None).multiWindowAccess(false)
@@ -152,10 +228,12 @@ struct WebPage {
           .onPermissionRequest((event) => { if (event) { this.permission(event.request); } })
           .onFullScreenEnter((event) => { if (event) { this.fullScreen = event.handler; } })
           .onFullScreenExit(() => { this.fullScreen = null; })
-          .onPageBegin(() => { this.error = ''; })
+          .onPageBegin(() => { this.error = ''; this.stopDen(); })
+          .onPageEnd(() => { this.startDen(); })
           .onErrorReceive((event) => {
             if (event && event.request.isMainFrame()) { this.error = '网页加载失败，请检查电脑服务与网络连接。'; }
           })
+        }.width('100%').layoutWeight(1)
       }
     }.width('100%').height('100%').justifyContent(FlexAlign.Center)
   }

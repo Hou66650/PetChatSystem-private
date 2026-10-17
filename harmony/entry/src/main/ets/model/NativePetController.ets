@@ -55,6 +55,8 @@ export class NativePetController {
   private root: Node;
   private animations: Animation[];
   private changed: (message: string) => void;
+  private following: boolean = false;
+  private followLoop: boolean = false;
 
   constructor(petId: string, root: Node, animations: Animation[], changed: (message: string) => void) {
     this.petId = petId; this.root = root; this.animations = animations; this.changed = changed;
@@ -73,6 +75,29 @@ export class NativePetController {
   }
 
   supports(action: PetAction): boolean { return this.find(aliases(action)) !== null; }
+
+  // Embedded mode follows the original den's animation state. It must not run
+  // the standalone roaming controller or write a second set of business state.
+  follow(name: string, phase: number, speed: number, loop: boolean): boolean {
+    if (this.disposed) { return false; }
+    const clip = this.find([name]);
+    if (!clip) { return false; }
+    this.moving = false; this.followLoop = loop;
+    if (!this.following || this.active !== clip) {
+      const token = ++this.sequence;
+      this.active?.stop(); if (this.active) { this.active.enabled = false; }
+      this.active = clip; this.following = true; clip.enabled = true;
+      clip.onFinished(() => {
+        if (!this.disposed && !this.paused && this.sequence === token && this.followLoop) { clip.restart(); }
+      });
+      clip.speed = speed; clip.restart(); clip.seek(phase);
+    } else {
+      clip.speed = speed;
+      if (Math.abs(clip.progress - phase) > 0.12) { clip.seek(phase); }
+    }
+    if (this.paused || speed === 0) { clip.pause(); }
+    return true;
+  }
 
   private find(names: string[]): Animation | null {
     for (const name of names) {
@@ -103,6 +128,7 @@ export class NativePetController {
 
   perform(action: PetAction): void {
     if (this.disposed) { return; }
+    this.following = false;
     this.moving = false; this.roaming = false; this.greeting = false;
     if (action === 'walk' || action === 'run') {
       this.roaming = true; this.pickTarget(); this.moving = true;

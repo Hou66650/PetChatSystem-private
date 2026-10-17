@@ -558,6 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="/static/js/den/native-den.js?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/three.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/OrbitControls.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/GLTFLoader.js') }}"></script>
@@ -705,6 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // ---------- 渲染基础 ----------
+        let nativeDen = null;
         const canvas = document.getElementById('den-canvas');
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });
         window.PaitWebCompat?.prepareRenderer(renderer);
@@ -775,7 +777,7 @@ document.addEventListener('DOMContentLoaded', () => {
         qualitySelect.onchange=()=>{renderBudget.setMode(qualitySelect.value);try{localStorage.setItem('mpc_render_quality',qualitySelect.value);}catch(e){}renderStats();};
         function renderStats(){
             const s=renderBudget.stats();
-            document.getElementById('render-summary').textContent=`${s.fps?s.fps.toFixed(0)+' FPS':'测量中'} · ${s.level} · 清晰度 ${s.ratio.toFixed(2)}×`;
+            document.getElementById('render-summary').textContent=`${nativeDen?.enabled?'网页层 ':''}${s.fps?s.fps.toFixed(0)+' FPS':'测量中'} · ${s.level} · 清晰度 ${s.ratio.toFixed(2)}×${nativeDen?.enabled||nativeDen?.unsupported?' · '+nativeDen.mode():''}`;
             document.getElementById('render-device').textContent=s.device;
             document.getElementById('render-vision').textContent=dv?.running?`${dv.backend==='worker'?'后台线程':'主线程回退'} / ${dv.delegate||'CPU'}`:'未开启';
             document.getElementById('render-advice').textContent=s.software?'当前使用软件渲染，请开启浏览器图形加速。':/Intel|UHD|Iris/i.test(s.device)?'当前使用 Intel 核显。如果电脑有独显，可按下方方法切换高性能显卡。':'页面已请求高性能 GPU；上方显示的是浏览器实际选择的设备。';
@@ -3887,7 +3889,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         `play=${facePlay?.ball?.phase || "-"} route=${locomotion?.path.length || 0} blocked=${movementBlocked()}`;
                 }
             }
-            renderer.render(scene, camera);
+            if (nativeDen) nativeDen.render(scene, camera);
+            else renderer.render(scene, camera);
         }
 
         function resize() {
@@ -3939,6 +3942,14 @@ document.addEventListener('DOMContentLoaded', () => {
             SPECS, spawnPet, setAnim, speak, petBlink, camera: () => camera,
             get grabbed() { return grabbed; }, get dropping() { return dropping; },
         };
+        if (window.NativeDenBridge) {
+            nativeDen = new NativeDenBridge.Bridge({canvas, renderer, read: () => ({
+                scene, camera, petModel, spec: SPECS[currentPetId], action: activeAction,
+                busy: spawnBusy, special: grabbed || dropping || !!gestureAction || visionOn ||
+                    !!facePlay?.ball || !!toyWorkshop?.held
+            })});
+            window.PaitNativeDen = nativeDen;
+        }
     })();
     </script>
 </body>
