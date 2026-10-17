@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-17",
+  "document": "派特岛Windows高画质迁移方案-v2.html",
+  "scope": "独立子 Agent 的方案完整度审查；不是实机性能分数，也不是客户端已实现声明。",
+  "method": "三位审查员读取文件独立评分。下面是报告摘要，非逐字原文；按最严单项阻断闭环，不以平均分代替放行。",
+  "weights": {
+    "路线架构": 20,
+    "视觉光影": 25,
+    "性能资产": 25,
+    "迁移数据": 20,
+    "交付风险": 10
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "document": "派特岛原生客户端实施方案.html",
+      "reviews": [
+        {
+          "reviewer": "/root/visual_review_v2",
+          "score": 74,
+          "breakdown": [
+            13,
+            16,
+            21,
+            17,
+            7
+          ],
+          "issues": [
+            "Windows旗舰路线不清晰，原稿偏鸿蒙",
+            "毛发、玻璃与高模运行加工边界不足"
+          ]
+        },
+        {
+          "reviewer": "/root/performance_review_v2",
+          "score": 74,
+          "breakdown": [
+            16,
+            15,
+            18,
+            17,
+            8
+          ],
+          "issues": [
+            "微几何、显存与异步加载预算不足",
+            "原生FPS与插帧、图像质量、失败分支缺乏完整门槛"
+          ]
+        },
+        {
+          "reviewer": "/root/delivery_review_v2",
+          "score": 72,
+          "breakdown": [
+            12,
+            16,
+            21,
+            16,
+            7
+          ],
+          "issues": [
+            "完整玩法迁移矩阵不全",
+            "实际协议缺口、责任与交付闭环不足"
+          ]
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "document": "v2初稿",
+      "reviews": [
+        {
+          "reviewer": "/root/visual_review_v2",
+          "score": 97,
+          "breakdown": [
+            20,
+            24,
+            24,
+            20,
+            9
+          ],
+          "issues": [
+            "p95≤18ms不能保证平均60FPS",
+            "兼容档昼夜与烘焙光照边界",
+            "P1园艺样片和P3真实业务范围冲突"
+          ],
+          "resolution": [
+            "逐轮逐压力场景无FG不限帧实际平均≥60",
+            "兼容档动态直射与探针近似，声明间接光差异",
+            "P1隔离非经济夹具，P2是正式写入前置"
+          ]
+        },
+        {
+          "reviewer": "/root/performance_review_v2",
+          "score": 97,
+          "breakdown": [
+            20,
+            25,
+            22,
+            20,
+            10
+          ],
+          "issues": [
+            "各轮与最坏压力场景统计、排除数据、长帧失败规则不够严",
+            "长期内存增长没有阈值"
+          ],
+          "resolution": [
+            "冻结nearest-rank与1%low算法，独立判定，重复应用级>100ms失败",
+            "P5两小时与20次切岛，15分钟定点资源基线和增长门槛"
+          ]
+        },
+        {
+          "reviewer": "/root/delivery_review_v2",
+          "score": 94,
+          "breakdown": [
+            19,
+            24,
+            24,
+            18,
+            9
+          ],
+          "issues": [
+            "身份与奖励防伪",
+            "schema/seq/operation_id/outbox有效期",
+            "P1与P2依赖",
+            "SDR/HDR/DPI/帧率一致性",
+            "硬件支持范围",
+            "私模撤权边界与灾难恢复"
+          ],
+          "resolution": [
+            "令牌主体与服务端奖励事实校验",
+            "epoch序号、跨重启幂等、过期不自动重放",
+            "隔离样片与正式写入前置",
+            "增加显示与动态稳定性验收",
+            "P0资格矩阵、P5验证厂商范围",
+            "明确下载资产不可保证擦除；RPO/RTO、确认交易审计核账"
+          ]
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "document": "v2修订终稿",
+      "reviews": [
+        {
+          "reviewer": "/root/visual_review_v2",
+          "score": 100,
+          "breakdown": [
+            20,
+            25,
+            25,
+            20,
+            10
+          ],
+          "verdict": "重新读取全文，上一轮三项缺口关闭，未发现剩余方案级阻断。"
+        },
+        {
+          "reviewer": "/root/performance_review_v2",
+          "score": 100,
+          "breakdown": [
+            20,
+            25,
+            25,
+            20,
+            10
+          ],
+          "verdict": "统计、长测、平均60门槛、CPU/GPU工作时间和DXGI预算已闭环，未发现剩余方案级阻断。"
+        },
+        {
+          "reviewer": "/root/delivery_review_v2",
+          "score": 100,
+          "breakdown": [
+            20,
+            25,
+            25,
+            20,
+            10
+          ],
+          "verdict": "重新读取修订文件，前轮六项缺口关闭，可以提交用户审批。"
+        }
+      ]
+    }
+  ],
+  "runtime_status": {
+    "implementation_started": false,
+    "engine_qualified": false,
+    "visual_accepted": false,
+    "fps_verified": false,
+    "migration_complete": false
+  },
+  "pending_gates": [
+    "用户审阅方案",
+    "P0锁版、硬件和导入资格",
+    "P1真实猫岛画质与无FG性能双门槛",
+    "P2账号与协议故障注入",
+    "P3四岛花园压力与持久化",
+    "P4跨世界UGC隐私",
+    "P5长测、发行、恢复和用户验收"
+  ],
+  "source_baseline": "21e5b6b / v1.69.1；交付前同步上游46dfb8a（网页资产缓存与鸿蒙可见性修复），未改变上述客户端方案决策。"
+}
