@@ -1,3 +1,4 @@
+if(process.argv.includes('--worker')){global.Worker=require('./helpers/browser-route-worker.cjs');global.PetRoutePlanner=require('../static/js/den/navigation-planner');}
 const T=require('../static/js/vendor/three.min.js'),{Controller:Agent}=require('../static/js/den/cat-agent'),{Controller:Life}=require('../static/js/den/cat-life'),{Controller:Move}=require('../static/js/den/pet-locomotion'),{Navigation}=require('../static/js/den/scene-navigation'),layout=require('../static/js/den/mistwood-layout'),catalog=require('../static/data/cat-world.json'),assert=require('node:assert/strict');
 (async()=>{
  let now=0,state='idle',agent;const completed=[];const garden=new (require('../static/js/den/greenhouse').Garden)({scope:'test',storage:null,now:()=>now});
@@ -8,6 +9,7 @@ const T=require('../static/js/vendor/three.min.js'),{Controller:Agent}=require('
  for(const place of catalog){
    agent.energy=.85;agent.hunger=.1;agent.thirst=.1;agent.lastTarget=null;agent.memory=Object.fromEntries(catalog.filter(p=>p!==place).map(p=>[p.id,{visits:10}]));
    await agent.plan();assert.equal(agent.goal.target,place.id);
+   if(process.argv.includes('--worker'))assert(!agent.routeWorkerFailed,place.id+': route must use the real worker without fallback');
    for(let i=0;i<7000&&agent.goal;i++){
      now+=1000/60;const blocked=!agent.acting&&!['idle','walk','trot','run','turnLeft','turnRight'].includes(state);
      agent.step(1/60,blocked);const acting=life.step(1/60,blocked);move.update(1/60,blocked||acting);assert(nav.isWalkable(model.position));

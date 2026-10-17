@@ -17,6 +17,18 @@ function fixture(navigation=new Navigation({radius:10})){
  const c=new Controller({navigation,model,speed:.34,gaits:{walk:.32,trot:.63,run:.93,turnLeft:1,turnRight:1},animate:(key,rate)=>frames.push({key,rate}),rest:()=>{}});
  c.autonomous=false;return {c,model,frames};
 }
+{
+ const {c,model}=fixture(),target={x:0,z:4},plannedPath=c.navigation.route(model.position,target);
+ c.navigation.route=()=>{throw Error('worker path must not repeat A*');};
+ assert(c.goTo(target,{plannedPath}));assert.notEqual(c.path,plannedPath,'movement owns its route copy');
+ const current=c.path;
+ for(const invalid of [[],null,[{x:NaN,z:4}],[{x:0,z:3}],[{x:99,z:4},target]])assert.equal(c.goTo(target,{plannedPath:invalid}),false);
+ assert.equal(c.path,current,'invalid proposal leaves active movement unchanged');
+ c.navigation.obstacles.push({kind:'rect',x:0,z:2,w:2,d:1});
+ assert.equal(c.goTo(target,{plannedPath}),false,'live obstacle invalidates a previously clear route');
+ c.navigation.obstacles=[];model.position.x=99;
+ assert.equal(c.goTo(target,{plannedPath}),false,'live start must remain walkable');
+}
 function trip(gait,dt){
  const f=fixture();f.c.goTo({x:0,z:4},{gait});let time=0,beforeStop=0;
  for(;time<60&&f.c.path.length;time+=dt){

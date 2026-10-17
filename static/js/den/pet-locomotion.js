@@ -38,8 +38,20 @@
             this.path=[{...dock.target}];this.requestedGait='walk';this.owner='agent';this.wait=0;return true;
         }
         toggle(enabled) {this.enabled=enabled;this.interrupt(1);if (!enabled && !this.blocked) this.animate('idle',1);}
-        goTo(point,{gait='auto'}={}) {
-            const path=this.navigation.route(this.model.position,point);
+        goTo(point,{gait='auto',plannedPath}={}) {
+            let path;
+            if(plannedPath!==undefined){
+                // A worker proposal must still be safe from the live position.
+                // Validate its segments without repeating the expensive A* search.
+                if(!point||!Number.isFinite(point.x)||!Number.isFinite(point.z)||!Array.isArray(plannedPath)||!plannedPath.length||!this.navigation.isWalkable(this.model.position))return false;
+                let previous=this.model.position;
+                for(const p of plannedPath){
+                    if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.z)||!this.navigation.segmentClear(previous,p))return false;
+                    previous=p;
+                }
+                if(Math.hypot(previous.x-point.x,previous.z-point.z)>1e-6)return false;
+                path=plannedPath.map(p=>({x:p.x,z:p.z}));
+            }else path=this.navigation.route(this.model.position,point);
             if (!path) return false;
             const length=path.reduce((s,p,i)=>s+Math.hypot(p.x-(i?path[i-1]:this.model.position).x,p.z-(i?path[i-1]:this.model.position).z),0);
             this.requestedGait=gait==='auto'?(length>1.2?'trot':'walk'):gait;
