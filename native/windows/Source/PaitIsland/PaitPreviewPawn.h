@@ -16,6 +16,7 @@ public:
     virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(UInputComponent* Input) override;
     virtual void Tick(float DeltaSeconds) override;
+    FString LoadingIsland;
 private:
     UPROPERTY(VisibleAnywhere) TObjectPtr<USpringArmComponent> Arm;
     UPROPERTY(VisibleAnywhere) TObjectPtr<UCameraComponent> Camera;
@@ -35,6 +36,9 @@ private:
     void PetCat();
     void RestPet();
     void ToggleAgent();
+    void Eat(); void Drink(); void GoHome(); void Play(); void FillBowls();
+    void Meadow(); void Sakura();
+    float IslandLoadDelay = 0.f;
     bool bOrbit = false;
     bool bPan = false;
     float TargetDistance = 2200.f;

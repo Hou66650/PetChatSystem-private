@@ -1,0 +1,532 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-18",
+  "scope": "Isolated native dual-island daily-care preview, not production migration completion",
+  "package": "Saved/Packages/ShippingDaily",
+  "executable_sha256": "AC56AE0400783361F561C441D0B0D3181464192654FB8C679EF250B1C5A0C713",
+  "packaged_content": [
+    {
+      "file": "global.ucas",
+      "bytes": 3204496,
+      "sha256": "6CC6AB101AE1918029D99FC530CB6C38A3B95E93396F847CEA5C0BE6FCB71D21"
+    },
+    {
+      "file": "global.utoc",
+      "bytes": 782,
+      "sha256": "FC8A92952E7A0B2276F2C762D0DCE4EAE6D0D95BAD0E1547186DFF44D057024E"
+    },
+    {
+      "file": "PaitIsland-Windows.pak",
+      "bytes": 10960354,
+      "sha256": "F6F96B63C80DEDCB24A01A46FB3D21460AEFE7C999E6AE0A578B0C9B21DF5DA0"
+    },
+    {
+      "file": "PaitIsland-Windows.ucas",
+      "bytes": 1281517776,
+      "sha256": "3697AE7A144133BC3462F782D623C747F25B7DE709E5AD3EBDC527655ECE5E36"
+    },
+    {
+      "file": "PaitIsland-Windows.utoc",
+      "bytes": 777050,
+      "sha256": "BEDBE6A05B7CFB9D421E9786F7139BE630F8C2CCDD805939F5EAA613C648434E"
+    }
+  ],
+  "build_logs": [
+    "Saved/Qualification/two-island-final-package.log",
+    "Saved/Qualification/two-island-isolated-tests-build.log"
+  ],
+  "care": {
+    "Meadow": {
+      "run": "Saved/Qualification/Meadow-Care-20261018-012703",
+      "passed": true,
+      "map": "P1_MeadowV2",
+      "elapsed_seconds": 77.05883026123047,
+      "meals": 1,
+      "drinks": 1,
+      "home_rests": 1,
+      "plays": 1,
+      "food_remaining": 90,
+      "water_remaining": 92,
+      "nav_height": 110,
+      "nav_radius": 35,
+      "events": [
+        {
+          "session_seconds": 8.00881290435791,
+          "action": "walk",
+          "outcome": "started",
+          "source": "player",
+          "place": "Forest clearing",
+          "position_cm": "X=-190.000 Y=-200.000 Z=2.500"
+        },
+        {
+          "session_seconds": 20.869524002075195,
+          "action": "walk",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Forest clearing",
+          "position_cm": "X=114.293 Y=544.683 Z=2.500"
+        },
+        {
+          "session_seconds": 20.869524002075195,
+          "action": "food",
+          "outcome": "started",
+          "source": "player",
+          "place": "Forest clearing",
+          "position_cm": "X=114.293 Y=544.683 Z=2.500"
+        },
+        {
+          "session_seconds": 27.332761764526367,
+          "action": "food",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Forest clearing",
+          "position_cm": "X=114.293 Y=544.683 Z=2.500"
+        },
+        {
+          "session_seconds": 27.34227752685547,
+          "action": "walk",
+          "outcome": "started",
+          "source": "player",
+          "place": "Forest clearing",
+          "position_cm": "X=114.293 Y=544.683 Z=2.500"
+        },
+        {
+          "session_seconds": 28.681964874267578,
+          "action": "walk",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Forest clearing",
+          "position_cm": "X=181.312 Y=547.827 Z=2.500"
+        },
+        {
+          "session_seconds": 28.681964874267578,
+          "action": "water",
+          "outcome": "started",
+          "source": "player",
+          "place": "Forest clearing",
+          "position_cm": "X=181.312 Y=547.827 Z=2.500"
+        },
+        {
+          "session_seconds": 34.150726318359375,
+          "action": "water",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Forest clearing",
+          "position_cm": "X=181.312 Y=547.827 Z=2.500"
+        },
+        {
+          "session_seconds": 34.16046905517578,
+          "action": "walk",
+          "outcome": "started",
+          "source": "player",
+          "place": "Forest clearing",
+          "position_cm": "X=181.312 Y=547.827 Z=2.500"
+        },
+        {
+          "session_seconds": 43.37870788574219,
+          "action": "walk",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Cat shelter",
+          "position_cm": "X=-298.181 Y=444.840 Z=12.765"
+        },
+        {
+          "session_seconds": 43.37870788574219,
+          "action": "home",
+          "outcome": "started",
+          "source": "player",
+          "place": "Cat shelter",
+          "position_cm": "X=-298.181 Y=444.840 Z=12.765"
+        },
+        {
+          "session_seconds": 53.06338119506836,
+          "action": "home",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Cat shelter",
+          "position_cm": "X=-298.181 Y=444.840 Z=12.765"
+        },
+        {
+          "session_seconds": 53.072452545166016,
+          "action": "walk",
+          "outcome": "started",
+          "source": "player",
+          "place": "Cat shelter",
+          "position_cm": "X=-298.181 Y=444.840 Z=12.765"
+        },
+        {
+          "session_seconds": 72.86573028564453,
+          "action": "walk",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Forest clearing",
+          "position_cm": "X=34.799 Y=-322.814 Z=2.500"
+        },
+        {
+          "session_seconds": 72.86573028564453,
+          "action": "toy",
+          "outcome": "started",
+          "source": "player",
+          "place": "Forest clearing",
+          "position_cm": "X=34.799 Y=-322.814 Z=2.500"
+        },
+        {
+          "session_seconds": 77.04802703857422,
+          "action": "toy",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Forest clearing",
+          "position_cm": "X=34.799 Y=-322.814 Z=2.500"
+        }
+      ],
+      "home_capture": {
+        "file": "meadow-care-home.png",
+        "sha256": "6046C07E17CE9213983FF7396EA42C378304B1FAF9116B233E5D7ED365EDEDFC"
+      }
+    },
+    "Sakura": {
+      "run": "Saved/Qualification/Sakura-Care-20261018-012829",
+      "passed": true,
+      "map": "P1_SakuraV2",
+      "elapsed_seconds": 58.170040130615234,
+      "meals": 1,
+      "drinks": 1,
+      "home_rests": 1,
+      "plays": 1,
+      "food_remaining": 90,
+      "water_remaining": 92,
+      "nav_height": 110,
+      "nav_radius": 35,
+      "events": [
+        {
+          "session_seconds": 8.007039070129395,
+          "action": "walk",
+          "outcome": "started",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-0.000 Y=800.000 Z=3.500"
+        },
+        {
+          "session_seconds": 12.884716033935547,
+          "action": "walk",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-98.777 Y=1101.270 Z=11.277"
+        },
+        {
+          "session_seconds": 12.884716033935547,
+          "action": "food",
+          "outcome": "started",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-98.777 Y=1101.270 Z=11.277"
+        },
+        {
+          "session_seconds": 19.359180450439453,
+          "action": "food",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-98.777 Y=1101.270 Z=11.277"
+        },
+        {
+          "session_seconds": 19.368337631225586,
+          "action": "walk",
+          "outcome": "started",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-98.777 Y=1101.270 Z=11.277"
+        },
+        {
+          "session_seconds": 20.287307739257812,
+          "action": "walk",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-58.934 Y=1104.665 Z=11.277"
+        },
+        {
+          "session_seconds": 20.287307739257812,
+          "action": "water",
+          "outcome": "started",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-58.934 Y=1104.665 Z=11.277"
+        },
+        {
+          "session_seconds": 25.76158905029297,
+          "action": "water",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-58.934 Y=1104.665 Z=11.277"
+        },
+        {
+          "session_seconds": 25.771486282348633,
+          "action": "walk",
+          "outcome": "started",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-58.934 Y=1104.665 Z=11.277"
+        },
+        {
+          "session_seconds": 38.282806396484375,
+          "action": "walk",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-41.829 Y=576.958 Z=36.200"
+        },
+        {
+          "session_seconds": 38.282806396484375,
+          "action": "home",
+          "outcome": "started",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-41.829 Y=576.958 Z=36.200"
+        },
+        {
+          "session_seconds": 48.388912200927734,
+          "action": "home",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-41.829 Y=576.958 Z=36.200"
+        },
+        {
+          "session_seconds": 48.39899826049805,
+          "action": "walk",
+          "outcome": "started",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-41.829 Y=576.958 Z=36.200"
+        },
+        {
+          "session_seconds": 53.984153747558594,
+          "action": "walk",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-151.913 Y=671.065 Z=3.500"
+        },
+        {
+          "session_seconds": 53.984153747558594,
+          "action": "toy",
+          "outcome": "started",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-151.913 Y=671.065 Z=3.500"
+        },
+        {
+          "session_seconds": 58.157718658447266,
+          "action": "toy",
+          "outcome": "completed",
+          "source": "player",
+          "place": "Island ground",
+          "position_cm": "X=-151.913 Y=671.065 Z=3.500"
+        }
+      ],
+      "home_capture": {
+        "file": "sakura-care-home.png",
+        "sha256": "2CFDEB859C264433F621DB3181CBD746F72FDCDBB7EA34C1125E22793C041D33"
+      }
+    }
+  },
+  "agent_regression": {
+    "run": "Saved/Qualification/MeadowAgent-20261018-012514",
+    "passed": true,
+    "error": "",
+    "actual_map": "P1_MeadowV2",
+    "decision_source": "native_local_policy_no_cloud_model",
+    "elapsed_seconds": 48.41535568237305,
+    "travel_cm": 336.7651062011719,
+    "completed_explorations": 1,
+    "completed_rests": 1,
+    "completed_pet_responses": 1,
+    "player_priority": true,
+    "pause_resume": true,
+    "visit_memory_disk_roundtrip": true,
+    "manual_input_validated": false,
+    "performance_qualified": false,
+    "events": [
+      {
+        "session_seconds": 5.001760482788086,
+        "action": "walk",
+        "outcome": "started",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-190.000 Y=-200.000 Z=2.500"
+      },
+      {
+        "session_seconds": 6.199191093444824,
+        "action": "walk",
+        "outcome": "interrupted",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-162.147 Y=-229.578 Z=2.500"
+      },
+      {
+        "session_seconds": 6.199191093444824,
+        "action": "greet",
+        "outcome": "started",
+        "source": "player",
+        "place": "Forest clearing",
+        "position_cm": "X=-162.147 Y=-229.578 Z=2.500"
+      },
+      {
+        "session_seconds": 8.113619804382324,
+        "action": "greet",
+        "outcome": "completed",
+        "source": "player",
+        "place": "Forest clearing",
+        "position_cm": "X=-162.147 Y=-229.578 Z=2.500"
+      },
+      {
+        "session_seconds": 23.116960525512695,
+        "action": "walk",
+        "outcome": "started",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-162.147 Y=-229.578 Z=2.500"
+      },
+      {
+        "session_seconds": 27.755630493164062,
+        "action": "walk",
+        "outcome": "completed",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.437 Y=-525.150 Z=2.500"
+      },
+      {
+        "session_seconds": 27.755630493164062,
+        "action": "sniff",
+        "outcome": "started",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.437 Y=-525.150 Z=2.500"
+      },
+      {
+        "session_seconds": 29.05393409729004,
+        "action": "sniff",
+        "outcome": "completed",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.437 Y=-525.150 Z=2.500"
+      },
+      {
+        "session_seconds": 35.34465789794922,
+        "action": "rest",
+        "outcome": "started",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.437 Y=-525.150 Z=2.500"
+      },
+      {
+        "session_seconds": 45.02080535888672,
+        "action": "rest",
+        "outcome": "completed",
+        "source": "local_policy",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.437 Y=-525.150 Z=2.500"
+      },
+      {
+        "session_seconds": 45.03235626220703,
+        "action": "pet",
+        "outcome": "started",
+        "source": "player",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.437 Y=-525.150 Z=2.500"
+      },
+      {
+        "session_seconds": 48.40663528442383,
+        "action": "pet",
+        "outcome": "completed",
+        "source": "player",
+        "place": "Forest clearing",
+        "position_cm": "X=-180.437 Y=-525.150 Z=2.500"
+      }
+    ]
+  },
+  "sakura_render": {
+    "run": "Saved/Qualification/Sakura-Care-20261018-012619",
+    "status": "rendered_capture_saved",
+    "actual_map": "P1_SakuraV2",
+    "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "screenshot": "D:/PetChatSystem-Client/native/windows/Saved/Qualification/Sakura-Care-20261018-012619/runtime-smoke.png",
+    "frames": 3168,
+    "performance_qualified": false,
+    "capture": {
+      "file": "sakura-v2-runtime.png",
+      "sha256": "C21594CDADBCCA6BB971056DED0D38560A1ACF9B2A5F60F8FB70F137DE663936"
+    }
+  },
+  "sakura_art": {
+    "source": "art/sakura-cinematic-v2/sakura-archipelago.blend",
+    "source_sha256": "88eb4d3fd808cb1b1f4fdb0935cd9f211634aea12bac1b7f4c626c68b8a93e86",
+    "source_unchanged_checked": true,
+    "runtime_modules": 66,
+    "exported_base_triangles": 21934162,
+    "finishing": {
+      "status": "saved_requires_runtime_review",
+      "preserved_petal_meshes": [
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_04_part00/sakura-V2_03-04-part00.sakura-V2_03-04-part00",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_04_part01/sakura-V2_03-04-part01.sakura-V2_03-04-part01",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_04_part02/sakura-V2_03-04-part02.sakura-V2_03-04-part02",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_04_part03/sakura-V2_03-04-part03.sakura-V2_03-04-part03",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_05_part00/sakura-V2_03-05-part00.sakura-V2_03-05-part00",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_05_part01/sakura-V2_03-05-part01.sakura-V2_03-05-part01",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_05_part02/sakura-V2_03-05-part02.sakura-V2_03-05-part02",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_05_part03/sakura-V2_03-05-part03.sakura-V2_03-05-part03",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_05_part04/sakura-V2_03-05-part04.sakura-V2_03-05-part04",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_05_part05/sakura-V2_03-05-part05.sakura-V2_03-05-part05",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_05_part06/sakura-V2_03-05-part06.sakura-V2_03-05-part06",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_05_part07/sakura-V2_03-05-part07.sakura-V2_03-05-part07",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_06_part00/sakura-V2_03-06-part00.sakura-V2_03-06-part00",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_06_part01/sakura-V2_03-06-part01.sakura-V2_03-06-part01",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_06_part02/sakura-V2_03-06-part02.sakura-V2_03-06-part02",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_06_part03/sakura-V2_03-06-part03.sakura-V2_03-06-part03",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_06_part04/sakura-V2_03-06-part04.sakura-V2_03-06-part04",
+        "/Game/Imported/P1SakuraV2/sakura_V2_03_07/sakura-V2_03-07.sakura-V2_03-07"
+      ],
+      "sun_pitch": -40,
+      "sun_yaw": 55,
+      "sky_intensity": 1.8,
+      "fixed_ev100": 12.5
+    },
+    "shelter_edit": {
+      "source_sha256": "10e0a16f326458afbd41c9a70f1d2079e683013f05d79a9ffdd0e837bc4334c4",
+      "changed_vertices": {
+        "Companion detail_V2 aged chestnut timber": 1920,
+        "Companion detail_V2 ink glazed roof": 20,
+        "Companion detail_V2 muted olive woven cushions": 608
+      },
+      "edit": "shelter roof/posts raised 1.5x above 0.30m; shelter/bed moved (+1.6,+5.5,0)m to runtime-probed open ground; bowls and other furniture unchanged"
+    }
+  },
+  "visual_review": {
+    "reviewed": [
+      "sakura-v2-runtime.png",
+      "sakura-care-home.png",
+      "meadow-care-home.png"
+    ],
+    "findings": [
+      "All four Sakura terraces and connecting bridges are visible; blossom coverage restored after preserve-area rebuild.",
+      "Pets reach the actual shelter mats. Current rest clips still look too upright; realistic settled/lying pose is not accepted.",
+      "Cloud grain, dark contact shadows and procedural material detail remain unfinished."
+    ],
+    "final_visual_quality_accepted": false
+  },
+  "manual_input_validated": false,
+  "performance_qualified": false,
+  "production_backend_connected": false,
+  "limitations": [
+    "Care tests validate real routes, queued actions, completion events and stock changes; they do not validate natural body deformation.",
+    "Drinking reuses eat; mouth/bowl alignment, true grounded sleeping and animation blending remain unfinished.",
+    "All authored island routes and three Sakura bridges have not been exhaustively tested; unsafe routes remain rejected.",
+    "Scene-based UI and keyboard handlers compile, but human input/map switching are not fully manually checked.",
+    "Procedural micro-materials, foliage contact/shadows, cloud quality and long-run frame times/memory remain unfinished.",
+    "No account, cloud chat/voice, planting economy or portal migration in this isolated P0/P1 package."
+  ],
+  "repository_version": "1.88.0"
+}

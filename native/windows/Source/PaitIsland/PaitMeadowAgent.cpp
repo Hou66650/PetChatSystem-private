@@ -19,26 +19,26 @@
 void APaitMeadowPet::InitializeAgent()
 {
     for (const TCHAR* Name : {TEXT("sniff"),TEXT("alert_scan"),TEXT("sit_down"),TEXT("sit_idle"),
-                             TEXT("stand_up"),TEXT("touch_head"),TEXT("affection"),TEXT("paw_greeting")})
+                             TEXT("eat"),TEXT("nose_lick"),TEXT("play_bow"),TEXT("stand_up"),TEXT("touch_head"),TEXT("affection"),TEXT("paw_greeting")})
     {
-        const FString N=FString(TEXT("cat"))+Name;
+        const FString N=PetPrefix+Name;
         AgentClips.Add(Name,LoadObject<UAnimSequence>(nullptr,
-            *(TEXT("/Game/Imported/P0Cat/cat/SkeletalMeshes/")+N+TEXT(".")+N)));
+            *(PetRoot+N+TEXT(".")+N)));
     }
     AgentRandom.Initialize(bAgentTest ? 4217 : FMath::Rand());
-    bAutonomy=!bTest;
-    MemoryFile=(bAgentTest || bTest) ? EvidenceDir/TEXT("preview-memory.json") :
-        FPaths::ProjectSavedDir()/TEXT("Preview/MeadowV2/agent-memory.json");
+    bAutonomy=!bTest && !bCareTest;
+    MemoryFile=(bAgentTest || bTest || bCareTest) ? EvidenceDir/TEXT("preview-memory.json") :
+        FPaths::ProjectSavedDir()/TEXT("Preview")/IslandMap/TEXT("agent-memory.json");
     // Only this isolated preview's map-scoped visit counters survive restart.
     // No offline hunger penalty or production account state is loaded.
     FString Json; TSharedPtr<FJsonObject> Root;
-    if (!bTest && !bAgentTest && IFileManager::Get().FileSize(*MemoryFile)<65536 &&
+    if (!bTest && !bAgentTest && !bCareTest && IFileManager::Get().FileSize(*MemoryFile)<65536 &&
         FFileHelper::LoadFileToString(Json,*MemoryFile) &&
         FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Json),Root) && Root)
     {
         FString Map; double Schema=0;
         const TSharedPtr<FJsonObject>* Stored=nullptr;
-        if (Root->TryGetStringField(TEXT("map"),Map) && Map==TEXT("P1_MeadowV2") &&
+        if (Root->TryGetStringField(TEXT("map"),Map) && Map==IslandMap &&
             Root->TryGetNumberField(TEXT("schema"),Schema) && Schema==1 &&
             Root->TryGetObjectField(TEXT("visits"),Stored) && (*Stored)->Values.Num()<=128)
             for (const auto& Pair : (*Stored)->Values)
@@ -47,11 +47,17 @@ void APaitMeadowPet::InitializeAgent()
                 if (Pair.Key.Len()<48 && Pair.Value->TryGetNumber(Count) && FMath::IsFinite(Count) && Count>=0 && Count<=9999)
                     Visits.Add(FString(Pair.Key.ToView()),static_cast<int32>(Count));
             }
+        if(Map==IslandMap && Schema==1)
+        {
+            double Value=0;
+            if(Root->TryGetNumberField(TEXT("preview_food_percent"),Value) && FMath::IsFinite(Value)) Food=FMath::Clamp(static_cast<float>(Value),0.f,100.f);
+            if(Root->TryGetNumberField(TEXT("preview_water_percent"),Value) && FMath::IsFinite(Value)) Water=FMath::Clamp(static_cast<float>(Value),0.f,100.f);
+        }
     }
 }
 void APaitMeadowPet::EndPlay(const EEndPlayReason::Type Reason)
 {
-    if (!bTest && !bAgentTest) SaveMemory();
+    if (!bTest && !bAgentTest && !bCareTest) SaveMemory();
     Super::EndPlay(Reason);
 }
 FString APaitMeadowPet::CellAt(const FVector& Point) const
@@ -94,7 +100,9 @@ void APaitMeadowPet::SaveMemory() const
     TSharedRef<FJsonObject> Root=MakeShared<FJsonObject>(), Stored=MakeShared<FJsonObject>();
     for (const auto& Pair : Visits) Stored->SetNumberField(Pair.Key,Pair.Value);
     Root->SetNumberField(TEXT("schema"),1);
-    Root->SetStringField(TEXT("map"),TEXT("P1_MeadowV2"));
+    Root->SetNumberField(TEXT("preview_food_percent"),Food);
+    Root->SetNumberField(TEXT("preview_water_percent"),Water);
+    Root->SetStringField(TEXT("map"),IslandMap);
     Root->SetStringField(TEXT("scope"),TEXT("isolated_local_preview_not_account_memory"));
     Root->SetObjectField(TEXT("visits"),Stored);
     FString Json; FJsonSerializer::Serialize(Root,TJsonWriterFactory<>::Create(&Json));
@@ -106,6 +114,7 @@ void APaitMeadowPet::SaveMemory() const
 void APaitMeadowPet::InterruptAction(const FString& Reason)
 {
     if (!ActiveAction.IsEmpty()) Remember(ActiveAction,Reason);
+    PendingCare.Empty();
     ActiveAction.Empty(); Route.Reset(); ActionSteps.Reset(); GreetingRemaining=0;
     bAgentRoute=false; bAgentAction=false;
 }
@@ -120,7 +129,10 @@ void APaitMeadowPet::StartAction(const FString& Action,bool FromAgent)
     };
     // The imported sleep loop is not a complete grounded lying pose. Use the
     // source's foot-corrected seated sequence until a proper sleep rig is baked.
-    if (Action==TEXT("rest")) { Add(TEXT("sit_down")); Add(TEXT("sit_idle"),8.f,true); Add(TEXT("stand_up")); }
+    if (Action==TEXT("rest") || Action==TEXT("home")) { Add(TEXT("sit_down")); Add(TEXT("sit_idle"),8.f,true); Add(TEXT("stand_up")); }
+    else if (Action==TEXT("food")) { Add(TEXT("eat"),5.f,true); Add(TEXT("nose_lick")); }
+    else if (Action==TEXT("water")) { Add(TEXT("eat"),4.f,true); Add(TEXT("nose_lick")); }
+    else if (Action==TEXT("toy")) { Add(TEXT("play_bow")); Add(TEXT("paw_greeting")); }
     else if (Action==TEXT("pet")) { Add(TEXT("touch_head")); Add(TEXT("affection")); }
     else if (Action==TEXT("greet")) Add(TEXT("paw_greeting"));
     else if (Action==TEXT("sniff")) Add(TEXT("sniff"));
@@ -141,7 +153,7 @@ void APaitMeadowPet::TickAction(float Dt)
 {
     GreetingRemaining=FMath::Max(0.f,GreetingRemaining-Dt);
     ActionStepRemaining-=Dt;
-    if (ActiveAction==TEXT("rest")) Energy=FMath::Min(1.f,Energy+Dt*.035f);
+    if (ActiveAction==TEXT("rest") || ActiveAction==TEXT("home")) Energy=FMath::Min(1.f,Energy+Dt*.035f);
     if (ActionStepRemaining>0) return;
     ++ActionStep;
     if (ActionSteps.IsValidIndex(ActionStep))
@@ -154,9 +166,14 @@ void APaitMeadowPet::TickAction(float Dt)
         return;
     }
     Remember(ActiveAction,TEXT("completed"));
+    if (ActiveAction==TEXT("food")) { Food=FMath::Max(0.f,Food-10.f); Fullness=1.f; ++Meals; }
+    if (ActiveAction==TEXT("water")) { Water=FMath::Max(0.f,Water-8.f); Hydration=1.f; ++Drinks; }
+    if (ActiveAction==TEXT("home")) ++HomeRests;
+    if (ActiveAction==TEXT("toy")) { ++Plays; Curiosity=.1f; }
     if (ActiveAction==TEXT("rest")) ++CompletedRests;
     if (ActiveAction==TEXT("pet")) ++CompletedPets;
     if (ActiveAction==TEXT("sniff") && bAgentAction) { ++CompletedExplorations; Curiosity=FMath::Max(0.f,Curiosity-.22f); }
+    SaveMemory();
     ActiveAction.Empty(); ActionSteps.Reset(); GreetingRemaining=0; SetClip(Idle);
     bAgentAction=false; NextDecision=AgentClock+AgentRandom.FRandRange(5.f,9.f);
     Status=TEXT("Taking a quiet moment");
@@ -168,6 +185,13 @@ void APaitMeadowPet::Arrived()
     if (Visits.Contains(LastCell) || Visits.Num()<128)
         Visits.FindOrAdd(LastCell)=FMath::Min(9999,Visits.FindRef(LastCell)+1);
     SaveMemory();
+    if (!PendingCare.IsEmpty())
+    {
+        const FString Kind=PendingCare; const bool Agent=bAgentRoute; PendingCare.Empty();
+        CurrentYaw=(CareFacing-Feet).Rotation().Yaw-HeadingOffset;
+        ApplyPose(Feet,CurrentYaw); StartAction(Kind,Agent);
+        Status=TEXT("At ")+Kind+TEXT(" station"); return;
+    }
     if (bAgentRoute) { bAgentRoute=false; StartAction(TEXT("sniff"),true); }
     else { SetClip(Idle); PlayerLeaseUntil=AgentClock+15; Status=TEXT("Arrived at your chosen spot"); }
 }
@@ -175,7 +199,7 @@ void APaitMeadowPet::Blocked()
 {
     Remember(TEXT("walk"),TEXT("blocked"));
     if (!TargetCell.IsEmpty()) BlockedCells.Add(TargetCell,AgentClock+60.f);
-    ActiveAction.Empty(); bAgentRoute=false; SetClip(Idle);
+    PendingCare.Empty(); ActiveAction.Empty(); bAgentRoute=false; SetClip(Idle);
     NextDecision=AgentClock+8; Status=TEXT("Stopped at an unsafe edge; choosing another route");
 }
 void APaitMeadowPet::Pet() { StartAction(TEXT("pet"),false); }
@@ -194,10 +218,15 @@ void APaitMeadowPet::TickAgent(float Dt)
     const float LifeDt=FMath::Min(Dt,.25f); // a stalled/background frame is not hours of neglect
     Energy=FMath::Max(.15f,Energy-LifeDt*(Route.IsEmpty()?.00035f:.001f));
     Curiosity=FMath::Min(1.f,Curiosity+LifeDt*.003f);
+    Fullness=FMath::Max(.1f,Fullness-LifeDt*.0005f);
+    Hydration=FMath::Max(.1f,Hydration-LifeDt*.0007f);
     if (!bAutonomy || !ActiveAction.IsEmpty() || !Route.IsEmpty() ||
         AgentClock<PlayerLeaseUntil || AgentClock<NextDecision) return;
     NextDecision=AgentClock+8.f;
     for (auto It=BlockedCells.CreateIterator();It;++It) if (It.Value()<=AgentClock) It.RemoveCurrent();
+    if (Hydration<.3f && Water>=8.f && Care(TEXT("water"),true)) return;
+    if (Fullness<.3f && Food>=10.f && Care(TEXT("food"),true)) return;
+    if (!bAgentTest && Energy<.3f && Care(TEXT("home"),true)) return;
     if (Energy<.3f) { AgentReason=TEXT("Energy is low; resting before exploring"); StartAction(TEXT("rest"),true); return; }
     if (Curiosity<.35f) { AgentReason=TEXT("Recently explored; taking time to listen"); StartAction(TEXT("observe"),true); return; }
     struct FCandidate { FVector Position; FString Cell; float Score; };

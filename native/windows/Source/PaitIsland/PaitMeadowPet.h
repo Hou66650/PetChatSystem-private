@@ -19,6 +19,11 @@ public:
     virtual void EndPlay(const EEndPlayReason::Type Reason) override;
     bool RequestMove(const FVector& Destination, bool FromAgent = false);
     void Greet();
+    bool Care(const FString& Kind, bool FromAgent = false);
+    FString GetCareSummary() const;
+    bool CareAt(const FVector& Hit);
+    FString CareHint(const FVector& Hit) const;
+    void Refill();
     void Pet();
     void Rest();
     void ToggleAutonomy();
@@ -26,6 +31,21 @@ public:
     FString GetLastEvent() const;
     const FString& GetStatus() const { return Status; }
 private:
+    void InitializeCare();
+    void TickCareTest(float Dt);
+    void FinishCareTest(const FString& Error);
+    mutable FString LastGroundIssue;
+    FString LastRouteIssue;
+    FString PendingCare;
+    FString CareStageName;
+    FVector CareFacing = FVector::ZeroVector;
+    TMap<FString,FVector> Stations;
+    TMap<FString,FVector> Approaches;
+    float Food = 100.f, Water = 100.f, Fullness = .8f, Hydration = .8f;
+    int32 Meals = 0, Drinks = 0, HomeRests = 0, Plays = 0, CareTestStage = 0;
+    bool bCareTest = false;
+    FString PetRoot, PetPrefix, IslandMap;
+    bool bSakura = false;
     bool InitializeGrounding();
     bool GroundAt(const FVector& Point, FVector& Surface) const;
     void SetClip(UAnimSequence* Clip, bool Loop = true);

@@ -2,7 +2,8 @@ param(
     [Parameter(Mandatory=$true)][string]$EngineRoot,
     [ValidateSet("Generate", "Editor", "CreateMap", "ImportAsset", "ImportPet", "RepairFur", "RepairLighting", "ImportMeadow", "FinishMeadow", "PrepareNavigation", "Package")][string]$Mode = "Editor",
     [ValidateSet("Development", "Shipping")][string]$Configuration = "Development",
-    [string]$PythonExe = "python"
+    [string]$PythonExe = "python",
+    [ValidatePattern('^[A-Za-z0-9_-]*$')][string]$ArchiveName = ""
 )
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -136,8 +137,9 @@ switch ($Mode) {
     }
     "Package" {
         if (-not (Test-Path -LiteralPath $mapFile)) { throw "Build editor and CreateMap first." }
-        $archive = Join-Path $projectRoot "Saved/Packages/$Configuration"
-        & $uat BuildCookRun "-project=$projectFile" -noP4 -platform=Win64 "-clientconfig=$Configuration" -build -cook -stage -pak -iostore -archive "-archivedirectory=$archive" -utf8output
+        $folder = if($ArchiveName){$ArchiveName}else{$Configuration}
+        $archive = Join-Path $projectRoot "Saved/Packages/$folder"
+        & $uat BuildCookRun "-project=$projectFile" -noP4 -platform=Win64 "-clientconfig=$Configuration" -build -cook -stage -pak -iostore -archive "-archivedirectory=$archive" -UbtArgs=-MaxParallelActions=2 -utf8output
     }
 }
 if ($LASTEXITCODE -ne 0) { throw "$Mode failed with exit code $LASTEXITCODE; qualification remains unpassed." }

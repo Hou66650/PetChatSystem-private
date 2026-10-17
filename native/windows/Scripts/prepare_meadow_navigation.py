@@ -14,8 +14,9 @@ ground = {
     'Cloud_meadow_Weathered_limestone', 'Mistwood_Forest_floor',
     'Mistwood_Weathered_limestone', 'Farm_terrace_Garden_fine_gravel',
     'Farm_terrace_Garden_weathered_limestone',
-    'Dressed_bridge_masonry_Craft_cut_warm_limestone', 'cat_home_linen',
+    'Dressed_bridge_masonry_Craft_cut_warm_limestone', 'Dressed_bridge_masonry_Chalk_coping_stone', 'cat_home_linen',
     'Conservatory_craft_Chalk_coping_stone',
+    *('cat_home_cedar_'+str(i) for i in range(5)),
 }
 solid_tokens = ('Cedar_bark', 'Patinated_iron', 'Weathered_bench',
                 'Garden_oiled_larch', 'Garden_patinated_iron', 'Garden_ivory_ceramic',
@@ -66,7 +67,7 @@ if nav is None:
     nav.set_actor_label('P1 dynamic navigation')
 nav.set_editor_property('runtime_generation',unreal.RuntimeGenerationType.DYNAMIC)
 nav.set_editor_property('agent_radius',35.0)
-nav.set_editor_property('agent_height',144.0)
+nav.set_editor_property('agent_height',110.0)
 # The integration fixture's old (500,-400) spawn intersects the east-side pots.
 # Place the isolated demo cat on the open central lawn, clear of authored props.
 for a in actors.get_all_level_actors():

@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "date": "2026-10-17",
+  "date": "2026-10-18",
   "phase": "P1",
-  "status": "p1_native_local_agent_life_loop_preview",
+  "status": "p1_dual_island_local_care_preview",
   "branch": "codex/windows-client",
   "client_version": "0.1.0",
   "framework": {
     "engine": "Unreal Engine 5.8.3 / CL 58210709",
     "runtime": "C++ / Blueprint",
-    "rendering": "DX12 SM6; software Lumen baseline; HWRT and Nanite require separate qualification",
+    "rendering": "DX12 SM6; software Lumen; selected Sakura foliage uses Nanite; FPS/HWRT remain unqualified",
     "backend": "Existing Python backend retained; no production API access in P0"
   },
   "source_written": [
@@ -62,7 +62,11 @@
     "native_local_agent_runtime": true,
     "native_player_interrupt_and_pause_resume": true,
     "native_seated_rest_and_pet_action_sequence": true,
-    "native_preview_visit_memory_disk_roundtrip": true
+    "native_preview_visit_memory_disk_roundtrip": true,
+    "meadow_shipping_care_sequence": true,
+    "sakura_shipping_care_sequence": true,
+    "sakura_runtime_import": true,
+    "sakura_shipping_actual_map_rendered": true
   },
   "not_validated": {
     "interactive_editor_ui": false,
@@ -76,10 +80,10 @@
   },
   "blockers": [],
   "next": [
-    "Migrate bowl-side eating/drinking, shelter return and toy interaction into the isolated native scene",
-    "Connect authenticated backend/LLM planning after separating native world coordinates and read-only scene contract; keep local autonomy available offline",
-    "Improve canopy lighting, foliage camera occlusion and grass/VSM pressure; measure actual frame times",
-    "Refine full-island routes, seated/lying anatomy, animation blending and per-foot contact; then care/planting business migration"
+    "Finish material micro-surfaces, mouth/bowl alignment, grounded seated/lying poses and animation blending",
+    "Measure frame times and memory on both maps; check full-island routes and manual mouse/keyboard transitions",
+    "Connect authenticated read-only backend and cloud planning with a native scene contract; retain offline local autonomy",
+    "Continue account, planting, voice and portal business migration in the later approved phases; no production writes in P0/P1"
   ],
   "notes": [
     "Unit tests use synthetic data and fake temporary engine files; these are not device performance or compile results.",
@@ -90,7 +94,8 @@
     "2026-10-17 latest Shipping completed 300.006 seconds, 794 changed pose samples, 9 actual captures. Three clips only; six-camera visual quality is not accepted.",
     "Fur material repair required writing the modified Unreal struct back into its array; a fresh editor process verified asset and component binding before Cook. Runtime comparison confirms reduced white fibres.",
     "P0 is isolated fixed-clip playback, not the pet Agent; five minutes and frame counts are not FPS or long-duration memory qualification.",
-    "2026-10-17 thin-glass Shipping: 300.009s, 791 changed pose samples, nine captures reviewed. Latest user relaxed stage gates; full P0 matrix no longer blocks P1 scene integration."
+    "2026-10-17 thin-glass Shipping: 300.009s, 791 changed pose samples, nine captures reviewed. Latest user relaxed stage gates; full P0 matrix no longer blocks P1 scene integration.",
+    "2026-10-18: final Shipping dual-island care and local Agent regression passed. Care paths and stock verified; pose quality, manual controls, full-island routes and FPS remain unaccepted. See two-island-care-evidence.json."
   ],
   "installed_tools": {
     "epic_launcher": "D:\\Epic Games\\Launcher",
@@ -110,7 +115,7 @@
     "complete": true,
     "completed_local": "2026-10-17T13:46:05+08:00"
   },
-  "runtime_evidence": "lighting-evidence.json",
+  "runtime_evidence": "two-island-care-evidence.json",
   "p1_progress": {
     "v2_export_modules": 21,
     "v2_export_bytes": 610011964,
@@ -129,7 +134,7 @@
       "Canopy shade too dark; editor close-up showed non-Nanite VSM queue overflow. Needs targeted rendering optimization.",
       "Mouse/key events are compiled but not manually tested; no FPS claim."
     ],
-    "last_shipping_run": "Saved/Qualification/MeadowAgent-20261017-201336",
+    "last_shipping_run": "Saved/Qualification/Meadow-Care-20261018-012703",
     "interaction_work": {
       "status": "shipping_automated_route_and_greeting_passed",
       "collision_meshes": 34,
@@ -141,12 +146,39 @@
     },
     "agent_work": {
       "status": "shipping_local_life_loop_passed",
-      "evidence": "meadow-agent-evidence.json",
-      "run": "Saved/Qualification/MeadowAgent-20261017-201336",
+      "evidence": "two-island-care-evidence.json",
+      "run": "Saved/Qualification/MeadowAgent-20261018-012514",
       "source": "native_local_policy_no_cloud_model",
-      "actual_travel_cm": 337.0646057128906,
+      "actual_travel_cm": 336.7651062011719,
       "manual_input_validated": false,
       "production_backend_connected": false
+    },
+    "care_work": {
+      "status": "both_shipping_sequences_passed",
+      "evidence": "two-island-care-evidence.json",
+      "maps": [
+        "P1_MeadowV2",
+        "P1_SakuraV2"
+      ],
+      "production_backend_connected": false,
+      "manual_input_validated": false,
+      "final_animation_quality_accepted": false
+    },
+    "sakura_work": {
+      "map": "/Game/Preview/P1_SakuraV2",
+      "export_modules": 22,
+      "runtime_modules": 66,
+      "exported_base_triangles": 21934162,
+      "pet_mesh_layers": 2,
+      "imported_animation_clips": 35,
+      "nanite_petal_preserve_area_meshes": 18,
+      "shelter_center_cm": [
+        -40,
+        600,
+        38
+      ],
+      "launcher": "打开樱花岛预览.cmd",
+      "final_visual_quality_accepted": false
     }
   }
 }

@@ -3,10 +3,14 @@
 #include "Animation/AnimSequence.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/StaticMeshActor.h"
+#include "Engine/StaticMesh.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "NavigationSystem.h"
 #include "NavigationPath.h"
+#include "NavigationData.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -24,28 +28,48 @@ APaitMeadowPet::APaitMeadowPet() { PrimaryActorTick.bCanEverTick = true; }
 void APaitMeadowPet::BeginPlay()
 {
     Super::BeginPlay();
+    bSakura=GetWorld()->GetMapName().Contains(TEXT("Sakura"));
+    IslandMap=bSakura ? TEXT("P1_SakuraV2") : TEXT("P1_MeadowV2");
+    PetRoot=bSakura ? TEXT("/Game/Imported/P1Shiba/qiuqiu/SkeletalMeshes/") : TEXT("/Game/Imported/P0Cat/cat/SkeletalMeshes/");
+    PetPrefix=bSakura ? TEXT("qiuqiu") : TEXT("cat");
+    if(!bSakura) for(TActorIterator<AStaticMeshActor> It(GetWorld());It;++It)
+    {
+        const UStaticMesh* Mesh=It->GetStaticMeshComponent()->GetStaticMesh();
+        // Cedar batches include the low doorway threshold as well as walls.
+        // Only upward-facing physical support is accepted by GroundAt.
+        if(Mesh && Mesh->GetPathName().StartsWith(TEXT("/Game/Imported/P1MeadowV2_Conventional/")) &&
+           Mesh->GetName().StartsWith(TEXT("cat_home_cedar_"))) It->Tags.AddUnique(TEXT("PaitGround"));
+    }
     for (TActorIterator<ASkeletalMeshActor> It(GetWorld()); It; ++It)
     {
         USkeletalMeshComponent* C = It->GetSkeletalMeshComponent();
-        if (!C->GetSkeletalMeshAsset() || !C->GetSkeletalMeshAsset()->GetPathName().StartsWith(TEXT("/Game/Imported/P0Cat/"))) continue;
+        if (!C->GetSkeletalMeshAsset() || !C->GetSkeletalMeshAsset()->GetPathName().StartsWith(PetRoot)) continue;
         C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         C->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
         Cats.Add(*It);
     }
-    auto Clip = [](const TCHAR* Name) {
-        const FString N = FString(TEXT("cat")) + Name;
-        return LoadObject<UAnimSequence>(nullptr, *(TEXT("/Game/Imported/P0Cat/cat/SkeletalMeshes/") + N + TEXT(".") + N));
+    auto Clip = [this](const TCHAR* Name) {
+        const FString N = PetPrefix + Name;
+        return LoadObject<UAnimSequence>(nullptr, *(PetRoot + N + TEXT(".") + N));
     };
     Idle = Clip(TEXT("idle_breathe")); Walk = Clip(TEXT("walk")); Greeting = Clip(TEXT("paw_greeting"));
     SetClip(Idle);
     if (UNavigationSystemV1* Nav=FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()))
     {
         Nav->GetDefaultNavDataInstance(FNavigationSystem::Create);
+        // Serialized qualification maps carried the human-sized 144 cm config.
+        // The supported agent and each existing runtime nav data must agree.
+        for(TActorIterator<ANavigationData> It(GetWorld());It;++It)
+        {
+            FNavDataConfig Config=It->GetConfig(); Config.AgentHeight=110.f;
+            Config.AgentRadius=35.f; Config.AgentStepHeight=18.f; It->SetConfig(Config);
+        }
         Nav->Build();
     }
     bTest = FParse::Param(FCommandLine::Get(), TEXT("PaitMeadowTest"));
     bAgentTest = FParse::Param(FCommandLine::Get(), TEXT("PaitAgentTest"));
-    if (bTest || bAgentTest)
+    bCareTest=FParse::Param(FCommandLine::Get(),TEXT("PaitCareTest"));
+    if (bTest || bAgentTest || bCareTest)
     {
         FParse::Value(FCommandLine::Get(), TEXT("PaitEvidenceDir="), EvidenceDir);
         if (EvidenceDir.IsEmpty()) EvidenceDir = FPaths::ProjectSavedDir() / TEXT("Qualification/MeadowInteraction");
@@ -53,21 +77,32 @@ void APaitMeadowPet::BeginPlay()
         IFileManager::Get().MakeDirectory(*EvidenceDir, true);
     }
     InitializeAgent();
+    InitializeCare();
 }
 bool APaitMeadowPet::GroundAt(const FVector& Point, FVector& Surface) const
 {
-    FHitResult Hit;
-    FCollisionQueryParams Params(SCENE_QUERY_STAT(PaitGround), true);
-    if (!GetWorld()->LineTraceSingleByChannel(Hit, Point + FVector(0,0,160), Point - FVector(0,0,240), ECC_Visibility, Params)) return false;
-    if (!Hit.GetActor() || !Hit.GetActor()->ActorHasTag(TEXT("PaitGround")) || Hit.ImpactNormal.Z < .8f) return false;
-    Surface = Hit.ImpactPoint;
-    return true;
+    FCollisionQueryParams Params(SCENE_QUERY_STAT(PaitGround),true);
+    LastGroundIssue.Empty();
+    // A paw spans small masonry joints. Check a bounded 6 cm support disk,
+    // never bridge an unsupported gap or relax the 18 cm movement step limit.
+    for(const FVector& Offset : {FVector::ZeroVector,FVector(6,0,0),FVector(-6,0,0),FVector(0,6,0),FVector(0,-6,0)})
+    {
+        FHitResult Hit;
+        if(!GetWorld()->LineTraceSingleByChannel(Hit,Point+Offset+FVector(0,0,80),Point+Offset-FVector(0,0,240),ECC_Visibility,Params))
+        { if(Offset.IsZero()) LastGroundIssue=TEXT("no collision hit"); continue; }
+        if(Offset.IsZero()) LastGroundIssue=FString::Printf(TEXT("hit=%s normal=%s point=%s ground=%d"),
+            *GetNameSafe(Hit.GetActor()),*Hit.ImpactNormal.ToString(),*Hit.ImpactPoint.ToString(),Hit.GetActor()&&Hit.GetActor()->ActorHasTag(TEXT("PaitGround")));
+        if(!Hit.GetActor() || !Hit.GetActor()->ActorHasTag(TEXT("PaitGround")) || Hit.ImpactNormal.Z<.8f) continue;
+        Surface=FVector(Point.X,Point.Y,Hit.ImpactPoint.Z); return true;
+    }
+    return false;
 }
 bool APaitMeadowPet::InitializeGrounding()
 {
-    if (Cats.Num()!=3 || !Idle || !Walk || !Greeting) { Status=TEXT("Pet assets unavailable"); return false; }
+    if (Cats.Num()!=(bSakura?2:3) || !Idle || !Walk || !Greeting) { Status=TEXT("Pet assets unavailable"); return false; }
     UNavigationSystemV1* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
     if (!Nav) { Status=TEXT("Navigation system unavailable"); return false; }
+    if (UNavigationSystemV1::IsNavigationBeingBuiltOrLocked(GetWorld())) { Status=TEXT("Preparing complete island paths..."); return false; }
     FNavLocation Projected;
     // Seed on the original cat position, never teleport onto a disconnected roof.
     if (!Nav->ProjectPointToNavigation(Cats[0]->GetActorLocation(), Projected, FVector(500,500,180)))
@@ -106,15 +141,17 @@ void APaitMeadowPet::SetClip(UAnimSequence* Clip, bool Loop)
 bool APaitMeadowPet::RequestMove(const FVector& Destination, bool FromAgent)
 {
     if (!bReady) return false;
+    LastRouteIssue.Empty();
     UNavigationSystemV1* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
     FNavLocation Projected;
     FVector Ground;
-    if (!Nav || !Nav->ProjectPointToNavigation(Destination,Projected,FVector(45,45,80)) ||
-        !GroundAt(Projected.Location,Ground) || FMath::Abs(Ground.Z-Projected.Location.Z)>60.f)
-    { Status=TEXT("Choose reachable open ground"); return false; }
+    if (!Nav || !Nav->ProjectPointToNavigation(Destination,Projected,FVector(45,45,80)))
+    { GroundAt(Destination,Ground); LastRouteIssue=TEXT("navigation_projection: ")+Destination.ToString()+TEXT(" physical=")+LastGroundIssue; Status=TEXT("Choose reachable open ground"); return false; }
+    if(!GroundAt(Projected.Location,Ground) || FMath::Abs(Ground.Z-Projected.Location.Z)>60.f)
+    { LastRouteIssue=TEXT("projected_ground: ")+Projected.Location.ToString()+TEXT(" physical=")+LastGroundIssue; Status=TEXT("Choose reachable open ground"); return false; }
     UNavigationPath* Path = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(),Feet,Projected.Location);
     if (!Path || !Path->IsValid() || Path->IsPartial() || Path->PathPoints.Num()<2)
-    { Status=TEXT("No safe path to that spot"); return false; }
+    { LastRouteIssue=TEXT("path_missing_or_partial: ")+Feet.ToString()+TEXT(" -> ")+Projected.Location.ToString(); Status=TEXT("No safe path to that spot"); return false; }
     // Check the actual walking surface before committing. Recast voxels can
     // smooth over narrow steps or pots that are too high for this gait.
     FVector Previous=Feet;
@@ -124,9 +161,9 @@ bool APaitMeadowPet::RequestMove(const FVector& Destination, bool FromAgent)
         const int32 Samples=FMath::Max(1,FMath::CeilToInt(FVector::Dist2D(A,B)/12.f));
         for (int32 I=1; I<=Samples; ++I)
         {
-            FVector Surface;
+            FVector Surface=FVector::ZeroVector;
             if (!GroundAt(FMath::Lerp(A,B,static_cast<float>(I)/Samples),Surface) || FMath::Abs(Surface.Z-Previous.Z)>18.f)
-            { Status=TEXT("That route needs a safer crossing"); return false; }
+            { LastRouteIssue=TEXT("surface_check sample=")+FMath::Lerp(A,B,static_cast<float>(I)/Samples).ToString()+TEXT(" previous=")+Previous.ToString()+TEXT(" surface=")+Surface.ToString()+TEXT(" ")+LastGroundIssue; Status=TEXT("That route needs a safer crossing"); return false; }
             Previous=Surface;
         }
     }
@@ -172,7 +209,7 @@ void APaitMeadowPet::Tick(float DeltaSeconds)
                 const FVector Candidate=Feet+Delta/Distance*FMath::Min(Distance,65.f*FMath::Min(DeltaSeconds,.05f));
                 FVector Ground;
                 if (!GroundAt(Candidate,Ground) || FMath::Abs(Ground.Z-Feet.Z)>18.f)
-                { Route.Reset(); Blocked(); }
+                { LastRouteIssue=TEXT("moving: feet=")+Feet.ToString()+TEXT(" candidate=")+Candidate.ToString()+TEXT(" ground=")+Ground.ToString()+TEXT(" ")+LastGroundIssue; Route.Reset(); Blocked(); }
                 else
                 {
                     TravelCm+=FVector::Dist2D(Feet,Ground); Feet=Ground;
@@ -183,6 +220,7 @@ void APaitMeadowPet::Tick(float DeltaSeconds)
     }
     else if (GreetingRemaining>0.f) TickAction(DeltaSeconds);
     TickAgent(DeltaSeconds);
+    if (bCareTest && !bTestFinished) TickCareTest(DeltaSeconds);
     if (bTest && !bTestFinished) TickInteractionTest(DeltaSeconds);
     if (bAgentTest && !bTestFinished) TickAgentTest(DeltaSeconds);
 }

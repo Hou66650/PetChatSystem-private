@@ -1,7 +1,7 @@
-param([int]$TimeoutSeconds=210)
+param([int]$TimeoutSeconds=210,[string]$Package='ShippingDaily')
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
-$exe=Join-Path $root 'Saved/Packages/Shipping/PaitIsland/Binaries/Win64/PaitIsland-Win64-Shipping.exe'
+$exe=Join-Path $root "Saved/Packages/$Package/PaitIsland/Binaries/Win64/PaitIsland-Win64-Shipping.exe"
 if (-not (Test-Path -LiteralPath $exe)) { throw 'Build Shipping first.' }
 $out=Join-Path $root ('Saved/Qualification/MeadowAgent-'+(Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory -Path $out | Out-Null
@@ -17,7 +17,7 @@ if($child.ExitCode -ne 0 -or -not $data.passed -or $data.actual_map -ne 'P1_Mead
 foreach($name in @('agent-exploring.png','agent-resting.png','preview-memory.json')) {
     if(-not (Test-Path -LiteralPath (Join-Path $out $name))) { throw "Missing evidence: $name" }
 }
-$paks=Join-Path $root 'Saved/Packages/Shipping/PaitIsland/Content/Paks'
+$paks=Join-Path $root "Saved/Packages/$Package/PaitIsland/Content/Paks"
 $content=@(Get-ChildItem -LiteralPath $paks -File | Where-Object {$_.Extension -in @('.pak','.utoc','.ucas')} | ForEach-Object {
     [ordered]@{file=$_.Name;bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName).Hash}
 })
