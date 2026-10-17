@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "status": "unqualified",
+  "engine": {
+    "candidate_series": "5.8",
+    "exact_version": null,
+    "build_id": null,
+    "build_version_sha256": null,
+    "preview_allowed": false
+  },
+  "compiler": null,
+  "windows_sdk": null,
+  "qualification": {
+    "editor_build": false,
+    "shipping_build": false,
+    "cook": false,
+    "launch": false,
+    "real_asset_import": false
+  },
+  "note": "Candidate only. Freeze exact installed versions after real qualification; no engine currently installed."
+}

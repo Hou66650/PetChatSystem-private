@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "purpose": "P0 public source reference freeze",
+  "runtime_ready": false,
+  "engine_import_tested": false,
+  "map_version_migration_tested": false,
+  "references": [
+    {
+      "source": "art/cloud-meadow-cinematic-v1/client-staging/architecture.glb",
+      "bytes": 14518532,
+      "sha256": "05d8c8c1291c60575335feddf122e6b17bc033bd1cd76607853a8a4e8842d100",
+      "unique_mesh_triangles": 170976,
+      "all_node_referenced_triangles": 170976,
+      "nodes": 7,
+      "meshes": 7,
+      "materials": 5,
+      "images": 6,
+      "note": "Counts all nodes, not only the active scene; geometry integrity not revalidated here."
+    },
+    {
+      "source": "art/cloud-meadow-cinematic-v1/client-staging/base-island.glb",
+      "bytes": 149555244,
+      "sha256": "7484c45a22a28b0049744e914d8fbef52d86a8626763f174445e836cb2969ce0",
+      "unique_mesh_triangles": 2165450,
+      "all_node_referenced_triangles": 2328854,
+      "nodes": 125,
+      "meshes": 101,
+      "materials": 66,
+      "images": 22,
+      "note": "Counts all nodes, not only the active scene; geometry integrity not revalidated here."
+    },
+    {
+      "source": "art/cloud-meadow-cinematic-v1/client-staging/botany.glb",
+      "bytes": 78144704,
+      "sha256": "6f74e95a2ef20cb833e9450f6b32e18e68b91cd71fa62a4ec8d3d79038d6a02b",
+      "unique_mesh_triangles": 1386254,
+      "all_node_referenced_triangles": 1386254,
+      "nodes": 25,
+      "meshes": 25,
+      "materials": 13,
+      "images": 9,
+      "note": "Counts all nodes, not only the active scene; geometry integrity not revalidated here."
+    },
+    {
+      "source": "art/cloud-meadow-cinematic-v1/client-staging/canopy-0.glb",
+      "bytes": 33219036,
+      "sha256": "115578637b9dfd73d14229a98fd1bf9f1a17a67859595bdc28edeb175c170daf",
+      "unique_mesh_triangles": 835328,
+      "all_node_referenced_triangles": 835328,
+      "nodes": 1,
+      "meshes": 1,
+      "materials": 1,
+      "images": 2,
+      "note": "Counts all nodes, not only the active scene; geometry integrity not revalidated here."
+    },
+    {
+      "source": "art/cloud-meadow-cinematic-v1/client-staging/canopy-1.glb",
+      "bytes": 33219036,
+      "sha256": "5ff0304cc653f0495ed59542539212bc0848492a6a145a2d33a852cf6e23e728",
+      "unique_mesh_triangles": 835328,
+      "all_node_referenced_triangles": 835328,
+      "nodes": 1,
+      "meshes": 1,
+      "materials": 1,
+      "images": 2,
+      "note": "Counts all nodes, not only the active scene; geometry integrity not revalidated here."
+    },
+    {
+      "source": "art/cloud-meadow-cinematic-v1/client-staging/canopy-2.glb",
+      "bytes": 33219036,
+      "sha256": "4e91e4d28115317e33e8e8bd3b41e863e851f67ea4cb65da253f555d0f3d2865",
+      "unique_mesh_triangles": 835328,
+      "all_node_referenced_triangles": 835328,
+      "nodes": 1,
+      "meshes": 1,
+      "materials": 1,
+      "images": 2,
+      "note": "Counts all nodes, not only the active scene; geometry integrity not revalidated here."
+    },
+    {
+      "source": "art/cloud-meadow-cinematic-v1/client-staging/canopy-3.glb",
+      "bytes": 33219036,
+      "sha256": "17aee41f55739155ea0d578c5f4a64eeccc46f7599676c93099a7bcecc7f8b89",
+      "unique_mesh_triangles": 835328,
+      "all_node_referenced_triangles": 835328,
+      "nodes": 1,
+      "meshes": 1,
+      "materials": 1,
+      "images": 2,
+      "note": "Counts all nodes, not only the active scene; geometry integrity not revalidated here."
+    },
+    {
+      "source": "art/cloud-meadow-cinematic-v1/client-staging/canopy-4.glb",
+      "bytes": 33219036,
+      "sha256": "d3063eab9dd67ea8f0282f4fd193ae0b39e9aabd4934f6bff955cf6a9fbf0b1e",
+      "unique_mesh_triangles": 835328,
+      "all_node_referenced_triangles": 835328,
+      "nodes": 1,
+      "meshes": 1,
+      "materials": 1,
+      "images": 2,
+      "note": "Counts all nodes, not only the active scene; geometry integrity not revalidated here."
+    },
+    {
+      "source": "art/cloud-meadow-cinematic-v1/client-staging/demonstration-props.glb",
+      "bytes": 22915456,
+      "sha256": "4c3f9dec872b32188d8bcacb09697e17f003182b1232417c60b58d830e87f24c",
+      "unique_mesh_triangles": 560880,
+      "all_node_referenced_triangles": 1599520,
+      "nodes": 118,
+      "meshes": 48,
+      "materials": 48,
+      "images": 14,
+      "note": "Counts all nodes, not only the active scene; geometry integrity not revalidated here."
+    },
+    {
+      "source": "art/cloud-meadow-cinematic-v1/client-staging/water.glb",
+      "bytes": 20389892,
+      "sha256": "964f9122ab78faa4344e4b3f3c6b3d157ebfa4a26138c66bb3eb65d6b149d253",
+      "unique_mesh_triangles": 229532,
+      "all_node_referenced_triangles": 229532,
+      "nodes": 4,
+      "meshes": 4,
+      "materials": 4,
+      "images": 9,
+      "note": "Counts all nodes, not only the active scene; geometry integrity not revalidated here."
+    }
+  ],
+  "anchors": [
+    {
+      "source": "art/cloud-meadow-cinematic-v1/cloud-meadow-master.blend",
+      "bytes": 296402476,
+      "sha256": "3c8469b140dbca90222f61a7892c19f4c05deebfc38462a21862b3722fff423b"
+    },
+    {
+      "source": "art/cloud-meadow-cinematic-v1/build-report.json",
+      "bytes": 3682,
+      "sha256": "0fe123255706cecba720d8fc0c9ef971a9aed72cf2ee2665389b573198f6da38"
+    },
+    {
+      "source": "static/data/farm-layout.json",
+      "bytes": 7250,
+      "sha256": "977070377381347e459339fad41863730b31dae293bbcbdb7d6211db41095fe3"
+    }
+  ],
+  "total_reference_bytes": 451619008,
+  "pending": [
+    "Blender runtime mesh/instance/LOD preparation",
+    "PBR material conversion",
+    "coordinate anchors",
+    "collision/navigation",
+    "Shipping import",
+    "GPU timing, VRAM and visual acceptance"
+  ]
+}

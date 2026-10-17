@@ -1,0 +1,26 @@
+{
+  "run_id": "REPLACE_WITH_ACTUAL_RUN_ID",
+  "scene_id": "greenhouse-night",
+  "build_hash": "REPLACE_WITH_EXE_SHA256",
+  "asset_manifest_hash": "REPLACE_WITH_MANIFEST_SHA256",
+  "raw_capture_sha256": "REPLACE_WITH_RAW_CAPTURE_SHA256",
+  "raw_capture_path": "raw-presentmon.csv",
+  "gpu_name": "REPLACE_WITH_ACTUAL_ADAPTER",
+  "driver": "REPLACE_WITH_ACTUAL_DRIVER",
+  "profile": "native-100",
+  "capture_tool_version": "REPLACE_WITH_ACTUAL_TOOL_VERSION",
+  "frame_generation": false,
+  "vsync": false,
+  "vrr": false,
+  "frame_cap": false,
+  "interval_kind": "actual_rendered_frame",
+  "warmup_seconds": 120,
+  "run_kind": "standard",
+  "internal_render_percent": 100,
+  "output_resolution": [
+    2560,
+    1600
+  ],
+  "excluded_rows": [],
+  "note": "Template is NOT evidence. Fill only from measured executable/settings/capture. Never present synthetic tests as a real device result."
+}

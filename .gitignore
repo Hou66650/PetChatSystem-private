@@ -56,3 +56,16 @@ A-手语识别模块研发/sign_dataset/rejected/
 /art/cinematic-islands-v1/**/*.glb
 /art/cinematic-islands-v1/**/*-preview.png
 /art/cinematic-islands*.log
+
+# Native Windows generated builds, local toolchain data and runtime assets
+/native/windows/.vs/
+/native/windows/Binaries/
+/native/windows/DerivedDataCache/
+/native/windows/Intermediate/
+/native/windows/Saved/
+/native/windows/*.sln
+/native/windows/Content/Qualification/*.umap
+/native/windows/Content/Imported/
+/native/windows/Plugins/*/Binaries/
+/native/windows/Plugins/*/Intermediate/
+/native/windows/Plugins/*/Saved/
