@@ -8,8 +8,16 @@
     "build_version_sha256": null,
     "preview_allowed": false
   },
-  "compiler": null,
-  "windows_sdk": null,
+  "compiler": {
+    "visual_studio_version": "17.14.37806.7",
+    "msvc_toolset": "14.44.35207",
+    "cl_file_version": "19.44.35229.0",
+    "status": "installed_smoke_passed_ue_unqualified"
+  },
+  "windows_sdk": {
+    "version": "10.0.26100.0",
+    "status": "installed_smoke_passed_ue_unqualified"
+  },
   "qualification": {
     "editor_build": false,
     "shipping_build": false,
@@ -17,5 +25,5 @@
     "launch": false,
     "real_asset_import": false
   },
-  "note": "Candidate only. Freeze exact installed versions after real qualification; no engine currently installed."
+  "note": "Compiler/SDK installed and standalone smoke passed. UE 5.8.3 download/install is in progress at D:\\Epic Games\\UE_5.8. Freeze exact engine build after actual UE compile, Cook and launch qualification."
 }

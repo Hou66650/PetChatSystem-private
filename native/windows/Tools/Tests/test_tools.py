@@ -72,6 +72,22 @@ class FrameTests(unittest.TestCase):
             self.assertEqual(frames.evaluate([16] * 37500, meta)["status"], "needs_evidence_review")
 
 class ToolchainTests(unittest.TestCase):
+    def test_sdk_fallback_survives_incomplete_registered_root(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            valid = Path(temporary) / "valid"
+            incomplete = Path(temporary) / "registered"
+            for relative in ("Include/10.0.26100.0/um/Windows.h",
+                             "Lib/10.0.26100.0/um/x64/kernel32.lib",
+                             "bin/10.0.26100.0/x64/rc.exe"):
+                path = valid / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.touch()
+            path = incomplete / "Include/10.0.26100.0/um/Windows.h"
+            path.parent.mkdir(parents=True)
+            path.touch()
+            result = toolchain.sdk_inventory([incomplete, valid, valid])
+            self.assertEqual(result, [{"root": str(valid.resolve()), "version": "10.0.26100.0"}])
+
     def test_missing_engine_is_blocked(self):
         with tempfile.TemporaryDirectory() as root:
             result = toolchain.engine_inventory(Path(root))

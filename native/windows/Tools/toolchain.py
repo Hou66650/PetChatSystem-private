@@ -73,6 +73,17 @@ def discover_engines() -> list[Path]:
     return sorted(roots, key=str)
 
 
+def sdk_inventory(roots: list[Path]) -> list[dict]:
+    found = []
+    for root in sorted({path.resolve() for path in roots}, key=str):
+        for header in root.glob("Include/*/um/Windows.h"):
+            version = header.parents[1].name
+            if (root / "Lib" / version / "um/x64/kernel32.lib").is_file() and \
+               (root / "bin" / version / "x64/rc.exe").is_file():
+                found.append({"root": str(root), "version": version})
+    return found
+
+
 def tool_inventory() -> dict:
     issues = []
     installs = []
@@ -96,24 +107,26 @@ def tool_inventory() -> dict:
                               "visual_studio_version": install.get("installationVersion")})
     if not compilers:
         issues.append("No installed x64 cl.exe found")
-    sdk_root = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Windows Kits/10"
+    sdk_roots = [Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Windows Kits/10",
+                 Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Windows Kits/10"]
     if sys.platform == "win32":
         import winreg
-        try:
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
-                                r"SOFTWARE\Microsoft\Windows Kits\Installed Roots") as key:
-                sdk_root = Path(winreg.QueryValueEx(key, "KitsRoot10")[0])
-        except OSError:
-            pass
-    sdks = []
-    for windows_header in sdk_root.glob("Include/*/um/Windows.h"):
-        version = windows_header.parents[1].name
-        if (sdk_root / "Lib" / version / "um/x64/kernel32.lib").is_file() and \
-           (sdk_root / "bin" / version / "x64/rc.exe").is_file():
-            sdks.append(version)
+        # Both registry views can exist but point to different SDK content.
+        # Never replace a valid fallback with an incomplete registered root.
+        for view in (winreg.KEY_WOW64_32KEY, winreg.KEY_WOW64_64KEY):
+            try:
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                    r"SOFTWARE\Microsoft\Windows Kits\Installed Roots",
+                                    0, winreg.KEY_READ | view) as key:
+                    sdk_roots.append(Path(winreg.QueryValueEx(key, "KitsRoot10")[0]))
+            except OSError:
+                pass
+    sdk_installs = sdk_inventory(sdk_roots)
+    sdks = sorted({item["version"] for item in sdk_installs})
     if not sdks:
         issues.append("Windows SDK headers, x64 libraries and rc.exe not found")
-    return {"compilers": compilers, "windows_sdks": sorted(sdks),
+    return {"compilers": compilers, "windows_sdks": sdks,
+            "windows_sdk_installations": sdk_installs,
             "issues": issues}
 
 
@@ -128,7 +141,7 @@ def main() -> int:
     issues = list(tools["issues"])
     if sys.platform != "win32":
         issues.append("Windows build requires Windows host")
-    if not engines:
+    if not any(engine["present"] for engine in engines):
         issues.append("Unreal Engine not found. Install via Epic or pass --engine-root.")
     usable = [engine for engine in engines if not engine["issues"]]
     if len(usable) != 1:

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "date": "2026-10-17",
   "phase": "P0",
-  "status": "blocked_on_toolchain_installation",
+  "status": "engine_installation_in_progress",
   "branch": "codex/windows-client",
   "client_version": "0.1.0",
   "framework": {
@@ -20,12 +20,14 @@
     "Single-capture frame-time evaluator"
   ],
   "validated": {
-    "python_unit_tests": 12,
-    "python_unit_tests_passed": 12,
+    "python_unit_tests": 13,
+    "python_unit_tests_passed": 13,
     "python_syntax": true,
     "powershell_syntax": true,
     "public_meadow_modules_inventoried": 10,
-    "source_bytes": 451619008
+    "source_bytes": 451619008,
+    "msvc_cpp_compile_and_link": true,
+    "dx12_adapter_device_smoke": true
   },
   "not_validated": {
     "ue_cpp_compile": false,
@@ -39,18 +41,33 @@
     "real_frame_rate": false
   },
   "blockers": [
-    "UE5 not installed (user confirmed)",
-    "MSVC x64 compiler not found",
-    "Windows SDK not found"
+    "UE 5.8.3 download/install is in progress at D:\\Epic Games\\UE_5.8; not ready to compile"
   ],
   "next": [
-    "User installs/logs into Epic launcher and installs release UE 5.8",
-    "Install compatible Visual Studio C++ workloads and SDK",
+    "Wait for Epic engine installation and verification to finish",
     "Rerun preflight, compile editor, create test map, package and launch",
-    "Record exact toolchain and import one real asset before expanding P1"
+    "Record exact engine version and import one real asset before expanding P1"
   ],
   "notes": [
     "Unit tests use synthetic data and fake temporary engine files; these are not device performance or compile results.",
-    "No webpage process restarted; no account or original art files modified."
-  ]
+    "No webpage process restarted; no account or original art files modified.",
+    "A standalone C++ DXGI/D3D12 program compiled, linked and created a device on the discrete GPU. This does not validate Unreal Engine or frame rate."
+  ],
+  "installed_tools": {
+    "epic_launcher": "D:\\Epic Games\\Launcher",
+    "visual_studio": "2022 17.14.37806.7",
+    "visual_studio_root": "D:\\DevTools\\VS2022",
+    "msvc_toolset": "14.44.35207",
+    "compiler_file_version": "19.44.35229.0",
+    "windows_sdk": "10.0.26100.0",
+    "windows_sdk_root": "C:\\Program Files (x86)\\Windows Kits\\10",
+    "gpu_smoke": "NVIDIA GeForce RTX 5060 Laptop GPU; D3D12 feature level 12_0 device creation succeeded; not a render/performance test"
+  },
+  "engine_installation": {
+    "version_selected": "5.8.3",
+    "destination": "D:\\Epic Games\\UE_5.8",
+    "download_gb_approx": 11.55,
+    "installed_gb_approx": 29.51,
+    "complete": false
+  }
 }
