@@ -72,7 +72,10 @@ A-手语识别模块研发/sign_dataset/rejected/
 /native/windows/*.sln
 /native/windows/Content/Qualification/*.umap
 /native/windows/Content/Qualification/Materials/M_P0_CatFurVertexColor.uasset
+/native/windows/Content/Qualification/Materials/MI_P0_ClearGlass.uasset
+/native/windows/Content/Qualification/Materials/M_P0_ThinGlass.uasset
 /native/windows/Content/Imported/
+/native/windows/Content/Preview/
 /native/windows/Plugins/*/Binaries/
 /native/windows/Plugins/*/Intermediate/
 /native/windows/Plugins/*/Saved/

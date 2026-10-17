@@ -2,7 +2,7 @@
   "schema_version": 1,
   "date": "2026-10-17",
   "phase": "P0",
-  "status": "three_clip_runtime_and_five_minute_run_passed_visual_and_ugc_pending",
+  "status": "p1_playable_scene_started_with_p0_followups",
   "branch": "codex/windows-client",
   "client_version": "0.1.0",
   "framework": {
@@ -45,7 +45,11 @@
     "six_camera_captures": 9,
     "five_minute_shipping_run": true,
     "fur_vertex_color_binding_persisted": true,
-    "fur_white_fibre_artifact_reduced": true
+    "fur_white_fibre_artifact_reduced": true,
+    "thin_glass_clarity_improved": true,
+    "sky_black_horizon_fixed": true,
+    "trot_obstruction_fixed": true,
+    "overview_cat_fully_framed": true
   },
   "not_validated": {
     "interactive_editor_ui": false,
@@ -59,10 +63,10 @@
   },
   "blockers": [],
   "next": [
-    "Correct trot-view obstruction and overview framing; qualify glass, horizon, environment fill and remaining animation quality",
-    "Complete private-GLB runtime import isolated PoC; editor Interchange import is not runtime support",
-    "Export latest dark-green/dark-wood V2 Blender assets with runtime materials, LOD, collision and navigation",
-    "Complete isolated P1 interaction and prescribed real performance qualification before production feature migration"
+    "Integrate complete dark-green/dark-wood V2 island and basic playable interaction now, per relaxed stage gates",
+    "Recreate procedural material detail and refine cat movement while iterating the playable scene",
+    "Run focused startup, interaction, obvious clipping and crash checks; defer full qualification matrix",
+    "Runtime private-GLB PoC and formal performance remain pending; no production API writes"
   ],
   "notes": [
     "Unit tests use synthetic data and fake temporary engine files; these are not device performance or compile results.",
@@ -72,7 +76,8 @@
     "Latest Shipping fixture repair and standard-cat regression launched successfully; evidence in shipping-fixed-evidence.json includes packaged-content hashes.",
     "2026-10-17 latest Shipping completed 300.006 seconds, 794 changed pose samples, 9 actual captures. Three clips only; six-camera visual quality is not accepted.",
     "Fur material repair required writing the modified Unreal struct back into its array; a fresh editor process verified asset and component binding before Cook. Runtime comparison confirms reduced white fibres.",
-    "P0 is isolated fixed-clip playback, not the pet Agent; five minutes and frame counts are not FPS or long-duration memory qualification."
+    "P0 is isolated fixed-clip playback, not the pet Agent; five minutes and frame counts are not FPS or long-duration memory qualification.",
+    "2026-10-17 thin-glass Shipping: 300.009s, 791 changed pose samples, nine captures reviewed. Latest user relaxed stage gates; full P0 matrix no longer blocks P1 scene integration."
   ],
   "installed_tools": {
     "epic_launcher": "D:\\Epic Games\\Launcher",
@@ -92,5 +97,22 @@
     "complete": true,
     "completed_local": "2026-10-17T13:46:05+08:00"
   },
-  "runtime_evidence": "six-views-evidence.json"
+  "runtime_evidence": "lighting-evidence.json",
+  "p1_progress": {
+    "v2_export_modules": 21,
+    "v2_export_bytes": 610011964,
+    "v2_base_triangles": 12770051,
+    "manifest": "meadow-v2-staging.json",
+    "editor_import": "running_not_yet_complete",
+    "import_process_id": 22336,
+    "import_log": "Saved/Qualification/meadow-v2-import-r3.log",
+    "import_session": 95654,
+    "notes": [
+      "Current worker builds large canopy meshes; inspect CPU/log/checkpoints before retrying.",
+      "Do not start concurrent UE build/Cook or Blender while the import worker is active.",
+      "P1 camera, map cooking, launcher and import script changes remain uncommitted pending compile/runtime check.",
+      "Original default import attempts retained; current namespace /Game/Imported/P1MeadowV2_Conventional.",
+      "First-look mesh distance fields disabled for import; full material/lighting work remains."
+    ]
+  }
 }

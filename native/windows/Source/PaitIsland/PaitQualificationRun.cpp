@@ -65,7 +65,8 @@ void APaitQualificationRun::BeginPlay()
         return A.GetSkeletalMeshComponent()->GetSkeletalMeshAsset()->GetName() < B.GetSkeletalMeshComponent()->GetSkeletalMeshAsset()->GetName();
     });
     if (Cats.Num() != 3) { Finish(TEXT("Expected three standard-cat mesh layers")); return; }
-    OriginalCatPosition = Cats[0]->GetActorLocation();
+    // Clear the bridge from all close-up sight lines without moving authored actors.
+    OriginalCatPosition = Cats[0]->GetActorLocation() + FVector(-250, 300, 0);
     bool bGlassFound = false;
     for (TActorIterator<AStaticMeshActor> It(GetWorld()); It; ++It)
     {
@@ -117,7 +118,7 @@ void APaitQualificationRun::EnterShot(int32 Index)
     case 2: Position = Target + FVector(360, 0, 40); break;
     case 3: Position = Target + FVector(600, 600, 250); break;
     case 4: Position = Target + FVector(-145, 0, 25); break;
-    default: LookAt = FVector(0, 0, 150); Position = LookAt + FVector(-1500, 1500, 1250); break;
+    default: LookAt = FVector(-150, 150, 90); Position = LookAt + FVector(-1900, 1900, 1600); break;
     }
     Camera->SetActorLocation(Position);
     Camera->SetActorRotation((LookAt - Position).Rotation());

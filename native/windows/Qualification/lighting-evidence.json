@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "scope": "P0 public standard cat and V1 architecture, not complete V2 island",
+  "shipping_run": {
+    "configuration": "Shipping",
+    "executable_sha256": "8326E960429EF32DA438AF9FAE587C574D6DBC8F0AB08480652955B9433C501D",
+    "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "elapsed_seconds": 300.0088823996484,
+    "captures": [
+      {
+        "file": "01-cat-portrait-a.png",
+        "sha256": "A009966DB1BBDE43B8FD0B676075E63EF35EBA7C4EC3601C4ABF8C00B19D056B"
+      },
+      {
+        "file": "01-cat-portrait-b.png",
+        "sha256": "D58DEF45BC08F639113C72F98584024955468FB8814D58C64B7C18CE7BB83D8D"
+      },
+      {
+        "file": "02-cat-walk-a.png",
+        "sha256": "31AF046C4C99E4A7B9951E12CE1394D51DC092D3EB81EFD424BD9C5A7738F622"
+      },
+      {
+        "file": "02-cat-walk-b.png",
+        "sha256": "4D96D33350ED9A872A6E1ACCFA95B897DDB09A2ECBD2DCE9ADE40C0D8BC2B416"
+      },
+      {
+        "file": "03-cat-trot-a.png",
+        "sha256": "A51A871BD19C7B42FBA0495BB30C3FDABF81CADBD70D95407F44BFE724237BA8"
+      },
+      {
+        "file": "03-cat-trot-b.png",
+        "sha256": "69393B2D98ECEF6AD171E812D266EF81F6F55AD29D9E3BE3BD05819A677E8773"
+      },
+      {
+        "file": "04-glass-outside.png",
+        "sha256": "CCCA7B190795C0990D64D499499FDDC8C9FF166A2D103F5CABA9C47F60BCBD8B"
+      },
+      {
+        "file": "05-glass-inside.png",
+        "sha256": "7BFB78E3DEB0DDA2A58392FFDDE4F73B7C46504403C275D075CAD8121A24D4FF"
+      },
+      {
+        "file": "06-overview.png",
+        "sha256": "21D89D7F1AB6A2F71E0C27E6114BC3051264EAF0DDC03BBD12F372680CD3B21F"
+      }
+    ],
+    "packaged_content": [
+      {
+        "file": "global.ucas",
+        "sha256": "0D084B15954091178453B50EE903C76A50D7F93475E6EBA1FA15DD55BCB72C9D"
+      },
+      {
+        "file": "global.utoc",
+        "sha256": "A6F490BF154D4C4A6326A8BA0AFD650203ED8A5A949B386E99339B0B058DBAA4"
+      },
+      {
+        "file": "PaitIsland-Windows.pak",
+        "sha256": "EB6DFE23D9A489DB97956CDF35C5B8530853D88B768EFE452881984874097B17"
+      },
+      {
+        "file": "PaitIsland-Windows.ucas",
+        "sha256": "3B6E745873927C7030C8C33575DD98F7652B686AFBA4DA9B6E25FE4370D8C7AA"
+      },
+      {
+        "file": "PaitIsland-Windows.utoc",
+        "sha256": "0BB981F8FCAC6A60065FCF1D07521F8A696C6E2CC94679847C2A69BA5185AA9E"
+      }
+    ],
+    "pose_summary": [
+      {
+        "shot": "01-cat-portrait",
+        "samples": 90,
+        "moving_samples": 89,
+        "maximum_bone_delta_cm": 5.729531776950113
+      },
+      {
+        "shot": "02-cat-walk",
+        "samples": 18,
+        "moving_samples": 17,
+        "maximum_bone_delta_cm": 22.87547857252519
+      },
+      {
+        "shot": "03-cat-trot",
+        "samples": 18,
+        "moving_samples": 17,
+        "maximum_bone_delta_cm": 19.71855254279989
+      },
+      {
+        "shot": "04-glass-outside",
+        "samples": 18,
+        "moving_samples": 17,
+        "maximum_bone_delta_cm": 17.571350704097085
+      },
+      {
+        "shot": "05-glass-inside",
+        "samples": 18,
+        "moving_samples": 17,
+        "maximum_bone_delta_cm": 17.98198396807029
+      },
+      {
+        "shot": "06-overview",
+        "samples": 635,
+        "moving_samples": 634,
+        "maximum_bone_delta_cm": 20.242494415867647
+      }
+    ],
+    "resolution": "1600x900",
+    "requested_window_state": "Hidden",
+    "animation_clips": [
+      "idle_breathe",
+      "walk",
+      "trot"
+    ],
+    "five_minute_runtime_completed": true,
+    "visual_qualified": false,
+    "performance_qualified": false,
+    "utc": "2026-10-17T08:12:03.8768778Z"
+  },
+  "changed_pose_samples": 791,
+  "source_run": "SixViews-Shipping-a50fa4e1cfec450babd41a097ad0847f",
+  "all_nine_captures_visually_reviewed": true,
+  "published_captures": [
+    "02-cat-walk-a.png",
+    "03-cat-trot-a.png",
+    "03-cat-trot-b.png",
+    "04-glass-outside.png",
+    "05-glass-inside.png",
+    "06-overview.png"
+  ],
+  "observed_improvements": [
+    "No black sky horizon band",
+    "Trot subject unobstructed and overview cat fully framed",
+    "Thin glass reduces grey veil and displaced frame ghosting",
+    "Motion blur off; legs remain clearer"
+  ],
+  "remaining": [
+    "Full fur and motion naturalness",
+    "Glass reflection strength and edge quality in complete island",
+    "Final V2 materials and interactive performance"
+  ],
+  "visual_qualified": false,
+  "performance_qualified": false,
+  "workflow_adjustment": "User relaxed stage gates on 2026-10-17: proceed to complete playable V2 island with focused startup/interaction/crash checks; full P0 matrix may run alongside later work."
+}

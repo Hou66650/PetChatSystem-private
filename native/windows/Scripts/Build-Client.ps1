@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)][string]$EngineRoot,
-    [ValidateSet("Generate", "Editor", "CreateMap", "ImportAsset", "ImportPet", "RepairFur", "Package")][string]$Mode = "Editor",
+    [ValidateSet("Generate", "Editor", "CreateMap", "ImportAsset", "ImportPet", "RepairFur", "RepairLighting", "Package")][string]$Mode = "Editor",
     [ValidateSet("Development", "Shipping")][string]$Configuration = "Development",
     [string]$PythonExe = "python"
 )
@@ -67,6 +67,25 @@ switch ($Mode) {
             if (-not (Test-Path -LiteralPath $furReport)) { throw "Fur repair evidence missing. Inspect Saved/Logs." }
             $result = Get-Content -LiteralPath $furReport -Raw | ConvertFrom-Json
             if ($result.status -ne "saved_requires_cook_and_visual_review") { throw "Fur repair did not save." }
+        }
+    }
+    "RepairLighting" {
+        if (-not (Test-Path -LiteralPath $mapFile)) { throw "CreateMap and ImportAsset first." }
+        foreach ($step in @(
+            @{Script="repair_qualification_lighting.py"; Report="lighting-repair.json"; Status="candidate_saved_requires_runtime_review"},
+            @{Script="repair_qualification_glass.py"; Report="thin-glass-repair.json"; Status="saved_requires_cook_and_visual_review"}
+        )) {
+            $started = [DateTime]::UtcNow
+            $script = Join-Path $projectRoot "Scripts/$($step.Script)"
+            $evidence = Join-Path $projectRoot "Saved/Qualification/$($step.Report)"
+            & $editor $projectFile "-ExecutePythonScript=$script" -unattended -nosplash -nullrhi -stdout
+            if ($LASTEXITCODE -ne 0) { throw "Lighting editor step failed: $($step.Script)" }
+            # UE can exit zero after a Python exception: require fresh success evidence.
+            if (-not (Test-Path -LiteralPath $evidence) -or (Get-Item -LiteralPath $evidence).LastWriteTimeUtc -lt $started) {
+                throw "Fresh lighting evidence missing: $($step.Script)"
+            }
+            $result = Get-Content -LiteralPath $evidence -Raw | ConvertFrom-Json
+            if ($result.status -ne $step.Status) { throw "Lighting fixture did not save." }
         }
     }
     "Package" {
