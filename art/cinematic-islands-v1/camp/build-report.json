@@ -1,0 +1,67 @@
+{
+  "theme": "camp",
+  "title": "山岭营地",
+  "source": "source/camp.glb",
+  "sourceSha256": "3fb906e6f945eba2b04cea63775c38848933c7fef9d21b5def096398e0144a73",
+  "layoutSha256": "cd071a82bf2935dfd82496efbadffbbae928d74a71849c5b63f15cc6a817ab9b",
+  "masterBytes": 117714801,
+  "masterSha256": "a73218d5796f17e86ba18589a732684367bda3ef7f53739dc5c4cf08487de680",
+  "packedImages": 22,
+  "renderer": "Cycles / OptiX",
+  "devices": [
+    "NVIDIA GeForce RTX 5060 Laptop GPU"
+  ],
+  "detail": {
+    "needles": 734400,
+    "blossoms": 0,
+    "grassBlades": 28545,
+    "snowDeposits": 0,
+    "roofTiles": 828
+  },
+  "collections": {
+    "01 Source landscape": {
+      "meshes": 11,
+      "triangles": 116806
+    },
+    "02 Architecture": {
+      "meshes": 6,
+      "triangles": 27656
+    },
+    "03 Botanical detail": {
+      "meshes": 7,
+      "triangles": 1949142
+    },
+    "04 Water ice and snow": {
+      "meshes": 4,
+      "triangles": 120220
+    }
+  },
+  "modules": [
+    {
+      "file": "client-staging/landscape.glb",
+      "bytes": 30968352,
+      "sha256": "c09a4ac08174ccfd5f417dcb74ff2da95fff420d7cc80534b0f3cef29287ffa2"
+    },
+    {
+      "file": "client-staging/architecture.glb",
+      "bytes": 12241036,
+      "sha256": "385afbd01f4853fa48b6bc2ea620a1f582bdd60506c52136dbcd730acdcb75cf"
+    },
+    {
+      "file": "client-staging/vegetation.glb",
+      "bytes": 173032888,
+      "sha256": "e1511143f8570b91d22e6fecfc897b30ae50b90053923ab6c0fc6bcd65f7efc8"
+    },
+    {
+      "file": "client-staging/water-snow.glb",
+      "bytes": 6129104,
+      "sha256": "e1f9b5087d8dcadec2fde2e14c56abd4b40d0ebe789a54383600b37f5ec1be56"
+    }
+  ],
+  "webSceneChanged": false,
+  "accountDataRead": false,
+  "units": "metres",
+  "masterUpAxis": "Z",
+  "glbUpAxis": "Y",
+  "totalBaseTriangles": 2213824
+}

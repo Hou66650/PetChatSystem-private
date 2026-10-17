@@ -1,0 +1,10 @@
+{
+  "unchanged": true,
+  "sha256": {
+    "static/js/den/realistic-island-layouts.js": "5e4575ee309ba261b45d2a47bfee8d94c223a3ead9cb04e8e8b07c4d2b0272f4",
+    "templates/den.html": "2584dd60277d77d097f721cb75126839381e089ae9484bee0c0a2f96c18bf8bb",
+    "static/models/petchat-realistic-islands-v1/sakura.glb": "883d33054753c363f6cc2b112e876338769729c800499b08216084e604c58457",
+    "static/models/petchat-realistic-islands-v1/snow.glb": "d2c9900d1875423a239c6801234d37ab6baa812d63015076d31a748b059452ea",
+    "static/models/petchat-realistic-islands-v1/camp.glb": "3fb906e6f945eba2b04cea63775c38848933c7fef9d21b5def096398e0144a73"
+  }
+}

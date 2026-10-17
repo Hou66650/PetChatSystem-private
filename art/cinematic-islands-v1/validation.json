@@ -1,0 +1,70 @@
+{
+  "status": "passed",
+  "islands": {
+    "sakura": {
+      "status": "passed",
+      "modules": 4,
+      "moduleBytes": 361673996,
+      "positionsChecked": 8289103,
+      "triangles": 5827607,
+      "renders": {
+        "01-panorama": [
+          2400,
+          2000
+        ],
+        "02-architecture": [
+          2400,
+          2000
+        ],
+        "03-plan": [
+          2400,
+          2000
+        ]
+      }
+    },
+    "snow": {
+      "status": "passed",
+      "modules": 4,
+      "moduleBytes": 243689344,
+      "positionsChecked": 5769217,
+      "triangles": 2778292,
+      "renders": {
+        "01-panorama": [
+          2400,
+          2000
+        ],
+        "02-architecture": [
+          2400,
+          2000
+        ],
+        "03-plan": [
+          2400,
+          2000
+        ]
+      }
+    },
+    "camp": {
+      "status": "passed",
+      "modules": 4,
+      "moduleBytes": 222371380,
+      "positionsChecked": 5196881,
+      "triangles": 2409964,
+      "renders": {
+        "01-panorama": [
+          2400,
+          2000
+        ],
+        "02-architecture": [
+          2400,
+          2000
+        ],
+        "03-plan": [
+          2400,
+          2000
+        ]
+      }
+    }
+  },
+  "productionInputsUnchanged": true,
+  "scope": "Integrity, embedded textures, all vertex bounds and indices, render dimensions. Visual review is separate; no runtime performance claim."
+}

@@ -1,0 +1,67 @@
+{
+  "theme": "sakura",
+  "title": "樱花庭院",
+  "source": "source/sakura.glb",
+  "sourceSha256": "883d33054753c363f6cc2b112e876338769729c800499b08216084e604c58457",
+  "layoutSha256": "cd071a82bf2935dfd82496efbadffbbae928d74a71849c5b63f15cc6a817ab9b",
+  "masterBytes": 207379389,
+  "masterSha256": "34d58ea3fc94cb0ea10c74baa2003613328bc8842805505ebdefec7d6d5a6533",
+  "packedImages": 22,
+  "renderer": "Cycles / OptiX",
+  "devices": [
+    "NVIDIA GeForce RTX 5060 Laptop GPU"
+  ],
+  "detail": {
+    "needles": 367200,
+    "blossoms": 25591,
+    "grassBlades": 27230,
+    "snowDeposits": 0,
+    "roofTiles": 644
+  },
+  "collections": {
+    "01 Source landscape": {
+      "meshes": 10,
+      "triangles": 112710
+    },
+    "02 Architecture": {
+      "meshes": 5,
+      "triangles": 21700
+    },
+    "03 Botanical detail": {
+      "meshes": 11,
+      "triangles": 5465772
+    },
+    "04 Water ice and snow": {
+      "meshes": 4,
+      "triangles": 120220
+    }
+  },
+  "modules": [
+    {
+      "file": "client-staging/landscape.glb",
+      "bytes": 30709928,
+      "sha256": "2bc8661cf4a449e97468f79567292e5d2a6c0f5f0fd84ed3be10e84b07cf780d"
+    },
+    {
+      "file": "client-staging/architecture.glb",
+      "bytes": 8119012,
+      "sha256": "4e4976e868f351403329ca73673d1087c7092f31bddc4c0e5560d8c5fef7e11c"
+    },
+    {
+      "file": "client-staging/vegetation.glb",
+      "bytes": 316715960,
+      "sha256": "7d2093c4bbfdaa6c356ffa9e7f02af3b0a82fd2c6c4852befeeca50a352d5b67"
+    },
+    {
+      "file": "client-staging/water-snow.glb",
+      "bytes": 6129096,
+      "sha256": "5bd6b5b70b1cf7d66f4b5ddd2e9d38678abfa36abb739c918ce298723c180f06"
+    }
+  ],
+  "webSceneChanged": false,
+  "accountDataRead": false,
+  "units": "metres",
+  "masterUpAxis": "Z",
+  "glbUpAxis": "Y",
+  "totalBaseTriangles": 5720402
+}

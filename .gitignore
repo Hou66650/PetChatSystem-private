@@ -51,3 +51,8 @@ A-手语识别模块研发/sign_dataset/rejected/
 /art/cloud-meadow-cinematic-v1/*.log
 /art/cloud-meadow-cinematic-build.log
 /art/cloud-meadow-tone-test.log
+# Offline high-detail island masters and source snapshots are workstation assets.
+/art/cinematic-islands-v1/**/*.blend
+/art/cinematic-islands-v1/**/*.glb
+/art/cinematic-islands-v1/**/*-preview.png
+/art/cinematic-islands*.log

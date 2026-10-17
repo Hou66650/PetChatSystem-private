@@ -1,0 +1,67 @@
+{
+  "theme": "snow",
+  "title": "雪境木屋",
+  "source": "source/snow.glb",
+  "sourceSha256": "d2c9900d1875423a239c6801234d37ab6baa812d63015076d31a748b059452ea",
+  "layoutSha256": "cd071a82bf2935dfd82496efbadffbbae928d74a71849c5b63f15cc6a817ab9b",
+  "masterBytes": 131416686,
+  "masterSha256": "5c28c3985334e59f2bfedb63573f8fe4e46e9f5742e40e84a6e57c9afba3c7a3",
+  "packedImages": 22,
+  "renderer": "Cycles / OptiX",
+  "devices": [
+    "NVIDIA GeForce RTX 5060 Laptop GPU"
+  ],
+  "detail": {
+    "needles": 856800,
+    "blossoms": 0,
+    "grassBlades": 0,
+    "snowDeposits": 1449,
+    "roofTiles": 468
+  },
+  "collections": {
+    "01 Source landscape": {
+      "meshes": 11,
+      "triangles": 147284
+    },
+    "02 Architecture": {
+      "meshes": 5,
+      "triangles": 21144
+    },
+    "03 Botanical detail": {
+      "meshes": 4,
+      "triangles": 1895432
+    },
+    "04 Water ice and snow": {
+      "meshes": 7,
+      "triangles": 604132
+    }
+  },
+  "modules": [
+    {
+      "file": "client-staging/landscape.glb",
+      "bytes": 29202944,
+      "sha256": "68379a409b1c36daa1ceb0025eaaeb012b6e39f89eadac0bd7ae4d99a93bbabd"
+    },
+    {
+      "file": "client-staging/architecture.glb",
+      "bytes": 5732140,
+      "sha256": "6e4568671f5af9e0872c5f95117a533d73831d39323003621852f1df2e913230"
+    },
+    {
+      "file": "client-staging/vegetation.glb",
+      "bytes": 183673360,
+      "sha256": "7e3ad16d3a18a013635c887eaf9575c71b05f4cff2ab8415d03bc3f65b840ee8"
+    },
+    {
+      "file": "client-staging/water-snow.glb",
+      "bytes": 25080900,
+      "sha256": "943d9392c6b38544b0486e6f8948fc1d7b4b993ca6196778010870742095c2c2"
+    }
+  ],
+  "webSceneChanged": false,
+  "accountDataRead": false,
+  "units": "metres",
+  "masterUpAxis": "Z",
+  "glbUpAxis": "Y",
+  "totalBaseTriangles": 2667992
+}
