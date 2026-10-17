@@ -626,6 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="/static/js/realtime/realtime-ui.js?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/pet-profile.js') }}?v={{ app_version }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/den_vision.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/den/diary-events.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/pet-sounds.js?v={{ app_version }}"></script>
     <script src="/static/js/den/render-budget.js?v={{ app_version }}"></script>
     <script src="/static/js/den/face-play.js?v={{ app_version }}"></script>
@@ -1690,6 +1691,7 @@ document.addEventListener('DOMContentLoaded', () => {
             portals?.attach(locomotion.navigation,spec.theme);
             if(portals?.data)portalVisitors?.sync(portals.data.trips);
             spawnBusy = false; showPetLoading(false);
+            window.PetDiary?.record(currentPetId,'visit');
             document.getElementById('cat-care').hidden=!(id===3&&modeledStage);
             for(const button of ['btn-cat-eat','btn-cat-home'])document.getElementById(button).disabled=!catHomeReady;
             document.dispatchEvent(new Event('petchat:ready'));
@@ -1845,6 +1847,7 @@ document.addEventListener('DOMContentLoaded', () => {
         function rewardIntimacy(kind, overridePoints) {
             const rule = INTIMACY_RULES[kind];
             if (!rule) return { gained: 0, reason: 'unknown-rule' };
+            window.PetDiary?.record(currentPetId,kind);
             const ps = petState();
             const daily = ensurePetDaily(ps);
             const before = ps.intimacy;

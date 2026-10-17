@@ -140,6 +140,11 @@ def record(owner,data):
                 visits=cat_exploration.visits+excluded.visits,result=excluded.result,updated=excluded.updated''',
                 (owner,target,int(result=='completed'),result,now))
             if result=='completed':
+                from . import diary_service
+                diary_service.record(db,owner,3,'explore:'+event,'explore',TARGETS[target]['name'])
+                action=data.get('action')
+                if action in TARGETS[target]['actions'] and action in diary_service.ACTIVITIES:
+                    diary_service.record(db,owner,3,'activity:'+event,'activity',diary_service.ACTIVITIES[action])
                 from .cat_market_service import reward
                 reward(owner,'explore',event)
         db.execute('DELETE FROM cat_exploration_events WHERE owner=? AND created<?',(owner,now-7*86400))

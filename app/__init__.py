@@ -49,6 +49,8 @@ def create_app(config_object=Config):
     from .services import companion_service
     with app.app_context():
         companion_service.init_schema()
+        from .services import diary_service
+        diary_service.init_schema()
         from .services import portal_service
         portal_service.init_schema()
         from .services import cat_market_service

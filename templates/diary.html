@@ -4,7 +4,7 @@
     {% include '_brand_icons.html' %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>我的日记 · 派特岛</title>
+    <title>宠物日记 · 派特岛</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     <style>
         body.theme {
@@ -108,6 +108,10 @@
         }
         .diary-entry-main { flex: 1; min-width: 0; word-break: break-word; }
         .diary-entry-main strong { color: #2f2620; }
+        .diary-entry-main p { white-space: pre-line; margin: 12px 0 24px; }
+        .diary-intro { position: relative; color: var(--c-text-sub); line-height: 1.7; }
+        #btn-load-more { position: relative; margin-top: 16px; }
+        @media(max-width:650px) { .diary-head { flex-wrap:wrap; gap:12px; } }
         .diary-del {
             flex-shrink: 0;
             border: 0;
@@ -132,7 +136,7 @@
     {% include '_navbar.html' %}
     <div class="diary-wrap">
         <div class="diary-head">
-            <h2>📖 我的聊天日记</h2>
+            <h2>📖 宠物的每日手记</h2>
             <div style="display:flex; gap:8px; align-items:center;">
                 <span id="diary-date" class="text-sub" style="font-size:13px;"></span>
                 <button class="btn-outline btn-sm" id="btn-export-pdf">导出 PDF</button>
@@ -140,6 +144,7 @@
             </div>
         </div>
         <div class="paper">
+            <p class="diary-intro">每只宠物每天一篇，用自己的口吻记下探索、与主人的互动和小事。今天的日记会随新经历续写，日期按北京时间。原聊天记录仍保留在聊天页。</p>
             <div class="diary-toolbar" role="group" aria-label="日记筛选">
                 <label for="f-pet">宠物</label>
                 <select id="f-pet">
@@ -154,7 +159,6 @@
                     <option value="all">全部日期</option>
                     <option value="7">最近 7 天</option>
                     <option value="30">最近 30 天</option>
-                    <option value="legacy">历史未知日期</option>
                 </select>
                 <label for="f-kw">关键词</label>
                 <input type="search" id="f-kw" placeholder="搜索日记内容…" aria-label="关键词搜索">
@@ -162,6 +166,7 @@
                 <span class="diary-count" id="diary-count" aria-live="polite"></span>
             </div>
             <div id="diary-content" class="diary-content">正在加载日记内容…</div>
+            <button type="button" class="btn-outline btn-sm" id="btn-load-more" hidden>加载更早的日记</button>
         </div>
     </div>
     {% include '_footer.html' %}
@@ -169,14 +174,6 @@
     <script src="{{ url_for('static', filename='js/vendor/html2canvas.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/jspdf.umd.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/diary.js') }}?v={{ app_version }}"></script>
-    <script>
-    // 标题栏日期
-    (function () {
-        var d = new Date();
-        var pad = function (n) { return String(n).padStart(2, '0'); };
-        document.getElementById('diary-date').textContent =
-            d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-    })();
-    </script>
+
 </body>
 </html>

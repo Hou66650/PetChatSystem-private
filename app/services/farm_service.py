@@ -233,6 +233,8 @@ def operate(owner,op,data):
         else:raise Error('操作不存在',404)
         if event_text:
             db.execute('INSERT INTO farm_events(owner,created,kind,summary) VALUES (?,?,?,?)',(owner,time.time(),op,event_text))
+            from . import diary_service
+            diary_service.record(db,owner,3,'garden:'+token,'event','我的花园里，'+event_text.rstrip('。'))
             db.execute('DELETE FROM farm_events WHERE owner=? AND id NOT IN (SELECT id FROM farm_events WHERE owner=? ORDER BY id DESC LIMIT 80)',(owner,owner))
         db.execute('INSERT INTO farm_requests VALUES (?,?,?)',(owner,token,payload));db.commit()
     except Exception:db.rollback();raise

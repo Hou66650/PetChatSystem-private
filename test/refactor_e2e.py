@@ -101,7 +101,7 @@ print('== 6. 日记 ==')
 r = s.post(BASE + '/get-diary', json={'chatHistory': [
     {'sender': '小明', 'message': '你好', 'role': 'user'},
     {'sender': '柴犬', 'message': '汪汪！', 'role': 'assistant'}]})
-check('日记文本', r.status_code == 200 and '汪汪' in r.json().get('text', ''))
+check('日记使用服务端每日记录', r.status_code == 200 and r.json().get('success') is True and '小明: 你好' not in r.json().get('text', ''))
 
 print('== 7. 宠物评分 ==')
 r = s.post(BASE + '/remark', data={'book_name': '柴犬', 'name': 'e2e_test',

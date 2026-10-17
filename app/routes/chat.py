@@ -54,20 +54,11 @@ def den():
 
 @bp.route('/get-diary', methods=['POST'])
 def get_diary():
-    """把浏览器 localStorage 里的聊天记录整理成日记文本。"""
-    try:
-        chat_history = (request.get_json(silent=True) or {}).get('chatHistory', [])
-        lines = []
-        for entry in chat_history:
-            if not isinstance(entry, dict):
-                continue
-            sender = entry.get('sender') or ('我' if entry.get('role') == 'user' else '宠物')
-            message = str(entry.get('message') or '').strip()
-            if message:
-                lines.append(f'{sender}: {message}')
-        return jsonify({'success': True, 'text': '\n\n'.join(lines)})
-    except Exception as e:  # noqa: BLE001 —— 与旧版一致，向前端返回明确错误
-        return jsonify({'success': False, 'error': str(e)}), 400
+    """Compatibility export: use the current owner's daily pages, never client transcripts."""
+    from ..services import companion_service, diary_service
+    result=diary_service.pages(companion_service.owner_key())
+    text='\n\n'.join(e['day']+' · '+e['name']+'\n'+e['body'] for e in result['entries'])
+    return jsonify(success=True,text=text,nextBefore=result['nextBefore']),200,{'Cache-Control':'private, no-store'}
 
 
 @bp.route('/remark_pet')

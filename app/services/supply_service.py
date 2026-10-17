@@ -100,6 +100,8 @@ def delivery(owner,pet,client,complete=None):
   if row and complete:
    if row['id']!=complete or row['lease']!=client or (row['expires'] or 0)<time.time():raise Error('补给领取状态已改变',409)
    db.execute("UPDATE supply_deliveries SET status='completed',completed=? WHERE id=?",(time.time(),row['id']))
+   from . import diary_service
+   diary_service.record(db,owner,int(pet),'supply:'+row['id'],'event','我收到了主人送来的'+ITEMS[row['item']]['name'])
   elif row and ((row['expires'] or 0)<=time.time() or row['lease']==client):
    db.execute('UPDATE supply_deliveries SET lease=?,expires=? WHERE id=?',(client,time.time()+90,row['id']))
    result=dict(id=row['id'],pet=row['pet'],item=ITEMS[row['item']])

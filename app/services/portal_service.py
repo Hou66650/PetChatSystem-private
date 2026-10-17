@@ -94,6 +94,10 @@ def ensure(owner):
 def finish(trip,reason='主人召回'):
     db=get_db();now=time.time()
     changed=db.execute("UPDATE portal_trips SET status='returned',ended=?,updated=?,reason=?,pair_hash=NULL,token_hash=NULL WHERE id=? AND status IN ('pairing','active')",(now,now,reason,trip['id'])).rowcount
+    if changed and trip['status']=='active' and str(trip['pet']) in PETS:
+        from . import diary_service
+        diary_service.record(db,trip['owner'],int(trip['pet']),'journey:'+trip['id'],'event',
+                             '我结束了'+('电脑桌面的探险' if trip['kind']=='desktop' else '去友邻小岛的串门')+'，回到了自己的小窝')
     if changed and trip['status']=='active' and db.execute("SELECT 1 FROM portal_events WHERE trip=? AND kind!='position' LIMIT 1",(trip['id'],)).fetchone():
         item='迷你键帽' if trip['kind']=='desktop' else '友邻植物种子'
         db.execute('INSERT OR IGNORE INTO portal_rewards VALUES (?,?,?,?)',(trip['id'],trip['owner'],trip['pet'],item))

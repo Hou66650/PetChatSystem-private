@@ -7,6 +7,7 @@ from flask import Blueprint, jsonify, render_template, request
 from ..db import get_db
 from ..llm import pets
 from ..services import companion_service as memory
+from ..services import diary_service as diary
 
 bp = Blueprint('companion', __name__)
 
@@ -48,6 +49,7 @@ def archive():
             memory.invalidate_context(db,owner)
     elif request.method == 'DELETE':
         with db:
+            diary.forget(db,owner)
             db.execute('DELETE FROM pet_care_events WHERE owner=?',(owner,))
             db.execute('DELETE FROM companion_memories WHERE owner=?',(owner,))
             db.execute('DELETE FROM companion_messages WHERE owner=?',(owner,))
@@ -69,6 +71,7 @@ def conversation():
             else: db.execute('DELETE FROM pet_care_events WHERE owner=? AND pet_id=? AND source_id IS NOT NULL',(owner,p))
             if p is None: db.execute('DELETE FROM companion_messages WHERE owner=?',(owner,))
             else: db.execute('DELETE FROM companion_messages WHERE owner=? AND pet_id=?',(owner,p))
+            diary.remove_chats(db,owner,p)
             memory.invalidate_context(db,owner)
     return jsonify(messages=memory.history(owner,p)),200,{'Cache-Control':'no-store'}
 
@@ -77,12 +80,53 @@ def conversation():
 def delete_message(message_id):
     owner=memory.owner_key();db=get_db()
     with db:
-        row=db.execute('SELECT id FROM companion_messages WHERE owner=? AND id=?',(owner,message_id)).fetchone()
+        row=db.execute('SELECT id,pet_id,request_id FROM companion_messages WHERE owner=? AND id=?',(owner,message_id)).fetchone()
         if not row:return jsonify(error='记录不存在'),404
+        turn=db.execute("SELECT id FROM companion_messages WHERE owner=? AND pet_id=? AND request_id=? AND role='user'",(owner,row['pet_id'],row['request_id'])).fetchone()
         db.execute('DELETE FROM pet_care_events WHERE owner=? AND source_id=?',(owner,message_id))
         db.execute('DELETE FROM companion_messages WHERE owner=? AND id=?',(owner,message_id))
+        if turn: diary.remove_chats(db,owner,message_id=turn['id'])
         memory.invalidate_context(db,owner)
     return jsonify(success=True)
+
+
+@bp.get('/api/diary')
+def daily_diary():
+    from datetime import date
+    before=request.args.get('before')
+    if before:
+        try: before=date.fromisoformat(before).isoformat()
+        except ValueError: return jsonify(error='日期格式不正确'),400
+    return jsonify(diary.pages(memory.owner_key(),before)),200,{'Cache-Control':'private, no-store'}
+
+
+@bp.post('/api/diary/events')
+def diary_interaction():
+    import time
+    owner=memory.owner_key()
+    if request.headers.get('X-Profile-Scope')!=memory.browser_scope():
+        return jsonify(error='账号已变化，请刷新页面'),409
+    data=request.get_json(silent=True)
+    if not isinstance(data,dict) or type(data.get('petId')) is not int or data['petId'] not in diary.NAMES:
+        return jsonify(error='请选择有效宠物'),400
+    kind=data.get('kind')
+    if not isinstance(kind,str) or kind not in (*diary.INTERACTIONS,'visit'):
+        return jsonify(error='互动类型不正确'),400
+    pet=data['petId'];now=time.time()
+    source=f'visit:{pet}:{diary.day(now)}' if kind=='visit' else f'interaction:{pet}:{kind}:{int(now//60)}'
+    db=get_db()
+    with db: diary.record(db,owner,pet,source,'visit' if kind=='visit' else 'interaction',kind,now)
+    return jsonify(ok=True),200,{'Cache-Control':'no-store'}
+
+
+@bp.delete('/api/diary/<int:pet>/<date>')
+def delete_daily_diary(pet,date):
+    owner=memory.owner_key();db=get_db()
+    with db:
+        changed=db.execute('UPDATE pet_diary_days SET deleted=1,body=\'\',title=\'\' WHERE owner=? AND pet_id=? AND day=? AND deleted=0',(owner,pet,date)).rowcount
+        if not changed:return jsonify(error='日记不存在'),404
+        db.execute('DELETE FROM pet_diary_facts WHERE owner=? AND pet_id=? AND day=?',(owner,pet,date))
+    return jsonify(ok=True),200,{'Cache-Control':'no-store'}
 
 
 @bp.route('/api/companion/memories', methods=['POST'])

@@ -254,6 +254,8 @@ def save_turn(owner, pet_id, request_id, message, plan, revision):
                 db.execute('INSERT INTO companion_memories(owner,pet_id,category,value,source_quote,source_message) VALUES (?,?,?,?,?,?) '
                            'ON CONFLICT(owner,pet_id,category,value) DO UPDATE SET source_quote=excluded.source_quote,source_message=excluded.source_message,updated_at=strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')',
                            (owner,scope,cat,fact['value'],fact['quote'],source_id))
+            from . import diary_service
+            diary_service.record(db,owner,pet_id,'chat:'+str(source_id),'chat',diary_service.topic(message))
         from . import pet_care_service
         plan['care'] = pet_care_service.on_turn(db,owner,pet_id,message,source_id,bool(state['enabled']))
         if forgotten:
