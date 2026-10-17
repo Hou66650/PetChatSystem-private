@@ -1,8 +1,8 @@
 /* Persistent contents of the existing cat-home bowls; inventory is separate. */
 (function(){
  class Controller{
-  constructor({THREE:T,canvas,camera,decor,scope,enabled,note,invite}){
-   Object.assign(this,{T,canvas,camera,decor,scope,enabled,note,invite});this.state=null;this.home=null;this.pending=null;
+  constructor({THREE:T,canvas,camera,decor,pickScene,scope,enabled,note,invite}){
+   Object.assign(this,{T,canvas,camera,decor,pickScene,scope,enabled,note,invite});this.state=null;this.home=null;this.pending=null;
    this.tip=document.createElement('div');this.tip.className='bowl-tip';this.tip.hidden=true;this.tip.setAttribute('role','status');document.body.append(this.tip);
    this.panel=document.createElement('dialog');this.panel.className='bowl-panel';this.panel.innerHTML='<form method="dialog"><button class="bowl-close" aria-label="关闭">×</button></form><h2></h2><p class="bowl-level"></p><progress max="100"></progress><p class="bowl-stock"></p><p class="bowl-help"></p><button class="bowl-invite">叫它过来</button> <button class="bowl-refill">补充</button> <a href="/supplies" target="_blank" rel="noopener">去补给站 ↗</a>';document.body.append(this.panel);
    this.panel.querySelector('.bowl-invite').onclick=()=>{const kind=this.kind;this.panel.close();this.invite(kind);};
@@ -25,7 +25,7 @@
     const center=this.home.localToWorld(new T.Vector3(x,.35,6.28)),hit=ray.ray.intersectSphere(new T.Sphere(center,.30),new T.Vector3());if(!hit)continue;
     const distance=hit.distanceTo(ray.ray.origin);if(!best||distance<best.distance)best={kind,distance};
    }
-   if(best){const hit=ray.intersectObject(this.decor,true).find(h=>h.object.visible);if(hit&&hit.distance+.15<best.distance)return null;}
+   if(best){const hit=this.pickScene?this.pickScene(ray):ray.intersectObject(this.decor,true).find(h=>h.object.visible);if(hit&&hit.distance+.15<best.distance)return null;}
    return best?.kind||null;
   }
   hover(e){const kind=e.buttons?null:this.pick(e);this.tip.hidden=!kind;if(!kind)return;const n=this.amount(kind);this.tip.textContent=(kind==='food'?'食盆':'水盆')+' · '+(n===null?'读取中…':'剩余 '+n+'%')+' · 点击补充';this.tip.style.left=Math.max(8,Math.min(innerWidth-270,e.clientX+16))+'px';this.tip.style.top=Math.max(8,Math.min(innerHeight-55,e.clientY+18))+'px';}

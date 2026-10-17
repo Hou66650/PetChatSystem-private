@@ -11,14 +11,14 @@
   constructor(){this.entries=new Map();this.queue=[];this.worker=null;this.current=null;this.serial=0;this.failed=false;this.disposed=false;
    loadLibrary().then(()=>{if(this.disposed)return;try{this.worker=new Worker('/static/js/den/native-occlusion-worker.js');this.worker.onmessage=e=>this.receive(e.data);this.worker.onerror=()=>this.fail();this.pump();}catch(_){this.fail();}}).catch(()=>this.fail());
   }
-  eligible(o){const g=o.geometry,p=g.attributes.position;return !o.isSkinnedMesh&&!o.isInstancedMesh&&!g.morphAttributes.position?.length&&p?.array instanceof Float32Array&&!p.isInterleavedBufferAttribute&&!p.normalized&&p.itemSize===3&&g.drawRange.start===0&&(g.drawRange.count===Infinity||g.drawRange.count>=(g.index?.count||p.count));}
+  eligible(o){const g=o.geometry,p=g.attributes.position;return o.raycast===root.THREE.Mesh.prototype.raycast&&!o.isSkinnedMesh&&!o.isInstancedMesh&&!g.morphAttributes.position?.length&&p?.array instanceof Float32Array&&!p.isInterleavedBufferAttribute&&!p.normalized&&p.itemSize===3&&g.drawRange.start===0&&(g.drawRange.count===Infinity||g.drawRange.count>=(g.index?.count||p.count));}
   prepare(objects){
    if(this.failed||this.disposed)return;
    const live=new Set();
    for(const o of objects){const g=o.geometry;if((g.index?.count||g.attributes.position.count)<15000||!this.eligible(o))continue;
-    live.add(g);let entry=this.entries.get(g);
-    if(entry&&(entry.position!==g.attributes.position||entry.index!==g.index||entry.pv!==g.attributes.position.version||entry.iv!==(g.index?.version||0))){entry.proxy?.geometry.dispose();this.entries.delete(g);entry=null;}
-    if(!entry){entry={id:++this.serial,source:g,position:g.attributes.position,index:g.index,pv:g.attributes.position.version,iv:g.index?.version||0,proxy:null};this.entries.set(g,entry);this.queue.push(entry);}
+    live.add(g);let entry=this.entries.get(g);const groups=JSON.stringify(g.groups);
+    if(entry&&(entry.position!==g.attributes.position||entry.index!==g.index||entry.pv!==g.attributes.position.version||entry.iv!==(g.index?.version||0)||entry.groups!==groups)){entry.proxy?.geometry.dispose();this.entries.delete(g);entry=null;}
+    if(!entry){entry={id:++this.serial,source:g,position:g.attributes.position,index:g.index,pv:g.attributes.position.version,iv:g.index?.version||0,groups,proxy:null};this.entries.set(g,entry);this.queue.push(entry);}
    }
    for(const [g,e]of this.entries)if(!live.has(g)){e.proxy?.geometry.dispose();this.entries.delete(g);}
    this.queue=this.queue.filter(e=>this.entries.get(e.source)===e);this.pump();
@@ -41,8 +41,9 @@
   hits(object,ray){
    const count=object.geometry.index?.count||object.geometry.attributes.position.count;
    if(count<15000)return ray.intersectObject(object,false);
+   if(!this.eligible(object))return null;
    const e=this.entries.get(object.geometry);if(!e?.proxy||this.failed||this.disposed)return null;
-   e.proxy.matrixWorld.copy(object.matrixWorld);e.proxy.material=object.material;
+   e.proxy.matrixWorld.copy(object.matrixWorld);e.proxy.material=object.material;e.proxy.layers.mask=object.layers.mask;
    return ray.intersectObject(e.proxy,false);
   }
   fail(){this.failed=true;this.release();}

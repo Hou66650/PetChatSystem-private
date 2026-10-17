@@ -80,9 +80,19 @@ MatePad Air 同一服务地址的首次空缓存加载与刷新对照：
 - `node test/harmony_occlusion.cjs`：执行实际 Worker 构建与 BVH，比较原 Mesh.raycast 距离和材质组，确认渲染缓冲不被转移或改写，覆盖更新、失败和销毁。
 - 河流、雪地、门户、种植摆放、运动连续性及猫咪全目录导航回归；另对 150,000 个可行走判断与旧版做一致性比对，12 条对照路线结果相同。
 
+## v1.72.3：小窝交互的静态场景查询
+
+将已有的独立 Worker/BVH 查询用于小窝悬停、地面点击和食水盆遮挡；这些操作此前仍逐次扫描整座高面数岛屿。进入场景后后台预建索引，查询只返回原对象、距离和世界坐标，不使用索引重排后的三角形编号。渲染模型、顶点/索引缓冲、材质和分辨率保持不变。目标点不在猫窝、温室或传送门区域时，不再额外对宠物做遮挡检测。
+
+桌面 Node.js 使用实际 `mistwood-meadow.glb` 与项目的 Three.js、GLTFLoader、Worker 和 BVH 源码，在 44 个网格索引就绪后对照 20 条相同射线。全部命中对象、距离与位置一致；原查询平均 125.23 ms、最高 279.33 ms，索引查询平均 1.63 ms、最高 3.73 ms。该测量跳过纹理加载、不执行画面渲染，且不包含索引建立时间；它是桌面 CPU 查询微基准，不能作为 MatePad Air 的 FPS 或 GPU 收益。临时基准文件保存在本机忽略目录，模型资产未加入提交。
+
+尚未建立索引、Worker 不可用或失败、动态/蒙皮/变形网格、局部绘制范围和自定义射线函数均保留原检测。几何版本与材质分组变化会使索引失效，查询代理保留原对象图层；切换场景及离页释放索引，从页面缓存恢复时重建。测试覆盖上述回退、更新、销毁及几何缓冲未改写，并验证食水盆的遮挡行为。
+
+已通过 `test/scene_picking.cjs`、`test/harmony_occlusion.cjs`、`test/harmony_den_bridge.cjs`、`test/farm_input.cjs` 与真实资产下的 `test/island_bowls.cjs`。脚本和对应模板改动已同步到电脑网页服务。真机验收期间遇到 WLAN 地址切换和应用退出，尚未取得本版本有效的真机帧率对比，不能宣称整页 FPS 提升。
+
 ## 第三方依赖
 
-使用 [three-mesh-bvh 0.5.23](https://github.com/gkjohnson/three-mesh-bvh/tree/v0.5.23)，兼容当前 Three.js r128，MIT 许可证保存在 `static/js/vendor/three-mesh-bvh-LICENSE.txt`。浏览器构建来自 npm 固定版本，下载时核验发布包 SHA-512 integrity；仅鸿蒙桥接启用后按需加载，不修改 Three.js 全局 raycast 原型。后台 Worker 同源加载固定脚本。
+使用 [three-mesh-bvh 0.5.23](https://github.com/gkjohnson/three-mesh-bvh/tree/v0.5.23)，兼容当前 Three.js r128，MIT 许可证保存在 `static/js/vendor/three-mesh-bvh-LICENSE.txt`。浏览器构建来自 npm 固定版本，下载时核验发布包 SHA-512 integrity；建立查询索引时按需加载，不修改 Three.js 全局 raycast 原型。v1.72.3 起原网页的小窝交互也使用该索引。后台 Worker 同源加载固定脚本。
 
 
 ## v1.69.1：持续采样与后台寻路

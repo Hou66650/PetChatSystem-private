@@ -559,6 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="/static/js/den/native-occlusion.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/scene-picking.js?v={{ app_version }}"></script>
     <script src="/static/js/den/native-den.js?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/three.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vendor/OrbitControls.js') }}"></script>
@@ -825,6 +826,9 @@ document.addEventListener('DOMContentLoaded', () => {
         scene.add(contactShadow);
         // ---------- 每宠专属场景主题（装饰/地面/环境粒子） ----------
         const decorGroup = new THREE.Group();
+        const scenePicker = new ScenePicking.Picker();
+        window.addEventListener('pagehide',()=>scenePicker.dispose());
+        window.addEventListener('pageshow',e=>{if(e.persisted){scenePicker.disposed=false;scenePicker.prepare(decorGroup);}});
         scene.add(decorGroup);
         let currentTheme = null, islandMusic = null;
         const M = (c) => new THREE.MeshLambertMaterial({ color: c });
@@ -1049,6 +1053,7 @@ document.addEventListener('DOMContentLoaded', () => {
             waterfallFlow=null; // The tree disposer owns the material textures.
             disposeObjectTree(decorGroup);   // 显式释放 GPU 资源，防止反复切宠累积
             while (decorGroup.children.length) decorGroup.remove(decorGroup.children[0]);
+            scenePicker.prepare(decorGroup);
             themeFireLight = null; themeFlame = null;
             if (!modeledSpec) t.build(decorGroup);
             themeFireLight = decorGroup.getObjectByName('__fireLight') || null;
@@ -1069,7 +1074,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 scene.add(sp);
                 envSprites.push(sp);
             }
-            if (!modeledSpec) return Promise.resolve();
+            if (!modeledSpec) { scenePicker.prepare(decorGroup); return Promise.resolve(); }
             return assetLoader.glb(modeledSpec.url,assetTicket).then(async gltf => {
                 if (epoch !== themeEpoch) { disposeObjectTree(gltf.scene); return; }
                 gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = !o.material?.transparent; o.receiveShadow = true; } });
@@ -1102,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch(error => {
                 if(error.name==='AbortError')return;
                 if (epoch === themeEpoch) { t.build(decorGroup); console.warn('庭院资产加载失败，使用原布景', error); }
-            });
+            }).finally(()=>{if(epoch===themeEpoch)scenePicker.prepare(decorGroup);});
         }
 
         // 昼夜背景（?scene=night/morning/day/dusk 可强制指定，便于演示与验收）
@@ -2464,7 +2469,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setAnim('idle',0);if(!locomotion.goTo(target,{gait:'walk'}))return false;
             showBubble(relation.familiarity>=.35?'想在你旁边待一会儿。':'慢慢靠近，看看你在做什么。',2200,true);return true;
         }
-        const islandBowls=new IslandBowls.Controller({THREE,canvas,camera,decor:decorGroup,scope:COMPANION_SCOPE,enabled:()=>currentPetId===3&&catHomeReady&&!spawnBusy&&!portals?.away&&!toyWorkshop?.held&&!grabbed&&!dropping,note:message=>toast(message,'info',2500),invite:kind=>{if(movementBlocked()||supplyCare){toast('请先结束当前互动','info');return;}catAgent?.requestCare(kind==='food'?'eat':'drink');}});
+        const islandBowls=new IslandBowls.Controller({THREE,canvas,camera,decor:decorGroup,pickScene:ray=>scenePicker.nearest(decorGroup,ray,true),scope:COMPANION_SCOPE,enabled:()=>currentPetId===3&&catHomeReady&&!spawnBusy&&!portals?.away&&!toyWorkshop?.held&&!grabbed&&!dropping,note:message=>toast(message,'info',2500),invite:kind=>{if(movementBlocked()||supplyCare){toast('请先结束当前互动','info');return;}catAgent?.requestCare(kind==='food'?'eat':'drink');}});
         catCompanionUI=new CatCompanionUI.UI({scope:COMPANION_SCOPE,relationship:catRelationship,pause:()=>{finishSupplyCare(false);toyWorkshop?.cancel();catAgent?.interrupt();},active:()=>currentPetId===3&&catHomeReady&&!spawnBusy&&!portals?.away,project:p=>{const v=new THREE.Vector3(p.x,p.y,p.z).project(camera),r=canvas.getBoundingClientRect();return{x:r.left+(v.x+1)*r.width/2,y:r.top+(1-v.y)*r.height/2,z:v.z};},act:kind=>{if(kind==='food'||kind==='water'){islandBowls.open(kind);catCompanionUI.complete('care');return;}if(kind==='toys'){toyWorkshop?.open();return;}if(kind==='home'){document.getElementById('btn-cat-home').click();return;}document.getElementById(kind==='garden'?'btn-greenhouse':'btn-portals').click();}});
         // 点击宠物（射线检测）
         const raycaster = new THREE.Raycaster();
@@ -2475,12 +2480,13 @@ document.addEventListener('DOMContentLoaded', () => {
         function pickCatPlace(e){
             if(currentPetId!==3||spawnBusy||!catHomeReady||portals?.away||toyWorkshop?.held||grabbed||dropping)return null;
             const r=canvas.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,1-(e.clientY-r.top)/r.height*2);raycaster.setFromCamera(pointer,camera);
-            const hit=raycaster.intersectObject(decorGroup,true).find(h=>h.object.visible),petHit=petModel&&raycaster.intersectObject(petModel,true)[0];
-            if(!hit||(petHit&&petHit.distance<hit.distance))return null;const p=hit.point;
-            if(p.x>-4.6&&p.x<-1.4&&p.z>3&&p.z<5.9)return 'home';
-            if(p.x>1.7&&p.x<4.3&&p.z>-3.2&&p.z<-2)return 'garden';
-            if(p.x>1.6&&p.x<5.3&&p.z>-1.5&&p.z<.1)return 'portal';
-            return null;
+            const hit=scenePicker.nearest(decorGroup,raycaster,true);if(!hit)return null;const p=hit.point;
+            const kind=p.x>-4.6&&p.x<-1.4&&p.z>3&&p.z<5.9?'home':
+                p.x>1.7&&p.x<4.3&&p.z>-3.2&&p.z<-2?'garden':
+                p.x>1.6&&p.x<5.3&&p.z>-1.5&&p.z<.1?'portal':null;
+            if(!kind)return null;
+            const petHit=petModel&&raycaster.intersectObject(petModel,true)[0];
+            return petHit&&petHit.distance<hit.distance?null:kind;
         }
         canvas.addEventListener('pointerleave',()=>sceneHint.hidden=true);
 
@@ -2505,7 +2511,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (performance.now()-lastPetClick>900) {lastPetClick=performance.now();doPetting();} return;
             }
             if (movementBlocked()) return;
-            const point=modeledStage ? raycaster.intersectObject(decorGroup,true)[0]?.point :
+            const point=modeledStage ? scenePicker.nearest(decorGroup,raycaster)?.point :
                 raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),0),new THREE.Vector3());
             if(point&&locomotion){finishSupplyCare(false);toyWorkshop?.cancel();catAgent?.interrupt();if(!locomotion.goTo(point))toast('那里暂时走不过去，试试空地吧','info',1600);}
         });
