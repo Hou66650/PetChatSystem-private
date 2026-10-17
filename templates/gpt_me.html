@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <link rel="icon" type="image/png" href="/static/images/pait-app-icon-f4.png">
+    {% include '_brand_icons.html' %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>和宠物聊天 · 派特岛</title>
@@ -37,7 +37,7 @@
             font-family: var(--font-round); font-size: 17px; font-weight: bold;
             color: var(--c-text); text-decoration: none;
         }
-        .chat-nav .brand img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+        .chat-nav .brand img { width: 32px; height: 32px; border-radius: 28%; object-fit: contain; flex-shrink: 0; }
         .chat-nav .current-pet {
             font-size: 15px; color: var(--c-primary-deep); font-weight: 600;
             padding: 4px 12px; background: var(--c-bubble-user); border-radius: 999px;
