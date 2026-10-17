@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+<title id="title">派特岛 · pet 之夜 F4</title><desc id="desc">奶油色 pet 字标、琥珀光点，夜色中的小屋与圆润黑色小猫剪影坐落浮岛。</desc>
+<defs>
+ <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#19243B"/><stop offset="1" stop-color="#304E70"/></linearGradient>
+ <radialGradient id="halo"><stop stop-color="#587CA5" stop-opacity=".3"/><stop offset="1" stop-color="#587CA5" stop-opacity="0"/></radialGradient>
+ <radialGradient id="warm"><stop stop-color="#FFC570" stop-opacity=".5"/><stop offset="1" stop-color="#FFC570" stop-opacity="0"/></radialGradient>
+ <linearGradient id="ground" x2="0" y2="1"><stop stop-color="#6F99B4"/><stop offset="1" stop-color="#4D7495"/></linearGradient>
+</defs>
+<g id="background"><rect width="1024" height="1024" fill="url(#sky)"/><ellipse cx="512" cy="480" rx="470" ry="450" fill="url(#halo)"/></g>
+<g id="foreground">
+ <g id="sky-details" fill="#EFE5D0"><path d="M236 173 A39 39 0 1 0 281 218 A32 32 0 0 1 236 173Z" opacity=".72"/><path d="M782 191Q786 208 803 212Q786 216 782 233Q778 216 761 212Q778 208 782 191Z" opacity=".8"/><circle cx="823" cy="284" r="4" opacity=".45"/><circle cx="181" cy="485" r="4" opacity=".35"/></g>
+ <g id="wordmark" transform="translate(-32 -10)" fill="none" stroke="#F4E9D3" stroke-width="35" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M250 332V616M250 420C250 371 289 332 338 332S426 371 426 420S387 508 338 508S250 469 250 420"/>
+  <path d="M490 420H682C682 370 641 332 588 332S490 370 490 420S532 508 588 508C619 508 647 498 668 478"/>
+  <path d="M784 306V502Q784 543 824 532M728 366H846"/>
+ </g>
+ <g id="letter-light"><circle cx="556" cy="369" r="51" fill="url(#warm)"/><circle cx="556" cy="369" r="18" fill="#FFC16A"/></g>
+ <g id="island">
+  <ellipse cx="512" cy="886" rx="180" ry="14" fill="#769ABD" opacity=".14"/>
+  <path d="M310 752L404 787L512 799L620 787L714 752L635 837L512 878L389 837Z" fill="#264866"/>
+  <path d="M310 752L404 787L512 878L389 837Z" fill="#315777"/>
+  <path d="M404 787L512 799L512 878Z" fill="#3D6483"/>
+  <path d="M310 752Q377 719 512 719Q647 719 714 752Q644 786 512 787Q380 786 310 752Z" fill="url(#ground)"/>
+  <path d="M318 754Q512 803 706 754" stroke="#87ADC3" stroke-width="5" opacity=".45" fill="none"/>
+  <ellipse cx="586" cy="733" rx="70" ry="15" fill="#FFC16A" opacity=".15"/>
+ </g>
+ <g id="cottage"><circle cx="595" cy="696" r="87" fill="url(#warm)"/>
+  <path d="M553 679H648V727Q648 733 642 733H559Q553 733 553 727Z" fill="#15283D"/>
+  <path d="M540 682L599 628L660 682Z" fill="#182C43"/><path d="M627 650V634H639V662" fill="#182C43"/>
+  <rect x="581" y="685" width="32" height="33" rx="4" fill="#FFD18A"/><path d="M597 686V717M582 701H612" stroke="#594B3D" stroke-width="4"/>
+ </g>
+ <g id="pet" fill="#101A29">
+  <!-- 单色剪影：大圆头、短钝耳、梨形坐姿和圆爪 -->
+  <path d="M415 715C398 731 379 724 379 708C379 699 385 694 391 698C395 701 393 706 389 707" fill="none" stroke="#101A29" stroke-width="15" stroke-linecap="round"/>
+  <path d="M410 725C405 709 413 684 428 673C437 666 453 666 462 673C479 685 488 710 482 728Q479 736 468 736H422Q413 736 410 725Z"/>
+  <ellipse cx="428" cy="732" rx="15" ry="7"/>
+  <ellipse cx="467" cy="732" rx="15" ry="7"/>
+  <path d="M415 643Q410 629 414 617Q416 612 423 616L437 626Q449 622 462 626L475 616Q481 612 483 618Q487 632 481 644C491 661 479 680 461 684Q436 691 418 677C406 669 405 653 415 643Z"/>
+ </g>
+</g></svg>
