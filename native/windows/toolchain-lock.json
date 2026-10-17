@@ -24,10 +24,10 @@
     "cook": true,
     "launch": true,
     "real_asset_import": true,
-    "skeletal_animation": false,
+    "skeletal_animation": true,
     "transparent_material_visual": false,
-    "five_minute_run": false,
+    "five_minute_run": true,
     "clean_build_machine": false
   },
-  "note": "Exact installed build recorded from Build.version and real UBT/Cook/Shipping run. Overall P0 remains incomplete: skeleton, transparency, five-minute stability, clean-machine reproduction and visual/performance gates pending."
+  "note": "UE Editor/Development/Shipping compile, Cook, RTX launch, three-clip skeletal playback and five-minute Shipping run passed. P0 remains incomplete: glass/environment visual gates, full animation catalog, runtime UGC, clean-machine reproduction and real performance."
 }

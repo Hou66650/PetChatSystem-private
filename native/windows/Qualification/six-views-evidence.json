@@ -1,0 +1,356 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-17",
+  "scope": "P0 isolated standard cat and V1 architecture; not final V2 island",
+  "shipping_run": {
+    "configuration": "Shipping",
+    "executable_sha256": "6094046E78E90A8FC189A8CB0B1FDA19FD0AF39BF6CF1CE340464D6DBDE8EEAB",
+    "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "elapsed_seconds": 300.00628470256925,
+    "captures": [
+      {
+        "file": "01-cat-portrait-a.png",
+        "sha256": "82E93F06F66ABF46F70B4038E6A387EB585646699A341243DDF0B3391F18AC97"
+      },
+      {
+        "file": "01-cat-portrait-b.png",
+        "sha256": "91D7D398471A56F43562F00FDBEE3C551F82C711FFA4C8E01FBF66EE978F7CD7"
+      },
+      {
+        "file": "02-cat-walk-a.png",
+        "sha256": "D1C36F47FC0294980F49A4B35B1582C66E668E08E84519A2502474F8E60F63BA"
+      },
+      {
+        "file": "02-cat-walk-b.png",
+        "sha256": "40302FD5BB0744FDAD821F78566AEF47DA0A99F4F642E5E953F7CF34B5C89F09"
+      },
+      {
+        "file": "03-cat-trot-a.png",
+        "sha256": "E838FF40A5A56DFA7954D3A46AFD4096870CB5DB3C8A2F5B60C00415C1C7A7CE"
+      },
+      {
+        "file": "03-cat-trot-b.png",
+        "sha256": "48C975B829C7B8A6FB11C84DF215268E427C81C01E2118D657D10ECAFFE2B8CC"
+      },
+      {
+        "file": "04-glass-outside.png",
+        "sha256": "8CCBE55630326C412BC039E71E7A28B0271C03D54D1C7341453E6FE452EC6506"
+      },
+      {
+        "file": "05-glass-inside.png",
+        "sha256": "15E931C5A3FC2C3A4D46EEFC00E14D3182C48994D475E50FA949DBEE2EB10CB9"
+      },
+      {
+        "file": "06-overview.png",
+        "sha256": "8C1A41C236BB06235D25D67856E75EA6130C9332F854E087A916C732E8A8C5FE"
+      }
+    ],
+    "packaged_content": [
+      {
+        "file": "global.ucas",
+        "sha256": "0D084B15954091178453B50EE903C76A50D7F93475E6EBA1FA15DD55BCB72C9D"
+      },
+      {
+        "file": "global.utoc",
+        "sha256": "A6F490BF154D4C4A6326A8BA0AFD650203ED8A5A949B386E99339B0B058DBAA4"
+      },
+      {
+        "file": "PaitIsland-Windows.pak",
+        "sha256": "C221CD0A824C9FB4B68328583FE8097B27F70871CA5D197AED475F68F8B0881C"
+      },
+      {
+        "file": "PaitIsland-Windows.ucas",
+        "sha256": "9B497F968E0BCBDC67963D37367AD7A84B4AD23DE4B6D68607EAAD6268999061"
+      },
+      {
+        "file": "PaitIsland-Windows.utoc",
+        "sha256": "D0414DAD44267D6F6E9C6C60B91FA6CF238A9708E0AA1F48AE6A6367121B301F"
+      }
+    ],
+    "pose_summary": [
+      {
+        "shot": "01-cat-portrait",
+        "samples": 91,
+        "moving_samples": 90,
+        "maximum_bone_delta_cm": 6.103464240438148
+      },
+      {
+        "shot": "02-cat-walk",
+        "samples": 18,
+        "moving_samples": 17,
+        "maximum_bone_delta_cm": 24.22706034089187
+      },
+      {
+        "shot": "03-cat-trot",
+        "samples": 19,
+        "moving_samples": 18,
+        "maximum_bone_delta_cm": 19.977902235384438
+      },
+      {
+        "shot": "04-glass-outside",
+        "samples": 18,
+        "moving_samples": 17,
+        "maximum_bone_delta_cm": 19.110546379729833
+      },
+      {
+        "shot": "05-glass-inside",
+        "samples": 19,
+        "moving_samples": 18,
+        "maximum_bone_delta_cm": 19.831005753100673
+      },
+      {
+        "shot": "06-overview",
+        "samples": 635,
+        "moving_samples": 634,
+        "maximum_bone_delta_cm": 20.26406327612839
+      }
+    ],
+    "resolution": "1600x900",
+    "requested_window_state": "Hidden",
+    "animation_clips": [
+      "idle_breathe",
+      "walk",
+      "trot"
+    ],
+    "five_minute_runtime_completed": true,
+    "visual_qualified": false,
+    "performance_qualified": false,
+    "utc": "2026-10-17T07:36:18.2909978Z"
+  },
+  "runtime_summary": {
+    "status": "runtime_checks_passed_requires_visual_review",
+    "elapsed_seconds": 300.00628470256925,
+    "frames": 33692,
+    "changed_pose_samples": 794,
+    "error": ""
+  },
+  "runtime_report_sha256": "e518037845df6d2c675ba20bffd3f66b8992e093f26541aa6931e34ad9d67d12",
+  "raw_evidence_local": "Saved/Qualification/SixViews-Shipping-d2f11ac7a6834fe1b36a457f27192742",
+  "source_cat_sha256": "dca73dc58ffd5e3aa4b52a86eeefeebd6621d30a3e695fe540d5892250e901db",
+  "material_repair": {
+    "status": "saved_requires_cook_and_visual_review",
+    "mesh": "/Game/Imported/P0Cat/cat/SkeletalMeshes/Reference_fur",
+    "previous_material": "/Game/Imported/P0Cat/cat/Materials/Directional_coat_fibres.Directional_coat_fibres",
+    "previous_scalar_parameters": {
+      "BaseColorTexture_Rotation": 0.0,
+      "BaseColorTexture_TexCoord": 0.0,
+      "MetallicRoughnessTexture_Rotation": 0.0,
+      "MetallicRoughnessTexture_TexCoord": 0.0,
+      "MetallicFactor": 0.0,
+      "RoughnessFactor": 0.9300000071525574,
+      "NormalTexture_Rotation": 0.0,
+      "NormalTexture_TexCoord": 0.0,
+      "NormalScale": 1.0,
+      "OcclusionTexture_Rotation": 0.0,
+      "OcclusionTexture_TexCoord": 0.0,
+      "OcclusionStrength": 1.0,
+      "IOR": 1.5,
+      "SpecularTexture_Rotation": 0.0,
+      "SpecularTexture_TexCoord": 0.0,
+      "SpecularFactor": 1.0,
+      "EmissiveTexture_Rotation": 0.0,
+      "EmissiveTexture_TexCoord": 0.0,
+      "EmissiveStrength": 1.0,
+      "AlphaCutoff": 0.0,
+      "IridescenceIOR": 1.2999999523162842,
+      "IridescenceFactor": 0.0,
+      "IridescenceThicknessMinimum": 100.0,
+      "IridescenceThicknessMaximum": 400.0,
+      "IridescenceTexture_Rotation": 0.0,
+      "IridescenceTexture_TexCoord": 0.0,
+      "IridescenceThicknessTexture_Rotation": 0.0,
+      "IridescenceThicknessTexture_TexCoord": 0.0,
+      "AnisotropyStrength": 0.0,
+      "AnisotropyRotation": 0.0,
+      "AnisotropyTexture_Rotation": 0.0,
+      "AnisotropyTexture_TexCoord": 0.0
+    },
+    "replacement_material": "/Game/Qualification/Materials/M_P0_CatFurVertexColor",
+    "base_color": "GLB COLOR_0 vertex RGB",
+    "roughness": 0.93,
+    "specular": 0.25,
+    "source_glb_modified": false,
+    "source_sha256": "dca73dc58ffd5e3aa4b52a86eeefeebd6621d30a3e695fe540d5892250e901db"
+  },
+  "material_binding_after_fresh_editor_reload": {
+    "cat_layers": [
+      {
+        "mesh": "/Game/Imported/P0Cat/cat/SkeletalMeshes/Brow_vibrissae.Brow_vibrissae",
+        "asset_materials": [
+          "/Game/Imported/P0Cat/cat/Materials/Whisker_satin.Whisker_satin"
+        ],
+        "component_materials": [
+          "/Game/Imported/P0Cat/cat/Materials/Whisker_satin.Whisker_satin"
+        ],
+        "override_materials": []
+      },
+      {
+        "mesh": "/Game/Imported/P0Cat/cat/SkeletalMeshes/Reference_cat_skin.Reference_cat_skin",
+        "asset_materials": [
+          "/Game/Imported/P0Cat/cat/Materials/model.model",
+          "/Game/Imported/P0Cat/cat/Materials/Cat_cornea.Cat_cornea",
+          "/Game/Imported/P0Cat/cat/Materials/Cat_nose.Cat_nose",
+          "/Game/Imported/P0Cat/cat/Materials/Cat_inner_ear.Cat_inner_ear"
+        ],
+        "component_materials": [
+          "/Game/Imported/P0Cat/cat/Materials/model.model",
+          "/Game/Imported/P0Cat/cat/Materials/Cat_cornea.Cat_cornea",
+          "/Game/Imported/P0Cat/cat/Materials/Cat_nose.Cat_nose",
+          "/Game/Imported/P0Cat/cat/Materials/Cat_inner_ear.Cat_inner_ear"
+        ],
+        "override_materials": []
+      },
+      {
+        "mesh": "/Game/Imported/P0Cat/cat/SkeletalMeshes/Reference_fur.Reference_fur",
+        "asset_materials": [
+          "/Game/Qualification/Materials/M_P0_CatFurVertexColor.M_P0_CatFurVertexColor"
+        ],
+        "component_materials": [
+          "/Game/Qualification/Materials/M_P0_CatFurVertexColor.M_P0_CatFurVertexColor"
+        ],
+        "override_materials": []
+      }
+    ]
+  },
+  "before_repair_run": {
+    "configuration": "Shipping",
+    "executable_sha256": "6094046E78E90A8FC189A8CB0B1FDA19FD0AF39BF6CF1CE340464D6DBDE8EEAB",
+    "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "elapsed_seconds": 300.00120460242033,
+    "captures": [
+      {
+        "file": "01-cat-portrait-a.png",
+        "sha256": "87BFE8E082F534898E751F4443C8A9646AE2CAEBD3050C9345399713C2619667"
+      },
+      {
+        "file": "01-cat-portrait-b.png",
+        "sha256": "93BA5D339FC5116A13DC244A7E880351F91EE67B1B8E9728E8593CBE07D54D61"
+      },
+      {
+        "file": "02-cat-walk-a.png",
+        "sha256": "B3BD724FE8D8ADD1154FE8BEC7FF3604C29C4B25D6A994DE4AA72497C0077428"
+      },
+      {
+        "file": "02-cat-walk-b.png",
+        "sha256": "827BE583F12EC18EB72B837EBE3539F077872B5171D9A317835A662E07505A29"
+      },
+      {
+        "file": "03-cat-trot-a.png",
+        "sha256": "24AA99B50CE85C8D3CABAED8F2A0B84C24A69F7AA123F607A8546F3BCE52C341"
+      },
+      {
+        "file": "03-cat-trot-b.png",
+        "sha256": "235B28C2C4CA62ABE1CB207C6BDB8C05F01F68DED2669BD253BE12FE2BA07F0A"
+      },
+      {
+        "file": "04-glass-outside.png",
+        "sha256": "D100C1686A3120E01CBFFF99D227B734C8037CD34C909B2D431D15C83C1D971F"
+      },
+      {
+        "file": "05-glass-inside.png",
+        "sha256": "0FD340C4809D8E208F675F091663BECFC59165C8188C71800157360D1BFF239C"
+      },
+      {
+        "file": "06-overview.png",
+        "sha256": "6C03046A4BC0A005428D950A961B532F8D3020FA1F2D8A39CA755FAA8143C20A"
+      }
+    ],
+    "packaged_content": [
+      {
+        "file": "global.ucas",
+        "sha256": "0D084B15954091178453B50EE903C76A50D7F93475E6EBA1FA15DD55BCB72C9D"
+      },
+      {
+        "file": "global.utoc",
+        "sha256": "A6F490BF154D4C4A6326A8BA0AFD650203ED8A5A949B386E99339B0B058DBAA4"
+      },
+      {
+        "file": "PaitIsland-Windows.pak",
+        "sha256": "E64EC8AE1564E514EB93E4E1DE994D4CCCF3A579EC01255BF343E52028C69133"
+      },
+      {
+        "file": "PaitIsland-Windows.ucas",
+        "sha256": "9A14025E90DAD9D086E4FC94F0C5807BE767BBE427813D26E48C4B7D3D81CB6A"
+      },
+      {
+        "file": "PaitIsland-Windows.utoc",
+        "sha256": "79895B396A95053A8A3A472E42EDA0F6AAA83C7FA80888340A5150DA5BEC20AB"
+      }
+    ],
+    "pose_summary": [
+      {
+        "shot": "01-cat-portrait",
+        "samples": 90,
+        "moving_samples": 89,
+        "maximum_bone_delta_cm": 7.9448681299681025
+      },
+      {
+        "shot": "02-cat-walk",
+        "samples": 18,
+        "moving_samples": 17,
+        "maximum_bone_delta_cm": 23.492092023833465
+      },
+      {
+        "shot": "03-cat-trot",
+        "samples": 18,
+        "moving_samples": 17,
+        "maximum_bone_delta_cm": 20.00507363906657
+      },
+      {
+        "shot": "04-glass-outside",
+        "samples": 19,
+        "moving_samples": 18,
+        "maximum_bone_delta_cm": 19.556861802125763
+      },
+      {
+        "shot": "05-glass-inside",
+        "samples": 18,
+        "moving_samples": 17,
+        "maximum_bone_delta_cm": 18.73366914734871
+      },
+      {
+        "shot": "06-overview",
+        "samples": 636,
+        "moving_samples": 635,
+        "maximum_bone_delta_cm": 20.173825995431734
+      }
+    ],
+    "resolution": "1600x900",
+    "requested_window_state": "Hidden",
+    "animation_clips": [
+      "idle_breathe",
+      "walk",
+      "trot"
+    ],
+    "five_minute_runtime_completed": true,
+    "visual_qualified": false,
+    "performance_qualified": false,
+    "utc": "2026-10-17T07:22:58.0973260Z"
+  },
+  "before_image": "six-views-20261017/before-fur-binding.png",
+  "before_image_sha256": "b3bd724fe8d8add1154fe8bec7ff3604c29c4b25d6a994de4aa72497c0077428",
+  "visual_review": {
+    "reviewed_images": 9,
+    "near_cat_framing_improved": true,
+    "white_fibre_artifact_reduced": true,
+    "walk_and_trot_pair_pose_changes_visible": true,
+    "remaining": [
+      "Trot view lower-right bridge obstruction; overview cat at bottom edge",
+      "Glazing looks grey and blurred; reflections and multilayer transparency unqualified",
+      "Dark lower horizon and harsh directional illumination in diagnostic environment",
+      "Only three of 35 clips sampled; foot contact, navigation and all deformation cases unqualified",
+      "No full V2 island, production Agent, runtime UGC or real performance qualification"
+    ]
+  },
+  "checks": {
+    "python_tools_tests_passed": 13,
+    "powershell_syntax": true,
+    "python_script_syntax": true,
+    "shipping_exit_code": 0
+  },
+  "limitations": [
+    "1600x900 diagnostic requested hidden window; not prescribed native-resolution performance test",
+    "Five minutes without process failure is not two-hour stability, memory-leak, suspend/resume or input acceptance",
+    "Automatic movement check and paired screenshots do not prove natural animation or gameplay integration"
+  ]
+}

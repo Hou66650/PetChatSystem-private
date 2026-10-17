@@ -2,7 +2,7 @@
   "schema_version": 1,
   "date": "2026-10-17",
   "phase": "P0",
-  "status": "compile_cook_shipping_launch_passed_visual_qualification_pending",
+  "status": "three_clip_runtime_and_five_minute_run_passed_visual_and_ugc_pending",
   "branch": "codex/windows-client",
   "client_version": "0.1.0",
   "framework": {
@@ -40,34 +40,39 @@
     "latest_development_package_launch": true,
     "nanite_material_fallback_fixed": true,
     "cached_lighting_clipping_fixed": true,
-    "latest_shipping_package_launch": true
+    "latest_shipping_package_launch": true,
+    "three_clip_skeletal_runtime": true,
+    "six_camera_captures": 9,
+    "five_minute_shipping_run": true,
+    "fur_vertex_color_binding_persisted": true,
+    "fur_white_fibre_artifact_reduced": true
   },
   "not_validated": {
     "interactive_editor_ui": false,
-    "five_minute_stability": false,
-    "skeletal_animation": false,
     "transparent_material_quality": false,
     "six_camera_visual_quality": false,
     "runtime_ugc": false,
     "real_frame_rate": false,
-    "final_v2_island": false
+    "final_v2_island": false,
+    "full_35_clip_animation_quality": false,
+    "two_hour_stability": false
   },
   "blockers": [],
   "next": [
-    "Frame standard cat close-up; verify motion, deformation and five-minute stability in packaged builds",
-    "Qualify glass/sky lighting, skeletal animation, six cameras and five-minute stability",
-    "Export latest dark-green/dark-wood V2 Blender assets with runtime materials and LOD; do not treat baseline V1 import as final art",
-    "Complete isolated P0/P1 interaction and real performance qualification before production feature migration"
+    "Correct trot-view obstruction and overview framing; qualify glass, horizon, environment fill and remaining animation quality",
+    "Complete private-GLB runtime import isolated PoC; editor Interchange import is not runtime support",
+    "Export latest dark-green/dark-wood V2 Blender assets with runtime materials, LOD, collision and navigation",
+    "Complete isolated P1 interaction and prescribed real performance qualification before production feature migration"
   ],
   "notes": [
     "Unit tests use synthetic data and fake temporary engine files; these are not device performance or compile results.",
     "No webpage process restarted; no account or original art files modified.",
     "A standalone C++ DXGI/D3D12 program compiled, linked and created a device on the discrete GPU. This does not validate Unreal Engine or frame rate.",
     "EOS InstallHelper completed with ProcessSuccess TRUE and ErrorCode OK at 2026-10-17 13:46 CST. Legacy LauncherInstalled.dat was empty; actual build and launch now confirm installation.",
-    "Shipping screenshot has visible greenhouse and bridge. Exposure clipping corrected; black background, glass, diagnostic cube overlap and environment lighting remain visual qualification work.",
-    "Shipping launch is a short 1600x900 diagnostic capture, not the planned 2560x1600 performance acceptance. Development first launch predates latest exposure/import changes.",
-    "Latest Development after fixture repair shows cat, greenhouse and unobstructed bridge. Nanite material fallback and cached-light clipping warnings removed. Cat framing partly cropped; no runtime animation pass claimed.",
-    "Latest Shipping fixture repair and standard-cat regression launched successfully; evidence in shipping-fixed-evidence.json includes packaged-content hashes."
+    "Latest Shipping fixture repair and standard-cat regression launched successfully; evidence in shipping-fixed-evidence.json includes packaged-content hashes.",
+    "2026-10-17 latest Shipping completed 300.006 seconds, 794 changed pose samples, 9 actual captures. Three clips only; six-camera visual quality is not accepted.",
+    "Fur material repair required writing the modified Unreal struct back into its array; a fresh editor process verified asset and component binding before Cook. Runtime comparison confirms reduced white fibres.",
+    "P0 is isolated fixed-clip playback, not the pet Agent; five minutes and frame counts are not FPS or long-duration memory qualification."
   ],
   "installed_tools": {
     "epic_launcher": "D:\\Epic Games\\Launcher",
@@ -87,5 +92,5 @@
     "complete": true,
     "completed_local": "2026-10-17T13:46:05+08:00"
   },
-  "runtime_evidence": "p0-runtime-evidence.json"
+  "runtime_evidence": "six-views-evidence.json"
 }

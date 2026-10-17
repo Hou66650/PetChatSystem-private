@@ -1,5 +1,6 @@
 #include "PaitQualificationGameMode.h"
 #include "PaitPreviewPawn.h"
+#include "PaitQualificationRun.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -33,6 +34,11 @@ void APaitQualificationGameMode::BeginPlay()
     }
     UE_LOG(LogTemp, Display, TEXT("PAIT P0 | Adapter=%s | No account or cloud writes"),
         *GRHIAdapterName);
+    if (FParse::Param(FCommandLine::Get(), TEXT("PaitQualification")))
+    {
+        GetWorld()->SpawnActor<APaitQualificationRun>();
+        return;
+    }
     bSmokeRun = FParse::Param(FCommandLine::Get(), TEXT("PaitSmoke"));
     if (bSmokeRun)
     {

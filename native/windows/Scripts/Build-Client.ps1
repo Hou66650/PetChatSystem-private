@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)][string]$EngineRoot,
-    [ValidateSet("Generate", "Editor", "CreateMap", "ImportAsset", "ImportPet", "Package")][string]$Mode = "Editor",
+    [ValidateSet("Generate", "Editor", "CreateMap", "ImportAsset", "ImportPet", "RepairFur", "Package")][string]$Mode = "Editor",
     [ValidateSet("Development", "Shipping")][string]$Configuration = "Development",
     [string]$PythonExe = "python"
 )
@@ -56,6 +56,17 @@ switch ($Mode) {
             if ($result.status -ne "editor_import_saved" -or $result.skeletal_meshes.Count -lt 1 -or $result.animations.Count -lt 1) {
                 throw "Import did not produce skeletal meshes and animations."
             }
+        }
+    }
+    "RepairFur" {
+        $furReport = Join-Path $projectRoot "Saved/Qualification/fur-material-repair.json"
+        if (Test-Path -LiteralPath $furReport) { throw "Fur repair already recorded; inspect existing evidence." }
+        $script = Join-Path $projectRoot "Scripts/repair_qualification_fur.py"
+        & $editor $projectFile "-ExecutePythonScript=$script" -unattended -nosplash -nullrhi -stdout
+        if ($LASTEXITCODE -eq 0) {
+            if (-not (Test-Path -LiteralPath $furReport)) { throw "Fur repair evidence missing. Inspect Saved/Logs." }
+            $result = Get-Content -LiteralPath $furReport -Raw | ConvertFrom-Json
+            if ($result.status -ne "saved_requires_cook_and_visual_review") { throw "Fur repair did not save." }
         }
     }
     "Package" {
