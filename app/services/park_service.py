@@ -48,16 +48,16 @@ def join(owner, data):
     pet = data.get('pet')
     if type(pet) is not int or pet not in (1, 2, 3, 4):
         raise ParkError('请选择一位伙伴')
-    spec = portal_service.pet_spec(owner, str(pet))
-    if spec.get('custom') or not spec['model'].startswith('/static/models/'):
-        raise ParkError('私人定制模型暂未开放公共展示，请选择其他标准伙伴。', 409)
-    profile = growth_service.get(get_db(), owner, pet)
-    public = {k: spec[k] for k in ('model', 'height', 'name', 'id')}
-    if profile:
-        public['name'] = profile['name']
     now, db = clock(), get_db()
     with db:
         db.execute('BEGIN IMMEDIATE')
+        spec = portal_service.pet_spec(owner, str(pet))
+        if spec.get('custom') or not spec['model'].startswith('/static/models/'):
+            raise ParkError('私人定制模型暂未开放公共展示，请选择其他标准伙伴。', 409)
+        profile = growth_service.get(get_db(), owner, pet)
+        public = {k: spec[k] for k in ('model', 'height', 'name', 'id', 'wardrobe')}
+        if profile:
+            public['name'] = profile['name']
         db.execute('DELETE FROM park_presence WHERE updated<=?', (now-TTL,))
         if db.execute('SELECT count(*) FROM park_presence WHERE owner!=?', (owner,)).fetchone()[0] >= CAPACITY:
             raise ParkError('乐园暂时满员，请稍后再来。', 409)

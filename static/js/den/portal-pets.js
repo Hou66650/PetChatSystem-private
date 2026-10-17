@@ -3,6 +3,8 @@
  class Pet{
   constructor(THREE,gltf,spec){this.T=THREE;this.root=new THREE.Group();this.model=gltf.scene;this.root.add(this.model);this.spec=spec;
    const box=spec.custom&&root.PetModelBounds?root.PetModelBounds.measure(THREE,this.model):new THREE.Box3().setFromObject(this.model),scale=spec.height/Math.max(.01,box.max.y-box.min.y);this.model.scale.setScalar(scale);this.model.position.y=-box.min.y*scale;
+   this.wardrobe=root.PetWardrobe?new root.PetWardrobe.Controller(THREE,this.root,spec):null;
+   this.wardrobeReady=this.wardrobe?.apply(spec.wardrobe||[]).catch(error=>{this.wardrobeError=error;return 0;});
    this.mixer=new THREE.AnimationMixer(this.model);this.clips=gltf.animations;this.play('idle');
   }
   play(action,timeScale=1){const previous=this.action;this.action=action;const names={idle:['idle_breathe','Idle'],walk:['motion_walk','Walk','walk'],trot:['motion_trot','trot','motion_walk','Walk','walk'],turnLeft:['turn_left','motion_walk','Walk','walk'],turnRight:['turn_right','motion_walk','Walk','walk'],run:['run','motion_trot','Run'],sniff:['sniff','Idle'],sleep:['sleep_loop','lie_down'],petting:['touch_head','happy','sniff'],happy:['happy','wave_paw']}[action]||['idle_breathe'];

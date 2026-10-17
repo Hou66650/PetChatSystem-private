@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-feed-cookie" data-icon="cookie">饼干</button></div>
         </section>
         <section class="dock-panel" id="dock-actions" aria-labelledby="dock-actions-title" hidden><header><div><h2 id="dock-actions-title">一起动一动</h2><p>召唤它过来，看看它的小表情。</p></div><button type="button" class="dock-close" aria-label="收起一起动一动">✕</button></header>
-            <button class="action-btn" id="btn-portals">双传送门</button><div id="cat-care" hidden><a class="action-btn" href="/cat-market" target="_blank" rel="noopener">猫咪外观市场</a><a class="action-btn" href="/cat-agent-monitor" target="_blank" rel="noopener">探索观测台</a><button class="action-btn" id="btn-greenhouse">照料温室</button><button class="action-btn" id="btn-farm">农场与花园</button><button class="action-btn" id="btn-cat-eat">去吃饭</button><button class="action-btn" id="btn-cat-home">回窝休息</button></div>
+            <button class="action-btn" id="btn-portals">双传送门</button><div id="cat-care" hidden><a class="action-btn" href="/pet-shop?pet=3" target="_blank" rel="noopener">装扮商店</a><a class="action-btn" href="/cat-agent-monitor" target="_blank" rel="noopener">探索观测台</a><button class="action-btn" id="btn-greenhouse">照料温室</button><button class="action-btn" id="btn-farm">农场与花园</button><button class="action-btn" id="btn-cat-eat">去吃饭</button><button class="action-btn" id="btn-cat-home">回窝休息</button></div>
             <div class="dock-grid"><button class="action-btn" id="btn-roam" aria-pressed="true">自由活动：开</button>
             <button class="action-btn" id="btn-recall">过来</button><button class="action-btn" id="btn-run">跑一跑</button>
             <button class="action-btn" id="btn-sniff">闻闻</button>
@@ -409,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-growth-actions">成长互动</button><span id="growth-mood" class="text-sub" role="status"></span>
         </section>
         <section class="dock-panel" id="dock-more" aria-labelledby="dock-more-title" hidden><header><div><h2 id="dock-more-title">小窝里的小乐趣</h2><p>玩耍、记录，或者一起安静一会。</p></div><button type="button" class="dock-close" aria-label="收起小窝里的小乐趣">✕</button></header>
-            <div class="dock-grid"><button type="button" class="action-btn cat-backup" onclick="document.querySelector('[data-dock-panel=&quot;dock-actions&quot;]').click()">动作与照料</button><a class="action-btn" href="/supplies" target="_blank" rel="noopener">派特补给站 / 我的物品</a><button class="action-btn" id="btn-dress" data-icon="dress">换装</button>
+            <div class="dock-grid"><button type="button" class="action-btn cat-backup" onclick="document.querySelector('[data-dock-panel=&quot;dock-actions&quot;]').click()">动作与照料</button><a class="action-btn" href="/supplies" target="_blank" rel="noopener">派特补给站 / 我的物品</a><button class="action-btn" id="btn-dress" data-icon="dress">装扮商店</button>
             <button class="action-btn" id="btn-photo" data-icon="photo">拍照</button>
             <button class="action-btn" id="btn-vision" data-icon="eye">面对面互动</button>
             <button class="action-btn" id="btn-tts">朗读：开</button>
@@ -599,7 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <p class="garden-note" id="garden-feedback" aria-live="polite">浇水后下一个自然日长出新芽；猫咪每日互动也会让植物更茂密。进度保存在此浏览器的当前用户下。</p>
     </dialog>
     <link rel="stylesheet" href="/static/css/portal.css?v={{ app_version }}">
-    <script src="/static/js/den/portal-pets.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/wardrobe.js?v={{ app_version }}"></script><script src="/static/js/den/portal-pets.js?v={{ app_version }}"></script>
     <script src="/static/js/den/portal-visitors.js?v={{ app_version }}"></script>
     <script src="/static/js/den/portals.js?v={{ app_version }}"></script>
     <script src="/static/js/den/greenhouse.js?v={{ app_version }}"></script>
@@ -705,7 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         function petState() {
             if (!state[currentPetId]) {
-                state[currentPetId] = { intimacy: 0, accessory: 0, adoptedOn: localDateKey(new Date()) };
+                state[currentPetId] = { intimacy: 0, adoptedOn: localDateKey(new Date()) };
                 saveState();
             } else if (!state[currentPetId].adoptedOn) {
                 state[currentPetId].adoptedOn = localDateKey(new Date());
@@ -1175,73 +1175,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const clipShort = (n) => n.replace(/^.*\|/, '');
         const loadGlb=(url,ticket)=>assetLoader.glb(url,ticket);
 
-        // 配饰（帽子/围巾/蝴蝶结）：优先挂头/颈骨骼（跟随动画），无骨骼则按体高近似
-        // Accessory helpers are idempotent within the selected model.
-        function buildAccessories(model, headBone, neckBone, origH, spec) {
-            const k = spec.pbr ? origH * .55 : origH;
-            const reuse = (name) => model.getObjectByName(name) || null;
-            let hatGroup = reuse('__den_hat');
-            let scarf = reuse('__den_scarf');
-            let bow = reuse('__den_bow');
-            if (!hatGroup) {
-                const M = (c) => new THREE.MeshLambertMaterial({ color: c });
-                // 派对帽：大锥体（亮粉）+ 宽帽沿（白色）+ 顶球（金色）——一眼可辨
-                const hat = new THREE.Mesh(new THREE.ConeGeometry(0.24 * spec.h, 0.48 * spec.h, 20),
-                    new THREE.MeshBasicMaterial({ color: 0xFF6B9E }));
-                hat.position.set(0, 0.24 * spec.h, 0);
-                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * spec.h, 0.34 * spec.h, 0.04 * spec.h, 20),
-                    new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
-                brim.position.set(0, 0.015 * spec.h, 0);
-                const pom = new THREE.Mesh(new THREE.SphereGeometry(0.06 * spec.h, 10, 8),
-                    new THREE.MeshBasicMaterial({ color: 0xFFD700 }));
-                pom.position.set(0, 0.49 * spec.h, 0);
-                const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.15 * spec.h, 0.02 * spec.h, 8, 20), M(0xFFFFFF));
-                stripe.position.set(0, 0.28 * spec.h, 0); stripe.rotation.x = Math.PI / 2;
-                hatGroup = new THREE.Group(); hatGroup.add(hat); hatGroup.add(brim);
-                hatGroup.add(pom); hatGroup.add(stripe);
-                hatGroup.name = '__den_hat';
-                hatGroup.rotation.z = 0.12;
-                hatGroup.position.set(0, spec.h * 0.98, 0.3);
-                petModel.add(hatGroup);
-            }
-            if (!scarf) {
-                scarf = new THREE.Mesh(new THREE.TorusGeometry(0.34 * k, 0.075 * k, 10, 24),
-                    new THREE.MeshLambertMaterial({ color: 0xE5735B }));
-                scarf.name = '__den_scarf';
-                scarf.rotation.x = 0.35;
-                scarf.position.set(0, spec.h * 0.5, 0.22);
-                petModel.add(scarf);
-            }
-            if (!bow) {
-                bow = new THREE.Group();
-                const M2 = (c) => new THREE.MeshLambertMaterial({ color: c });
-                [-1, 1].forEach((side) => {
-                    const wing = new THREE.Mesh(new THREE.ConeGeometry(0.06 * spec.h, 0.13 * spec.h, 10), M2(0xFF9E58));
-                    wing.rotation.z = Math.PI / 2 * side;
-                    wing.position.x = 0.16 * k * side;
-                    wing.scale.set(1, 1, 0.7);
-                    bow.add(wing);
-                });
-                const knot = new THREE.Mesh(new THREE.SphereGeometry(0.03 * spec.h, 10, 8), M2(0xE8833C));
-                bow.add(knot);
-                bow.name = '__den_bow';
-                bow.rotation.y = 0.45; bow.scale.setScalar(1.2);
-                bow.position.set(spec.h * 0.2, spec.h * 0.72, 0.12);
-                petModel.add(bow);
-            }
-            hatGroup.visible = false; scarf.visible = false; bow.visible = false;
-            petModel.userData.accessories = [hatGroup, scarf, bow];
-            if (spec.pbr) {
-                model.updateMatrixWorld(true);
-                const head = model.getObjectByName('SOCKET_head'), neck = model.getObjectByName('SOCKET_neck');
-                [[hatGroup,head,.02],[scarf,neck,0],[bow,neck,-.03]].forEach(([object,socket,dy]) => {
-                    if (!socket || object.userData.boneAttached) return;
-                    object.position.copy(socket.getWorldPosition(new THREE.Vector3())); object.position.y += dy;
-                    petModel.worldToLocal(object.position); petModel.updateMatrixWorld(true); socket.attach(object); object.userData.boneAttached = true;
-                });
-            }
-        }
-
         // ---------- 动画状态机（GLB AnimationMixer 驱动） ----------
         let petModel = null;
         let facePlay = null, toyWorkshop = null, headLook = null, catLife = null, catAgent = null, petGrounding = null;
@@ -1669,7 +1602,7 @@ document.addEventListener('DOMContentLoaded', () => {
             petModel.userData = { pbr:!!spec.pbr, height: spec.h, cameraCenter:(box2.max.y-box2.min.y)/2, growthKey:spec.growthKey||'', growthStage:spec.growthStage||'', growthFallback:spec.growthFallback||'', headBone, mouthSocket: model.getObjectByName('SOCKET_mouth'), groundY: modeledStage ? .039 : 0, origH, animations: gltf.animations.map(a => clipShort(a.name)) };
             currentSpec = spec;
             headLook=new PetHeadLook.Controller(THREE,petModel,{relaxBehind:id===3});petModel.userData.headLook=!!headLook.head;
-            buildAccessories(model, headBone, neckBone, origH, spec);
+            petModel.userData.wardrobe = new PetWardrobe.Controller(THREE, petModel, spec);
             scene.add(petModel); petModel.position.y = petModel.userData.groundY; grabHomeY = petModel.userData.groundY;
             const navigation = new PetNavigation.Navigation({radius:3.2,
                 ...(modeledStage ? MODELED_STAGES[spec.theme].navigation : {obstacles:PetNavigation.legacy[spec.theme]}),
@@ -1700,9 +1633,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             document.getElementById('btn-run').hidden=!actions.run;
             locomotion.enabled = petState().roaming !== false; updateRoamingButton();
-            // 配饰恢复
-            const acc = petState().accessory || 0;
-            if (acc > 0 && petModel.userData.accessories[acc - 1]) petModel.userData.accessories[acc - 1].visible = true;
+            void refreshWardrobe();
             // 出生动画
             g.scale.setScalar(0.01);
             anim.birth = 0;
@@ -2330,16 +2261,7 @@ document.addEventListener('DOMContentLoaded', () => {
             snapshot() { return { gestureAction, foodDrag: !!foodDrag, grabbed }; },
         };
         function doDress() {
-            const ps = petState();
-            ps.accessory = ((ps.accessory || 0) + 1) % 4; // 0无 1帽 2围巾 3蝴蝶结
-            saveState();
-            const parts = petModel.userData;
-            parts.accessories.forEach(a => (a.visible = false));
-            const names = ['恢复素颜', '戴上了派对帽 🎉', '围上了红围巾 🧣', '别上了蜜橙蝴蝶结 🎀'];
-            if (ps.accessory > 0) parts.accessories[ps.accessory - 1].visible = true;
-            setAnim('happy', 1400);
-            burst('star', 5);
-            showBubble(`${SPECS[currentPetId].name}${names[ps.accessory]}`, 1800);
+            location.href='/pet-shop?pet='+currentPetId;
         }
         function doPhoto() {
             renderer.shadowMap.needsUpdate=true;
@@ -3877,15 +3799,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 toyWorkshop?.grip?.update(toyWorkshop.held);
                 const st = anim.state;
 
-                // 配饰跟随宠物位置（挂 scene 根，每帧同步坐标）
-                const accs = petModel.userData.accessories;
-                if (accs && !accs[0].userData.boneAttached) {
-                    const pp = petModel.position;
-                    const ph = petModel.userData.height || 1;
-                    accs[0].position.set(pp.x, pp.y + ph * 0.95, pp.z + 0.3);
-                    accs[1].position.set(pp.x, pp.y + ph * 0.5, pp.z + 0.25);
-                    accs[2].position.set(pp.x + ph * 0.18, pp.y + ph * 0.72, pp.z + 0.12);
-                }
                 // 接触阴影：贴地跟随，被提起时淡出缩小
                 contactShadow.visible = true;
                 {
@@ -3984,6 +3897,23 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('orientationchange', onViewportChange);
 
         // ---------- 启动 ----------
+        async function refreshWardrobe(){
+            const target=petModel, id=currentPetId;
+            if(!target?.userData.wardrobe)return;
+            const requestId=(target.userData.wardrobeRequest||0)+1;target.userData.wardrobeRequest=requestId;
+            try{
+                const r=await fetch('/api/wardrobe?petId='+id,{cache:'no-store'});
+                if(!r.ok)return;
+                const data=await r.json();
+                if(data.scope!==COMPANION_SCOPE||target!==petModel||id!==currentPetId||target.userData.wardrobeRequest!==requestId)return;
+                const items=data.compatible?data.pet.wardrobe:[];
+                const key=JSON.stringify(items);
+                if(target.userData.wardrobeKey!==key){await target.userData.wardrobe.apply(items);if(target===petModel)target.userData.wardrobeKey=key;}
+            }catch(_){ /* Retain the last confirmed outfit during a network interruption. */ }
+        }
+        window.addEventListener('focus',()=>void refreshWardrobe());
+        window.addEventListener('storage',e=>{if(e.key==='pait-wardrobe-change')void refreshWardrobe();});
+        setInterval(()=>{if(!document.hidden)void refreshWardrobe();},15000);
         let catAppearanceId={{ cat_appearance.id|tojson }}, checkingCatAppearance=false;
         async function refreshCatAppearance(){
             if(checkingCatAppearance||document.hidden||spawnBusy||interactionBusy())return;

@@ -121,6 +121,7 @@
     }
     const modelCache=new ModelCache();
     function disposeTree(root){
+        root?.userData?.wardrobe?.dispose();
         const geometries=new Set(),materials=new Set(),textures=new Set(),skeletons=new Set();
         root.traverse(o=>{
             if(o.geometry)geometries.add(o.geometry);

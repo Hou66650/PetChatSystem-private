@@ -7,7 +7,7 @@ def no_cache(r):r.headers['Cache-Control']='no-store';return r
 @bp.errorhandler(market.MarketError)
 def error(e):return jsonify(error=str(e)),e.status
 @bp.get('/cat-market')
-def page():return render_template('cat-market.html',scope=companion.browser_scope())
+def page():return render_template('pet-shop.html',scope=companion.browser_scope())
 @bp.get('/api/cat-market')
 def state():return jsonify(**market.state(companion.owner_key()),scope=companion.browser_scope(),effectiveAppearance=studio.appearance(companion.owner_key()) or market.appearance(companion.owner_key()))
 @bp.post('/api/cat-market/<operation>')

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "moss-bow",
+    "triangles": 14728,
+    "bytes": 350728,
+    "source": "art\\wardrobe-v1\\moss-bow.blend",
+    "model": "static\\models\\wardrobe-v1\\moss-bow.glb"
+  },
+  {
+    "id": "coral-bow",
+    "triangles": 15312,
+    "bytes": 363624,
+    "source": "art\\wardrobe-v1\\coral-bow.blend",
+    "model": "static\\models\\wardrobe-v1\\coral-bow.glb"
+  },
+  {
+    "id": "daisy",
+    "triangles": 22120,
+    "bytes": 527572,
+    "source": "art\\wardrobe-v1\\daisy.blend",
+    "model": "static\\models\\wardrobe-v1\\daisy.glb"
+  },
+  {
+    "id": "blue-beret",
+    "triangles": 18616,
+    "bytes": 435384,
+    "source": "art\\wardrobe-v1\\blue-beret.blend",
+    "model": "static\\models\\wardrobe-v1\\blue-beret.glb"
+  }
+]

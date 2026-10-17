@@ -59,6 +59,8 @@ def create_app(config_object=Config):
         portal_service.init_schema()
         from .services import cat_market_service
         cat_market_service.init_schema()
+        from .services import wardrobe_service
+        wardrobe_service.init_schema()
         from .services import supply_service
         supply_service.init_schema()
         from .services import farm_service

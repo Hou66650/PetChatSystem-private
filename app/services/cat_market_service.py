@@ -62,7 +62,8 @@ def operate(owner,op,data):
     db.execute('INSERT INTO cat_coin_ledger VALUES (?,?,?,?,?,?)',(owner,'purchase:'+coat,'purchase',-price,day(),time.time()))
    elif op=='equip':
     if not owned:raise MarketError('请先解锁这个外观',403)
-    if db.execute("SELECT 1 FROM portal_trips t LEFT JOIN portal_islands i ON i.id=t.destination WHERE t.status IN ('active','pairing') AND ((t.owner=? AND t.pet='3') OR (i.owner=? AND i.pet='3'))",(owner,owner)).fetchone():raise MarketError('猫咪正在旅行或接待好友，请结束行程后换装',409)
+    from .wardrobe_service import check_available
+    check_available(owner,3)
     db.execute('UPDATE cat_wallets SET active=? WHERE owner=?',(coat,owner))
     db.execute('DELETE FROM pet_studio_equipped WHERE owner=?',(owner,))
   else:raise MarketError('操作不存在',404)
