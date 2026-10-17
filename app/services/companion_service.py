@@ -232,11 +232,12 @@ def invalidate_context(db, owner):
                '(SELECT COALESCE(MAX(id),0) FROM companion_messages WHERE owner=?) WHERE owner=?', (owner,owner))
 
 
-def save_turn(owner, pet_id, request_id, message, plan, revision):
+def save_turn(owner, pet_id, request_id, message, plan, revision, before_save=None):
     db = get_db()
     with db:
         # Serialize the revision check and write; a concurrent forget wins over stale LLM output.
         db.execute('BEGIN IMMEDIATE')
+        if before_save is not None:before_save()
         state = settings(owner)
         if state['revision'] != revision:
             return False

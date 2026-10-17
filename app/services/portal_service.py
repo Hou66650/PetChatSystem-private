@@ -278,6 +278,9 @@ def desktop_trip(token):
 
 def desktop(token,op,data):
     t=desktop_trip(token)
+    if op in ('manifest','chat','speech'):
+        from . import desktop_agent_service
+        return desktop_agent_service.dispatch(t,op,data)
     if op=='state':return public_trip(t,t['owner'],True)
     if op=='ready':return advance_desktop(t,'preparing','entering')
     if op=='arrived':return advance_desktop(t,'emerging','roaming')

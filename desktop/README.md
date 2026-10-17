@@ -9,6 +9,11 @@
 3. 将网页根地址和一次性配对码填入客户端。地址必须连接同一个服务端；本机可用 `http://127.0.0.1:端口`，远程连接使用 HTTPS。
 4. 保持小窝页面可见，等待模型与已穿饰品准备完成。宠物走入岛上的门，再从桌面光门走出、站稳，随后自由活动。
 5. 点击宠物可摸摸，右键可召回。软件感知默认关闭，只在自由活动阶段允许开启。
+6. 到达桌面后，在控制台“聊聊今天”输入消息，或右键宠物选择“和它聊天”。沿用原有宠物人格、记忆；回复旁点击“用它的声音朗读”使用已选专属音色或原默认音色。“停止朗读”立即停止当前音频。
+
+当前开放单宠聊天与朗读，没有提醒、专注计时、系统通知或麦克风通话。服务端 `DESKTOP_AGENT_ENABLED=false` 可关闭新聊天功能，保留配对与召回；默认 true。消息与语音使用现有供应商配置，未配置语音服务时不显示朗读按钮。客户端和服务器需同时更新，新客户端要求服务器提供资源 manifest。
+
+关闭长期记忆时，回复正文只在服务器内存保留最多十分钟；重启或缓存失效后，同一请求不会重新调用模型。客户端不会自动重发聊天或语音；未知结果会明确报错。召回或档案／声音版本变化会清空控制台本次显示并停止朗读；开启记忆时原聊天历史仍按既有规则保存。
 
 启动器默认地址仍为本机 5002，请按实际服务地址修改。网页的登录账号决定传送哪只宠物；客户端只持有本次行程凭证，不保存账号密码或长期凭证。
 
@@ -37,6 +42,8 @@
 
 - `python -m unittest discover -s test -p test_portals.py`：阶段、授权、幂等、超时、行程互斥和私有模型。
 - `node test/desktop_motion.cjs`：转向、加速度、限速、到达和负原点工作区。
+- `node test/desktop_contract.cjs`：OpenPets 原源码行为对照、独立请求取消、缺失动作回退；测试需要支持 `stripTypeScriptTypes` 的 Node 运行时，桌面运行本身不依赖此 API。
+- `python -m unittest discover -s test -p test_desktop_agent.py`：原身份／音色、并发去重、未知结果、关闭记忆、召回和版本变化；使用隔离数据库及模型／音频替身。
 - `node test/portal_approach.cjs`、`node test/portal_confirm.cjs`：真实网页回调的到门与确认逻辑。
 - 先启动 `python test/desktop_transfer_server.py`，再运行 `node test/desktop_transfer.cjs`：隔离数据库，实际 Chromium + Electron 主进程、GLB 和饰品，慢加载、出入门、召回、饰品失败及加载中取消。需要 Playwright；可用 `PET_TEST_ELECTRON` 和 `PET_TEST_CHROME` 指定程序路径。
 - `desktop/node_modules/electron/dist/electron.exe test/desktop-render.cjs`：透明窗口渲染和门户 DOM 回归；可用 `PET_DESKTOP_TEST_GLB` 提供本地定制模型。

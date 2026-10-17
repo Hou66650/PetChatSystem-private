@@ -27,14 +27,14 @@ def handle_chat(data, observed_reply=None):
                           observed_reply=observed_reply)
 
 
-def chat_for_owner(owner, pet_id, data, *, surface, observed_reply=None):
+def chat_for_owner(owner, pet_id, data, *, surface, observed_reply=None, before_save=None):
     """Internal entry. Caller must authenticate owner/pet; body cannot select identity.
 
-    Requires an application context, not a browser request/session. Desktop tools
-    and surface are deliberately unavailable until their authorization is wired.
+    Requires an application context, not a browser request/session. Desktop caller
+    supplies a transaction guard; web adapters cannot select desktop surface.
     """
     if not isinstance(data,dict): return {'error':'请求格式错误'},400
-    if surface not in ('chat', 'den'):
+    if surface not in ('chat', 'den', 'desktop') or (surface == 'desktop' and before_save is None):
         return {'error':'该聊天入口尚未支持此场景'},400
     from ..db import get_db
     if not isinstance(owner,str) or not get_db().execute(
@@ -61,6 +61,8 @@ def chat_for_owner(owner, pet_id, data, *, surface, observed_reply=None):
         return {'reply':previous['content'],'pet':pet_registry.public_info(pet),'actions':[],
                 'duplicate':True,'profile':memory.profile(owner,pet['id'])},200
     messages=[{'role':'system','content':pet_registry.build_system_prompt(pet,gender)+memory.planner_prompt(owner,pet['id'],surface)}]
+    if surface=='desktop':
+        messages[0]['content']+='\n你正在电脑桌面与主人聊天。目前只支持聊天和朗读，没有提醒、专注计时、系统通知、文件或应用操作工具。不要声称已执行这些操作；收到此类请求时说明尚未开放。actions 必须是 []。'
     if state['enabled']:
         messages += [{'role':r['role'],'content':r['content']} for r in memory.history(owner,pet['id'],for_prompt=True)]
     # Browser chatHistory and body userId are deliberately ignored: account isolation is server-owned.
@@ -72,7 +74,7 @@ def chat_for_owner(owner, pet_id, data, *, surface, observed_reply=None):
         return {'error':'AI 服务暂时不可用，请稍后重试'},503
     plan=memory.decode_plan(raw,message,surface,pet['id'])
     if observed_reply is not None: plan['reply']=observed_reply
-    if not memory.save_turn(owner,pet['id'],request_id,message,plan,state['revision']):
+    if not memory.save_turn(owner,pet['id'],request_id,message,plan,state['revision'],before_save=before_save):
         return {'error':'陪伴档案刚刚发生变化，请重新发送这条消息。'},409
     return {'reply':plan['reply'],'pet':pet_registry.public_info(pet),'actions':plan['actions'],
             'profile':memory.profile(owner,pet['id']),

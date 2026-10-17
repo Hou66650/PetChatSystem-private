@@ -1,7 +1,42 @@
+'use strict';
 const api=window.paitDesktop,$=id=>document.getElementById(id);
-function render(s){window.PaitLoading?.sync('desktop-model',s.connected&&s.phase==='preparing','正在准备桌宠模型与饰品');$('status').textContent=s.status;$('pair').hidden=s.connected;$('connected').hidden=!s.connected;$('sense').checked=s.sensing;$('sense').disabled=s.phase!=='roaming';
- $('deadline').textContent=Number.isFinite(s.expiresAt)?'本次最迟返程：'+new Date(s.expiresAt*1000).toLocaleString('zh-CN')+'（本机时区）。召回、断线或关闭客户端会提前结束。':'当前服务未提供最迟返程时间。';
+let current={},busy=false,audio=null,audioUrl=null,speechEpoch=0;
+function stopAudio(){speechEpoch++;audio?.pause();audio=null;if(audioUrl)URL.revokeObjectURL(audioUrl);audioUrl=null;}
+function controls(){const enabled=current.connected&&current.phase==='roaming'&&current.chatEnabled;$('message').disabled=!enabled;$('send').disabled=!enabled||busy;}
+function render(s){
+ if(s.trip!==current.trip||s.version!==current.version||(!s.chatEnabled&&current.chatEnabled)||(!s.voiceEnabled&&current.voiceEnabled)){
+  stopAudio();$('messages').replaceChildren();$('chat-error').textContent='';busy=false;
+ }
+ current=s;window.PaitLoading?.sync('desktop-model',s.connected&&s.phase==='preparing','正在准备桌宠模型与饰品');
+ $('status').textContent=s.status;$('pair').hidden=s.connected;$('connected').hidden=!s.connected;$('sense').checked=s.sensing;$('sense').disabled=s.phase!=='roaming';
+ $('deadline').textContent=Number.isFinite(s.expiresAt)?'本次最迟返程：'+new Date(s.expiresAt*1000).toLocaleString('zh-CN')+'（本机时区）。召回或断线会提前结束。':'当前服务未提供最迟返程时间。';controls();
 }
+function matches(trip,version){return current.connected&&current.chatEnabled&&current.trip===trip&&current.version===version;}
+function line(label,text){const p=document.createElement('p');p.textContent=label+'：'+text;$('messages').append(p);while($('messages').children.length>40)$('messages').firstChild.remove();p.scrollIntoView({block:'nearest'});return p;}
 api.subscribe(render);api.command('state').then(render);
-$('pair').onsubmit=async e=>{e.preventDefault();$('status').textContent='正在配对…';try{await window.PaitLoading.run('正在配对桌面传送门',async()=>{const s=await api.command('pair',{origin:$('origin').value,code:$('code').value});if(!s.ok)throw Error(s.error||'配对未完成');});}catch(e){$('status').textContent=e.message;return;}$('code').value='';};
-$('return').onclick=()=>window.PaitLoading.run('正在返回悬浮岛',async()=>{const s=await api.command('return');if(s.error)throw Error(s.error);}).catch(e=>{$('status').textContent=e.message;});$('sense').onchange=()=>api.command('sense',$('sense').checked);
+$('pair').onsubmit=async e=>{e.preventDefault();$('status').textContent='正在配对…';try{const s=await api.command('pair',{origin:$('origin').value,code:$('code').value});if(!s.ok)throw Error(s.error||'配对未完成');$('code').value='';}catch(e){$('status').textContent=e.message;}};
+$('return').onclick=()=>api.command('return');$('sense').onchange=()=>api.command('sense',$('sense').checked);$('stop-audio').onclick=stopAudio;
+$('chat-form').onsubmit=async e=>{
+ e.preventDefault();if(busy||!current.chatEnabled||current.phase!=='roaming')return;
+ const message=$('message').value.trim();if(!message)return;
+ const {trip,version}=current,requestId=crypto.randomUUID();busy=true;controls();$('chat-error').textContent='';line('我',message);$('message').value='';
+ try{
+  const r=await api.command('chat',{requestId,version,message});if(!matches(trip,version))return;if(r.error)throw Error(r.error);
+  const p=line(current.pet?.name||'宠物',r.reply);
+  if(current.voiceEnabled){
+   const button=document.createElement('button');button.type='button';button.textContent=r.reply.length>1000?'用它的声音朗读前 1000 字':'用它的声音朗读';p.append(document.createElement('br'),button);
+   let request=crypto.randomUUID(),localAudio=null;
+   button.onclick=async()=>{
+    stopAudio();const turn=speechEpoch;button.disabled=true;
+    try{
+     if(!localAudio){const voice=await api.command('speech',{requestId:request,replyRequestId:requestId,version});if(!matches(trip,version)||turn!==speechEpoch)return;if(voice.error)throw Error(voice.error);localAudio=voice.bytes;}
+     if(!matches(trip,version)||turn!==speechEpoch)return;
+     audioUrl=URL.createObjectURL(new Blob([localAudio],{type:'audio/wav'}));audio=new Audio(audioUrl);const playing=audio;audio.onended=()=>{if(audio===playing)stopAudio();};await audio.play();
+    }catch(error){if(matches(trip,version))$('chat-error').textContent=error.message;}
+    finally{button.disabled=false;}
+   };
+  }
+ }catch(error){if(matches(trip,version))$('chat-error').textContent=error.message+'；结果不确定时不会自动重发。';}
+ finally{if(matches(trip,version)){busy=false;controls();}}
+};
+window.addEventListener('beforeunload',stopAudio);

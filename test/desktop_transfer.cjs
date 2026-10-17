@@ -32,6 +32,18 @@ async function until(test,timeout=60000){const end=Date.now()+timeout;while(Date
   assert(stats.calls>0&&stats.triangles>0);assert.equal(stats.clipped,0);
   await petPage.screenshot({path:path.join(output,'roaming.png')});
   const connectedState=await control.evaluate(()=>paitDesktop.command('state'));
+  assert.equal(connectedState.chatEnabled,true);assert.equal(connectedState.voiceEnabled,true);
+  assert.equal(connectedState.token,undefined,'bearer never reaches renderer');
+  assert.match((await control.evaluate(()=>paitDesktop.command('model',{trip:'forged'}))).error,/变化/);
+  assert.match((await control.evaluate(()=>paitDesktop.command('model'))).error,/仅宠物/);
+  assert.match((await petPage.evaluate(()=>paitDesktop.command('chat',{message:'forged'}))).error,/控制台/);
+  await control.locator('#message').fill('你好，桌面上的伙伴');await control.locator('#send').click();
+  await control.getByText('柴犬：我在桌面陪你。',{exact:false}).waitFor();
+  await control.getByRole('button',{name:'用它的声音朗读',exact:true}).click();
+  await control.waitForFunction(()=>audio!==null&&!audio.paused);await control.locator('#stop-audio').click();
+  assert.equal(await control.evaluate(()=>audio),null);
+  assert.notEqual((await control.evaluate(()=>paitDesktop.command('state'))).reaction,'success');
+  await control.screenshot({path:path.join(output,'chat.png')});
   assert(Number.isFinite(connectedState.expiresAt));
   assert.match(await control.locator('#deadline').innerText(),/最迟返程/);
   // Exercise real main.js request handling: an application conflict, including a
@@ -48,9 +60,21 @@ async function until(test,timeout=60000){const end=Date.now()+timeout;while(Date
   await app.evaluate(()=>{globalThis.fetch=globalThis.transferTestFetch;});
   await page.evaluate(async trip=>{const d=await(await fetch('/api/portals')).json();const r=await fetch('/api/portals/return',{method:'POST',headers:{'Content-Type':'application/json','X-Profile-Scope':d.scope},body:JSON.stringify({trip})});if(!r.ok)throw Error('Recall failed');},connectedState.trip);
   await until(async()=>await control.evaluate(async()=>!(await paitDesktop.command('state')).connected));await page.waitForFunction(()=>__den.petModel.visible);
+  assert.equal(await control.locator('#messages').innerText(),'');
   assert.deepEqual(errors,[]);
+  // Corrupt valid GLB bytes in transit: hash mismatch must recall before ready.
+  await app.evaluate(()=>{globalThis.badHashDownloads=0;globalThis.fetch=async(...args)=>{
+   const response=await globalThis.transferTestFetch(...args);
+   if(String(args[0]).endsWith('.glb')){const bytes=new Uint8Array(await response.arrayBuffer());bytes[bytes.length-1]^=1;globalThis.badHashDownloads++;return new Response(bytes,{status:200});}
+   return response;
+  };});
+  await page.locator('[data-kind=desktop]').click();await page.waitForFunction(()=>!document.querySelector('[data-confirm]').disabled,null,{timeout:60000});await page.locator('[data-confirm]').click();await page.waitForFunction(()=>document.querySelector('[data-pair] code')?.textContent);
+  await control.locator('#code').fill(await page.locator('[data-pair] code').innerText());await control.locator('#pair button').click();
+  await until(async()=>await app.evaluate(()=>globalThis.badHashDownloads>0));
+  await until(async()=>await control.evaluate(async()=>!(await paitDesktop.command('state')).connected));
+  assert(await page.evaluate(()=>__den.petModel.visible));
   // A failed equipped asset must never acknowledge ready or hide the island pet.
-  await app.evaluate(()=>{const original=globalThis.fetch;globalThis.fetch=async(...args)=>String(args[0]).includes('/wardrobe-v1/')?new Response('unavailable',{status:503}):original(...args);});
+  await app.evaluate(()=>{globalThis.fetch=async(...args)=>String(args[0]).includes('/wardrobe-v1/')?new Response('unavailable',{status:503}):globalThis.transferTestFetch(...args);});
   await page.locator('[data-kind=desktop]').click();await page.waitForFunction(()=>!document.querySelector('[data-confirm]').disabled,null,{timeout:60000});await page.locator('[data-confirm]').click();await page.waitForFunction(()=>document.querySelector('[data-pair] code')?.textContent);
   await control.locator('#code').fill(await page.locator('[data-pair] code').innerText());await control.locator('#pair button').click();
   await until(async()=>await control.evaluate(async()=>(await paitDesktop.command('state')).connected));await until(async()=>await control.evaluate(async()=>!(await paitDesktop.command('state')).connected),30000);
@@ -62,6 +86,6 @@ async function until(test,timeout=60000){const end=Date.now()+timeout;while(Date
   await control.locator('#code').fill(await page.locator('[data-pair] code').innerText());await control.locator('#pair button').click();await until(async()=>await control.evaluate(async()=>(await paitDesktop.command('state')).phase==='preparing'));
   await control.locator('#return').click();await until(async()=>await control.evaluate(async()=>!(await paitDesktop.command('state')).connected));await page.waitForTimeout(3500);
   assert.equal(await app.evaluate(()=>globalThis.transferReadyCount),0);assert(await page.evaluate(()=>__den.petModel.visible));
-  console.log(JSON.stringify({passed:'Actual island approach, slow preparation, IPC wardrobe, entry acknowledgement, desktop emerging/settling, deadline, business/legacy conflicts without recall, server recall, accessory failure rollback, cancellation with bytes in flight',stats,output},null,2));
+  console.log(JSON.stringify({passed:'Actual island approach, slow preparation, IPC wardrobe, entry acknowledgement, desktop emerging/settling, chat and original-voice playback, IPC role isolation, deadline, business/legacy conflicts without recall, server recall, hash mismatch, accessory failure rollback, cancellation with bytes in flight',stats,output},null,2));
  }finally{if(app)await app.close();await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "check": "node --check main.js && node --check preload.js && node --check pet.js",
+    "check": "node --check main.js && node --check runtime.js && node --check trip-context.js && node --check control.js && node --check preload.js && node --check pet.js && node --check vendor/openpets/events.cjs",
     "postinstall": "node node_modules/electron/install.js"
   },
   "keywords": [],

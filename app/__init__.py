@@ -82,6 +82,8 @@ def create_app(config_object=Config):
         pet_generation_service.init_schema()
         from .services import pet_quality_service
         pet_quality_service.init_schema()
+        from .services import desktop_agent_service
+        desktop_agent_service.init_schema()
 
     @app.context_processor
     def _companion_scope():

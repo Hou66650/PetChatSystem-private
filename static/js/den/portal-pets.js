@@ -7,8 +7,12 @@
    this.wardrobeReady=this.wardrobe?.apply(spec.wardrobe||[]).catch(error=>{this.wardrobeError=error;return 0;});
    this.mixer=new THREE.AnimationMixer(this.model);this.clips=gltf.animations;this.play('idle');
   }
-  play(action,timeScale=1){const previous=this.action;this.action=action;const names={idle:['idle_breathe','Idle'],walk:['motion_walk','Walk','walk'],trot:['motion_trot','trot','motion_walk','Walk','walk'],turnLeft:['turn_left','motion_walk','Walk','walk'],turnRight:['turn_right','motion_walk','Walk','walk'],run:['run','motion_trot','Run'],sniff:['sniff','Idle'],sleep:['sleep_loop','lie_down'],petting:['touch_head','happy','sniff'],happy:['happy','wave_paw']}[action]||['idle_breathe'];
-   const clip=names.map(n=>this.clips.find(c=>c.name.split('|').pop()===n)).find(Boolean)||this.clips[0];if(!clip)return;const next=this.mixer.clipAction(clip);
+  play(action,timeScale=1){const previous=this.action;this.action=action;const names={idle:['idle_breathe','Idle','idle'],walk:['motion_walk','Walk','walk'],trot:['motion_trot','trot','motion_walk','Walk','walk'],turnLeft:['turn_left','motion_walk','Walk','walk'],turnRight:['turn_right','motion_walk','Walk','walk'],run:['run','motion_trot','Run'],sniff:['sniff'],sleep:['sleep_loop','lie_down'],petting:['touch_head','happy','sniff'],happy:['happy','wave_paw']}[action]||[];
+   const allowed=this.spec.strictActions&&['turnLeft','turnRight'].includes(action)?[action==='turnLeft'?'turn_left':'turn_right']:names;
+   const requested=allowed.map(n=>this.clips.find(c=>c.name.split('|').pop()===n)).find(Boolean);
+   this.missingAction=!requested;
+   const clip=requested||['idle_breathe','Idle','idle'].map(n=>this.clips.find(c=>c.name.split('|').pop()===n)).find(Boolean);
+   if(!clip){this.mixer.stopAllAction();this.active=null;return;}const next=this.mixer.clipAction(clip);
    const rate=Number.isFinite(timeScale)?timeScale:1;
    if(next===this.active){next.setEffectiveTimeScale(rate);return;}
    const moving=k=>['walk','trot','run'].includes(k);

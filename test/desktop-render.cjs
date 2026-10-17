@@ -2,13 +2,15 @@
 const {app,BrowserWindow,ipcMain}=require('electron');
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const out=path.join(os.tmpdir(),'pait-desktop-render.png');let window,timer;
-app.setPath('userData',path.join(os.tmpdir(),'pait-desktop-render-profile'));
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'pait-desktop-render-profile-')));
 const customFile=process.env.PET_DESKTOP_TEST_GLB;const spec={id:'3',name:'猫咪',height:.85,...(customFile?{custom:true}:{})};
+const modelBytes=fs.readFileSync(customFile||path.join(__dirname,'../static/models/petchat-cat-v2/cat.glb'));
+const identity={trip:'render-test',generation:1,assetSha256:require('node:crypto').createHash('sha256').update(modelBytes).digest('hex')};
 ipcMain.handle('desktop:command',async(e,command)=>{
  console.log('IPC',command);
- if(command==='state')return {connected:true,trip:'render-test',phase:'preparing',action:'walk',pet:spec};
- if(command==='model'){const b=fs.readFileSync(customFile||path.join(__dirname,'../static/models/petchat-cat-v2/cat.glb'));return {bytes:b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),pet:spec};}
- if(command==='ready'){window.webContents.send('desktop:state',{connected:true,trip:'render-test',phase:'roaming',action:'walk',pet:spec});window.webContents.send('desktop:motion',{trip:'render-test',yaw:0,speed:50,action:'walk'});setTimeout(async()=>{try{
+ if(command==='state')return {connected:true,...identity,phase:'preparing',action:'walk',pet:spec};
+ if(command==='model'){const b=modelBytes;return {bytes:b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),pet:spec,...identity,sha256:identity.assetSha256};}
+ if(command==='ready'){window.webContents.send('desktop:state',{connected:true,...identity,phase:'roaming',action:'walk',pet:spec});window.webContents.send('desktop:motion',{...identity,yaw:0,speed:50,action:'walk'});setTimeout(async()=>{try{
   const stats=await window.webContents.executeJavaScript('JSON.stringify({calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,animation:pet.action,clip:pet.active?.getClip().name,bones:pet.model.getObjectByProperty("isBone",true)!==undefined})');
   const d=JSON.parse(stats);if(!d.calls||!d.triangles||!d.bones)throw Error('No animated pet rendered');if(customFile&&d.clip!=='walk')throw Error('Private cat must use its walk clip');
   await window.webContents.executeJavaScript(fs.readFileSync(path.join(__dirname,'../static/js/den/portals.js'),'utf8'));

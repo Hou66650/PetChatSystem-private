@@ -4,6 +4,7 @@ renderer.setSize(280,300,false);renderer.setPixelRatio(Math.min(devicePixelRatio
 const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(35,280/300,.01,20);camera.position.set(0,.85,3.15);camera.lookAt(0,.52,0);
 scene.add(new THREE.HemisphereLight(0xffffff,0x8b9c77,1.6));const light=new THREE.DirectionalLight(0xffebc4,1.5);light.position.set(2,4,3);scene.add(light);
 let pet,trip=null,phase=null,epoch=0,last=performance.now(),crossing=null,settle=0,acknowledging=false,ackAt=0,move={yaw:0,speed:0,action:'idle'};
+let generation=0,assetSha256=null,petStatus='';
 const gate=new THREE.Group();gate.visible=false;scene.add(gate);
 const gold=new THREE.MeshStandardMaterial({color:0xffcc70,emissive:0xd68a28,emissiveIntensity:.65,metalness:.6,roughness:.28,transparent:true});
 const ring=new THREE.Mesh(new THREE.TorusGeometry(.48,.035,10,64),gold);ring.scale.y=1.4;ring.position.set(0,.64,-.3);gate.add(ring);
@@ -16,8 +17,9 @@ async function load(id,version){
  const progress=window.PaitLoading?.start('正在准备桌宠模型与穿搭');let candidate;
  try{
   const d=await api.command('model',{trip:id});if(d.error)throw Error(d.error);
+  if(d.trip!==id||d.generation!==generation||d.sha256!==assetSha256)throw Error('模型不属于当前行程');
   const gltf=await parse(d.bytes);if(version!==epoch){SelectedAssets.disposeTree(gltf.scene);progress?.cancel();return;}
-  const spec={...d.pet,loadAccessory:async item=>{const a=await api.command('accessory',{trip:id,item});if(a.error)throw Error(a.error);const g=await parse(a.bytes);return g.scene;}};
+  const spec={...d.pet,strictActions:true,loadAccessory:async item=>{const a=await api.command('accessory',{trip:id,item});if(a.error)throw Error(a.error);if(a.trip!==id||a.generation!==generation)throw Error('饰品行程已变化');const g=await parse(a.bytes);return g.scene;}};
   candidate=new PortalPets.Pet(THREE,gltf,spec);await candidate.wardrobeReady;
   if(version!==epoch){SelectedAssets.disposeTree(candidate.root);progress?.cancel();return;}
   if(candidate.wardrobeError)throw candidate.wardrobeError;
@@ -28,8 +30,9 @@ async function load(id,version){
  }catch(e){if(candidate&&candidate!==pet)SelectedAssets.disposeTree(candidate.root);if(version===epoch){progress?.fail('模型或饰品未准备好，正在返回小岛');await api.command('return',{trip:id});}else progress?.cancel();console.error('Desktop preparation failed:',e.message);}
 }
 function state(s){
+ petStatus=s.status||'';document.getElementById('pet-status').textContent=s.connected&&s.phase==='roaming'?petStatus:'';
  if(!s.connected){epoch++;trip=null;phase=null;disposePet();return;}
- if(s.trip!==trip){epoch++;disposePet();trip=s.trip;phase=s.phase;move={yaw:0,speed:0,action:'idle'};void load(trip,epoch);}
+ if(s.trip!==trip){epoch++;disposePet();trip=s.trip;phase=s.phase;generation=s.generation;assetSha256=s.assetSha256;move={yaw:0,speed:0,action:'idle'};void load(trip,epoch);}
  if(['preparing','entering','emerging','roaming'].indexOf(s.phase)>=['preparing','entering','emerging','roaming'].indexOf(phase))phase=s.phase;
  if(phase==='emerging'&&pet&&!crossing){
   gate.visible=true;gold.opacity=1;glow.opacity=.16;pet.play('walk',Math.min(3,1.72/(2.2*.348*pet.model.scale.x)));
@@ -44,7 +47,7 @@ async function arrived(){
  finally{if(version===epoch)acknowledging=false;}
 }
 api.subscribe(state);api.command('state').then(state);
-api.subscribeMotion(m=>{if(m.trip===trip)move=m;});
+api.subscribeMotion(m=>{if(m.trip===trip&&m.generation===generation&&m.assetSha256===assetSha256)move=m;});
 function tick(now){
  requestAnimationFrame(tick);if(now-last<30)return;const dt=Math.min(.05,(now-last)/1000);last=now;
  if(pet){
@@ -59,6 +62,7 @@ function tick(now){
    const stridePixels=Math.max(8,Math.abs(stride.x-base.x)*140);
    const turning=move.action==='idle'&&Math.abs(move.turnRate||0)>.2;
    pet.play(turning?(move.turnRate>0?'turnRight':'turnLeft'):move.action,move.action==='walk'?Math.max(.12,Math.min(3,move.speed/stridePixels)):1);
+   document.getElementById('pet-status').textContent=pet.missingAction?'○ 这个动作暂未适配':petStatus;
   }
   pet.update(dt);
  }
