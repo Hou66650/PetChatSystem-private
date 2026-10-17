@@ -2,6 +2,7 @@
   <header><div><span class="eyebrow">FACE TO FACE</span><h2 id="faceplay-title">面对面，陪它玩一会</h2></div><form method="dialog"><button class="dock-close" aria-label="关闭互动设置">✕</button></form></header>
   <p>它会跟着你转头，也会回应你的手。先选喜欢的玩法，再开启摄像头。</p>
   <div class="vision-options">
+    <label><input type="checkbox" data-vision-option="remote"> 交给电脑识别，减轻平板负担 <small>开启后将缩小画面发送到当前网站所在电脑，不保存画面；需要保持连接。</small></label>
     <label><input type="checkbox" data-vision-option="face"> 自然注视与眨眼 <small>它会注意你的移动和歪头</small></label>
     <label><input type="checkbox" data-vision-option="hands"> 手势与自由触摸 <small>摸头、挠下巴、顺背毛和喂食</small></label>
     <label><input type="checkbox" data-vision-option="gestures"> 挥手、比心等手势 <small>用它自己的小表情回应你</small></label>
@@ -11,7 +12,7 @@
   </div>
   <p class="hand-control-guide">手放在舒适位置后先校准中心。准星对准玩具，拇指与食指捏合拿稳，再移动；绿色落点可放下或抛出，红色落点会归还。短暂识别丢失会暂停，持续丢失会取消。</p>
   <div class="vision-calibration"><button type="button" id="vision-calibrate">以当前手的位置为中心</button><button type="button" id="vision-reset-calibration">重置校准</button></div>
-  <p id="vision-settings-status" role="status">摄像头画面仅在本机处理。也可以先用鼠标体验触摸、梳毛和抛接球。</p>
+  <p id="vision-settings-status" role="status">默认在本机识别；选择电脑识别后才发送画面。也可以用触屏或鼠标体验互动。</p>
   <footer><button type="button" id="vision-pointer">鼠标 / 触屏体验</button><button type="button" id="vision-start">开启摄像头</button></footer>
 </dialog>
 <section id="faceplay-hud" aria-label="面对面互动工具" hidden>

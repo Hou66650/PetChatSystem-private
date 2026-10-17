@@ -2,7 +2,7 @@
    宠物小窝 · 视觉互动模块（眼神对视 + 伸手抚摸）
    - MediaPipe FaceLandmarker（含虹膜）判定"用户是否看着屏幕/宠物"
    - MediaPipe HandLandmarker 判定"伸手靠近"，驱动屏幕虚拟手
-   - 全部推理在本地 WASM 完成，摄像头画面不会上传（无任何网络发送）
+   - 默认本地 WASM；用户选择电脑识别后，只向当前站点发送缩小画面
    ============================================================ */
 import { FilesetResolver, FaceLandmarker, HandLandmarker } from '/static/js/vendor/mediapipe/vision_bundle.mjs';
 
@@ -168,7 +168,7 @@ class DenVision {
         this.gestures = new HandGestures();
         this._smooth = { x: 0, y: 0, px: 0, py: 0, ok: false };   // 虚拟手 + 捏合点平滑位置
         this._raf = null;
-        this.options = { face:true, hands:true, gestures:true, mirror:true, sensitivity:1.3, centerX:.5, centerY:.5 };
+        this.options = { face:true, hands:true, gestures:true, remote:false, mirror:true, sensitivity:1.3, centerX:.5, centerY:.5 };
         this.generation = 0;
         this.worker = null;
         this.pending = false;
@@ -191,6 +191,18 @@ class DenVision {
                 y:Math.max(0,Math.min(1,.5+(y-o.centerY)*o.sensitivity))*this.canvasSize.h};
     }
     async _models(epoch) {
+        if(this.options.remote){
+            const controller=new AbortController();this.remoteAbort=controller;
+            const timeout=setTimeout(()=>controller.abort(),8000);
+            try{
+                const response=await fetch('/api/vision/capabilities',{signal:controller.signal,credentials:'same-origin',cache:'no-store',redirect:'error',paitQuiet:true});
+                const data=await response.json();
+                if(epoch!==this.generation)return;
+                if(!response.ok||!data.enabled||typeof data.token!=='string')throw Error('电脑识别未开启');
+                this.remoteToken=data.token;this.backend='computer';this.delegate='电脑 CPU';
+            }finally{clearTimeout(timeout);}
+            return; // Never silently fall back to high-load tablet inference.
+        }
         // Worker keeps the 3D render thread responsive. Older browsers use a slower fallback.
         if (typeof Worker !== 'undefined' && typeof createImageBitmap === 'function' && typeof OffscreenCanvas !== 'undefined') {
             let worker;
@@ -266,7 +278,7 @@ class DenVision {
         try {
             // 1) 摄像头（前置，低分辨率即可）
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+                video: { facingMode: 'user', width: { ideal: 640, max:640 }, height: { ideal: 480, max:480 }, frameRate:{ideal:15,max:15} },
                 audio: false,
             });
             if(epoch!==this.generation){stream.getTracks().forEach(t=>t.stop());return false;}
@@ -289,14 +301,14 @@ class DenVision {
         if(epoch!==this.generation)return false;
         progress?.update('正在初始化眼神与手势识别');
         try { await this._models(epoch); }
-        catch(error){if(epoch===this.generation){progress?.fail('识别资源加载失败，请重试');this.stop();this.onError('model',error);}return false;}
+        catch(error){if(epoch===this.generation){progress?.fail('识别资源加载失败，请重试');const kind=this.options.remote?'remote':'model';this.stop();this.onError(kind,error);}return false;}
         if(epoch!==this.generation || !this.stream || !this.stream.getVideoTracks().some(t=>t.readyState==='live')) {
             if(epoch===this.generation)this.stop();return false;
         }
         this.starting=false;
         this.running = true;
         this.target = target || videoEl;
-        this.timer = setInterval(() => this._detect(), this.backend==='worker'?DETECT_MS:180);
+        this.timer = setInterval(() => this._detect(), this.backend==='main'?180:DETECT_MS);
         this._followLoop();
         progress?.done();return true;
     }
@@ -309,6 +321,8 @@ class DenVision {
         this.initCancel?.();this.initCancel=null;
         clearTimeout(this.initTimeout);clearTimeout(this.frameTimeout);
         this.worker?.terminate();this.worker=null;this.pending=false;
+        this.remoteAbort?.abort();this.remoteAbort=null;this.remoteToken=null;
+        if(this.captureCanvas){this.captureCanvas.width=1;this.captureCanvas.height=1;this.captureCanvas=null;}
         this.face?.close();this.hand?.close();this.face=this.hand=null;
         this.lastTs=-1;this._prevSnapRatio=undefined;this._eyesClosedFrames=0;
         this.lastRaw=null;this.gestures=new HandGestures();
@@ -341,11 +355,12 @@ class DenVision {
     }
     _detect() {
         const v = this.video;
-        if (!this.running || !v || v.readyState < 2) return;
+        if (!this.running || this.pending || !v || v.readyState < 2) return;
         const ts = performance.now();
         if (v.currentTime === this.lastTs) return;      // 无新帧则跳过
         this.lastTs = v.currentTime;
         this._syncCanvasSize();
+        if(this.backend==='computer'){void this._remoteFrame(v,ts);return;}
         if(this.worker){
             if(this.pending)return;
             this.pending=true;
@@ -359,6 +374,29 @@ class DenVision {
             try {this._consume(ts,this.face?.detectForVideo(v,ts),this.hand?.detectForVideo(v,ts));}
             catch(error){this._runtimeError();}
         }
+    }
+
+    async _remoteFrame(video,ts){
+        this.pending=true;const epoch=this.generation,controller=new AbortController();this.remoteAbort=controller;
+        const timeout=setTimeout(()=>controller.abort(),8000);
+        try{
+            const canvas=this.captureCanvas||(this.captureCanvas=document.createElement('canvas'));
+            const w=video.videoWidth||640,h=video.videoHeight||480,scale=Math.min(1,640/w,480/h);
+            const width=Math.max(1,Math.floor(w*scale)),height=Math.max(1,Math.floor(h*scale));
+            if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
+            canvas.getContext('2d',{alpha:false}).drawImage(video,0,0,width,height);
+            const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.72));
+            if(epoch!==this.generation||!this.running)return;
+            if(!blob||blob.size>256*1024||controller.signal.aborted)throw Error('Frame unavailable');
+            const query='?face='+(this.options.face?'1':'0')+'&hands='+(this.options.hands?'1':'0');
+            const response=await fetch('/api/vision/frame'+query,{method:'POST',body:blob,signal:controller.signal,credentials:'same-origin',redirect:'error',cache:'no-store',paitQuiet:true,headers:{'Content-Type':'image/jpeg','X-Vision-Token':this.remoteToken}});
+            if(epoch!==this.generation||!this.running)return;
+            if(!response.ok)throw Error('Computer inference unavailable');
+            const data=await response.json();
+            if(epoch!==this.generation||!this.running)return;
+            this.remoteMs=data.elapsedMs;this._consume(ts,data.face,data.hand);
+        }catch(error){if(epoch===this.generation&&this.running){this.stop();this.onError('remote',error);}}
+        finally{clearTimeout(timeout);if(epoch===this.generation){this.pending=false;this.remoteAbort=null;}}
     }
 
     _detectGaze(ts, result) {

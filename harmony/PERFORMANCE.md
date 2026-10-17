@@ -107,6 +107,20 @@ MatePad Air 同一服务地址的首次空缓存加载与刷新对照：
 
 回归通过：`portal_confirm.cjs`、`portal_approach.cjs`、`portal_navigation.cjs`、`farm_input.cjs`、`harmony_den_bridge.cjs` 及真实资产下的 `toy_workshop.cjs`。用户在刷新后确认旋转、种植/食水盆操作和猫咪走动正常，响应有改善。
 
+## v1.73.0：摄像头电脑识别
+
+摄像头问题在真机复现：原模式为 Worker/GPU 本地推理，采集 640×480、30 FPS。10 秒采样收到 27 次识别结果（2.7 Hz），从取帧到结果平均 329 ms、最大 712 ms；页面约 16 FPS，17 个帧间隔超过 100 ms。后台线程没有消除识别与 3D 的 GPU 竞争。对合成空白帧的独立测试中，平板 CPU 路径预热后仍需约 300 ms；电脑实际 MediaPipe IMAGE 模式预热后约 17–20 ms，不能把空白帧耗时当作真实人脸/手势性能。
+
+经用户明确选择并授权把画面发到当前电脑，新增同源电脑识别通道。默认 `remote=false`，只有勾选“交给电脑识别”后才上传；设置保存在当前站点的本地偏好中，预览区域持续显示画面流向。平板限 15 FPS 采集、最大 640×480、JPEG 质量 0.72，最多每 100 ms 尝试一帧且仅允许一个在途请求。原手势、捏合、对视及平滑跟随共用既有结果消费逻辑。
+
+电脑接口 `/api/vision/capabilities` 与 `/api/vision/frame` 默认关闭。启用方法：在服务环境安装 `requirements-vision.txt`，确保 `static/js/vendor/mediapipe/{face,hand}_landmarker.task` 已存在，设置环境变量 `VISION_REMOTE_ENABLED=1` 后启动网页服务。当前电脑已安装 MediaPipe 0.10.35，并复用现有 NumPy/OpenCV 运行库，未整体升级服务环境。模型只从本机文件加载，帧只在内存处理，不写图片文件、不转发第三方。接口校验同源、会话令牌、JPEG 类型、256 KiB 上限及 640×480 尺寸；单个推理锁拒绝积压，IMAGE 模式避免跨用户追踪状态，前端拒绝重定向。
+
+停止、切页及权限取消沿用原资源清理；电脑模式额外中止请求并清空抓帧画布。编码完成或请求返回后均核对会话代次，迟到结果不复活已停止的互动。连接失败直接关闭摄像头并提示，不静默切回平板高负载推理。持续请求不触发全局加载弹层。
+
+验证：`test_vision.py` 4 项边界测试、`vision_remote.cjs` 取消/单在途/缩放/同源/无本地模型测试及 `hand_control.cjs` 通过。`faceplay_regression.cjs` 的前 11 项相机与互动回归通过，末项抛球断言失败；已用 HEAD 原版 `face-play.js` 复现同一失败，发生在拾取转回程的第一帧，未把该既有问题算作通过。真实电脑模型和 HTTP JPEG 接口已执行成功，首帧有模型初始化成本。长期温度和耗电尚未测量。
+
+实现参考：[MediaPipe FaceLandmarker API](https://ai.google.dev/edge/api/mediapipe/python/mp/tasks/vision/FaceLandmarker)、[HandLandmarker API](https://ai.google.dev/edge/api/mediapipe/python/mp/tasks/vision/HandLandmarker)。
+
 ## 第三方依赖
 
 使用 [three-mesh-bvh 0.5.23](https://github.com/gkjohnson/three-mesh-bvh/tree/v0.5.23)，兼容当前 Three.js r128，MIT 许可证保存在 `static/js/vendor/three-mesh-bvh-LICENSE.txt`。浏览器构建来自 npm 固定版本，下载时核验发布包 SHA-512 integrity；建立查询索引时按需加载，不修改 Three.js 全局 raycast 原型。v1.72.3 起原网页的小窝交互也使用该索引。后台 Worker 同源加载固定脚本。

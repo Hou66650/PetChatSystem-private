@@ -526,14 +526,14 @@ document.addEventListener('DOMContentLoaded', () => {
     <div id="game-result" class="game-result" hidden></div>
 </div>
 
-<!-- 视觉互动：本地 WASM 推理，摄像头画面不上传 -->
+<!-- 视觉互动：默认本机识别，电脑识别需用户主动选择 -->
         {% include '_faceplay.html' %}
         {% include '_render_settings.html' %}
         {% include '_toy_workshop.html' %}
         <div class="vision-box hidden" id="vision-box">
             <video id="vision-cam" autoplay playsinline muted></video>
             <div class="vision-status" id="vision-status">启动中…</div>
-            <div class="vision-privacy">🔒 画面仅本地处理，不会上传</div>
+            <div class="vision-privacy" id="vision-privacy">画面仅在本机处理</div>
         </div>
         <div id="vision-hand" aria-hidden="true">
             <!-- 几何手掌剪影（不依赖 emoji 字体）：掌 + 四指 + 拇指 -->
@@ -3400,7 +3400,7 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (name === 'empathy') startEmpathyGame();
         }
 
-        // ---------- 视觉互动（眼神对视 + 伸手抚摸；本地 WASM 推理，画面不上传） ----------
+        // ---------- 视觉互动（默认本机；可主动选择当前电脑识别） ----------
         let dv = null, visionOn = false, visionTick = null, visionAttempt=0;
         let gazeNow = false, gazeSec = 0, lastGazeHeart = 0;
         let grabbed = false, dropping = false, grabHomeY = 0.02, bounceBack = 0;
@@ -3577,10 +3577,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 onHand: handleVisionHand,
                 onError(kind) {
                     toast(kind === 'camera' ? '无法访问摄像头：请在浏览器地址栏允许摄像头权限'
+                        : kind === 'remote' ? '电脑识别连接不可用，已停止摄像头，请检查电脑服务后重试'
                         : kind === 'runtime' ? '视觉推理异常，已自动停止'
                         : '视觉模型加载失败', 'error');
                     // runtime 自停后同步复位页面 UI（按钮/预览窗/虚拟手）
-                    if (kind === 'runtime') {
+                    if (kind === 'runtime' || kind === 'remote') {
                         stopVision();
                         const b = document.getElementById('btn-vision');
                         if (b) b.textContent = '面对面互动';
@@ -3592,6 +3593,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!ok) { this.textContent = '开启摄像头'; dv = null; window.__denVision = null; return; }
             if (breathActive) { dv.stop(); dv = null; window.__denVision = null; this.textContent = '开启摄像头'; toast('先专注呼吸，练完再开启面对面互动吧', 'info'); return; }
             visionOn = true;
+            document.getElementById('vision-privacy').textContent=dv.backend==='computer'?'电脑识别 · 画面发送至当前电脑，不保存':'画面仅在本机处理';
             facePlay.camera(true);
             facePlay.panel.close();
             document.getElementById('btn-vision').textContent='面对面互动';

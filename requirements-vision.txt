@@ -1,0 +1,2 @@
+# Optional computer-side camera recognition; install in the server environment.
+mediapipe==0.10.35

@@ -1,11 +1,11 @@
 /* Face-to-face interaction: shared camera/pointer behavior and bounded pose overlays. */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.FacePlay=api;})(typeof window!=='undefined'?window:globalThis,function(){
   'use strict';
-  const defaults={face:true,hands:true,gestures:true,lift:false,mirror:true,sensitivity:1.3,centerX:.5,centerY:.5};
+  const defaults={face:true,hands:true,gestures:true,remote:false,lift:false,mirror:true,sensitivity:1.3,centerX:.5,centerY:.5};
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   function settings(value={}){
     const out={...defaults};
-    for(const key of ['face','hands','gestures','lift','mirror'])if(typeof value[key]==='boolean')out[key]=value[key];
+    for(const key of ['face','hands','gestures','remote','lift','mirror'])if(typeof value[key]==='boolean')out[key]=value[key];
     for(const key of ['centerX','centerY'])out[key]=clamp(Number(value[key])||.5,.05,.95);
     out.sensitivity=clamp(Number(value.sensitivity)||1.3,.6,2.5);return out;
   }
@@ -47,7 +47,7 @@
         element.addEventListener('change',()=>{
           this.options=settings({...this.options,[key]:element.type==='checkbox'?element.checked:Number(element.value)});
           this.persist();api.configure(this.options);
-          if(['face','hands'].includes(key)&&this.cameraOn){api.stop();this.note('识别模式已更新，点击开启摄像头继续。');}
+          if(['face','hands','remote'].includes(key)&&this.cameraOn){api.stop();this.note('识别模式已更新，点击开启摄像头继续。');}
         });
       }
       document.getElementById('vision-calibrate').onclick=()=>{
