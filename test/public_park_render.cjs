@@ -9,12 +9,13 @@ await a.waitForFunction(()=>document.querySelector('#park-count').textContent.in
 await a.waitForTimeout(6500);
 await a.locator('[data-action=ball]').click();await a.waitForTimeout(1000);
 let data=await (await b.request.get('http://127.0.0.1:5088/api/park')).json();assert.equal(data.players.find(p=>!p.mine).action,'ball');
-await a.screenshot({path:path.join(output,'park-desktop.png')});
+assert.equal(await a.locator('#pet-park').getAttribute('data-scene'),'ready');await a.evaluate(()=>window.scrollTo(0,0));await a.screenshot({path:path.join(output,'park-desktop.png')});
 await a.locator('[data-action=walk]').click();await a.waitForTimeout(2000);
 data=await (await b.request.get('http://127.0.0.1:5088/api/park')).json();assert.equal(data.count,2);
 await b.locator('#park-leave').click();await a.waitForFunction(()=>document.querySelector('#park-count').textContent.includes('1 /'));
 await a.locator('#park-leave').click();await a.setViewportSize({width:390,height:844});await a.screenshot({path:path.join(output,'park-mobile.png')});assert(await a.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
 await a.setViewportSize({width:1365,height:980});await a.goto('http://127.0.0.1:5088/');await a.waitForFunction(()=>document.querySelectorAll('.island-choice').length===5);await a.waitForFunction(()=>document.querySelector('#island-preview-status').textContent.includes('双击'),{},{timeout:60000});await a.waitForTimeout(3500);await a.screenshot({path:path.join(output,'five-islands.png')});
 await a.locator('.island-choice[data-theme=park]').click();await a.waitForTimeout(1600);assert((await a.locator('#island-enter').getAttribute('href')).endsWith('/park'));
+assert.equal(await a.locator('.island-home').getAttribute('data-park-scene'),'preview');
 assert.deepEqual(errors,[]);console.log('PASS two real sessions, ball action synchronization, leave, narrow layout, five island selection; screenshots:',output);
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

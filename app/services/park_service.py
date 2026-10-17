@@ -4,7 +4,7 @@ import math
 import secrets
 import time
 from ..db import get_db
-from . import portal_service, growth_service
+from . import portal_service, growth_service, park_navigation
 
 clock = time.time
 TTL = 12
@@ -22,6 +22,12 @@ def init_schema():
         spec TEXT NOT NULL, x REAL NOT NULL, z REAL NOT NULL, yaw REAL NOT NULL,
         action TEXT NOT NULL, action_at REAL NOT NULL, updated REAL NOT NULL);
     CREATE INDEX IF NOT EXISTS park_updated ON park_presence(updated);''')
+    # Stale clients must rejoin if their old-layout position is now a flower bed.
+    db = get_db()
+    invalid = [r['owner'] for r in db.execute('SELECT owner,x,z FROM park_presence') if not park_navigation.inside(r['x'], r['z'])]
+    if invalid:
+        with db:
+            db.executemany('DELETE FROM park_presence WHERE owner=?', [(owner,) for owner in invalid])
 
 def point(data):
     values = []
@@ -31,14 +37,14 @@ def point(data):
             raise ParkError('位置无效')
         values.append(float(value))
     x, z, yaw = values
-    if (x/8)**2 + (z/6)**2 > 1.001:
-        raise ParkError('请在乐园草坪内活动')
+    if not park_navigation.inside(x, z):
+        raise ParkError('请在可通行的草坪内活动，绕开树坛和设施。')
     return x, z, math.atan2(math.sin(yaw), math.cos(yaw))
 
 def snapshot(owner):
     now = clock()
     rows = get_db().execute('SELECT * FROM park_presence WHERE updated>? ORDER BY id', (now-TTL,)).fetchall()
-    return dict(capacity=CAPACITY, count=len(rows), serverTime=now,
+    return dict(capacity=CAPACITY, count=len(rows), serverTime=now, layoutVersion=park_navigation.LAYOUT['version'],
                 players=[dict(id=r['id'], mine=r['owner']==owner, spec=json.loads(r['spec']),
                               x=r['x'], z=r['z'], yaw=r['yaw'],
                               action=r['action'] if now-r['action_at']<5 else 'idle',
@@ -85,6 +91,8 @@ def update(owner, data, leave=False):
         x, z, yaw = point(data)
         if math.hypot(x-row['x'], z-row['z']) > min(elapsed, 2)*3.5+.4:
             raise ParkError('移动距离过大，请重新同步位置。', 422)
+        if not park_navigation.segment(row['x'], row['z'], x, z):
+            raise ParkError('前方有树坛或设施，请绕行。', 422)
         action = data.get('action', 'idle')
         if not isinstance(action, str) or action not in ACTIONS:
             raise ParkError('互动无效')

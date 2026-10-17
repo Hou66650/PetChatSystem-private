@@ -60,6 +60,20 @@ def home_island_model(theme):
     return response
 
 
+@bp.route('/static/models/paw-commons-v2/preview.glb', defaults={'tier': 'preview'})
+@bp.route('/static/models/paw-commons-v2/play.glb', defaults={'tier': 'play'})
+def public_park_model(tier):
+    if tier not in ('preview', 'play'):
+        abort(404)
+    directory = Path(current_app.static_folder) / 'models' / 'paw-commons-v2'
+    compressed = request.accept_encodings['gzip'] > 0 and (directory / (tier + '.glb.gz')).is_file()
+    response = send_from_directory(directory, tier + ('.glb.gz' if compressed else '.glb'), mimetype='model/gltf-binary', max_age=3600)
+    response.vary.add('Accept-Encoding')
+    if compressed:
+        response.headers['Content-Encoding'] = 'gzip'
+    return response
+
+
 @bp.route('/logout')
 def logout():
     session.clear()

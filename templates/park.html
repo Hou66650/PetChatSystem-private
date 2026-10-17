@@ -7,9 +7,9 @@
  <header class="park-heading"><a href="/">← 回到五岛</a><p>PAW COMMONS / 在这里相遇</p><h1>爪心乐园</h1><span>四座小窝之外，一起玩一会儿。</span></header>
  <aside class="park-presence"><strong id="park-count">公共乐园</strong><p>仅显示实际入园的在线伙伴</p><div id="park-players"></div></aside>
  <section class="park-dock" aria-label="乐园活动">
-  <p id="park-status" role="status" aria-live="polite">先看看乐园，再带一位伙伴入园。</p>
-  {% if park_logged_in %}<div class="park-entry"><label>今天和谁一起 <select id="park-pet"><option value="1">柴犬</option><option value="2">哈士奇</option><option value="3">猫咪</option><option value="4">德牧</option></select></label><button id="park-join">带它入园</button><button id="park-leave" hidden>结束游玩</button></div>
-  <div class="park-actions"><button data-action="happy" disabled>向伙伴打招呼</button><button data-action="ball" disabled>玩彩球</button><button data-action="sniff" disabled>一起闻闻</button><button data-action="sleep" disabled>草坪休息</button><button data-action="walk" disabled>走到草坪中央</button></div>
+  <p id="park-status" role="status" aria-live="polite">正在展开爪心乐园…</p><button id="park-retry" hidden>重新加载乐园</button>
+  {% if park_logged_in %}<div class="park-entry"><label>今天和谁一起 <select id="park-pet"><option value="1">柴犬</option><option value="2">哈士奇</option><option value="3">猫咪</option><option value="4">德牧</option></select></label><button id="park-join" disabled>带它入园</button><button id="park-leave" hidden>结束游玩</button></div>
+  <div class="park-actions"><button data-action="happy" disabled>向伙伴打招呼</button><button data-action="ball" disabled>玩彩球</button><button data-action="sniff" disabled>一起闻闻</button><button data-action="sleep" disabled>草坪休息</button><button data-action="walk" disabled>去开阔草坪</button></div>
   <small>入园后，其他登录用户可看到宠物昵称、标准外观和动作。首版同场最多 12 位，私人模型不公开。</small>
   {% else %}<a class="park-login" href="{{ url_for('auth.reader_login') }}">登录后带伙伴一起玩</a>{% endif %}
  </section>
@@ -18,5 +18,6 @@
 {% block script %}
 <script src="/static/js/vendor/three.min.js"></script><script src="/static/js/vendor/GLTFLoader.js"></script><script src="/static/js/vendor/OrbitControls.js"></script>
 <script src="/static/js/den/selected-assets.js?v={{ app_version }}"></script><script src="/static/js/den/wardrobe.js?v={{ app_version }}"></script><script src="/static/js/den/portal-pets.js?v={{ app_version }}"></script>
+<script type="application/json" id="park-navigation">{{ park_navigation|tojson }}</script><script src="/static/js/park-navigation.js?v={{ app_version }}"></script>
 <script src="/static/js/park-scene.js?v={{ app_version }}"></script><script src="/static/js/public-park.js?v={{ app_version }}"></script>
 {% endblock %}

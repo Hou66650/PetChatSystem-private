@@ -1,0 +1,20 @@
+{
+  "source": "art\\paw-commons-v2\\paw-commons-detailed.blend",
+  "transport": "Blender MCP",
+  "tiers": {
+    "preview": {
+      "triangles": 156274,
+      "meshes": 19,
+      "bytes": 7143328,
+      "gzipBytes": 3495494,
+      "sha256": "8fc5d15885e6dc48ec26c414da3b3108951b776eabca12284ae4c982dbfdedf2"
+    },
+    "play": {
+      "triangles": 442738,
+      "meshes": 19,
+      "bytes": 19895876,
+      "gzipBytes": 8754772,
+      "sha256": "65a86bf8c4d2d4f8324659f2dadd3dc54bcf25fb9513a072a68131f36efa6d0f"
+    }
+  }
+}

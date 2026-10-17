@@ -6,7 +6,7 @@
 </style><main>
 <div>派特岛 / 中央公共乐园 / 第二版</div><h1>自然木石，温柔的游乐场</h1>
 <p>四座生活岛继续沿用。中央掌垫岛以开阔草坪和环形散步路径组织八处设施：草坡猫耳隧道、低桥、花朵跳圈、攀爬树屋、遮阴座椅、饮水点、玩具柜和入口。</p>
-<p class="note">本页分开展示视觉目标与真实三维成果。概念图由 AI 生成；下方精细母版通过 Blender MCP 制作，尚未替换线上乐园。设施专属玩法、轻量版本与鸿蒙多人性能仍待完成。</p>
+<p class="note">本页分开展示视觉目标与真实三维成果。概念图由 AI 生成；下方精细母版通过 Blender MCP 制作。轻量运行版已接入当前开发分支的首页和公共乐园；平板旧服务尚未切换，设施专属玩法与鸿蒙多人性能仍待完成。</p>
 <h2>01 / 整体效果概念</h2><figure><img src="design/01-overall-concept.png" alt="中央乐园整体效果概念"><figcaption>内置 imagegen 生成的视觉目标，不是游戏截图。主要确定材质、氛围与设施语言。</figcaption></figure>
 <h2>02 / 设施细节概念</h2><figure><img src="design/02-facility-details.png" alt="六类设施结构与材质细节概念"><figcaption>与整体图保持一致的细节参考；图中尺寸与结构以实际设计文件为准。</figcaption></figure>
 <h2>03 / 布局与尺寸</h2><figure><img src="design/03-dimensions.svg" alt="五岛布局、乐园平面、隧道和桥尺寸图"><figcaption>虚拟场景设计，单位米；四座生活岛保持现有资产。尺寸为设计名义值，详见 layout-detailed.json。</figcaption></figure>
@@ -16,6 +16,9 @@
 <h2>05 / 旋转检查实际模型</h2><p>拖动旋转，滚轮或双指缩放。精细母版文件较大，仅用于设计审阅。</p>
 <button id="load">加载三维设计稿</button> <span id="status" role="status">尚未加载</span><div id="viewer"></div>
 <p><a href="paw-commons-detailed.blend">可编辑精细 Blender 工程</a> · <a href="../../static/models/paw-commons-v2/park-detailed.glb">精细 GLB 模型</a> · <a href="design/layout-detailed.json">尺寸数据</a> · <a href="detailed-build-report.json">构建报告</a> · <a href="design/prompts.json">图像提示词</a></p>
+<h2>06 / 已接入的运行场景</h2><p>下面是实际浏览器截图：两位测试用户入园及五岛首页。中央岛使用轻量运行模型，四座生活岛沿用原资产；设施专属玩法与真机性能仍需继续开发和验收。</p>
+<figure><img src="review/10-runtime-park.png" alt="两位测试用户在实际公共乐园同场"><figcaption>公共乐园：44.3 万三角面、19 个静态材质批次，支持绕障走动与原有动作同步。</figcaption></figure>
+<figure><img src="review/11-runtime-islands.png" alt="原四岛与新中央乐园的首页五岛布局"><figcaption>首页中央岛使用 15.6 万面的独立预览版，保留四座原有生活岛。</figcaption></figure>
 </main>
 <script src="../../static/js/vendor/three.min.js"></script><script src="../../static/js/vendor/GLTFLoader.js"></script><script src="../../static/js/vendor/OrbitControls.js"></script>
 <script>

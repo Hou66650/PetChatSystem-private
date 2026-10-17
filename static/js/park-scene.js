@@ -1,4 +1,4 @@
-/* Shared, lightweight palm-pad island. Existing four GLBs are never rewritten. */
+/* Public park assets derived from the detailed master; original four islands stay intact. */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.PetParkScene=api;})(globalThis,function(){
  'use strict';
  const positions=[[-15,0,0],[-6,1,-10],[6,1,-10],[15,0,0],[0,-.6,11]];
@@ -45,5 +45,12 @@
   group.userData.walkRadius={x:8,z:6};return group;
  }
  function inside(x,z){return Number.isFinite(x)&&Number.isFinite(z)&&(x/8)**2+(z/6)**2<=1;}
- return {create,positions,inside};
+ async function load(T,{tier='play',loader,ticket,version=''}){
+  if(!['play','preview'].includes(tier))throw new Error('Unknown park tier');
+  const gltf=await loader.glb('/static/models/paw-commons-v2/'+tier+'.glb?v='+encodeURIComponent(version),ticket);
+  gltf.scene.name='Paw Commons '+tier;gltf.scene.userData.parkTier=tier;
+  gltf.scene.traverse(o=>{if(!o.isMesh)return;o.castShadow=false;o.receiveShadow=false;});
+  return gltf;
+ }
+ return {create,positions,inside,load};
 });

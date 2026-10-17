@@ -1,7 +1,7 @@
 """Account-scoped public park endpoints."""
 from urllib.parse import urlsplit
 from flask import Blueprint, jsonify, render_template, request
-from ..services import companion_service as companion, park_service as park
+from ..services import companion_service as companion, park_service as park, park_navigation
 
 bp = Blueprint('park', __name__)
 
@@ -32,7 +32,7 @@ def error(e):
 
 @bp.get('/park')
 def page():
-    return render_template('park.html', park_logged_in=companion.owner_key().startswith('user:'))
+    return render_template('park.html', park_logged_in=companion.owner_key().startswith('user:'), park_navigation=park_navigation.LAYOUT)
 
 @bp.get('/api/park')
 def state():

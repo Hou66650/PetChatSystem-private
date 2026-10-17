@@ -42,8 +42,25 @@
 
 ## 当前边界
 
-这是高精度设计母版，不宣称百分之百复刻概念图。概念图中的自然植物形态、地形起伏和真实材质仍有差距；已用实际模型渲染供逐项对照。新增树坛占用了原有行走椭圆，接入前必须增加避障与设施路径；模型精细化不代表设施互动、多人碰撞或语义玩法已经完成。尚未制作 LOD、烘焙合批、移动端压缩贴图，也尚未完成鸿蒙真机帧率验收。未替换线上 `park-scene.js`，未修改四岛模型或运行目录。
+这是高精度设计母版，不宣称百分之百复刻概念图。概念图中的自然植物形态、地形起伏和真实材质仍有差距；已用实际模型渲染供逐项对照。运行版已接入当前代码的首页和 `/park`，见下节；设施专属互动、宠物之间的实体碰撞、移动端 GPU 压缩贴图和鸿蒙真机帧率验收尚未完成。四座生活岛模型没有修改。
 
 基础稿 `paw-commons.blend`、`park.glb` 与旧渲染仅保留作设计演进对照，最新审阅入口默认打开精细母版。
 
 本次环境：Blender 5.2.2 LTS、MCP for Blender 2.1.9、插件 1.8 / protocol 13。插件本机文件 SHA-256：`eb0facf69781a30e69792532087d8d41c6a14fcd323353250abe7988ee297fa5`。`review/structure-validation.json` 记录 MCP 内的隧道通路与树屋门前平台射线检查。
+
+## 运行场景接入
+
+沿用上述 MCP 会话，用 `paw_mcp_client.py scripts/blender/build_paw_runtime_mcp.py` 从精细母版导出两级静态场景。按完整植株组件疏密处理叶片，降低岩石和曲面面数，保留设施、草坪与环路轮廓，按材质合并并保留 UV。母版不修改。
+
+| 用途 | 文件 | 三角面 | 网格/材质批次 | GLB / gzip 传输 |
+| --- | --- | ---: | ---: | ---: |
+| 首页中央岛 | `preview.glb` | 156,274 | 19 | 7.14 / 3.50 MB |
+| 公共乐园 | `play.glb` | 442,738 | 19 | 19.90 / 8.75 MB |
+
+资源位于 `static/models/paw-commons-v2`，SHA-256 和真实字节数见 `runtime-report.json`。服务器按 Accept-Encoding 提供 gzip，保留 ETag 和 Vary；浏览器复用现有 IndexedDB 模型缓存，命中后条件验证。场景未就绪时禁用入园，失败显示重试。无人且视角静止时停止提交画面，有宠物时上限 30 FPS；这不是实测真机帧率承诺。
+
+`navigation.json` 同时驱动浏览器 A* 路线和服务端位置/线段校验，绕开中央树坛及活动区边缘的隧道、饮水区和坡道。点击不可通行处会投影到可达草坪；原有打招呼、玩球、闻闻、休息和多人同步继续使用。设施现阶段是精细场景，尚不能让宠物自动钻洞、登树屋或通过桥梁。
+
+验证命令：`node test/park_runtime_assets.cjs`、`node test/park_navigation.cjs`、`node test/selected_assets.cjs`、`venv/Scripts/python.exe -X utf8 -m unittest discover -s test -p test_park.py -v`。启动隔离的 `test/park_review_server.py` 后，运行 `test/public_park_render.cjs` 和 `test/park_runtime_browser.cjs` 做双账号、导航、失败重试和缓存检查。测试服务只监听本机 5088，使用临时数据库；不能把它作为正式服务部署到局域网。
+
+本批接入在当前仓库的隔离开发预览完成；`D:\PetChatSystem` 的旧运行目录有大量未同步修改，未整目录覆盖，也未更新平板连接的 5005 服务。上线前需先完成该运行目录的差异合并和鸿蒙真机验收。

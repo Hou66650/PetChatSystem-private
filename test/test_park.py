@@ -69,4 +69,39 @@ class ParkTests(unittest.TestCase):
         self.assertEqual(p['spec']['name'],'小球')
         self.assertTrue(p['spec']['model'].startswith('/static/models/pet-growth-'))
 
+    def test_tree_bed_and_segment_are_server_enforced(self):
+        from app.db import get_db
+        with patch.object(park,'clock',return_value=100):
+            joined=self.post('join',{'pet':1}).json
+        with self.app.app_context():
+            db=get_db()
+            db.execute('UPDATE park_presence SET x=-3,z=-0.8');db.commit()
+        with patch.object(park,'clock',return_value=102):
+            blocked=dict(token=joined['token'],x=.3,z=-.8,yaw=0)
+            self.assertEqual(self.post('sync',blocked).status_code,400)
+            # Both endpoints clear; a forged straight move crosses the tree bed.
+            blocked['x']=3
+            self.assertEqual(self.post('sync',blocked).status_code,422)
+            blocked.update(x=-3,z=1)
+            self.assertEqual(self.post('sync',blocked).status_code,200)
+        self.assertEqual(joined['layoutVersion'],'paw-v2-1')
+
+    def test_scene_asset_compression_cache_and_scope(self):
+        import gzip
+        for tier in ('preview','play'):
+            path='/static/models/paw-commons-v2/'+tier+'.glb'
+            raw=self.a.get(path,headers={'Accept-Encoding':'identity'})
+            packed=self.a.get(path,headers={'Accept-Encoding':'gzip'})
+            self.assertEqual(raw.status_code,200)
+            self.assertEqual(packed.headers['Content-Encoding'],'gzip')
+            self.assertEqual(gzip.decompress(packed.data),raw.data)
+            self.assertIn('Accept-Encoding',packed.headers['Vary'])
+            with self.a.get(path,headers={'Accept-Encoding':'gzip','If-None-Match':packed.headers['ETag']}) as cached:
+                self.assertEqual(cached.status_code,304)
+            raw.close();packed.close()
+        self.assertEqual(self.a.get('/static/models/paw-commons-v2/unknown.glb').status_code,404)
+        page=self.a.get('/park').data.decode()
+        self.assertIn('id="park-navigation"',page)
+        self.assertIn('id="park-join" disabled',page)
+
 if __name__=='__main__':unittest.main()

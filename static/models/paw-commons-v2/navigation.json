@@ -1,0 +1,15 @@
+{
+  "version": "paw-v2-1",
+  "coordinates": "GLB Y up, Blender Y maps to negative Z",
+  "ellipse": {"x": 8, "z": 6},
+  "grid": 0.35,
+  "clearance": 0.22,
+  "restPoint": {"x": 0, "z": 3},
+  "obstacles": [
+    {"id": "central-tree", "x": 0.3, "z": -0.8, "radius": 2.0},
+    {"id": "large-tunnel", "x": -10, "z": -0.8, "radius": 2.1},
+    {"id": "small-tunnel", "x": -7.4, "z": -4, "radius": 1.9},
+    {"id": "water-apron", "x": 4.3, "z": -5.7, "radius": 1.15},
+    {"id": "treehouse-ramp", "x": -7.916, "z": -4.8, "radius": 1.2}
+  ]
+}

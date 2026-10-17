@@ -21,10 +21,10 @@
   ring.visible=false;
   const view={choice,group,label,ring,pickArea,object:null};
   choice.addEventListener('click',e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||e.button!==0)return;e.preventDefault();select(i);});label.onclick=()=>select(i);
-  (choice.dataset.theme==='park'?Promise.resolve({scene:PetParkScene.create(THREE)}):loader.glb('/static/models/home-islands/'+choice.dataset.theme+'.glb?v='+encodeURIComponent(root.dataset.version),ticket)).then(gltf=>{
+  (choice.dataset.theme==='park'?PetParkScene.load(THREE,{tier:'preview',loader,ticket,version:root.dataset.version}):loader.glb('/static/models/home-islands/'+choice.dataset.theme+'.glb?v='+encodeURIComponent(root.dataset.version),ticket)).then(gltf=>{
    const object=gltf.scene,box=new THREE.Box3().setFromObject(object),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());object.position.sub(center);const scale=(choice.dataset.theme==='park'?18:9)/Math.max(size.x,size.z);object.scale.setScalar(scale);object.position.multiplyScalar(scale);group.add(object);view.object=object;environment.addIsland(choice.dataset.theme,group);
    object.traverse(o=>{if(!o.isMesh||!o.geometry.attributes.uv||!/waterfall|silver_water/i.test(o.material?.name||''))return;o.material.onBeforeCompile=shader=>{shader.uniforms.uIslandTime=environment.time;shader.vertexShader='uniform float uIslandTime;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n transformed.x += sin(uv.y*24.-uIslandTime*2.)*.025;');};});
-   loaded++;label.hidden=false;report();if(selected===i&&choice.dataset.theme!=='park')resident.select(choice.dataset.theme,view);
+   loaded++;label.hidden=false;if(choice.dataset.theme==='park')root.dataset.parkScene='preview';report();if(selected===i&&choice.dataset.theme!=='park')resident.select(choice.dataset.theme,view);
   }).catch(()=>{failed++;report();});
   return view;
  });
