@@ -1,0 +1,29 @@
+{
+  "status": "pass",
+  "triangles": 1774016,
+  "meshes": 59,
+  "finite": true,
+  "min": [
+    -14.67409610748291,
+    -5.619998931884766,
+    -13.068885803222656
+  ],
+  "max": [
+    14.439504623413086,
+    5.708489894866943,
+    12.042320251464844
+  ],
+  "checks": [
+    "real GLB browser load",
+    "finite vertices",
+    "model bounds",
+    "all review images loaded",
+    "narrow layout",
+    "private path denied"
+  ],
+  "notTested": [
+    "HarmonyOS frame rate",
+    "multiplayer play",
+    "physical facility interaction"
+  ]
+}

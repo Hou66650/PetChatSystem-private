@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1000" viewBox="0 0 1400 1000"><rect width="1400" height="1000" fill="#fbf8ee"/><style>text{font-family:Arial,Microsoft YaHei,sans-serif;fill:#294e42} .s{font-size:17px}.h{font-size:26px;font-weight:bold}.line{stroke:#52725b;stroke-width:2;fill:none}</style>
+<text x="45" y="48" class="h">爪心乐园 · 布局与设施尺寸 / V2</text>
+<text x="45" y="82" class="s">单位：米。虚拟场景精细母版名义尺寸；概念图不作为施工图。</text>
+<text x="45" y="135" class="h">五岛爪印 · 四岛原样沿用</text>
+<ellipse cx="100" cy="270" rx="53" ry="65" fill="#c7d3b4" stroke="#52725b" stroke-width="2"/>
+<text x="65" y="275" class="s">樱花庭院</text>
+<ellipse cx="220" cy="210" rx="53" ry="65" fill="#c7d3b4" stroke="#52725b" stroke-width="2"/>
+<text x="185" y="215" class="s">雪境木屋</text>
+<ellipse cx="345" cy="210" rx="53" ry="65" fill="#c7d3b4" stroke="#52725b" stroke-width="2"/>
+<text x="310" y="215" class="s">雾林温室</text>
+<ellipse cx="465" cy="270" rx="53" ry="65" fill="#c7d3b4" stroke="#52725b" stroke-width="2"/>
+<text x="430" y="275" class="s">山岭营地</text>
+<ellipse cx="285" cy="425" rx="150" ry="104" fill="#a5be8f" stroke="#52725b" stroke-width="2"/>
+<text x="220" y="425" class="s">中央公共乐园</text>
+<text x="215" y="452" class="s">本次新建掌垫岛</text>
+<text x="660" y="135" class="h">中央岛平面 · 北 ↑</text>
+<ellipse cx="970" cy="365" rx="246.6" ry="202.5" fill="#bdd0a5" stroke="#52725b" stroke-width="2"/>
+<ellipse cx="970" cy="365" rx="187.20000000000002" ry="144" fill="#e2d1ac" stroke="#52725b" stroke-width="2"/>
+<ellipse cx="970" cy="365" rx="171.0" ry="127.8" fill="#b2ca92" stroke="#52725b" stroke-width="2"/>
+<ellipse cx="970" cy="365" rx="144" ry="108" fill="none" stroke="#52725b" stroke-dasharray="6 5"/>
+<ellipse cx="970" cy="530.6" rx="13" ry="13" fill="#fbf8ee" stroke="#52725b" stroke-width="2"/>
+<text x="965" y="535.6" class="s">1</text>
+<ellipse cx="790" cy="350.6" rx="13" ry="13" fill="#fbf8ee" stroke="#52725b" stroke-width="2"/>
+<text x="785" y="355.6" class="s">2</text>
+<ellipse cx="808" cy="449.6" rx="13" ry="13" fill="#fbf8ee" stroke="#52725b" stroke-width="2"/>
+<text x="803" y="454.6" class="s">3</text>
+<ellipse cx="853.0" cy="231.79999999999998" rx="13" ry="13" fill="#fbf8ee" stroke="#52725b" stroke-width="2"/>
+<text x="848.0" y="236.79999999999998" class="s">4</text>
+<ellipse cx="1150" cy="383" rx="13" ry="13" fill="#fbf8ee" stroke="#52725b" stroke-width="2"/>
+<text x="1145" y="388" class="s">5</text>
+<ellipse cx="1087.0" cy="233.6" rx="13" ry="13" fill="#fbf8ee" stroke="#52725b" stroke-width="2"/>
+<text x="1082.0" y="238.6" class="s">6</text>
+<ellipse cx="1047.4" cy="262.4" rx="13" ry="13" fill="#fbf8ee" stroke="#52725b" stroke-width="2"/>
+<text x="1042.4" y="267.4" class="s">7</text>
+<ellipse cx="1150" cy="456.8" rx="13" ry="13" fill="#fbf8ee" stroke="#52725b" stroke-width="2"/>
+<text x="1145" y="461.8" class="s">8</text>
+<text x="895" y="365" class="s">公共草坪 · 中央树景</text>
+<text x="898" y="391" class="s">行走范围需扣除中央树坛</text>
+<path class="line" d="M720,600 L1220,600"/>
+<path class="line" d="M720,590 L720,610"/>
+<path class="line" d="M1220,590 L1220,610"/>
+<text x="900" y="628" class="s">整体约 28 × 23</text>
+<text x="48" y="580" class="s">01  入口</text>
+<text x="323" y="580" class="s">02  草坡隧道</text>
+<text x="48" y="608" class="s">03  低桥</text>
+<text x="323" y="608" class="s">04  树屋</text>
+<text x="48" y="636" class="s">05  跳圈 ×3</text>
+<text x="323" y="636" class="s">06  遮阴座椅</text>
+<text x="48" y="664" class="s">07  饮水点</text>
+<text x="323" y="664" class="s">08  玩具柜</text>
+<path class="line" d="M45,710 L1355,710"/>
+<text x="45" y="752" class="h">05 / 隧道正视与长度</text>
+<path d="M90,910 L90,868 Q90,785 160,785 Q230,785 230,868 L230,910" fill="#c3aa7e" stroke="#52725b" stroke-width="3"/><path d="M105,910 L105,868 Q105,801 160,801 Q215,801 215,868 L215,910" fill="#fbf8ee" stroke="#52725b" stroke-width="2"/>
+<path class="line" d="M105,930 L215,930"/>
+<text x="115" y="956" class="s">净宽约 1.2</text>
+<text x="260" y="835" class="s">拱顶净高约 1.2</text>
+<text x="260" y="868" class="s">贯通长度 3.0</text>
+<text x="260" y="901" class="s">前后开口 · 外部草覆顶</text>
+<text x="710" y="752" class="h">06 / 低桥侧视</text>
+<path d="M740,910 L900,868 L1100,868 L1260,910" fill="none" stroke="#b08a59" stroke-width="12"/>
+<path class="line" d="M920,872 L920,910"/>
+<path class="line" d="M1080,872 L1080,910"/>
+<text x="760" y="945" class="s">坡长 1.875</text>
+<text x="949" y="840" class="s">平台长 2.5</text>
+<text x="1140" y="945" class="s">坡长 1.875</text>
+<text x="885" y="979" class="s">桥宽 1.44 · 台面高 0.5</text>
+<circle cx="837" cy="293" r="13" fill="#fbf8ee" stroke="#52725b"/><text x="827" y="298" class="s">2b</text></svg>

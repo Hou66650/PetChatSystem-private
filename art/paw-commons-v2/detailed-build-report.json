@@ -1,0 +1,15 @@
+{
+  "transport": "MCP stdio -> mcp-for-blender -> addon execute_code",
+  "triangles": 1774016,
+  "bytes": 84580872,
+  "sha256": "52ba079983eb054beb05d562e43dde63ee6dc9a57e11143c84f8c8d04024ec56",
+  "status": "High-detail design master, not runtime-optimized",
+  "centralTreeNavigationExclusion": {
+    "center": [
+      0.3,
+      0.8
+    ],
+    "radius": 1.6
+  },
+  "source": "scripts/blender/detail_paw_commons_mcp.py"
+}

@@ -1,0 +1,17 @@
+{
+  "units": "metres",
+  "coordinates": "Blender Z up; entrance at south/-Y; GLB exports to Y up",
+  "overall": {"width": 28, "depth": 23, "groundZ": 0, "rockBottomZ": -5.5},
+  "walkArea": {"shape": "ellipse", "radiusX": 8, "radiusY": 6, "height": 0},
+  "facilities": [
+    {"id":"entrance", "center":[0,-9.2,0], "width":3.6, "depth":1.0, "height":3.1},
+    {"id":"tunnel", "center":[-10,0.8,0], "length":3.0, "clearWidth":1.2, "clearHeight":1.2, "wall":0.12},
+    {"id":"bridge", "center":[-9,-4.7,0], "width":1.15, "deckLength":2.0, "deckHeight":0.4, "rampLength":1.5},
+    {"id":"catTree", "center":[-6.5,7.4,0], "width":3.3, "depth":2.8, "highestPlatform":2.1, "cubbyExits":2},
+    {"id":"hoops", "center":[10,-1,0], "openingWidth":1.2, "height":1.5, "barHeight":0.25, "spacing":1.8, "count":3},
+    {"id":"shadeBench", "center":[6.5,7.3,0], "width":3.6, "depth":2.8, "seatHeight":0.45, "canopyHeight":2.7},
+    {"id":"water", "center":[4.3,5.7,0], "bowlDiameter":0.48, "rimHeight":0.17},
+    {"id":"toyShelf", "center":[10,-5.1,0], "width":1.7, "depth":0.5, "height":1.05}
+  ],
+  "boundary": "Virtual-game design dimensions, not certified real-world construction or animal-welfare standards. Facilities stay outside the current public walking ellipse; dedicated interaction paths remain to be authored."
+}

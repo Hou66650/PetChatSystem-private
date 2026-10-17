@@ -1,0 +1,141 @@
+{
+  "units": "metres",
+  "coordinates": "Blender Z up; entrance at south/-Y; GLB exports to Y up",
+  "overall": {
+    "width": 28,
+    "depth": 23,
+    "groundZ": 0,
+    "rockBottomZ": -5.5
+  },
+  "walkArea": {
+    "shape": "ellipse",
+    "radiusX": 8,
+    "radiusY": 6,
+    "height": 0,
+    "exclusions": [
+      {
+        "center": [
+          0.3,
+          0.8
+        ],
+        "radius": 1.6,
+        "reason": "central tree bed; runtime collision not implemented"
+      }
+    ]
+  },
+  "facilities": [
+    {
+      "id": "entrance",
+      "center": [
+        0,
+        -9.2,
+        0
+      ],
+      "width": 3.6,
+      "depth": 1.0,
+      "height": 3.1
+    },
+    {
+      "id": "tunnel",
+      "center": [
+        -10,
+        0.8,
+        0
+      ],
+      "length": 3.0,
+      "clearWidth": 1.2,
+      "clearHeight": 1.2,
+      "wall": 0.12
+    },
+    {
+      "id": "bridge",
+      "center": [
+        -9,
+        -4.7,
+        0
+      ],
+      "width": 1.4375,
+      "deckLength": 2.5,
+      "deckHeight": 0.5,
+      "rampLength": 1.875
+    },
+    {
+      "id": "catTree",
+      "center": [
+        -6.5,
+        7.4,
+        0
+      ],
+      "width": 4.2,
+      "depth": 5.2,
+      "highestPlatform": 2.773,
+      "cubbyExits": 2,
+      "platformHeights": [
+        0.649,
+        1.239,
+        1.947,
+        2.773
+      ]
+    },
+    {
+      "id": "hoops",
+      "center": [
+        10,
+        -1,
+        0
+      ],
+      "openingWidth": 1.2,
+      "height": 1.5,
+      "barHeight": 0.25,
+      "spacing": 1.8,
+      "count": 3
+    },
+    {
+      "id": "shadeBench",
+      "center": [
+        6.5,
+        7.3,
+        0
+      ],
+      "width": 4.704000000000001,
+      "depth": 3.0240000000000005,
+      "seatHeight": 0.5040000000000001,
+      "canopyHeight": 3.5504000000000002
+    },
+    {
+      "id": "water",
+      "center": [
+        4.3,
+        5.7,
+        0
+      ],
+      "bowlDiameter": 0.48,
+      "rimHeight": 0.17
+    },
+    {
+      "id": "toyShelf",
+      "center": [
+        10,
+        -5.1,
+        0
+      ],
+      "width": 1.7,
+      "depth": 0.5,
+      "height": 1.05
+    },
+    {
+      "id": "smallTunnel",
+      "center": [
+        -7.4,
+        4,
+        0
+      ],
+      "length": 2.46,
+      "clearWidth": 0.9839999999999999,
+      "clearHeight": 0.9839999999999999,
+      "wall": 0.09839999999999999
+    }
+  ],
+  "boundary": "Virtual design dimensions; not certified construction. New central bed and facilities need authored runtime collision and interaction paths before integration.",
+  "stage": "detailed MCP master; nominal facility dimensions"
+}

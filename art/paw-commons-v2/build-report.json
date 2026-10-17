@@ -1,0 +1,15 @@
+{
+  "triangles": 363472,
+  "meshes": 35,
+  "bytes": 19822460,
+  "sha256": "d983efe6f78b96662e274df47b76cd638b3020a1a6cc8ff5a0362e89cd3617f4",
+  "units": "metres",
+  "source": "scripts/blender/build_paw_commons_v2.py",
+  "status": "design model; facility gameplay not implemented",
+  "walkingEllipse": {
+    "shape": "ellipse",
+    "radiusX": 8,
+    "radiusY": 6,
+    "height": 0
+  }
+}

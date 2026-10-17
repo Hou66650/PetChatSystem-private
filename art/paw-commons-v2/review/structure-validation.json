@@ -1,0 +1,14 @@
+{
+  "status": "pass",
+  "checks": [
+    "finite master vertices",
+    "large tunnel through passage",
+    "small tunnel through passage",
+    "front doorway has landing below it"
+  ],
+  "notCertified": [
+    "animal facility safety",
+    "runtime collision",
+    "multiplayer navigation"
+  ]
+}

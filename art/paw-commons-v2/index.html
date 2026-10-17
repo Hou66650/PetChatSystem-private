@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>爪心乐园 · 第二版设计审阅</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f2e9;color:#243d35;font:17px/1.8 system-ui,sans-serif}main{max-width:1220px;margin:auto;padding:40px 24px}h1{font-size:36px;margin-bottom:12px}h2{margin:48px 0 12px}p{max-width:850px}img{width:100%;display:block;border-radius:16px}a{color:#335f4c}figure{margin:20px 0}figcaption{font-size:14px;padding:8px 2px;color:#53665a}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}#viewer{height:620px;background:#b7c9ce;border-radius:16px;overflow:hidden}#viewer canvas{display:block;width:100%;height:100%;touch-action:none}button{padding:10px 18px;background:#335f4c;color:white;border:0;border-radius:20px;cursor:pointer;font:inherit}.note{border-left:4px solid #be8c53;padding:12px 20px;background:#eee6d8}@media(max-width:700px){.grid{grid-template-columns:1fr}#viewer{height:420px}h1{font-size:28px}}
+</style><main>
+<div>派特岛 / 中央公共乐园 / 第二版</div><h1>自然木石，温柔的游乐场</h1>
+<p>四座生活岛继续沿用。中央掌垫岛以开阔草坪和环形散步路径组织八处设施：草坡猫耳隧道、低桥、花朵跳圈、攀爬树屋、遮阴座椅、饮水点、玩具柜和入口。</p>
+<p class="note">本页分开展示视觉目标与真实三维成果。概念图由 AI 生成；下方精细母版通过 Blender MCP 制作，尚未替换线上乐园。设施专属玩法、轻量版本与鸿蒙多人性能仍待完成。</p>
+<h2>01 / 整体效果概念</h2><figure><img src="design/01-overall-concept.png" alt="中央乐园整体效果概念"><figcaption>内置 imagegen 生成的视觉目标，不是游戏截图。主要确定材质、氛围与设施语言。</figcaption></figure>
+<h2>02 / 设施细节概念</h2><figure><img src="design/02-facility-details.png" alt="六类设施结构与材质细节概念"><figcaption>与整体图保持一致的细节参考；图中尺寸与结构以实际设计文件为准。</figcaption></figure>
+<h2>03 / 布局与尺寸</h2><figure><img src="design/03-dimensions.svg" alt="五岛布局、乐园平面、隧道和桥尺寸图"><figcaption>虚拟场景设计，单位米；四座生活岛保持现有资产。尺寸为设计名义值，详见 layout-detailed.json。</figcaption></figure>
+<h2>04 / Blender MCP 精细母版</h2><figure><img src="review/06-detailed-overview.png" alt="MCP 精细母版实际整体渲染"><figcaption>真实三维渲染：双隧道、分层树屋、叶脉遮棚、中央树景、草簇、花境与垂藤。</figcaption></figure>
+<div class="grid"><figure><img src="review/07-detailed-tunnels.png" alt="精细隧道近景"><figcaption>贯通隧道与草坡近景。</figcaption></figure><figure><img src="review/08-detailed-treehouse.png" alt="精细树屋近景"><figcaption>设施研究图（隐藏树冠以便检查）：叶形踏台、连续阶梯、螺旋麻绳与双出口木屋。</figcaption></figure></div>
+<figure><img src="review/09-detailed-canopy.png" alt="精细叶脉遮棚近景"><figcaption>设施研究图（隐藏树冠以便检查）：叶形外缘、主梁、弧形肋条与座椅连接。</figcaption></figure>
+<h2>05 / 旋转检查实际模型</h2><p>拖动旋转，滚轮或双指缩放。精细母版文件较大，仅用于设计审阅。</p>
+<button id="load">加载三维设计稿</button> <span id="status" role="status">尚未加载</span><div id="viewer"></div>
+<p><a href="paw-commons-detailed.blend">可编辑精细 Blender 工程</a> · <a href="../../static/models/paw-commons-v2/park-detailed.glb">精细 GLB 模型</a> · <a href="design/layout-detailed.json">尺寸数据</a> · <a href="detailed-build-report.json">构建报告</a> · <a href="design/prompts.json">图像提示词</a></p>
+</main>
+<script src="../../static/js/vendor/three.min.js"></script><script src="../../static/js/vendor/GLTFLoader.js"></script><script src="../../static/js/vendor/OrbitControls.js"></script>
+<script>
+document.getElementById('load').onclick=async function(){
+const button=this,status=document.getElementById('status'),host=document.getElementById('viewer');button.disabled=true;status.textContent='正在加载…';
+let renderer,controls;
+try{
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xb7c9ce);
+const camera=new THREE.PerspectiveCamera(42,1,.1,180);camera.position.set(18,20,28);
+renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;host.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xf5f4e4,0x5b6e65,.7));const sun=new THREE.DirectionalLight(0xffe5b7,1.3);sun.position.set(-12,25,15);scene.add(sun);
+controls=new THREE.OrbitControls(camera,renderer.domElement);controls.target.set(0,-.5,0);controls.minDistance=5;controls.maxDistance=70;controls.update();
+const gltf=await new Promise((resolve,reject)=>new THREE.GLTFLoader().load('../../static/models/paw-commons-v2/park-detailed.glb',resolve,undefined,reject));scene.add(gltf.scene);
+function draw(){renderer.render(scene,camera)}function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();draw()}
+controls.addEventListener('change',draw);new ResizeObserver(resize).observe(host);resize();window.reviewModel=gltf.scene;
+status.textContent='已加载 · 拖动查看结构';button.hidden=true;
+}catch(error){controls?.dispose();renderer?.dispose();host.replaceChildren();status.textContent='加载失败：'+error.message;button.disabled=false;}
+};
+</script></html>
