@@ -9,7 +9,7 @@
  const environment=new HomeAtmosphere.Environment(THREE,scene),resident=new HomeResident.Resident(THREE,SelectedAssets,root.dataset.version,{room:root.dataset.catModel});
  scene.add(new THREE.HemisphereLight(0xe3eff5,0x627777,1.15));const sun=new THREE.DirectionalLight(0xffe0b6,2.3);sun.position.set(-35,32,-45);scene.add(sun);const rim=new THREE.DirectionalLight(0xb6e6ff,1);rim.position.set(20,10,-20);scene.add(rim);
  const controls=new THREE.OrbitControls(camera,canvas);controls.enableDamping=true;controls.dampingFactor=.075;controls.enablePan=false;controls.minDistance=11;controls.maxDistance=100;controls.minPolarAngle=.12;controls.maxPolarAngle=Math.PI*.49;controls.rotateSpeed=.6;controls.zoomSpeed=.8;controls.autoRotateSpeed=.35;
- const positions=[[-10,0,8],[10,1,5],[-9,1.5,-11],[11,-.5,-13]],loader=new THREE.GLTFLoader(),ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),projected=new THREE.Vector3();
+ const positions=[[-10,0,8],[10,1,5],[-9,1.5,-11],[11,-.5,-13]],loader=new SelectedAssets.Loader(new THREE.GLTFLoader()),ticket=loader.begin(),ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),projected=new THREE.Vector3();
  let navigationTimer=null;
  let selected=-1,flight=null,entering=false,gesture=null,loaded=0,failed=0,width=0,height=0,last=0,raf;
  const islandProgress=window.PaitLoading?.start('正在展开云端群岛');
@@ -21,11 +21,11 @@
   ring.visible=false;
   const view={choice,group,label,ring,pickArea,object:null};
   choice.addEventListener('click',e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||e.button!==0)return;e.preventDefault();select(i);});label.onclick=()=>select(i);
-  loader.load('/static/models/home-islands/'+choice.dataset.theme+'.glb?v='+encodeURIComponent(root.dataset.version),gltf=>{
+  loader.glb('/static/models/home-islands/'+choice.dataset.theme+'.glb?v='+encodeURIComponent(root.dataset.version),ticket).then(gltf=>{
    const object=gltf.scene,box=new THREE.Box3().setFromObject(object),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());object.position.sub(center);const scale=9/Math.max(size.x,size.z);object.scale.setScalar(scale);object.position.multiplyScalar(scale);group.add(object);view.object=object;environment.addIsland(choice.dataset.theme,group);
    object.traverse(o=>{if(!o.isMesh||!o.geometry.attributes.uv||!/waterfall|silver_water/i.test(o.material?.name||''))return;o.material.onBeforeCompile=shader=>{shader.uniforms.uIslandTime=environment.time;shader.vertexShader='uniform float uIslandTime;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n transformed.x += sin(uv.y*24.-uIslandTime*2.)*.025;');};});
    loaded++;label.hidden=false;report();if(selected===i)resident.select(choice.dataset.theme,view);
-  },undefined,()=>{failed++;report();});
+  }).catch(()=>{failed++;report();});
   return view;
  });
  function report(){islandProgress?.update('正在展开云端群岛 '+(loaded+failed)+'/'+choices.length,(loaded+failed)/choices.length);if(loaded+failed===choices.length){if(failed)islandProgress?.fail('部分岛屿未加载，可重试或直接进入');else islandProgress?.done();}status.textContent=loaded+failed===4?(failed?'部分岛屿未加载，仍可选择并进入。':'拖动自由旋转 · 滚轮 / 双指缩放 · 双击岛屿进入小窝'):('正在展开云端群岛 '+(loaded+failed)+'/4');}

@@ -59,13 +59,13 @@
  function fail(task,e){if(e?.name==='AbortError')task.cancel();else task.fail();}
  if(window.fetch){const original=window.fetch.bind(window);window.fetch=async function(input,init={}){
   const label=classify(input,init);if(!label)return original(input,init);const owned=!!init.paitTask,task=init.paitTask||start(label);const complete=()=>{if(!owned)task.done();};let idle;
-  try{const response=await original(input,init);if(!response.ok){task.fail(label+' · 未完成，请查看页面提示');return response;}
+  try{const response=await original(input,init);if(response.status===304){complete();return response;}if(!response.ok){task.fail(label+' · 未完成，请查看页面提示');return response;}
    // Keep the real Response: URL, headers, status, identity, clone and streaming semantics survive.
    idle=setTimeout(complete,1500);const consume=()=>clearTimeout(idle);
    for(const name of ['json','text','blob','arrayBuffer','formData']){const method=response[name]?.bind(response);if(method)Object.defineProperty(response,name,{configurable:true,value:async(...args)=>{consume();try{const value=await method(...args);complete();return value;}catch(e){fail(task,e);throw e;}}});}
    const body=response.body;if(body){const originalReader=body.getReader.bind(body);Object.defineProperty(body,'getReader',{configurable:true,value:(...args)=>{consume();const reader=originalReader(...args);let loaded=0;const total=!response.headers.get('Content-Encoding')?Number(response.headers.get('Content-Length')):0;return new Proxy(reader,{get(target,key){if(key==='read')return async(...a)=>{try{const result=await target.read(...a);if(result.done)complete();else{loaded+=result.value?.byteLength||0;task.update(label,total>0&&loaded<=total?loaded/total:null);}return result;}catch(e){fail(task,e);throw e;}};if(key==='cancel')return (...a)=>{task.cancel();return target.cancel(...a);};const v=Reflect.get(target,key,target);return typeof v==='function'?v.bind(target):v;}});}});}
    return response;
-  }catch(e){clearTimeout(idle);fail(task,e);throw e;}
+  }catch(e){clearTimeout(idle);if(!init.paitCacheFallback)fail(task,e);throw e;}
  };}
  if(window.XMLHttpRequest){const proto=XMLHttpRequest.prototype,open=proto.open,send=proto.send;proto.open=function(method,url,...rest){this.__paitRequest={method,url};return open.call(this,method,url,...rest);};proto.send=function(body){const meta=this.__paitRequest,label=meta&&classify(meta.url,{method:meta.method,body});if(!label)return send.call(this,body);const task=start(label);this.addEventListener('progress',e=>task.update(label,e.lengthComputable?e.loaded/e.total:null));this.upload?.addEventListener('progress',e=>task.update('正在上传文件',e.lengthComputable?e.loaded/e.total:null));this.upload?.addEventListener('load',()=>task.update('上传完成，正在处理'));this.addEventListener('load',()=>this.status>=200&&this.status<400?task.done():task.fail());this.addEventListener('abort',()=>task.cancel());this.addEventListener('error',()=>task.fail());this.addEventListener('timeout',()=>task.fail());try{return send.call(this,body);}catch(e){fail(task,e);throw e;}};}
  async function buffer(response){
