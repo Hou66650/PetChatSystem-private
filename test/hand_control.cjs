@@ -27,6 +27,17 @@ detect(1700,[hand(1,.35)]);detect(1800,[hand(1,.75),hand(1,.36)]);assert.equal(d
 const count=events.length;detect(1900,[hand(.2,.9)]);assert(d.handState.trackingLost);assert.equal(events.length,count,'do not transfer ownership to a distant hand');
 function smoothAt(fps){const {d}=fixture();d.handState={present:true,sx:0,sy:0,pinchX:0,pinchY:0};now=0;d._followLoop();d._followAt=0;d.handState={present:true,sx:30,sy:30,pinchX:30,pinchY:30};for(let i=1;i<=fps/2;i++){now=i*1000/fps;d._followLoop();}return d._smooth.px;}
 assert(Math.abs(smoothAt(60)-smoothAt(240))<1e-8,'GPU refresh rate does not change response');
+assert(Math.abs(smoothAt(10)-smoothAt(60))<1e-8,'10 FPS must not slow the cursor filter clock');
+assert(Math.abs(smoothAt(20)-smoothAt(60))<1e-8,'20 FPS matches normal refresh smoothing');
+// State notifications cannot bypass smoothing and produce a forward/backward cursor jump.
+const transition=fixture(),seen=[];transition.d.onHand=h=>seen.push(h);
+now=0;transition.d._detectHand(0,{landmarks:[hand(1)]});transition.d._followLoop();
+const cursor=transition.d._smooth.x,pinch=transition.d._smooth.px;
+const distant=hand(1,.6);distant[0].y=.64; // Palm .09: reaching changes true -> false.
+now=100;transition.d._detectHand(100,{landmarks:[distant]});
+assert.equal(seen.at(-1).reaching,false);assert.equal(seen.at(-1).sx,cursor);assert.equal(seen.at(-1).pinchX,pinch);
+transition.d._followLoop();assert(seen.at(-1).sx<cursor);const progressed=seen.at(-1).sx;
+now=150;transition.d._detectHand(150,{landmarks:[]});assert.equal(seen.at(-1).sx,progressed,'dropout freezes displayed position, not raw detection');
 const {d:zero}=fixture();zero.handState={present:true,sx:100,sy:100,pinchX:0,pinchY:0};zero._followLoop();assert.equal(zero._smooth.px,0,'screen-edge coordinate zero is valid');
 zero._trackedPalm={x:.4,y:.4};zero.stop();assert.equal(zero._trackedPalm,null);
 const W=require('../static/js/den/toy-workshop.js');

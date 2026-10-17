@@ -583,11 +583,11 @@ class DenVision {
                 pinchX, pinchY, pinchDist: m.pinchDist, pinchRatio: m.pinchRatio,
                 quality,
             };
-            if (was.present !== true || was.reaching !== reaching) this.onHand(this.handState);
+            if (was.present !== true || was.reaching !== reaching) this._emitHand();
         } else {
             this._pinchCandidate=null;this._prevSnapRatio=undefined;
             if(this.handState.present&&ts-(this._lastHandAt??ts)<350){
-                this.handState={...this.handState,trackingLost:true};this.onHand(this.handState);return;
+                this.handState={...this.handState,trackingLost:true};this._emitHand();return;
             }
             this.lastRaw=null;this._trackedPalm=null;
             if(this._pinching){this._pinching=false;this.onGrab?.(false,null,'lost');}
@@ -597,7 +597,14 @@ class DenVision {
         }
     }
 
-    /* ---------- 虚拟手平滑跟随（60fps 插值，检测帧间也不卡顿；捏合点同步平滑） ---------- */
+    _emitHand(){
+        const h=this.handState,s=this._smooth;
+        // Status changes and render frames must share the same visible cursor position.
+        // Publishing raw coordinates here would jump forward, then back on the next RAF.
+        this.onHand(h.present&&s.ok?{...h,sx:s.x,sy:s.y,pinchX:s.px,pinchY:s.py,smooth:true}:h);
+    }
+
+    /* ---------- 虚拟手按实际帧间隔跟随；捏合点同步平滑 ---------- */
     _followLoop() {
         if (!this.running) return;
         this._raf = requestAnimationFrame(() => this._followLoop());
@@ -608,8 +615,8 @@ class DenVision {
             this._smooth.px = h.pinchX ?? h.sx; this._smooth.py = h.pinchY ?? h.sy;
             this._smooth.ok = true;
         }
-        const now=performance.now(),dt=Math.min(.05,Math.max(.001,(now-(this._followAt??now-16.67))/1000));this._followAt=now;
-        // Equal response at 60/144/240 Hz; slow motion is steadier, large moves catch up quickly.
+        const now=performance.now(),dt=Math.min(.25,Math.max(.001,(now-(this._followAt??now-16.67))/1000));this._followAt=now;
+        // Include 10–20 FPS scenes: a 50 ms cap made their cursor lag behind real time.
         const distance=Math.hypot((h.pinchX??h.sx)-this._smooth.px,(h.pinchY??h.sy)-this._smooth.py);
         const alpha=1-Math.exp(-dt*(distance>45?24:12));
         if(!h.trackingLost&&!h.releasing){
@@ -617,8 +624,7 @@ class DenVision {
             this._smooth.px+=((h.pinchX??h.sx)-this._smooth.px)*alpha;
             this._smooth.py+=((h.pinchY??h.sy)-this._smooth.py)*alpha;
         }
-        this.onHand({ ...h, sx: this._smooth.x, sy: this._smooth.y,
-                      pinchX: this._smooth.px, pinchY: this._smooth.py, smooth: true });
+        this._emitHand();
     }
 
     get gaze() { return this.gazeContact; }
