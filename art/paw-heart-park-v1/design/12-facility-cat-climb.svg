@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1920" height="1120" viewBox="0 0 1920 1120">
+
+<defs>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#40584a" flood-opacity=".18"/></filter>
+  <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="10"/></filter>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dfe9e5"/><stop offset="1" stop-color="#f7f3e9"/></linearGradient>
+  <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9ba83"/><stop offset="1" stop-color="#829b63"/></linearGradient>
+  <linearGradient id="rock" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b7b7a1"/><stop offset="1" stop-color="#6f7d6b"/></linearGradient>
+  <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8d6845"/><stop offset=".45" stop-color="#c29a6c"/><stop offset=".55" stop-color="#b18c60"/><stop offset="1" stop-color="#7c593d"/></linearGradient>
+  <linearGradient id="water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9e0dc"/><stop offset="1" stop-color="#78b9b7"/></linearGradient>
+  <pattern id="woodgrain" width="42" height="18" patternUnits="userSpaceOnUse"><rect width="42" height="18" fill="#b18c60"/><path d="M0 4 C12 1 25 8 42 3 M0 13 C16 9 28 17 42 11" fill="none" stroke="#7c593d" stroke-opacity=".34" stroke-width="1.2"/></pattern>
+  <pattern id="stonetexture" width="46" height="34" patternUnits="userSpaceOnUse"><rect width="46" height="34" fill="#9b9b82"/><circle cx="8" cy="9" r="1.2" fill="#68705e" opacity=".32"/><circle cx="29" cy="20" r="1.6" fill="#d0cbb6" opacity=".45"/><path d="M2 28L18 25M31 5l12 3" stroke="#68705e" stroke-opacity=".22"/></pattern>
+  <pattern id="grasstexture" width="34" height="30" patternUnits="userSpaceOnUse"><rect width="34" height="30" fill="#829b63"/><path d="M6 24l2-7 2 7M23 12l2-6 2 6M28 28l1-5 2 5M13 9l1-4 2 4" stroke="#536e50" stroke-opacity=".35" stroke-width="1.1"/></pattern>
+  <pattern id="pathgrain" width="52" height="32" patternUnits="userSpaceOnUse"><rect width="52" height="32" fill="#e6c477"/><path d="M0 16H52M26 0v32" stroke="#c49f5e" stroke-opacity=".35" stroke-width="1"/></pattern>
+  <pattern id="rope" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="12" height="12" fill="#b69a72"/><path d="M0 0V12M6 0V12" stroke="#7b6447" stroke-width="2"/></pattern>
+  <clipPath id="clip-card"><rect width="100" height="100" rx="12"/></clipPath>
+  <clipPath id="clip-material"><rect width="100%" height="100%" rx="18"/></clipPath>
+</defs>
+<rect width="100%" height="100%" fill="#f7f3e9"/>
+<text x="60" y="40" font-family="sans-serif" font-size="20" letter-spacing="4" fill="#527f77">12 / FACILITY 05</text>
+<text x="60" y="88" font-family="sans-serif" font-size="38" font-weight="700" fill="#3e5147">猫咪攀爬与躲藏区：分层与多路线</text>
+<text x="60" y="122" font-family="sans-serif" font-size="17" fill="#718072">叶片平台、树洞与抓挠柱共同服务猫的行为，而不是装饰布景</text><rect x="60" y="150" width="960" height="630" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="90" y="190" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">设施 05 / 猫咪攀爬与躲藏区</text>
+<path d="M150 700Q500 470 950 680V760H150Z" fill="url(#grasstexture)"/>
+<rect x="420" y="300" width="65" height="390" rx="18" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="660" y="360" width="65" height="330" rx="18" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<path d="M420 470Q450 430 485 470V570Q450 610 420 570Z" fill="#6f5138"/>
+<path d="M435 490Q450 465 470 490V555Q450 580 435 555Z" fill="#3e5147"/>
+<rect x="330" y="380" width="230" height="34" rx="12" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="610" y="450" width="230" height="34" rx="12" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="390" y="570" width="280" height="34" rx="12" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<path d="M330 380Q445 310 560 380Q445 420 330 380Z" fill="#536e50" opacity=".8"/>
+<path d="M610 450Q725 380 840 450Q725 490 610 450Z" fill="#536e50" opacity=".8"/>
+<path d="M390 570Q530 500 670 570Q530 610 390 570Z" fill="#536e50" opacity=".8"/>
+<path d="M560 400L620 430M710 484L640 540" stroke="#527f77" stroke-width="8" stroke-dasharray="10 8"/>
+<g transform="translate(520 540) scale(0.8 0.8)" stroke="#3e5147" stroke-width="1.8" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="25" ry="14" fill="#a9a9a0"/><circle cx="22" cy="-16" r="14" fill="#a9a9a0"/>
+<path d="M13-26l1-15 10 11M25-28l10-10 2 15" fill="#a9a9a0"/>
+<ellipse cx="31" cy="-13" rx="8" ry="6" fill="#f4eee0"/><circle cx="34" cy="-17" r="2" fill="#3e5147"/>
+<path d="M-22-4q-20-18-8-35" fill="none" stroke="#a9a9a0" stroke-width="7" stroke-linecap="round"/>
+<path d="M-13 9v18M0 10v18M12 9v18M22 5v20" stroke="#a9a9a0" stroke-width="5" stroke-linecap="round"/></g><g transform="translate(455 520) scale(-0.55 0.55)" stroke="#3e5147" stroke-width="1.8" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="25" ry="14" fill="#b4a091"/><circle cx="22" cy="-16" r="14" fill="#b4a091"/>
+<path d="M13-26l1-15 10 11M25-28l10-10 2 15" fill="#b4a091"/>
+<ellipse cx="31" cy="-13" rx="8" ry="6" fill="#f4eee0"/><circle cx="34" cy="-17" r="2" fill="#3e5147"/>
+<path d="M-22-4q-20-18-8-35" fill="none" stroke="#b4a091" stroke-width="7" stroke-linecap="round"/>
+<path d="M-13 9v18M0 10v18M12 9v18M22 5v20" stroke="#b4a091" stroke-width="5" stroke-linecap="round"/></g>
+<path d="M700 650Q760 560 840 520" fill="none" stroke="#527f77" stroke-width="4" stroke-dasharray="10 7"/>
+<text x="700" y="330" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#718072">叶片平台、抓挠柱与树洞，多条上下路线</text><rect x="1040" y="150" width="820" height="300" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1070" y="190" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">三视图</text>
+<rect x="1100" y="240" width="40" height="140" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1070" y="280" width="160" height="24" rx="9" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1130" y="350" width="150" height="24" rx="9" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<path d="M1110 300Q1140 260 1170 300V350Q1140 380 1110 350Z" fill="#6f5138"/>
+<text x="1170" y="410" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#718072">正视：平台与树洞</text>
+<rect x="1330" y="240" width="40" height="140" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1300" y="300" width="170" height="24" rx="9" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1360" y="360" width="140" height="24" rx="9" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<path d="M1370 260L1430 340" stroke="#527f77" stroke-width="6" stroke-dasharray="8 6"/>
+<text x="1405" y="410" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#718072">侧视：连续上行</text>
+<ellipse cx="1570" cy="300" rx="105" ry="65" fill="#536e50" opacity=".75"/><ellipse cx="1570" cy="300" rx="50" ry="28" fill="#a9ba83"/>
+<path d="M1520 300h100" stroke="#527f77" stroke-width="4" stroke-dasharray="8 6"/>
+<text x="1570" y="410" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#718072">顶视：多向出入</text><rect x="1040" y="480" width="400" height="300" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1065" y="520" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">材质细节</text>
+<rect x="1080" y="550" width="140" height="55" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><path d="M1090 570h120M1090 585h120M1090 600h120" stroke="#6f5138" stroke-width="3"/>
+<path d="M1080 650Q1150 590 1220 650Q1150 680 1080 650Z" fill="#536e50" opacity=".8"/>
+<text x="1080" y="735" font-family="sans-serif" font-size="13" fill="#718072">抓挠木纹、叶片平台、非镜面树洞内壁</text><rect x="1460" y="480" width="400" height="300" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1485" y="520" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">结构连接图</text>
+<rect x="1530" y="540" width="45" height="150" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1500" y="590" width="150" height="28" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1560" y="650" width="160" height="28" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<path d="M1575 560L1650 630" stroke="#527f77" stroke-width="5" stroke-dasharray="8 6"/>
+<path d="M1550 600h-50M1610 660h50" stroke="#527f77" stroke-width="2"/>
+<text x="1490" y="745" font-family="sans-serif" font-size="12" fill="#718072">平台穿柱固定，路径不依赖单一跳点</text><rect x="60" y="810" width="960" height="260" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="90" y="850" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">宠物互动示意</text>
+<rect x="350" y="850" width="45" height="150" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="300" y="900" width="180" height="25" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="460" y="960" width="200" height="25" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<g transform="translate(470 940) scale(0.7 0.7)" stroke="#3e5147" stroke-width="1.8" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="25" ry="14" fill="#a9a9a0"/><circle cx="22" cy="-16" r="14" fill="#a9a9a0"/>
+<path d="M13-26l1-15 10 11M25-28l10-10 2 15" fill="#a9a9a0"/>
+<ellipse cx="31" cy="-13" rx="8" ry="6" fill="#f4eee0"/><circle cx="34" cy="-17" r="2" fill="#3e5147"/>
+<path d="M-22-4q-20-18-8-35" fill="none" stroke="#a9a9a0" stroke-width="7" stroke-linecap="round"/>
+<path d="M-13 9v18M0 10v18M12 9v18M22 5v20" stroke="#a9a9a0" stroke-width="5" stroke-linecap="round"/></g><g transform="translate(390 920) scale(-0.5 0.5)" stroke="#3e5147" stroke-width="1.8" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="25" ry="14" fill="#b4a091"/><circle cx="22" cy="-16" r="14" fill="#b4a091"/>
+<path d="M13-26l1-15 10 11M25-28l10-10 2 15" fill="#b4a091"/>
+<ellipse cx="31" cy="-13" rx="8" ry="6" fill="#f4eee0"/><circle cx="34" cy="-17" r="2" fill="#3e5147"/>
+<path d="M-22-4q-20-18-8-35" fill="none" stroke="#b4a091" stroke-width="7" stroke-linecap="round"/>
+<path d="M-13 9v18M0 10v18M12 9v18M22 5v20" stroke="#b4a091" stroke-width="5" stroke-linecap="round"/></g>
+<path d="M500 920L580 880" stroke="#527f77" stroke-width="4" stroke-dasharray="8 6"/>
+<text x="620" y="890" font-family="sans-serif" font-size="14" fill="#718072">可爬、可躲、可从另一侧下来；不会被看见即困住</text><rect x="1040" y="810" width="820" height="260" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1070" y="850" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">真实感与可爱细节</text>
+<text x="1070" y="885" font-family="sans-serif" font-size="14" fill="#718072">• 分层平台、抓挠柱与树洞都有真实厚度。</text>
+<text x="1070" y="915" font-family="sans-serif" font-size="14" fill="#718072">• 上下与进出路线至少两条，避免单点拥堵。</text>
+<text x="1070" y="945" font-family="sans-serif" font-size="14" fill="#718072">• 叶片只做平台轮廓，树洞不做夸张猫脸。</text>
+<text x="1070" y="975" font-family="sans-serif" font-size="14" fill="#718072">• 跳点和藏身处不遮挡主通道与其他宠物。</text>
+</svg>

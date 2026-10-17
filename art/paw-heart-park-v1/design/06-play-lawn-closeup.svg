@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1920" height="1120" viewBox="0 0 1920 1120">
+
+<defs>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#40584a" flood-opacity=".18"/></filter>
+  <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="10"/></filter>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dfe9e5"/><stop offset="1" stop-color="#f7f3e9"/></linearGradient>
+  <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9ba83"/><stop offset="1" stop-color="#829b63"/></linearGradient>
+  <linearGradient id="rock" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b7b7a1"/><stop offset="1" stop-color="#6f7d6b"/></linearGradient>
+  <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8d6845"/><stop offset=".45" stop-color="#c29a6c"/><stop offset=".55" stop-color="#b18c60"/><stop offset="1" stop-color="#7c593d"/></linearGradient>
+  <linearGradient id="water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9e0dc"/><stop offset="1" stop-color="#78b9b7"/></linearGradient>
+  <pattern id="woodgrain" width="42" height="18" patternUnits="userSpaceOnUse"><rect width="42" height="18" fill="#b18c60"/><path d="M0 4 C12 1 25 8 42 3 M0 13 C16 9 28 17 42 11" fill="none" stroke="#7c593d" stroke-opacity=".34" stroke-width="1.2"/></pattern>
+  <pattern id="stonetexture" width="46" height="34" patternUnits="userSpaceOnUse"><rect width="46" height="34" fill="#9b9b82"/><circle cx="8" cy="9" r="1.2" fill="#68705e" opacity=".32"/><circle cx="29" cy="20" r="1.6" fill="#d0cbb6" opacity=".45"/><path d="M2 28L18 25M31 5l12 3" stroke="#68705e" stroke-opacity=".22"/></pattern>
+  <pattern id="grasstexture" width="34" height="30" patternUnits="userSpaceOnUse"><rect width="34" height="30" fill="#829b63"/><path d="M6 24l2-7 2 7M23 12l2-6 2 6M28 28l1-5 2 5M13 9l1-4 2 4" stroke="#536e50" stroke-opacity=".35" stroke-width="1.1"/></pattern>
+  <pattern id="pathgrain" width="52" height="32" patternUnits="userSpaceOnUse"><rect width="52" height="32" fill="#e6c477"/><path d="M0 16H52M26 0v32" stroke="#c49f5e" stroke-opacity=".35" stroke-width="1"/></pattern>
+  <pattern id="rope" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="12" height="12" fill="#b69a72"/><path d="M0 0V12M6 0V12" stroke="#7b6447" stroke-width="2"/></pattern>
+  <clipPath id="clip-card"><rect width="100" height="100" rx="12"/></clipPath>
+  <clipPath id="clip-material"><rect width="100%" height="100%" rx="18"/></clipPath>
+</defs>
+<rect width="100%" height="100%" fill="#f7f3e9"/>
+<text x="60" y="40" font-family="sans-serif" font-size="20" letter-spacing="4" fill="#527f77">06 / CLOSE-UP</text>
+<text x="60" y="88" font-family="sans-serif" font-size="38" font-weight="700" fill="#3e5147">互动草坪：有边界，也有自由</text>
+<text x="60" y="122" font-family="sans-serif" font-size="17" fill="#718072">追逐空间、排水与收纳同时成立，可爱装饰不占跑道</text><rect x="60" y="150" width="960" height="630" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="90" y="190" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">互动草坪近景 / 追逐、收纳与排水</text>
+<path d="M130 650Q500 330 950 610V760H130Z" fill="url(#grasstexture)"/>
+<path d="M200 690Q550 480 880 660" fill="none" stroke="#a9ba83" stroke-width="140" opacity=".75"/>
+<ellipse cx="560" cy="650" rx="410" ry="150" fill="none" stroke="url(#stonetexture)" stroke-width="24"/>
+<path d="M300 745h55M460 770h55M690 770h55M820 735h55" stroke="#3e5147" stroke-width="8"/>
+<rect x="720" y="480" width="190" height="95" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="720" y="470" width="190" height="18" rx="8" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<circle cx="750" cy="500" r="20" fill="#e6c477"/><circle cx="795" cy="500" r="20" fill="#c28270"/><circle cx="840" cy="500" r="20" fill="#527f77"/>
+<g transform="translate(480 650) scale(1.0 1.0)" stroke="#6f5138" stroke-width="2" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="29" ry="17" fill="#d49a68"/><circle cx="25" cy="-17" r="16" fill="#d49a68"/>
+<path d="M18-29l3-17 11 13M31-29l10-12 3 17" fill="#d49a68"/>
+<ellipse cx="36" cy="-14" rx="10" ry="7" fill="#f4eee0"/><circle cx="42" cy="-17" r="2.5" fill="#3e5147"/>
+<path d="M-27-5q-18-13-15-25" fill="none" stroke="#d49a68" stroke-width="9" stroke-linecap="round"/>
+<path d="M-17 11v20M-2 12v20M13 10v21M25 7v22" stroke="#d49a68" stroke-width="7" stroke-linecap="round"/>
+<path d="M17 0q8 5 14 0" fill="#f4eee0" stroke="none"/></g><g transform="translate(700 690) scale(-0.8 0.8)" stroke="#3e5147" stroke-width="1.8" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="25" ry="14" fill="#a9a9a0"/><circle cx="22" cy="-16" r="14" fill="#a9a9a0"/>
+<path d="M13-26l1-15 10 11M25-28l10-10 2 15" fill="#a9a9a0"/>
+<ellipse cx="31" cy="-13" rx="8" ry="6" fill="#f4eee0"/><circle cx="34" cy="-17" r="2" fill="#3e5147"/>
+<path d="M-22-4q-20-18-8-35" fill="none" stroke="#a9a9a0" stroke-width="7" stroke-linecap="round"/>
+<path d="M-13 9v18M0 10v18M12 9v18M22 5v20" stroke="#a9a9a0" stroke-width="5" stroke-linecap="round"/></g>
+<path d="M530 630Q610 580 700 610" fill="none" stroke="#527f77" stroke-width="5" stroke-dasharray="12 8"/><circle cx="700" cy="610" r="18" fill="#c28270"/>
+<text x="300" y="430" font-family="sans-serif" font-size="16" fill="#718072">低矮边界不形成围墙，中央保留完整追逐弧</text><rect x="1040" y="150" width="820" height="300" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1070" y="190" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">三视图 / 草坪与后勤边界</text>
+<ellipse cx="1160" cy="300" rx="95" ry="62" fill="url(#grasstexture)"/><ellipse cx="1160" cy="300" rx="105" ry="72" fill="none" stroke="url(#stonetexture)" stroke-width="12"/>
+<path d="M1100 300h120" stroke="#527f77" stroke-width="4" stroke-dasharray="8 6"/><text x="1160" y="410" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#718072">顶视：完整追逐区</text>
+<rect x="1330" y="250" width="150" height="45" rx="8" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1330" y="240" width="150" height="14" rx="6" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><circle cx="1360" cy="275" r="12" fill="#e6c477"/><circle cx="1395" cy="275" r="12" fill="#c28270"/><text x="1405" y="410" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#718072">侧视：收纳靠近边界</text>
+<path d="M1550 240v120M1550 360h90v-120" fill="url(#stonetexture)"/><path d="M1570 330h50" stroke="#3e5147" stroke-width="8"/><text x="1570" y="410" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#718072">剖面：排水槽</text><rect x="1040" y="480" width="400" height="300" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1065" y="520" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">材质细节</text>
+<rect x="1080" y="550" width="140" height="60" rx="10" fill="url(#stonetexture)" stroke="#68705e" stroke-width="1.2"/><rect x="1080" y="640" width="140" height="55" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<circle cx="1260" cy="570" r="20" fill="#e6c477"/><circle cx="1300" cy="570" r="20" fill="#c28270"/><circle cx="1340" cy="570" r="20" fill="#527f77"/>
+<text x="1080" y="735" font-family="sans-serif" font-size="13" fill="#718072">粗糙石边、木篮、哑光橡胶彩球</text><rect x="1460" y="480" width="400" height="300" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1485" y="520" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">排水与收纳剖面</text>
+<path d="M1490 590h300v70h-300Z" fill="url(#grasstexture)"/><path d="M1490 660h300v55h-300Z" fill="url(#stonetexture)"/>
+<path d="M1560 660h100v55h-100Z" fill="#78b9b7" opacity=".65"/>
+<path d="M1490 625h300" stroke="#527f77" stroke-width="3" stroke-dasharray="6 5"/>
+<text x="1490" y="745" font-family="sans-serif" font-size="12" fill="#718072">草皮 → 碎石排水层 → 外侧集水槽</text><rect x="60" y="810" width="960" height="260" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="90" y="850" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">宠物互动示意</text>
+<path d="M200 960Q450 850 760 940" fill="none" stroke="#527f77" stroke-width="5" stroke-dasharray="14 8"/>
+<g transform="translate(430 960) scale(0.8 0.8)" stroke="#6f5138" stroke-width="2" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="29" ry="17" fill="#d49a68"/><circle cx="25" cy="-17" r="16" fill="#d49a68"/>
+<path d="M18-29l3-17 11 13M31-29l10-12 3 17" fill="#d49a68"/>
+<ellipse cx="36" cy="-14" rx="10" ry="7" fill="#f4eee0"/><circle cx="42" cy="-17" r="2.5" fill="#3e5147"/>
+<path d="M-27-5q-18-13-15-25" fill="none" stroke="#d49a68" stroke-width="9" stroke-linecap="round"/>
+<path d="M-17 11v20M-2 12v20M13 10v21M25 7v22" stroke="#d49a68" stroke-width="7" stroke-linecap="round"/>
+<path d="M17 0q8 5 14 0" fill="#f4eee0" stroke="none"/></g><circle cx="760" cy="940" r="18" fill="#c28270"/>
+<g transform="translate(700 1000) scale(-0.65 0.65)" stroke="#3e5147" stroke-width="1.8" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="25" ry="14" fill="#a9a9a0"/><circle cx="22" cy="-16" r="14" fill="#a9a9a0"/>
+<path d="M13-26l1-15 10 11M25-28l10-10 2 15" fill="#a9a9a0"/>
+<ellipse cx="31" cy="-13" rx="8" ry="6" fill="#f4eee0"/><circle cx="34" cy="-17" r="2" fill="#3e5147"/>
+<path d="M-22-4q-20-18-8-35" fill="none" stroke="#a9a9a0" stroke-width="7" stroke-linecap="round"/>
+<path d="M-13 9v18M0 10v18M12 9v18M22 5v20" stroke="#a9a9a0" stroke-width="5" stroke-linecap="round"/></g>
+<text x="720" y="895" font-family="sans-serif" font-size="14" fill="#718072">球从收纳区取出；追逐弧不穿过后勤与休息区</text><rect x="1040" y="810" width="820" height="260" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1070" y="850" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">设计约束</text>
+<text x="1070" y="885" font-family="sans-serif" font-size="14" fill="#718072">• 低矮石边标识范围，不阻碍跨出和紧急退出。</text>
+<text x="1070" y="915" font-family="sans-serif" font-size="14" fill="#718072">• 排水槽放在外侧低处，不在奔跑落点上。</text>
+<text x="1070" y="945" font-family="sans-serif" font-size="14" fill="#718072">• 彩球有固定收纳，不滚入饮水区。</text>
+<text x="1070" y="975" font-family="sans-serif" font-size="14" fill="#718072">• 爪印只做方向提示，不缩小中央草坪。</text>
+</svg>

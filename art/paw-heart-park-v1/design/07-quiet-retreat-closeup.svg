@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1920" height="1120" viewBox="0 0 1920 1120">
+
+<defs>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#40584a" flood-opacity=".18"/></filter>
+  <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="10"/></filter>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dfe9e5"/><stop offset="1" stop-color="#f7f3e9"/></linearGradient>
+  <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9ba83"/><stop offset="1" stop-color="#829b63"/></linearGradient>
+  <linearGradient id="rock" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b7b7a1"/><stop offset="1" stop-color="#6f7d6b"/></linearGradient>
+  <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8d6845"/><stop offset=".45" stop-color="#c29a6c"/><stop offset=".55" stop-color="#b18c60"/><stop offset="1" stop-color="#7c593d"/></linearGradient>
+  <linearGradient id="water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9e0dc"/><stop offset="1" stop-color="#78b9b7"/></linearGradient>
+  <pattern id="woodgrain" width="42" height="18" patternUnits="userSpaceOnUse"><rect width="42" height="18" fill="#b18c60"/><path d="M0 4 C12 1 25 8 42 3 M0 13 C16 9 28 17 42 11" fill="none" stroke="#7c593d" stroke-opacity=".34" stroke-width="1.2"/></pattern>
+  <pattern id="stonetexture" width="46" height="34" patternUnits="userSpaceOnUse"><rect width="46" height="34" fill="#9b9b82"/><circle cx="8" cy="9" r="1.2" fill="#68705e" opacity=".32"/><circle cx="29" cy="20" r="1.6" fill="#d0cbb6" opacity=".45"/><path d="M2 28L18 25M31 5l12 3" stroke="#68705e" stroke-opacity=".22"/></pattern>
+  <pattern id="grasstexture" width="34" height="30" patternUnits="userSpaceOnUse"><rect width="34" height="30" fill="#829b63"/><path d="M6 24l2-7 2 7M23 12l2-6 2 6M28 28l1-5 2 5M13 9l1-4 2 4" stroke="#536e50" stroke-opacity=".35" stroke-width="1.1"/></pattern>
+  <pattern id="pathgrain" width="52" height="32" patternUnits="userSpaceOnUse"><rect width="52" height="32" fill="#e6c477"/><path d="M0 16H52M26 0v32" stroke="#c49f5e" stroke-opacity=".35" stroke-width="1"/></pattern>
+  <pattern id="rope" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="12" height="12" fill="#b69a72"/><path d="M0 0V12M6 0V12" stroke="#7b6447" stroke-width="2"/></pattern>
+  <clipPath id="clip-card"><rect width="100" height="100" rx="12"/></clipPath>
+  <clipPath id="clip-material"><rect width="100%" height="100%" rx="18"/></clipPath>
+</defs>
+<rect width="100%" height="100%" fill="#f7f3e9"/>
+<text x="60" y="40" font-family="sans-serif" font-size="20" letter-spacing="4" fill="#527f77">07 / CLOSE-UP</text>
+<text x="60" y="88" font-family="sans-serif" font-size="38" font-weight="700" fill="#3e5147">安静休息区：遮阴与可撤退的安静</text>
+<text x="60" y="122" font-family="sans-serif" font-size="17" fill="#718072">花苞顶棚、饮水与溢水都围绕宠物习惯布置</text><rect x="60" y="150" width="960" height="630" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="90" y="190" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">安静休息区近景 / 遮阴、饮水与溢水处理</text>
+<path d="M170 720Q520 510 900 700V760H170Z" fill="url(#grasstexture)"/>
+<rect x="340" y="460" width="250" height="30" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="360" y="490" width="28" height="150" rx="8" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="540" y="490" width="28" height="150" rx="8" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<path d="M300 460Q465 260 630 460L600 500Q465 390 330 500Z" fill="#f4eee0" stroke="#c28270" stroke-width="4"/>
+<path d="M350 460Q465 330 580 460" fill="none" stroke="#c28270" stroke-width="4" opacity=".6"/>
+<rect x="700" y="500" width="180" height="30" rx="9" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="720" y="530" width="24" height="100" rx="8" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="840" y="530" width="24" height="100" rx="8" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<ellipse cx="745" cy="580" rx="34" ry="12" fill="url(#water)"/><ellipse cx="815" cy="580" rx="34" ry="12" fill="url(#water)"/>
+<path d="M710 600h170l-20 35H730Z" fill="#78b9b7" opacity=".45"/>
+<g transform="translate(520 650) scale(0.9 0.9)" stroke="#3e5147" stroke-width="1.8" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="25" ry="14" fill="#a9a9a0"/><circle cx="22" cy="-16" r="14" fill="#a9a9a0"/>
+<path d="M13-26l1-15 10 11M25-28l10-10 2 15" fill="#a9a9a0"/>
+<ellipse cx="31" cy="-13" rx="8" ry="6" fill="#f4eee0"/><circle cx="34" cy="-17" r="2" fill="#3e5147"/>
+<path d="M-22-4q-20-18-8-35" fill="none" stroke="#a9a9a0" stroke-width="7" stroke-linecap="round"/>
+<path d="M-13 9v18M0 10v18M12 9v18M22 5v20" stroke="#a9a9a0" stroke-width="5" stroke-linecap="round"/></g><g transform="translate(770 700) scale(-0.75 0.75)" stroke="#6f5138" stroke-width="2" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="29" ry="17" fill="#6f756f"/><circle cx="25" cy="-17" r="16" fill="#6f756f"/>
+<path d="M18-29l3-17 11 13M31-29l10-12 3 17" fill="#6f756f"/>
+<ellipse cx="36" cy="-14" rx="10" ry="7" fill="#f4eee0"/><circle cx="42" cy="-17" r="2.5" fill="#3e5147"/>
+<path d="M-27-5q-18-13-15-25" fill="none" stroke="#6f756f" stroke-width="9" stroke-linecap="round"/>
+<path d="M-17 11v20M-2 12v20M13 10v21M25 7v22" stroke="#6f756f" stroke-width="7" stroke-linecap="round"/>
+<path d="M17 0q8 5 14 0" fill="#f4eee0" stroke="none"/></g>
+<text x="460" y="610" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#718072">花苞顶棚下保持安静视野，不设奔跑穿越线</text><rect x="1040" y="150" width="820" height="300" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1070" y="190" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">三视图 / 花苞顶棚与碗架</text>
+<path d="M1100 340Q1170 230 1240 340L1215 360Q1170 310 1125 360Z" fill="#f4eee0" stroke="#c28270" stroke-width="3"/>
+<text x="1170" y="410" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#718072">正视：遮阴覆盖座席</text>
+<rect x="1320" y="250" width="170" height="26" rx="8" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1340" y="276" width="22" height="90" rx="6" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1450" y="276" width="22" height="90" rx="6" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><ellipse cx="1390" cy="330" rx="32" ry="11" fill="url(#water)"/>
+<text x="1390" y="410" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#718072">侧视：碗架抬高</text>
+<ellipse cx="1570" cy="300" rx="90" ry="55" fill="url(#pathgrain)"/><ellipse cx="1570" cy="300" rx="30" ry="12" fill="url(#water)"/><path d="M1530 340h80l-15 25h-50Z" fill="#78b9b7" opacity=".45"/>
+<text x="1570" y="410" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#718072">顶视：溢水托盘</text><rect x="1040" y="480" width="400" height="300" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1065" y="520" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">材质细节</text>
+<path d="M1080 610Q1150 520 1220 610L1200 640Q1150 580 1100 640Z" fill="#f4eee0" stroke="#c28270" stroke-width="3"/>
+<ellipse cx="1120" cy="690" rx="40" ry="14" fill="url(#water)"/>
+<text x="1190" y="700" font-family="sans-serif" font-size="13" fill="#718072">哑光顶棚、可清洗碗架、浅水色</text><rect x="1460" y="480" width="400" height="300" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1485" y="520" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">溢水与支撑连接</text>
+<rect x="1530" y="560" width="200" height="26" rx="8" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1550" y="586" width="24" height="90" rx="8" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1710" y="586" width="24" height="90" rx="8" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<path d="M1510 620h220l-25 45h-170Z" fill="#78b9b7" opacity=".45"/>
+<path d="M1550 665h-45M1730 665h45" stroke="#527f77" stroke-width="2"/>
+<text x="1490" y="690" font-family="sans-serif" font-size="12" fill="#718072">碗架固定于托盘，溢水向外侧导流</text><rect x="60" y="810" width="960" height="260" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="90" y="850" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">宠物互动示意</text>
+<path d="M240 950Q470 850 760 930" fill="none" stroke="url(#pathgrain)" stroke-width="60"/>
+<g transform="translate(520 970) scale(0.8 0.8)" stroke="#3e5147" stroke-width="1.8" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="25" ry="14" fill="#a9a9a0"/><circle cx="22" cy="-16" r="14" fill="#a9a9a0"/>
+<path d="M13-26l1-15 10 11M25-28l10-10 2 15" fill="#a9a9a0"/>
+<ellipse cx="31" cy="-13" rx="8" ry="6" fill="#f4eee0"/><circle cx="34" cy="-17" r="2" fill="#3e5147"/>
+<path d="M-22-4q-20-18-8-35" fill="none" stroke="#a9a9a0" stroke-width="7" stroke-linecap="round"/>
+<path d="M-13 9v18M0 10v18M12 9v18M22 5v20" stroke="#a9a9a0" stroke-width="5" stroke-linecap="round"/></g><g transform="translate(720 970) scale(-0.7 0.7)" stroke="#6f5138" stroke-width="2" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="29" ry="17" fill="#6f756f"/><circle cx="25" cy="-17" r="16" fill="#6f756f"/>
+<path d="M18-29l3-17 11 13M31-29l10-12 3 17" fill="#6f756f"/>
+<ellipse cx="36" cy="-14" rx="10" ry="7" fill="#f4eee0"/><circle cx="42" cy="-17" r="2.5" fill="#3e5147"/>
+<path d="M-27-5q-18-13-15-25" fill="none" stroke="#6f756f" stroke-width="9" stroke-linecap="round"/>
+<path d="M-17 11v20M-2 12v20M13 10v21M25 7v22" stroke="#6f756f" stroke-width="7" stroke-linecap="round"/>
+<path d="M17 0q8 5 14 0" fill="#f4eee0" stroke="none"/></g>
+<ellipse cx="590" cy="960" rx="26" ry="9" fill="url(#water)"/>
+<text x="700" y="900" font-family="sans-serif" font-size="14" fill="#718072">可饮水、可独处，也可并肩休息；不必穿越草坪</text><rect x="1040" y="810" width="820" height="260" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1070" y="850" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">设计约束</text>
+<text x="1070" y="885" font-family="sans-serif" font-size="14" fill="#718072">• 花苞顶棚提供真实遮阴，不遮挡邻近视线。</text>
+<text x="1070" y="915" font-family="sans-serif" font-size="14" fill="#718072">• 水碗有抬高支架、托盘与外侧溢水路径。</text>
+<text x="1070" y="945" font-family="sans-serif" font-size="14" fill="#718072">• 座椅和碗架离开追逐弧与设施出口。</text>
+<text x="1070" y="975" font-family="sans-serif" font-size="14" fill="#718072">• 安静区可从入口直接看到，方便退出。</text>
+</svg>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1920" height="1120" viewBox="0 0 1920 1120">
+
+<defs>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#40584a" flood-opacity=".18"/></filter>
+  <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="10"/></filter>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dfe9e5"/><stop offset="1" stop-color="#f7f3e9"/></linearGradient>
+  <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9ba83"/><stop offset="1" stop-color="#829b63"/></linearGradient>
+  <linearGradient id="rock" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b7b7a1"/><stop offset="1" stop-color="#6f7d6b"/></linearGradient>
+  <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8d6845"/><stop offset=".45" stop-color="#c29a6c"/><stop offset=".55" stop-color="#b18c60"/><stop offset="1" stop-color="#7c593d"/></linearGradient>
+  <linearGradient id="water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9e0dc"/><stop offset="1" stop-color="#78b9b7"/></linearGradient>
+  <pattern id="woodgrain" width="42" height="18" patternUnits="userSpaceOnUse"><rect width="42" height="18" fill="#b18c60"/><path d="M0 4 C12 1 25 8 42 3 M0 13 C16 9 28 17 42 11" fill="none" stroke="#7c593d" stroke-opacity=".34" stroke-width="1.2"/></pattern>
+  <pattern id="stonetexture" width="46" height="34" patternUnits="userSpaceOnUse"><rect width="46" height="34" fill="#9b9b82"/><circle cx="8" cy="9" r="1.2" fill="#68705e" opacity=".32"/><circle cx="29" cy="20" r="1.6" fill="#d0cbb6" opacity=".45"/><path d="M2 28L18 25M31 5l12 3" stroke="#68705e" stroke-opacity=".22"/></pattern>
+  <pattern id="grasstexture" width="34" height="30" patternUnits="userSpaceOnUse"><rect width="34" height="30" fill="#829b63"/><path d="M6 24l2-7 2 7M23 12l2-6 2 6M28 28l1-5 2 5M13 9l1-4 2 4" stroke="#536e50" stroke-opacity=".35" stroke-width="1.1"/></pattern>
+  <pattern id="pathgrain" width="52" height="32" patternUnits="userSpaceOnUse"><rect width="52" height="32" fill="#e6c477"/><path d="M0 16H52M26 0v32" stroke="#c49f5e" stroke-opacity=".35" stroke-width="1"/></pattern>
+  <pattern id="rope" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="12" height="12" fill="#b69a72"/><path d="M0 0V12M6 0V12" stroke="#7b6447" stroke-width="2"/></pattern>
+  <clipPath id="clip-card"><rect width="100" height="100" rx="12"/></clipPath>
+  <clipPath id="clip-material"><rect width="100%" height="100%" rx="18"/></clipPath>
+</defs>
+<rect width="100%" height="100%" fill="#f7f3e9"/>
+<text x="60" y="40" font-family="sans-serif" font-size="20" letter-spacing="4" fill="#527f77">10 / FACILITY 03</text>
+<text x="60" y="88" font-family="sans-serif" font-size="38" font-weight="700" fill="#3e5147">低矮跳圈与跨杆：稳定与尺度</text>
+<text x="60" y="122" font-family="sans-serif" font-size="17" fill="#718072">用支架和净空建立可爱，不用夸张造型挤占跳跃路线</text><rect x="60" y="150" width="960" height="630" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="90" y="190" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">设施 03 / 低矮跳圈与跨杆</text>
+<path d="M140 700Q500 470 950 680V760H140Z" fill="url(#grasstexture)"/>
+<rect x="300" y="430" width="34" height="220" rx="9" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="520" y="430" width="34" height="220" rx="9" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="740" y="430" width="34" height="220" rx="9" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<path d="M300 430Q410 270 520 430" fill="none" stroke="#c28270" stroke-width="14"/>
+<path d="M520 430Q630 310 740 430" fill="none" stroke="#f4eee0" stroke-width="14"/>
+<rect x="270" y="650" width="90" height="35" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="490" y="650" width="90" height="35" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="710" y="650" width="90" height="35" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<path d="M340 500h150M560 540h150" stroke="#527f77" stroke-width="14" stroke-linecap="round"/>
+<path d="M335 430Q410 350 485 430M555 430Q630 370 705 430" fill="none" stroke="#e6c477" stroke-width="4" stroke-dasharray="8 6"/>
+<g transform="translate(560 670) scale(0.9 0.9)" stroke="#6f5138" stroke-width="2" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="29" ry="17" fill="#d49a68"/><circle cx="25" cy="-17" r="16" fill="#d49a68"/>
+<path d="M18-29l3-17 11 13M31-29l10-12 3 17" fill="#d49a68"/>
+<ellipse cx="36" cy="-14" rx="10" ry="7" fill="#f4eee0"/><circle cx="42" cy="-17" r="2.5" fill="#3e5147"/>
+<path d="M-27-5q-18-13-15-25" fill="none" stroke="#d49a68" stroke-width="9" stroke-linecap="round"/>
+<path d="M-17 11v20M-2 12v20M13 10v21M25 7v22" stroke="#d49a68" stroke-width="7" stroke-linecap="round"/>
+<path d="M17 0q8 5 14 0" fill="#f4eee0" stroke="none"/></g><g transform="translate(760 700) scale(-0.7 0.7)" stroke="#3e5147" stroke-width="1.8" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="25" ry="14" fill="#a9a9a0"/><circle cx="22" cy="-16" r="14" fill="#a9a9a0"/>
+<path d="M13-26l1-15 10 11M25-28l10-10 2 15" fill="#a9a9a0"/>
+<ellipse cx="31" cy="-13" rx="8" ry="6" fill="#f4eee0"/><circle cx="34" cy="-17" r="2" fill="#3e5147"/>
+<path d="M-22-4q-20-18-8-35" fill="none" stroke="#a9a9a0" stroke-width="7" stroke-linecap="round"/>
+<path d="M-13 9v18M0 10v18M12 9v18M22 5v20" stroke="#a9a9a0" stroke-width="5" stroke-linecap="round"/></g>
+<path d="M500 630Q540 560 600 600" fill="none" stroke="#527f77" stroke-width="4" stroke-dasharray="10 7"/>
+<text x="640" y="360" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#718072">花瓣与云朵只作边框，不侵占跳跃净空</text><rect x="1040" y="150" width="820" height="300" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1070" y="190" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">三视图</text>
+<rect x="1100" y="250" width="22" height="120" rx="7" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1240" y="250" width="22" height="120" rx="7" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><path d="M1100 250Q1170 160 1240 250" fill="none" stroke="#c28270" stroke-width="10"/>
+<text x="1170" y="410" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#718072">正视：跳跃净空</text>
+<rect x="1320" y="250" width="22" height="120" rx="7" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1320" y="300" width="22" height="35" rx="7" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><path d="M1320 300h150" stroke="#527f77" stroke-width="10"/>
+<text x="1395" y="410" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#718072">侧视：稳定底座</text>
+<path d="M1530 300h150" stroke="#527f77" stroke-width="12"/><circle cx="1560" cy="300" r="30" fill="none" stroke="#c28270" stroke-width="8"/>
+<text x="1605" y="410" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#718072">顶视：前后不串线</text><rect x="1040" y="480" width="400" height="300" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1065" y="520" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">材质细节</text>
+<rect x="1080" y="550" width="140" height="55" rx="10" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><path d="M1080 650Q1150 560 1220 650" fill="none" stroke="#c28270" stroke-width="11"/>
+<path d="M1080 690h160" stroke="#527f77" stroke-width="12"/>
+<text x="1080" y="735" font-family="sans-serif" font-size="13" fill="#718072">木支架、柔色包边、可触横梁</text><rect x="1460" y="480" width="400" height="300" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1485" y="520" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">结构连接图</text>
+<rect x="1530" y="560" width="30" height="120" rx="8" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="1500" y="680" width="90" height="30" rx="8" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/>
+<path d="M1545 560h150" stroke="#527f77" stroke-width="12"/><circle cx="1545" cy="560" r="16" fill="#f4eee0" stroke="#527f77" stroke-width="3"/>
+<path d="M1545 590v60" stroke="#527f77" stroke-width="3" stroke-dasharray="5 4"/>
+<text x="1490" y="745" font-family="sans-serif" font-size="12" fill="#718072">宽底座＋圆角插接横梁，避免倒伏</text><rect x="60" y="810" width="960" height="260" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="90" y="850" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">宠物互动示意</text>
+<path d="M200 970H850" stroke="url(#pathgrain)" stroke-width="55"/>
+<rect x="480" y="860" width="22" height="100" rx="7" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><rect x="620" y="860" width="22" height="100" rx="7" fill="url(#woodgrain)" stroke="#6f5138" stroke-width="1.5"/><path d="M480 860Q550 790 620 860" fill="none" stroke="#c28270" stroke-width="10"/>
+<g transform="translate(560 990) scale(0.8 0.8)" stroke="#6f5138" stroke-width="2" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="29" ry="17" fill="#d49a68"/><circle cx="25" cy="-17" r="16" fill="#d49a68"/>
+<path d="M18-29l3-17 11 13M31-29l10-12 3 17" fill="#d49a68"/>
+<ellipse cx="36" cy="-14" rx="10" ry="7" fill="#f4eee0"/><circle cx="42" cy="-17" r="2.5" fill="#3e5147"/>
+<path d="M-27-5q-18-13-15-25" fill="none" stroke="#d49a68" stroke-width="9" stroke-linecap="round"/>
+<path d="M-17 11v20M-2 12v20M13 10v21M25 7v22" stroke="#d49a68" stroke-width="7" stroke-linecap="round"/>
+<path d="M17 0q8 5 14 0" fill="#f4eee0" stroke="none"/></g><g transform="translate(760 990) scale(-0.6 0.6)" stroke="#3e5147" stroke-width="1.8" stroke-linejoin="round">
+<ellipse cx="0" cy="0" rx="25" ry="14" fill="#a9a9a0"/><circle cx="22" cy="-16" r="14" fill="#a9a9a0"/>
+<path d="M13-26l1-15 10 11M25-28l10-10 2 15" fill="#a9a9a0"/>
+<ellipse cx="31" cy="-13" rx="8" ry="6" fill="#f4eee0"/><circle cx="34" cy="-17" r="2" fill="#3e5147"/>
+<path d="M-22-4q-20-18-8-35" fill="none" stroke="#a9a9a0" stroke-width="7" stroke-linecap="round"/>
+<path d="M-13 9v18M0 10v18M12 9v18M22 5v20" stroke="#a9a9a0" stroke-width="5" stroke-linecap="round"/></g>
+<text x="690" y="900" font-family="sans-serif" font-size="14" fill="#718072">低杆练习与大杆绕行并存，猫狗不必走同一路线</text><rect x="1040" y="810" width="820" height="260" rx="18" fill="#fffdf7" filter="url(#shadow)"/><text x="1070" y="850" font-family="sans-serif" font-size="18" font-weight="700" fill="#527f77">真实感与可爱细节</text>
+<text x="1070" y="885" font-family="sans-serif" font-size="14" fill="#718072">• 支架有宽底座和圆角插接，跳落时不倒伏。</text>
+<text x="1070" y="915" font-family="sans-serif" font-size="14" fill="#718072">• 高低两种尺度，幼宠与大狗都有绕行选择。</text>
+<text x="1070" y="945" font-family="sans-serif" font-size="14" fill="#718072">• 花瓣与云朵仅作边框，不缩小跳跃净空。</text>
+<text x="1070" y="975" font-family="sans-serif" font-size="14" fill="#718072">• 入口、落点和后宠等待区互不重叠。</text>
+</svg>
