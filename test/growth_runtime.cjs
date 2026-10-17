@@ -1,0 +1,20 @@
+const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
+(async()=>{
+ let now=100000,pet=3,busy=false,scope='owner-a',effects=0,stops=0,vibrations=[],fetches=0;
+ const listeners={},winListeners={},intervals=[];
+ const state={enrolled:true,petId:3,scope,serverTime:100,memoryEnabled:true,profile:{name:'团子'},appearance:{voiceRate:1.1,togetherDays:30},prefs:{sound:true,haptics:2,ambient:'off',footsteps:false,autoPhoto:false},memories:[]};
+ const document={hidden:false,addEventListener:(n,f)=>{listeners[n]=f}};
+ const window={COMPANION_SCOPE:scope,addEventListener:(n,f)=>winListeners[n]=f,PetSounds:{effect(){effects++;return {stop(){stops++}};}}};
+ const context={window,document,navigator:{vibrate:v=>vibrations.push(v)},Date:{now:()=>now},AbortSignal:{timeout:()=>null},fetch:async()=>{fetches++;return {ok:true,json:async()=>({...state,scope})}},setInterval:f=>intervals.push(f),setTimeout,clearTimeout,Map,Math};
+ vm.runInNewContext(fs.readFileSync('static/js/den/growth-runtime.js','utf8'),context);
+ const g=window.PetGrowth;g.bind({pet:()=>pet,busy:()=>busy});await g.load(3);
+ assert.equal(g.actions(3).length,2);assert.equal(g.actions(1).length,0);
+ const event={detail:{petId:3,kind:'pet'}};listeners['pet-growth-interaction'](event);assert.equal(effects,0,'no audio before user gesture');
+ listeners.pointerdown();listeners['pet-growth-interaction'](event);assert.equal(effects,1);assert.equal(vibrations.length,1);
+ listeners['pet-growth-interaction'](event);assert.equal(effects,1,'bounded repeated effects');
+ now+=9000;busy=true;listeners['pet-growth-interaction'](event);assert.equal(effects,1,'voice/chat takes priority');g.tick();assert.ok(stops>0);
+ busy=false;pet=1;g.tick();listeners['pet-growth-interaction'](event);assert.equal(effects,1,'old pet cannot emit effects');
+ pet=3;g.tick();document.hidden=true;listeners.visibilitychange();listeners['pet-growth-interaction'](event);assert.equal(effects,1);
+ scope='owner-b';await g.load(3);assert.equal(g.state(3),undefined,'account mismatch clears cached state');
+ assert.ok(fetches<=3);console.log('Growth runtime: gesture, throttle, voice priority, visibility, pet switching and owner isolation passed');
+})().catch(e=>{console.error(e);process.exitCode=1;});

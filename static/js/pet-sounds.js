@@ -172,6 +172,12 @@
   }
 
   window.PetSounds = {
+    // Short interaction sounds never fall back to speaking an onomatopoeia.
+    effect: function(petId,kind,ageRate) {
+      var stopped=false,source=null,timer=null;
+      var promise=(async function(){try{var s=await fetchPetSoundBuffer(petId,kind);if(stopped)return;var c=ctx(),b=await c.decodeAudioData(s.bytes.slice(0));if(stopped)return;source=c.createBufferSource();var gain=c.createGain();source.buffer=b;source.playbackRate.value=s.original?1:Math.max(.95,Math.min(1.15,ageRate||1));gain.gain.value=.35;source.connect(gain).connect(c.destination);source.start();timer=setTimeout(()=>{try{source.stop();}catch{}},2500);source.onended=()=>{clearTimeout(timer);source.disconnect();gain.disconnect();};}catch{}})();
+      return {promise,stop:function(){stopped=true;clearTimeout(timer);try{source?.stop();}catch{}}};
+    },
     split: split,
     play: play,
     speciesOf: function (petId) { return SPECIES[petId] || 'dog'; },

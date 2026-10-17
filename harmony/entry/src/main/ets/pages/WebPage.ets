@@ -240,7 +240,7 @@ struct WebPage {
           .enableNativeEmbedMode(true)
           .onNativeEmbedLifecycleChange((event: NativeEmbedDataInfo) => { this.embedChanged(event); })
           .javaScriptAccess(true).domStorageAccess(true).databaseAccess(true)
-          .javaScriptProxy({ object: this.webAudio, name: 'PaitHarmonyAudio', methodList: ['start', 'read', 'stop'], controller: this.controller })
+          .javaScriptProxy({ object: this.webAudio, name: 'PaitHarmonyAudio', methodList: ['start', 'read', 'stop', 'pulse', 'cancelPulse'], controller: this.controller })
           .onlineImageAccess(true).fileAccess(true)
           .mixedMode(MixedMode.None).multiWindowAccess(false)
           .onShowFileSelector((event) => {

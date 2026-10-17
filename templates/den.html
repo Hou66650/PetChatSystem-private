@@ -406,6 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-sniff">闻闻</button>
             <button class="action-btn" id="btn-rest">休息</button>
             <button class="action-btn" id="btn-shiba-acting" hidden>球球的小表情</button></div>
+            <button class="action-btn" id="btn-growth-actions">成长互动</button><span id="growth-mood" class="text-sub" role="status"></span>
         </section>
         <section class="dock-panel" id="dock-more" aria-labelledby="dock-more-title" hidden><header><div><h2 id="dock-more-title">小窝里的小乐趣</h2><p>玩耍、记录，或者一起安静一会。</p></div><button type="button" class="dock-close" aria-label="收起小窝里的小乐趣">✕</button></header>
             <div class="dock-grid"><button type="button" class="action-btn cat-backup" onclick="document.querySelector('[data-dock-panel=&quot;dock-actions&quot;]').click()">动作与照料</button><a class="action-btn" href="/supplies" target="_blank" rel="noopener">派特补给站 / 我的物品</a><button class="action-btn" id="btn-dress" data-icon="dress">换装</button>
@@ -416,6 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-breath" data-icon="breath">呼吸</button>
             <button class="action-btn" id="btn-games" data-icon="gamepad">游戏中心</button>
             <button class="action-btn" id="btn-companion">陪伴档案</button>
+            <button class="action-btn" id="btn-growth">一起长大 · 成长相册</button>
             <button class="action-btn" id="btn-pet-care">主动关怀与宠物原声</button>
             <button class="action-btn" id="btn-music" data-icon="music">音乐</button><button class="action-btn" id="btn-toys">玩具柜</button><button class="action-btn" id="btn-voiceprint">熟悉的声音</button><button class="action-btn" id="btn-pet-view" hidden>近看德牧</button><button class="action-btn" id="btn-stage-view" hidden>营地全景</button><button class="action-btn" id="btn-render-settings">流畅度</button></div>
         </section>
@@ -627,6 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/pet-profile.js') }}?v={{ app_version }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/den_vision.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/diary-events.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/den/growth-runtime.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/pet-sounds.js?v={{ app_version }}"></script>
     <script src="/static/js/den/render-budget.js?v={{ app_version }}"></script>
     <script src="/static/js/den/face-play.js?v={{ app_version }}"></script>
@@ -1522,6 +1525,7 @@ document.addEventListener('DOMContentLoaded', () => {
             stopDenSpeech();
             if (typeof denHistory !== 'undefined') denHistory = [];   // 聊天记忆逐宠隔离
             const spec = {...SPECS[id]};
+            const growthReady = window.PetGrowth?.load(id);
             actionTransition=null;
             const themeReady = applyTheme(spec.theme,assetTicket);
             // 先刷 UI（加载是异步的，界面不该等）
@@ -1543,6 +1547,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     toast('新模型暂时加载失败，已使用备用模型', 'info');
                 }
                 await themeReady;
+                const growth = await growthReady;
+                if(growth?.enrolled)spec.h *= growth.appearance.scale;
             } catch (e) {
                 if (currentPetId !== id || epoch !== locomotionEpoch) return;
                 toast('宠物模型加载失败，请刷新重试', 'error');
@@ -1691,6 +1697,7 @@ document.addEventListener('DOMContentLoaded', () => {
             portals?.attach(locomotion.navigation,spec.theme);
             if(portals?.data)portalVisitors?.sync(portals.data.trips);
             spawnBusy = false; showPetLoading(false);
+            updateIntimacyUI();
             window.PetDiary?.record(currentPetId,'visit');
             document.getElementById('cat-care').hidden=!(id===3&&modeledStage);
             for(const button of ['btn-cat-eat','btn-cat-home'])document.getElementById(button).disabled=!catHomeReady;
@@ -1883,7 +1890,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const next = LEVELS[LEVELS.indexOf(lv) + 1];
             // 陪伴天数（与"连续心情打卡"是两个概念，互不累计）
             const days = companionDays(ps.adoptedOn);
-            document.getElementById('ip-companion').textContent = `陪伴第 ${days} 天 · ${companionStage(days)}`;
+            const grown=window.PetGrowth?.state(currentPetId);
+            document.getElementById('ip-companion').textContent = grown?.enrolled ? `相伴 ${grown.appearance.togetherDays} 天 · ${grown.appearance.stage} · ${grown.traits.trust}` : `陪伴第 ${days} 天 · ${companionStage(days)}`;
             document.getElementById('ip-level').textContent = lv[1];
             document.getElementById('ip-num').textContent = next ? `${ps.intimacy}/${next[0]}` : `${ps.intimacy} MAX`;
             document.getElementById('ip-bar').style.width = next
@@ -2424,7 +2432,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (PetSounds.hasSound(segs)) {
                     if (petPlayer) petPlayer.stop();
                     petPlayer = PetSounds.play(segs, currentPetId);
-                    petPlayer.promise.catch(() => browserSpeak(clean));
+                    const playing=petPlayer;
+                    playing.promise.catch(() => browserSpeak(clean)).finally(()=>{if(petPlayer===playing)petPlayer=null;});
                     return;
                 }
             }
@@ -2754,6 +2763,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }catch(e){if(token===historyEpoch)document.getElementById('dialogue-status').textContent='聊天记录暂时未能恢复，稍后可在陪伴档案查看';}
         }
         document.getElementById('btn-companion').onclick=()=>window.open('/companion?petId='+currentPetId,'_blank','noopener');
+        document.getElementById('btn-growth').onclick=()=>window.open('/growth?petId='+currentPetId,'_blank','noopener');
+        document.getElementById('btn-growth-actions').onclick=()=>{
+            const choices=window.PetGrowth?.actions(currentPetId)||[];
+            const dialog=document.createElement('dialog');dialog.style.cssText='border:1px solid #d8cbb8;border-radius:18px;padding:24px;max-width:88vw;background:#fffdf8;color:#4a3b32';
+            const title=document.createElement('h3');title.textContent='慢慢学会的小互动';dialog.append(title);
+            if(!choices.length){const p=document.createElement('p');p.textContent='建立成长资料后，相伴 7 天、30 天、100 天会逐步解锁新的组合互动。';dialog.append(p);}
+            for(const [key,label] of choices){const b=document.createElement('button');b.className='action-btn';b.textContent=label;b.onclick=async()=>{
+                dialog.close();if(!petModel||spawnBusy||interactionBusy()||voiceUI?.isActive()||chatBusy)return;
+                const plan=key==='curious'?['sniff','happy']:key==='greet'?['come','wave']:['come',actions.sit?'sit':'lie_down'];
+                const p=currentPetId,running=dialogueRunner.run(plan),serial=dialogueRunner.serial;await running;
+                if(p===currentPetId&&serial===dialogueRunner.serial&&dialogueRunner.message==='动作已完成')window.PetDiary?.record(p,'game');
+            };dialog.append(b);}
+            const close=document.createElement('button');close.className='action-btn';close.textContent='关闭';close.onclick=()=>dialog.close();dialog.append(close);dialog.onclose=()=>dialog.remove();document.body.append(dialog);dialog.showModal();
+        };
         function companionReaction(){
             if(dialogueRunner.active||dialogueHeld||!petModel||interactionBusy())return;
             const lively=companionBehavior?.reaction==='happy';
@@ -3945,6 +3968,12 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('focus',refreshCatAppearance);
         window.addEventListener('storage',e=>{if(e.key==='pait-cat-coat-change')void refreshCatAppearance();});
         setInterval(()=>{if(currentPetId===3)void refreshCatAppearance();},15000);
+        window.PetGrowth?.bind({pet:()=>currentPetId,busy:()=>spawnBusy||!!voiceUI?.isActive()||chatBusy||!!petPlayer||!!(denAudio&&!denAudio.paused)||!!window.speechSynthesis?.speaking||!!portals?.away,
+            walking:()=>!!locomotion&&locomotion.velocity>.02,surface:()=>locomotion?.navigation.dock?'wood':'ground',
+            mood:label=>{document.getElementById('growth-mood').textContent='现在：'+label;},
+            changed:d=>{updateIntimacyUI();if(d.profile?.name&&SPECS[currentPetId].displayName!==d.profile.name){SPECS[currentPetId].displayName=d.profile.name;updatePetTitles();}},
+            capture:()=>{if(!petModel||spawnBusy||grabbed||dropping||anim.birth<1)return null;renderer.render(scene,camera);const shot=document.createElement('canvas');shot.width=600;shot.height=Math.max(1,Math.round(600*canvas.height/canvas.width));if(shot.height>800){shot.height=800;shot.width=Math.round(800*canvas.width/canvas.height);}shot.getContext('2d').drawImage(canvas,0,0,shot.width,shot.height);return shot.toDataURL('image/jpeg',.75).split(',')[1];}
+        });
         spawnPet(currentPetId);
         appendMsg('pet', SPECS[currentPetId].greet + ' 点点下面的按钮，或者直接点我！');
         resize();

@@ -15,8 +15,10 @@ const parse=path=>new Promise((r,j)=>{const b=fs.readFileSync(path);new T.GLTFLo
  }
  assert.equal(new Navigation({...layout,surfaces:layout.surfaces.filter(s=>s.tag!=='catHome')}).surfaceHeight({x:-3,z:4.62}),.035,'unloaded home has no invisible cushion');
  const gltf=await parse(process.env.PET_GROUNDING_TEST_GLB||'static/models/petchat-cat-v3/cat.glb'),model=gltf.scene,root=new T.Group();
- const box=ctx.PetModelBounds.measure(T,model),h=box.max.y-box.min.y,scale=.85/h;model.scale.setScalar(scale);
- model.position.set(-(box.min.x+box.max.x)*scale/2,-box.min.y*scale,-(box.min.z+box.max.z)*scale/2);root.add(model);root.userData.height=.85;
+ const growthScale=Number(process.env.PET_GROUNDING_TEST_SCALE||1);
+ assert(growthScale>=.72&&growthScale<=1);
+ const box=ctx.PetModelBounds.measure(T,model),h=box.max.y-box.min.y,scale=.85*growthScale/h;model.scale.setScalar(scale);
+ model.position.set(-(box.min.x+box.max.x)*scale/2,-box.min.y*scale,-(box.min.z+box.max.z)*scale/2);root.add(model);root.userData.height=.85*growthScale;
  const ground=new Controller(T,root,model,nav);assert(ground.samples.length>20);assert(ground.samples.length<=160);
  const dense=[];
  model.traverse(mesh=>{if(!mesh.isSkinnedMesh)return;const a=mesh.geometry.attributes;

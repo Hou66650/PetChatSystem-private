@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
   let now=100000,calls=[],finish;
   const window={COMPANION_SCOPE:'test-owner'};
   vm.runInNewContext(fs.readFileSync('static/js/den/diary-events.js','utf8'),{
-    window,Date:{now:()=>now},fetch:(url,options)=>{
+    window,document:{dispatchEvent(){}},CustomEvent:class{},Date:{now:()=>now},fetch:(url,options)=>{
       calls.push({url,options});return new Promise(resolve=>{finish=resolve});
     }
   });

@@ -91,6 +91,8 @@ def record(db, owner, pet, source, kind, detail='', now=None, refresh=True):
         return False
     now = time.time() if now is None else now
     date = day(now)
+    from . import growth_service
+    growth_service.observe(db,owner,pet,source,kind,str(detail)[:160],now)
     deleted = db.execute('SELECT deleted FROM pet_diary_days WHERE owner=? AND pet_id=? AND day=?', (owner,pet,date)).fetchone()
     if deleted and deleted['deleted']:
         return False

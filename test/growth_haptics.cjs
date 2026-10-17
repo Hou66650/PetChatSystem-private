@@ -1,0 +1,12 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),{stripTypeScriptTypes}=require('node:module');
+let trusted=false,now=10000,calls=[],stops=0,callbacks=new Map(),serial=0;
+const source=fs.readFileSync('harmony/entry/src/main/ets/service/WebAudioCapture.ets','utf8').replace(/^import .*;\r?\n/gm,'').replace('export class','class');
+const context={Date:{now:()=>now},Number,JSON,setTimeout:(f)=>{callbacks.set(++serial,f);return serial;},clearTimeout:i=>callbacks.delete(i),vibrator:{startVibration:e=>{calls.push(e.duration);return Promise.resolve();},stopVibration:()=>{stops++;return Promise.resolve();}}};
+vm.runInNewContext(stripTypeScriptTypes(source)+';this.Capture=WebAudioCapture;',context);
+const capture=new context.Capture(()=>null,()=>trusted);
+assert.equal(capture.pulse(2),'denied');trusted=true;assert.equal(capture.pulse(99),'denied');
+assert.equal(capture.pulse(2),'started');assert.deepEqual(calls,[24]);assert.equal(capture.pulse(2),'throttled');
+capture.close();assert.equal(callbacks.size,0);assert.equal(stops,1);
+now+=3000;assert.equal(capture.pulse(1),'started');trusted=false;
+const next=[...callbacks.values()][0];callbacks.clear();next();assert.deepEqual(calls,[24,12],'background must not issue second pulse');
+console.log('Native haptics: trusted origin, bounded intensity, throttling and background cancellation passed');

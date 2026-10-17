@@ -1,6 +1,7 @@
 import { audio } from '@kit.AudioKit';
 import { abilityAccessCtrl, common } from '@kit.AbilityKit';
 import { util } from '@kit.ArkTS';
+import { vibrator } from '@kit.SensorServiceKit';
 
 interface AudioPacket { state: string; chunks: string[]; }
 
@@ -13,6 +14,9 @@ export class WebAudioCapture {
   private generation: number = 0;
   private context: () => common.UIAbilityContext | null;
   private trusted: () => boolean;
+  private pulseAt: number = 0;
+  private pulseTimer: number = -1;
+  private vibrating: boolean = false;
   constructor(context: () => common.UIAbilityContext | null, trusted: () => boolean) {
     this.context = context; this.trusted = trusted;
   }
@@ -23,6 +27,29 @@ export class WebAudioCapture {
     this.prepare(this.generation);
     return 'pending';
   }
+  // Same trusted top-level page gate as audio; bounded bursts, never a continuous motor loop.
+  pulse(level: number): string {
+    if (!this.trusted() || !Number.isInteger(level) || level < 1 || level > 3) { return 'denied'; }
+    const now = Date.now(); if (now - this.pulseAt < 2000) { return 'throttled'; }
+    this.cancelPulse(); this.pulseAt = now;
+    const duration = level * 12;
+    try {
+      this.vibrating = true;
+      vibrator.startVibration({ type: 'time', duration: duration }, { usage: 'touch' }).catch(() => { this.vibrating = false; });
+      this.pulseTimer = setTimeout(() => {
+        this.pulseTimer = -1;
+        if (!this.trusted() || !this.vibrating) { this.cancelPulse(); return; }
+        vibrator.startVibration({ type: 'time', duration: duration }, { usage: 'touch' }).catch(() => {});
+        this.pulseTimer = setTimeout(() => { this.vibrating = false; this.pulseTimer = -1; }, duration);
+      }, duration + 35);
+      return 'started';
+    } catch (_) { this.cancelPulse(); return 'unsupported'; }
+  }
+  cancelPulse(): void {
+    if (this.pulseTimer !== -1) { clearTimeout(this.pulseTimer); this.pulseTimer = -1; }
+    if (this.vibrating) { try { vibrator.stopVibration().catch(() => {}); } catch (_) {} }
+    this.vibrating = false;
+  }
   read(session: string): string {
     if (!this.trusted() || session !== this.session) { return JSON.stringify({ state: 'stopped', chunks: [] } as AudioPacket); }
     if (this.state === 'ready' && this.capturer?.state !== audio.AudioState.STATE_RUNNING) { this.close(); }
@@ -31,6 +58,7 @@ export class WebAudioCapture {
   }
   stop(session: string): void { if (session === this.session) { this.close(); } }
   close(): void {
+    this.cancelPulse();
     this.generation++; this.session = ''; this.state = 'stopped'; this.chunks = [];
     const old = this.capturer; this.capturer = null;
     if (old) { this.release(old); }

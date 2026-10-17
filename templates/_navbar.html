@@ -11,6 +11,7 @@
        {% if request.path == '/gpt' %}class="active"{% endif %}>开始聊天</a>
     <a href="{{ url_for('chat.den') }}"
        {% if request.path == '/den' %}class="active"{% endif %}>宠物小窝</a>
+    <a href="/growth" {% if request.path == '/growth' %}class="active"{% endif %}>一起长大</a>
     <a href="{{ url_for('chat.remark_pet') }}"
        {% if request.path == '/remark_pet' %}class="active"{% endif %}>宠物反馈</a>
   </nav>
