@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>派特岛 · 猫咪岛细化母版 V2</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#121e1a;color:#e9ecdf;font:16px/1.8 'Microsoft YaHei',sans-serif}main{max-width:1480px;margin:auto;padding:46px 28px}h1{font-size:clamp(28px,4vw,48px);font-weight:500;margin:12px 0}p{color:#b7c6ba;max-width:960px}small{color:#9cad9f;letter-spacing:.12em}nav{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0}button,a.link{border:1px solid #527161;border-radius:30px;padding:10px 20px;background:#243b30;color:#e9ecdf;font:inherit;cursor:pointer;text-decoration:none}button[aria-pressed=true]{background:#c6d7b6;color:#20372b}figure{margin:0;border:1px solid #354c3f;background:#0c1511;border-radius:18px;overflow:hidden}figure img{width:100%;display:block;max-height:78vh;object-fit:contain}figcaption{padding:18px 24px;color:#c1d1c4}.details{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin:30px 0}.details article{border-top:1px solid #3f5649;padding-top:16px}.details h2{font-size:19px;font-weight:500;margin:0}.details p{font-size:14px}.compare{display:grid;grid-template-columns:1fr 1fr;gap:18px}.compare img{width:100%;display:block}.compare figcaption{font-size:14px}summary{cursor:pointer;font-size:20px;margin-bottom:18px}footer{border-top:1px solid #3f5649;margin-top:30px;padding:22px 0;font-size:14px;color:#a6b6a8}code{color:#d2daba}pre{white-space:pre-wrap;overflow-wrap:anywhere;color:#bbc9ba;font-size:13px}@media(max-width:700px){main{padding:24px 16px}.compare{grid-template-columns:1fr}}
+</style>
+<main>
+<small>PAIT ISLAND / BLENDER ART REVIEW / V2</small>
+<h1>近看，也是一座有生活痕迹的小岛。</h1>
+<p>这一版继续细化现有猫咪岛的地表、植物和建筑构件。下方画面全部由实际 Blender 场景渲染，保留原来的道路、温室、猫窝、农场和大草坪布局。</p>
+<nav aria-label="渲染视角">
+<button data-shot="0" aria-pressed="true">全岛</button><button data-shot="1" aria-pressed="false">温室</button><button data-shot="2" aria-pressed="false">陶盆与植物</button><button data-shot="3" aria-pressed="false">猫窝生活区</button>
+<a class="link" id="original" href="01-island.png" target="_blank">打开原尺寸图片 ↗</a>
+</nav>
+<figure><img id="hero" src="01-island.png" alt="猫咪岛全景"><figcaption id="caption">完整岛屿与云海 · 保留现有区域布局，补足主岛的近景生态层次。</figcaption></figure>
+<div class="details">
+<article><h2>草叶与树冠</h2><p>清除旧地表纸片式网格，增加有折脊、弯曲和长短变化的草叶；树叶加入尺寸、倾角和叶色差异，蕨类补上叶脉贴图，悬崖常春藤改为弯曲分叶轮廓。</p></article>
+<article><h2>陶盆与土壤</h2><p>新盆有连续内壁、卷口、拉坯轮廓和托盘。土壤由起伏土面、团粒、矿物颗粒共同构成，已有蕨类盆也补充了土表细节。</p></article>
+<article><h2>温室与生活区</h2><p>增加雨槽、排水管、抱箍、柱脚固定件；调整玻璃粗糙度、木纹、织物和陶土表面，柔化木构件硬边。</p></article>
+</div>
+<details><summary>对照上一版温室</summary><div class="compare"><figure><img src="../cloud-meadow-cinematic-v1/02-conservatory-detail.png" alt="上一版温室"><figcaption>V1 · 原高精度母版</figcaption></figure><figure><img src="02-greenhouse.png" alt="本轮细化温室"><figcaption>V2 · 本轮细化，曝光与画幅亦有调整</figcaption></figure></div></details>
+<footer>Blender 5.2 / Cycles / OptiX · 2400 × 1800 · 128 samples<br>本轮交付为可编辑的离线美术母版，未替换网页。UE 材质转换、碰撞、LOD 与实时性能仍需单独验证，渲染图不能代表客户端帧率。<br><a class="link" href="build-report.json">查看构建记录</a></footer>
+<details><summary>母版位置与重建命令</summary><p>本机母版：<code>D:\PetChatSystem-Client\art\cloud-meadow-cinematic-v2\cloud-meadow-refined.blend</code>。贴图已打包，V1 母版保留。</p><pre>"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b --python-exit-code 1 --python scripts/blender/refine_cinematic_meadow.py -- --source "D:\PetChatSystem\art\cloud-meadow-cinematic-v1\cloud-meadow-master.blend"</pre></details>
+</main>
+<script>
+const shots=[['01-island','猫咪岛全景','完整岛屿与云海 · 保留现有区域布局，补足主岛的近景生态层次。'],['02-greenhouse','温室建筑近景','温室 · 清晰窗格、固定件、排水构件、植物边界与门前空间。'],['03-planters','陶盆和土壤植物近景','陶盆与植物 · 内壁、托盘、土壤颗粒、花穗和蕨叶细节。'],['04-home','猫窝生活区近景','猫窝生活区 · 木构件、织物与草地的衔接。']];
+document.querySelectorAll('button[data-shot]').forEach(b=>b.addEventListener('click',()=>{const s=shots[Number(b.dataset.shot)];document.querySelector('#hero').src=s[0]+'.png';document.querySelector('#hero').alt=s[1];document.querySelector('#caption').textContent=s[2];document.querySelector('#original').href=s[0]+'.png';document.querySelectorAll('button[data-shot]').forEach(o=>o.setAttribute('aria-pressed',String(o===b)));}));
+</script>
+</html>

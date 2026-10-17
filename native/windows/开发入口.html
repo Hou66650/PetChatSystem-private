@@ -14,6 +14,7 @@ powershell -File Scripts/Open-Client.ps1 -EngineRoot "D:\Epic Games\UE_5.8"
 
 powershell -File Scripts/Build-Client.ps1 -EngineRoot "D:\Epic Games\UE_5.8" -Mode Package -Configuration Development
 powershell -File Scripts/Build-Client.ps1 -EngineRoot "D:\Epic Games\UE_5.8" -Mode Package -Configuration Shipping</pre><p>构建脚本遇到缺工具、失败退出码、缺地图会停止；地图生成拒绝覆盖已有关卡。构建日志位于 Saved；不自动将 toolchain-lock.json 标记为合格。编辑器中右键拖动环绕、中键平移、滚轮缩放、Home 复位；尚待安装后实际验证操作。</p><p>打包内容位于 Saved/Packages，对实际 EXE 在 DX12 下运行并记录适配器、编译器/SDK、构建日志与画面。Python 编辑插件仅用于编辑器资产生产，不打包成游戏运行依赖。</p></section>
+<section><h2>猫咪岛新一轮细化</h2><p><a href="../../art/cloud-meadow-cinematic-v2/index.html">打开 V2 美术审查：全景、温室、陶盆和猫窝近景</a>。本轮增加主岛草地层次、叶脉、陶盆与土壤细节、温室雨槽和连接件，保留原布局与 V1 母版。当前冻结的 P0 来源清单仍为 V1；V2 为离线候选资产，需要另外完成材质转换、LOD 和运行验证后再接入客户端。</p></section>
 <section><h2>资产与性能证据</h2><p><a href="Qualification/meadow-source-inventory.json">猫岛来源清单</a>固定了10个离线模块（430.7 MiB）、母版、报告与地形配置的 SHA256。文件仍在原项目 <code>D:\PetChatSystem</code>，新 worktree 不会复制被忽略的大资产；该清单不是运行时资产清单，未完成 LOD、材质转换、碰撞或导航。</p><pre>python Tools/asset_inventory.py --source-project "D:\PetChatSystem" --output Saved/Qualification/meadow-source-inventory.json
 python -m unittest discover -s Tools/Tests -v
 

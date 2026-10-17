@@ -1,0 +1,93 @@
+{
+  "version": 2,
+  "seed": 271026,
+  "sourceMaster": "D:\\PetChatSystem\\art\\cloud-meadow-cinematic-v1\\cloud-meadow-master.blend",
+  "sourceSha256": "3c8469b140dbca90222f61a7892c19f4c05deebfc38462a21862b3722fff423b",
+  "master": "cloud-meadow-refined.blend",
+  "masterBytes": 366325126,
+  "masterSha256": "8f2c9c083859b7368b488626524b301437500aa8ee2b62eecc224f69e7df311d",
+  "webSceneChanged": false,
+  "accountDataRead": false,
+  "units": "metres",
+  "upAxis": "Z",
+  "detailCounts": {
+    "removedLegacyGroundFaces": 44374,
+    "retiredPaperFlowerFaces": 897,
+    "retiredFlatGrassTriangles": 45084,
+    "refinedIvyLeaves": 17490,
+    "variedCanopyLeaves": 130520,
+    "newCoreGrassBlades": 67925,
+    "newPlanters": [
+      [
+        5.55,
+        1.05,
+        0.27,
+        0.41
+      ],
+      [
+        0.22,
+        1.13,
+        0.23,
+        0.34
+      ],
+      [
+        5.62,
+        3.65,
+        0.2,
+        0.3
+      ]
+    ],
+    "modeledFlowerWhorls": 1995,
+    "finitePositionsChecked": 11101516
+  },
+  "objects": 309,
+  "baseMeshTriangles": 12770065,
+  "runtimeReady": false,
+  "limitations": [
+    "Procedural material nodes require UE baking or shader recreation.",
+    "Visual geometry is not collision/navigation.",
+    "Not yet a runtime LOD/instancing package. No FPS claim."
+  ],
+  "renders": [
+    {
+      "file": "01-island.png",
+      "resolution": [
+        2400,
+        1800
+      ],
+      "samples": 128,
+      "sha256": "c2dddf6af87d3f9242b725253be72127e8f16c03d0de9c30a9f2677514c56d6f"
+    },
+    {
+      "file": "02-greenhouse.png",
+      "resolution": [
+        2400,
+        1800
+      ],
+      "samples": 128,
+      "sha256": "b9615d5fced8d14ba7147b04c226ee89e558b901839d0c4f5f38404165003140"
+    },
+    {
+      "file": "03-planters.png",
+      "resolution": [
+        2400,
+        1800
+      ],
+      "samples": 128,
+      "sha256": "c20149fde2117950ba3dc7083880ca2a9c9a18cfe7da4e1b5b31ac2ea3da4814"
+    },
+    {
+      "file": "04-home.png",
+      "resolution": [
+        2400,
+        1800
+      ],
+      "samples": 128,
+      "sha256": "5ddfc703ef11d0bcea95a2bec9eb12dbc17de2ee4bbe2e9251cbff65866fe497"
+    }
+  ],
+  "renderer": "Cycles / OptiX",
+  "devices": [
+    "NVIDIA GeForce RTX 5060 Laptop GPU"
+  ]
+}
