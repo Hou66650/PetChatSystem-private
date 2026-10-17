@@ -308,7 +308,8 @@ class DenVision {
         this.starting=false;
         this.running = true;
         this.target = target || videoEl;
-        this.timer = setInterval(() => this._detect(), this.backend==='main'?180:DETECT_MS);
+        if(this.backend==='computer')void this._remoteLoop();
+        else this.timer = setInterval(() => this._detect(), this.backend==='main'?180:DETECT_MS);
         this._followLoop();
         progress?.done();return true;
     }
@@ -322,6 +323,7 @@ class DenVision {
         clearTimeout(this.initTimeout);clearTimeout(this.frameTimeout);
         this.worker?.terminate();this.worker=null;this.pending=false;
         this.remoteAbort?.abort();this.remoteAbort=null;this.remoteToken=null;
+        this.encoder?.terminate();this.encoder=null;
         if(this.captureCanvas){this.captureCanvas.width=1;this.captureCanvas.height=1;this.captureCanvas=null;}
         this.face?.close();this.hand?.close();this.face=this.hand=null;
         this.lastTs=-1;this._prevSnapRatio=undefined;this._eyesClosedFrames=0;
@@ -360,7 +362,7 @@ class DenVision {
         if (v.currentTime === this.lastTs) return;      // 无新帧则跳过
         this.lastTs = v.currentTime;
         this._syncCanvasSize();
-        if(this.backend==='computer'){void this._remoteFrame(v,ts);return;}
+        if(this.backend==='computer')return this._remoteFrame(v,ts);
         if(this.worker){
             if(this.pending)return;
             this.pending=true;
@@ -376,16 +378,58 @@ class DenVision {
         }
     }
 
+    async _remoteLoop(){
+        const epoch=this.generation,started=performance.now();
+        if(!this.running||this.backend!=='computer')return;
+        await this._detect();
+        // Start the next fresh frame as soon as processing permits, capped at 10 Hz.
+        // An interval otherwise adds up to another 100 ms after every response.
+        if(epoch===this.generation&&this.running&&this.backend==='computer')
+            this.timer=setTimeout(()=>this._remoteLoop(),Math.max(0,DETECT_MS-(performance.now()-started)));
+    }
+
+    async _encodeRemoteFrame(video,signal){
+        if(typeof Worker!=='undefined'&&typeof OffscreenCanvas!=='undefined'&&
+            (typeof VideoFrame==='function'||typeof createImageBitmap==='function')){
+            let image;
+            // Preserve the camera's video buffer instead of converting through a GPU bitmap.
+            // On Harmony this avoids a costly readback while the 3D scene is rendering.
+            if(typeof VideoFrame==='function'){
+                try{image=new VideoFrame(video,{timestamp:Math.round(performance.now()*1000)});}
+                catch(error){/* Older WebViews may expose VideoFrame without video input support. */}
+            }
+            if(!image)image=await createImageBitmap(video);
+            if(signal.aborted){image.close();throw Error('Frame cancelled');}
+            let worker;
+            try{worker=this.encoder||(this.encoder=new Worker('/static/js/den/vision-encoder.js?v=1.73.1-frame'));}
+            catch(error){image.close();throw error;}
+            return new Promise((resolve,reject)=>{
+                const finish=(error,blob)=>{
+                    signal.removeEventListener('abort',abort);worker.onmessage=worker.onerror=null;
+                    error?reject(error):resolve(blob);
+                };
+                const abort=()=>finish(Error('Frame cancelled'));
+                signal.addEventListener('abort',abort,{once:true});
+                worker.onmessage=({data})=>finish(data.error?Error('Frame encoding failed'):null,data.blob);
+                worker.onerror=()=>finish(Error('Frame encoder unavailable'));
+                try{worker.postMessage({image},[image]);}catch(error){image.close();finish(error);}
+            });
+        }
+        // Compatibility path for browsers without transferable camera frames.
+        const canvas=this.captureCanvas||(this.captureCanvas=document.createElement('canvas'));
+        const w=video.videoWidth||640,h=video.videoHeight||480,scale=Math.min(1,640/w,480/h);
+        const width=Math.max(1,Math.floor(w*scale)),height=Math.max(1,Math.floor(h*scale));
+        if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
+        canvas.getContext('2d',{alpha:false,willReadFrequently:true}).drawImage(video,0,0,width,height);
+        return new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.72));
+    }
+
     async _remoteFrame(video,ts){
         this.pending=true;const epoch=this.generation,controller=new AbortController();this.remoteAbort=controller;
         const timeout=setTimeout(()=>controller.abort(),8000);
         try{
-            const canvas=this.captureCanvas||(this.captureCanvas=document.createElement('canvas'));
-            const w=video.videoWidth||640,h=video.videoHeight||480,scale=Math.min(1,640/w,480/h);
-            const width=Math.max(1,Math.floor(w*scale)),height=Math.max(1,Math.floor(h*scale));
-            if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
-            canvas.getContext('2d',{alpha:false}).drawImage(video,0,0,width,height);
-            const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.72));
+            const blob=await this._encodeRemoteFrame(video,controller.signal);
+            const encoded=performance.now();
             if(epoch!==this.generation||!this.running)return;
             if(!blob||blob.size>256*1024||controller.signal.aborted)throw Error('Frame unavailable');
             const query='?face='+(this.options.face?'1':'0')+'&hands='+(this.options.hands?'1':'0');
@@ -394,7 +438,9 @@ class DenVision {
             if(!response.ok)throw Error('Computer inference unavailable');
             const data=await response.json();
             if(epoch!==this.generation||!this.running)return;
-            this.remoteMs=data.elapsedMs;this._consume(ts,data.face,data.hand);
+            this.remoteMs=data.elapsedMs;
+            this.remoteTiming={encodeMs:encoded-ts,requestMs:performance.now()-encoded,totalMs:performance.now()-ts};
+            this._consume(ts,data.face,data.hand);
         }catch(error){if(epoch===this.generation&&this.running){this.stop();this.onError('remote',error);}}
         finally{clearTimeout(timeout);if(epoch===this.generation){this.pending=false;this.remoteAbort=null;}}
     }
