@@ -44,6 +44,9 @@ class PortalTests(unittest.TestCase):
         r=self.a.post('/api/portals/desktop/pair',json={'code':d['code']});self.assertEqual(r.status_code,200)
         self.assertEqual(self.a.post('/api/portals/desktop/pair',json={'code':d['code']}).status_code,403)
         auth={'Authorization':'Bearer '+r.json['token']}
+        self.a.post('/api/portals/desktop/ready',json={},headers=auth)
+        self.post('depart-complete',{'trip':d['trip']})
+        self.a.post('/api/portals/desktop/arrived',json={},headers=auth)
         self.assertEqual(self.b.get('/api/portals/trip/'+d['trip']).status_code,404)
         payload={'snapshot':{'visitor':{'x':.5,'z':.8,'action':'walk'}},'events':[{'id':'event-000001','kind':'walk','x':.5,'z':.8}]}
         for _ in range(2):self.assertEqual(self.a.post('/api/portals/desktop/sample',json=payload,headers=auth).status_code,200)
@@ -64,6 +67,44 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(self.post('sample',dict(trip=d['trip']),self.b).status_code,404)
         self.post('settings',{'pet':'1','allow':False},self.b)
         self.assertEqual(self.a.get('/api/portals/trip/'+d['trip']).json['status'],'returned')
+
+    def test_desktop_transfer_order_retries_and_timeout(self):
+        import time
+        d=self.start().json
+        paired=self.a.post('/api/portals/desktop/pair',json={'code':d['code']}).json
+        self.assertEqual(paired['protocol'],2)
+        auth={'Authorization':'Bearer '+paired['token']}
+        def call(op):return self.a.post('/api/portals/desktop/'+op,json={},headers=auth)
+        self.assertEqual(call('state').json['phase'],'preparing')
+        self.assertEqual(call('arrived').status_code,425)
+        self.assertEqual(call('sample').status_code,425)
+        self.assertEqual(self.post('depart-complete',{'trip':d['trip']}).status_code,425)
+        self.assertEqual(call('ready').json['phase'],'entering')
+        self.assertEqual(call('ready').json['phase'],'entering')
+        self.assertEqual(self.post('depart-complete',{'trip':d['trip']},self.b).status_code,404)
+        self.assertEqual(self.post('depart-complete',{'trip':d['trip']}).json['phase'],'emerging')
+        self.assertEqual(self.post('depart-complete',{'trip':d['trip']}).json['phase'],'emerging')
+        self.assertEqual(call('arrived').json['phase'],'roaming')
+        self.assertEqual(call('ready').json['phase'],'roaming')
+        call('return')
+        self.assertEqual(call('ready').status_code,409)
+        self.assertEqual(self.a.get('/api/portals').json['rewards'],[])
+        d=self.start().json
+        paired=self.a.post('/api/portals/desktop/pair',json={'code':d['code']}).json
+        auth={'Authorization':'Bearer '+paired['token']}
+        with self.app.app_context():
+            db=get_db();db.execute('UPDATE portal_trips SET phase_started=? WHERE id=?',(time.time()-100,d['trip']));db.commit()
+        self.assertEqual(call('ping').status_code,409,'keepalive cannot keep a stuck preparation alive')
+        for phase in ('entering','emerging'):
+            d=self.start().json
+            paired=self.a.post('/api/portals/desktop/pair',json={'code':d['code']}).json
+            auth={'Authorization':'Bearer '+paired['token']}
+            call('ready')
+            if phase=='emerging':self.post('depart-complete',{'trip':d['trip']})
+            with self.app.app_context():
+                db=get_db();db.execute('UPDATE portal_trips SET phase_started=? WHERE id=?',(time.time()-21,d['trip']));db.commit()
+            self.assertEqual(call('state').status_code,409)
+            self.assertEqual(call('arrived').status_code,409,'late completion cannot resurrect a timed-out journey')
     def test_disconnect_and_energy_return(self):
         d=self.start().json
         r=self.a.post('/api/portals/desktop/pair',json={'code':d['code']})

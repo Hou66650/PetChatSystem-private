@@ -32,6 +32,14 @@ def init_schema():
     CREATE TABLE IF NOT EXISTS portal_rewards(trip TEXT PRIMARY KEY,owner TEXT NOT NULL,pet TEXT NOT NULL,item TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS portal_custom_pets(id TEXT PRIMARY KEY,owner TEXT NOT NULL,name TEXT NOT NULL,model TEXT NOT NULL,height REAL NOT NULL,memorial INTEGER NOT NULL DEFAULT 1);
     ''')
+    # Additive migration: keep existing journeys and their exclusive-world index.
+    db=get_db();db.execute('BEGIN IMMEDIATE')
+    try:
+        columns={row['name'] for row in db.execute('PRAGMA table_info(portal_trips)')}
+        for name,definition in [('phase',"TEXT NOT NULL DEFAULT ''"),('phase_started','REAL NOT NULL DEFAULT 0')]:
+            if name not in columns:db.execute(f'ALTER TABLE portal_trips ADD COLUMN {name} {definition}')
+        db.commit()
+    except Exception:db.rollback();raise
 
 def digest(value):return hashlib.sha256(value.encode()).hexdigest()
 
@@ -112,6 +120,7 @@ def expire():
     with db:
         for t in db.execute("SELECT * FROM portal_trips WHERE status IN ('pairing','active')").fetchall():
             if t['status']=='pairing' and now-t['created']>120:finish(t,'配对超时，未出发')
+            elif t['status']=='active' and t['phase'] in ('preparing','entering','emerging') and now-t['phase_started']>(90 if t['phase']=='preparing' else 20):finish(t,'传送准备或动画超时，已返回门口')
             elif t['status']=='active' and now-t['updated']>45:finish(t,'连接中断，已安全返回')
             elif t['status']=='active' and now-t['created']>(1800 if t['kind']=='desktop' else 600):finish(t,'精力不足，自主返程')
 
@@ -126,6 +135,7 @@ def public_trip(t,owner,brief=False):
     db=get_db();events=[] if brief else [dict(e) for e in db.execute('SELECT kind,x,z,created FROM portal_events WHERE trip=? ORDER BY id DESC LIMIT 2400',(t['id'],))][::-1]
     messages=[] if brief else [dict(m) for m in db.execute('SELECT text,created,owner=? AS mine FROM portal_messages WHERE trip=? ORDER BY id DESC LIMIT 30',(owner,t['id']))][::-1]
     result={k:t[k] for k in ('id','pet','kind','destination','status','created','updated','ended','reason')}
+    result.update(phase=t['phase'] or ('roaming' if t['status']=='active' else t['status']),phaseStarted=t['phase_started'])
     counts={key:sum(e['kind']==key for e in events) for key in EVENTS}
     summary='、'.join(EVENTS[k]+str(n)+'次' for k,n in counts.items() if n)
     result.update(visitorId=public_user_id(t['owner']),petSpec=travel_spec(t['owner'],t['pet'],t['id'],'visitor'),mine=t['owner']==owner,events=events,messages=messages,snapshot=json.loads(t['snapshot']),story=('桌面探险' if t['kind']=='desktop' else '友邻串门')+'：'+(summary or '尚无互动记录')+('。'+t['reason'] if t['ended'] else '。等待桌面配对，尚未出发' if t['status']=='pairing' else '。正在旅途中'))
@@ -191,7 +201,9 @@ def operate(owner,op,data):
             db.execute('INSERT INTO portal_trips(id,owner,pet,kind,destination,status,created,updated,pair_hash) VALUES (?,?,?,?,?,?,?,?,?)',(tid,owner,pet,kind,dest,'pairing' if code else 'active',now,now,digest(code) if code else None))
             db.commit();return dict(trip=tid,code=code)
         except Exception:db.rollback();raise
-    t=trip_for(owner,str(data.get('trip','')),visitor_only=op in ('sample','plan'))
+    t=trip_for(owner,str(data.get('trip','')),visitor_only=op in ('sample','plan','depart-complete'))
+    if op=='depart-complete':
+        return advance_desktop(t,'entering','emerging')
     if op=='return':
         with db:finish(t,'主人召回' if t['owner']==owner else '好友结束接待')
         return dict(ok=True)
@@ -209,6 +221,7 @@ def operate(owner,op,data):
 
 def sample(t,data):
     if t['status']!='active':raise PortalError('行程已结束',409)
+    if t['kind']=='desktop' and t['phase'] not in ('','roaming'):raise PortalError('请等待穿门完成',425)
     snapshot=data.get('snapshot',{})
     if not isinstance(snapshot,dict):raise PortalError('状态格式错误')
     clean={}
@@ -242,10 +255,11 @@ def pair(code):
     try:
         t=db.execute("SELECT * FROM portal_trips WHERE pair_hash=? AND status='pairing'",(digest(code),)).fetchone()
         if not t:raise PortalError('配对码无效、过期或已经使用',403)
-        db.execute("UPDATE portal_trips SET status='active',pair_hash=NULL,token_hash=?,updated=? WHERE id=?",(digest(token),time.time(),t['id']));db.commit()
         spec=pet_spec(t['owner'],t['pet'])
         if spec.get('custom'):spec['model']='/api/portals/desktop/model'
-        return dict(token=token,trip=t['id'],pet=spec)
+        now=time.time()
+        db.execute("UPDATE portal_trips SET status='active',phase='preparing',phase_started=?,pair_hash=NULL,token_hash=?,updated=? WHERE id=?",(now,digest(token),now,t['id']));db.commit()
+        return dict(token=token,trip=t['id'],pet=spec,protocol=2,phase='preparing')
     except Exception:db.rollback();raise
 
 def desktop_trip(token):
@@ -257,6 +271,11 @@ def desktop_trip(token):
 def desktop(token,op,data):
     t=desktop_trip(token)
     if op=='state':return public_trip(t,t['owner'],True)
+    if op=='ready':return advance_desktop(t,'preparing','entering')
+    if op=='arrived':return advance_desktop(t,'emerging','roaming')
+    if op=='ping':
+        with get_db():get_db().execute("UPDATE portal_trips SET updated=? WHERE id=? AND status='active'",(time.time(),t['id']))
+        return dict(ok=True)
     if op=='plan':return plan(t)
     if op=='sample':return sample(t,data)
     if op=='return':
@@ -265,9 +284,23 @@ def desktop(token,op,data):
     raise PortalError('未知操作',404)
 
 
+def advance_desktop(t,expected,next_phase):
+    """Each side acknowledges only its own completed stage; retries are harmless."""
+    if t['kind']!='desktop' or t['status']!='active':raise PortalError('桌面行程已结束',409)
+    order=['preparing','entering','emerging','roaming']
+    if t['phase'] not in order or order.index(t['phase'])<order.index(expected):raise PortalError('传送阶段尚未就绪',425)
+    db=get_db();now=time.time()
+    with db:
+        db.execute("UPDATE portal_trips SET phase=?,phase_started=?,updated=? WHERE id=? AND status='active' AND phase=?",(next_phase,now,now,t['id'],expected))
+    current=db.execute('SELECT * FROM portal_trips WHERE id=?',(t['id'],)).fetchone()
+    if current['status']!='active':raise PortalError('桌面行程已结束',409)
+    return dict(ok=True,phase=current['phase'])
+
+
 def plan(t):
     """Shared bounded model gate; local simulation continues while planning."""
     if t['status']!='active':raise PortalError('行程已结束',409)
+    if t['kind']=='desktop' and t['phase'] not in ('','roaming'):return dict(visitor='rest',host='rest',source='local')
     allowed=['walk','rest','cursor'] if t['kind']=='desktop' else ['wander','sniff','chase','rest']
     fallback={'visitor':allowed[0],'host':allowed[0],'source':'local'}
     gate=current_app.extensions['cat_agent_gate'];now=time.time()

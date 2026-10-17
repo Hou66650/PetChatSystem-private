@@ -601,6 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <link rel="stylesheet" href="/static/css/portal.css?v={{ app_version }}">
     <script src="/static/js/den/wardrobe.js?v={{ app_version }}"></script><script src="/static/js/den/portal-pets.js?v={{ app_version }}"></script>
     <script src="/static/js/den/portal-visitors.js?v={{ app_version }}"></script>
+    <script src="/static/js/den/portal-transition.js?v={{ app_version }}"></script>
     <script src="/static/js/den/portals.js?v={{ app_version }}"></script>
     <script src="/static/js/den/greenhouse.js?v={{ app_version }}"></script>
     {% include '_farm.html' %}
@@ -718,6 +719,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let nativeDen = null;
         const canvas = document.getElementById('den-canvas');
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });
+        renderer.localClippingEnabled = true;
         window.PaitWebCompat?.prepareRenderer(renderer);
         renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
@@ -2480,6 +2482,7 @@ document.addEventListener('DOMContentLoaded', () => {
             button.textContent='自由活动：'+(enabled?'开':'关');button.setAttribute('aria-pressed',String(enabled));
         }
         function movementBlocked() {
+            if(portals?.transferring)return true;
             // Live class collections include newly opened/created panels without
             // scanning the complete page with a selector on each animation tick.
             for(const name of ['bowl-panel','cat-story'])for(const panel of document.getElementsByClassName(name))if(panel.hasAttribute('open'))return true;
@@ -2492,6 +2495,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         portalVisitors=new PortalVisitors.Visitors({THREE,scene,getPet:()=>({id:currentPetId}),getNavigation:()=>locomotion?.navigation,notify:text=>showBubble(text,3500,true)});
         portals=new PetPortals.Controller({THREE,scene,scope:COMPANION_SCOPE,
+            onEnter:speed=>{dialogueRunner.cancel('正在穿过现实传送门');catAgent?.interrupt('正在穿门');locomotion?.interrupt();setAnim('walk',0);playAction('walk',Math.max(.3,Math.min(3,speed/(locomotion?.gaits.walk||.35))));},
             getPet:()=>({id:currentPetId,model:petModel}),
             onTrips:trips=>{if(!spawnBusy)portalVisitors.sync(trips);},
             canInvite:()=>!spawnBusy&&petModel&&!grabbed&&!dropping&&!interactionBusy()&&!chatBusy&&!voiceBusy&&['idle','walk'].includes(anim.state)&&locomotion?.owner!=='command',
@@ -3743,7 +3747,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // 兜底自愈：出生早已完成却缩成微粒/被隐藏 → 立即恢复（"消失"类问题的最后防线）
-                if (petModel && (anim.birth === undefined || anim.birth >= 1) && !grabbed &&
+                if (petModel && !portals?.away && !portals?.transferring && (anim.birth === undefined || anim.birth >= 1) && !grabbed &&
                     (petModel.scale.x < 0.3 || !petModel.visible)) {
                     petModel.visible = true;
                     if (petModel.scale.x < 0.3) petModel.scale.setScalar(0.55);
@@ -3780,7 +3784,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (actionTransition && actionTransition.action.time>=actionTransition.action.getClip().duration-.0001) {
                     const next=actionTransition.next;actionTransition=null;next();
                 }
-                if (modeledStage && !grabbed && !dropping && bounceBack<=0) {
+                if (modeledStage && !portals?.transferring && !grabbed && !dropping && bounceBack<=0) {
                     const ground=locomotion.navigation.surfaceHeight(petModel.position);
                     petModel.userData.groundY=ground;grabHomeY=ground;petModel.position.y=ground;
                 }
@@ -3800,7 +3804,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const st = anim.state;
 
                 // 接触阴影：贴地跟随，被提起时淡出缩小
-                contactShadow.visible = true;
+                contactShadow.visible = petModel.visible && !portals?.transferring;
                 {
                     const pp = petModel.position;
                     const lift = Math.max(0, pp.y);
@@ -3959,7 +3963,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nativeDen = new NativeDenBridge.Bridge({canvas, renderer, read: () => ({
                 scene, camera, petModel, spec: currentSpec || SPECS[currentPetId], action: activeAction,
                 busy: spawnBusy, special: grabbed || dropping || !!gestureAction || visionOn ||
-                    !!facePlay?.ball || !!toyWorkshop?.held
+                    !!facePlay?.ball || !!toyWorkshop?.held || !!portals?.transferring
             })});
             window.PaitNativeDen = nativeDen;
         }

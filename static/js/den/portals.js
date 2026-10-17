@@ -22,7 +22,7 @@
   dispose(){this.root.parent?.remove(this.root);SelectedAssets.disposeTree(this.root);}
  }
  class Controller{
-  constructor({THREE,scene,scope,getPet,onApproach,onReject,onReturn,onArrive,onTrips=()=>{},canInvite=()=>false,bubble}){Object.assign(this,{THREE,scene,scope,getPet,onApproach,onReject,onReturn,onArrive,onTrips,canInvite,bubble});this.data=null;this.intent=null;this.away=false;this.pending=false;this.polling=false;this.departure=0;this.pairCodes=new Map();this.nextCuriosity=performance.now()+45000;this.root=document.createElement('dialog');this.root.className='portal-dialog';this.root.setAttribute('aria-label','双传送门');
+  constructor({THREE,scene,scope,getPet,onApproach,onReject,onReturn,onArrive,onTrips=()=>{},canInvite=()=>false,bubble,onEnter=()=>{}}){Object.assign(this,{THREE,scene,scope,getPet,onApproach,onReject,onReturn,onArrive,onTrips,canInvite,bubble,onEnter});this.data=null;this.intent=null;this.away=false;this.pending=false;this.polling=false;this.departure=0;this.pairCodes=new Map();this.nextCuriosity=performance.now()+45000;this.root=document.createElement('dialog');this.root.className='portal-dialog';this.root.setAttribute('aria-label','双传送门');
    this.root.innerHTML='<form method="dialog"><button style="float:right" aria-label="关闭">×</button></form><small>PAIT ISLAND / BETWEEN WORLDS</small><h2>门的另一边，有新的陪伴</h2><p data-status role="status">两扇门都需要你的确认。</p><button data-kind="desktop">现实传送门 · 暖金</button><button data-kind="neighbor">友邻传送门 · 淡蓝</button><section data-destination hidden><h3 data-heading></h3><div data-friends></div><button data-confirm>确认出发</button><button data-decline>这次先不去</button><div data-pair></div><button data-reissue hidden>重新生成配对码</button><button data-cancel-trip hidden>取消本次传送</button></section><hr><details><summary>好友与访客权限</summary><p data-my-id></p><label><input type="checkbox" data-allow>允许好友宠物进入当前岛屿</label><p><button data-invite>生成 / 更换我的好友邀请码</button><code data-code></code></p><label>朋友给我的邀请码<input data-friend-code autocomplete="off"></label><button data-add>添加好友</button><small>默认不接待访客；关闭权限会让当前访客立即返程。自建纪念岛同样默认关闭。</small></details><div data-incoming></div><p><a href="/journeys" target="_blank" rel="noopener">查看跨世界行程 ↗</a></p>';
    document.body.append(this.root);this.recall=document.createElement('button');this.recall.className='portal-floating';this.recall.hidden=true;this.recall.textContent='🏝 宠物外出中 · 召回';document.body.append(this.recall);
    this.recall.onclick=()=>this.recallPet();for(const b of this.root.querySelectorAll('[data-kind]'))b.onclick=()=>this.choose(b.dataset.kind);this.q('[data-decline]').onclick=()=>{if(this.trip){void this.recallPet();return;}this.intent=null;this.approachTicket=(this.approachTicket||0)+1;this.approaching=false;this.onReject();this.q('[data-destination]').hidden=true;this.message('它有一点失落，决定先留在岛上陪你。');};this.q('[data-confirm]').onclick=()=>this.depart();this.q('[data-cancel-trip]').onclick=()=>this.recallPet();this.q('[data-reissue]').onclick=()=>this.reissue();
@@ -34,7 +34,7 @@
   q(s){return this.root.querySelector(s);}message(s){this.q('[data-status]').textContent=s;}
   async api(op,body){const r=await fetch('/api/portals/'+op,{method:'POST',headers:{'Content-Type':'application/json','X-Profile-Scope':this.scope},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw Error(d.error||'传送失败');return d;}
   get holding(){const p=this.getPet().model?.position,q=this.view?.positions[this.intent];return !!(p&&q&&Math.hypot(p.x-q.x,p.z-q.z)<.22);}
-  attach(navigation,theme){this.view?.dispose();this.intent=null;this.approachTicket=(this.approachTicket||0)+1;this.approaching=false;this.approachError=false;const positions={};for(const [kind,x] of [['desktop',theme==='room'?2.3:-.8],['neighbor',theme==='room'?4.6:.8]])positions[kind]=navigation.nearest({x,z:theme==='room'?-.75:-.5});if(theme==='room'){positions.desktop.mountX=1.4;positions.desktop.mountZ=-1.65;positions.neighbor.mountX=4.6;positions.neighbor.mountZ=-1.65;}this.view=new Gates(this.THREE,this.scene,positions);this.updateState();}
+  attach(navigation,theme){this.clearEntry(true);this.view?.dispose();this.intent=null;this.approachTicket=(this.approachTicket||0)+1;this.approaching=false;this.approachError=false;const positions={};for(const [kind,x] of [['desktop',theme==='room'?2.3:-.8],['neighbor',theme==='room'?4.6:.8]])positions[kind]=navigation.nearest({x,z:theme==='room'?-.75:-.5});if(theme==='room'){positions.desktop.mountX=1.4;positions.desktop.mountZ=-1.65;positions.neighbor.mountX=4.6;positions.neighbor.mountZ=-1.65;}this.view=new Gates(this.THREE,this.scene,positions);this.updateState();}
   open(kind){this.root.showModal();this.render();if(kind)this.choose(kind);else this.renderJourney();}
   curious(kind){if(this.away)return;this.intent=kind;this.arrived=false;this.approachError=false;this.expires=performance.now()+75000;this.bubble(kind==='desktop'?'想去主人桌面看看，等你点门同意。':'想去小伙伴岛上玩，等你点门同意。');}
   choose(kind){if(this.trip){this.renderJourney();return;}if(this.away){this.message('宠物正在外出，请先召回。');return;}this.intent=kind;this.arrived=false;this.expires=performance.now()+75000;this.q('[data-destination]').hidden=false;this.q('[data-heading]').textContent=kind==='desktop'?'现实传送门':'友邻传送门';this.q('[data-pair]').replaceChildren();this.render();return this.requestApproach(kind);}
@@ -66,12 +66,42 @@
   renderJourney(){this.syncConfirm();const t=this.trip,pairing=t?.status==='pairing';this.q('[data-reissue]').hidden=!pairing;this.q('[data-reissue]').disabled=this.pending;this.q('[data-cancel-trip]').hidden=!t;this.q('[data-cancel-trip]').disabled=this.pending;this.q('[data-cancel-trip]').textContent=pairing?'取消本次传送':'召回宠物';this.q('[data-decline]').hidden=!!t;
    if(!t)return;this.q('[data-destination]').hidden=false;this.q('[data-heading]').textContent=t.kind==='desktop'?'现实传送门':'友邻传送门';const box=this.q('[data-pair]');box.replaceChildren();
    if(pairing){const code=this.pairCodes.get(t.id);if(code){const el=document.createElement('code');el.textContent=code;box.append(el);}const hint=document.createElement('p');hint.textContent=code?'打开 Start-Desktop.cmd，将此码粘贴到桌宠客户端。网站地址：'+location.origin:'此行程正在等待配对。刷新页面后不再显示旧码，请点击「重新生成配对码」。';box.append(hint);this.message('出发已确认，正在等待桌宠客户端配对。配对码两分钟内有效。');}
-   else{this.message('宠物已出发，可以随时召回。');if(t.kind==='neighbor'){const a=document.createElement('a');a.href='/visit/'+t.id;a.target='_blank';a.rel='noopener';a.textContent='打开好友岛屿互动现场 ↗';box.append(a);}}
+   else{this.message(({preparing:'桌面正在准备模型和饰品，请保留此页面。',entering:'正在走入现实传送门，请保持页面可见。',emerging:'正在从桌面传送门走出。'})[t.phase]||'宠物已出发，可以随时召回。');if(t.kind==='neighbor'){const a=document.createElement('a');a.href='/visit/'+t.id;a.target='_blank';a.rel='noopener';a.textContent='打开好友岛屿互动现场 ↗';box.append(a);}}
   }
   async reissue(){if(this.pending||this.trip?.status!=='pairing')return;this.pending=true;this.renderJourney();try{const old=this.trip;await this.api('return',{trip:old.id});this.pairCodes.delete(old.id);this.trip=null;const d=await this.api('depart',{pet:String(this.getPet().id),kind:'desktop',confirmed:true});this.pairCodes.set(d.trip,d.code);await this.poll();}catch(e){this.message(e.message);}finally{this.pending=false;this.renderJourney();}}
   async poll(){if(this.polling||this.scopeLost)return;this.polling=true;try{const r=await fetch('/api/portals?brief=1',{cache:'no-store',signal:AbortSignal.timeout(6000)});if(!r.ok)throw Error('行程状态读取失败');const d=await r.json();if(d.scope!==this.scope){this.scopeLost=true;this.onTrips([]);this.message('账号已变化，请刷新页面。');return;}this.data=d;this.updateState();this.onTrips(d.trips);if(this.root.open&&!this.pending)this.render();}catch(e){if(this.root.open)this.message('暂时无法确认行程状态，请稍后重试。');}finally{this.polling=false;}}
-  updateState(){if(!this.data)return;const p=this.getPet(),trip=this.data.trips.find(t=>t.mine&&t.pet===String(p.id)&&['active','pairing'].includes(t.status)),was=this.trackedPet===p.id&&this.away;this.trackedPet=p.id;const previousTrip=this.trip;this.trip=trip;if(previousTrip&&!trip){this.pairCodes.delete(previousTrip.id);this.q('[data-pair]').replaceChildren();this.message('上次传送已结束或配对码已过期，可以重新确认出发。');}this.away=trip?.status==='active';this.recall.hidden=!trip;
-   if(p.model){p.model.visible=!this.away;if(this.away&&!was)this.view?.burst(p.model.position,this.trip.kind==='desktop'?'desktop':'neighbor');if(was&&!this.away){this.intent=null;this.arrived=false;}if(was&&!this.away)this.onReturn(this.view?.positions[this.lastKind||'desktop']);}if(trip)this.lastKind=trip.kind==='neighbor'?'neighbor':'desktop';
+  get transferring(){return !!this.entry;}
+  clearEntry(restore=false){this.entry?.crossing.dispose(restore);this.entry=null;}
+  enter(trip,p){
+   if(this.entry?.trip===trip.id&&this.entry.model===p.model)return;
+   this.clearEntry(true);if(!p.model||!this.view)return;
+   const T=this.THREE,g=this.view.positions.desktop,z=g.mountZ??g.z-.8;
+   const entry={trip:trip.id,model:p.model,ack:false,sending:false,retryAt:0};this.entry=entry;
+   const height=p.model.userData.height||1;
+   const destination=new T.Vector3(g.mountX??g.x,p.model.position.y,z-Math.max(1,height));
+   this.onEnter(p.model.position.distanceTo(destination)/2);
+   entry.crossing=new PortalTransition.Crossing(T,p.model,{from:p.model.position,to:destination,gateZ:z,duration:2,onComplete:()=>{p.model.visible=false;}});
+  }
+  async acknowledgeEntry(entry){
+   if(entry.sending||entry.ack||performance.now()<entry.retryAt)return;
+   entry.sending=true;
+   try{await this.api('depart-complete',{trip:entry.trip});entry.ack=true;await this.poll();}
+   catch(e){entry.retryAt=performance.now()+1500;this.message('正在确认入门完成，连接恢复后继续。');}
+   finally{entry.sending=false;}
+  }
+  updateState(){if(!this.data)return;
+   const p=this.getPet(),trip=this.data.trips.find(t=>t.mine&&t.pet===String(p.id)&&['active','pairing'].includes(t.status)),was=this.trackedPet===p.id&&this.away;
+   this.trackedPet=p.id;const previousTrip=this.trip;this.trip=trip;
+   if(previousTrip&&!trip){this.pairCodes.delete(previousTrip.id);this.q('[data-pair]').replaceChildren();this.message('上次传送已结束或配对码已过期，可以重新确认出发。');}
+   this.away=trip?.status==='active'&&trip.phase!=='preparing';this.recall.hidden=!trip;
+   if(trip?.kind==='desktop'&&trip.phase==='entering'&&root.PortalTransition)this.enter(trip,p);
+   else this.clearEntry(!this.away);
+   if(p.model){
+    p.model.visible=this.entry?!this.entry.crossing.done:!this.away;
+    if(this.away&&!was&&!this.entry)this.view?.burst(p.model.position,trip.kind);
+    if(was&&!this.away){this.intent=null;this.arrived=false;this.onReturn(this.view?.positions[this.lastKind||'desktop']);}
+   }
+   if(trip)this.lastKind=trip.kind==='neighbor'?'neighbor':'desktop';
    this.renderJourney();if(this.view)for(const kind of ['desktop','neighbor'])this.view.souvenir(kind,this.data.rewards.filter(r=>r.pet===String(p.id)&&(r.item==='迷你键帽')===(kind==='desktop')).length);
   }
   async depart(){if(this.trip){this.renderJourney();return;}if(this.pending||!this.intent||!this.view)return;const p=this.getPet();if(this.approaching||this.approachError||!this.holding){this.message('请等宠物走到传送门前，再确认出发。');return;}
@@ -81,7 +111,7 @@
     await this.poll();
    }catch(e){this.message(e.message);}finally{this.pending=false;this.renderJourney();}}
   async recallPet(){if(!this.trip)return;try{await this.api('return',{trip:this.trip.id});await this.poll();this.message('宠物已回到门口，这次行程已保存。');}catch(e){this.message(e.message);}}
-  update(dt){const p=this.getPet();if(p.id!==3&&this.view&&!this.intent&&!this.trip&&!this.root.open&&performance.now()>this.nextCuriosity&&this.canInvite()){this.nextCuriosity=performance.now()+60000;this.intent=Math.random()<.5?'desktop':'neighbor';this.arrived=false;this.expires=performance.now()+75000;void this.requestApproach(this.intent);}if(this.intent&&!this.root.open&&performance.now()>this.expires)this.intent=null;if(this.holding&&!this.arrived){this.arrived=true;this.onArrive();this.bubble(this.intent==='desktop'?'想去主人桌面看看。点暖金色门，决定要不要出发。':'想去小伙伴岛上玩。点蓝色门，决定要不要出发。');}this.view?.update(dt,p.model?.position,this.intent);if(this.away&&p.model)p.model.visible=false;this.syncConfirm();}
+  update(dt){const p=this.getPet();if(p.id!==3&&this.view&&!this.intent&&!this.trip&&!this.root.open&&performance.now()>this.nextCuriosity&&this.canInvite()){this.nextCuriosity=performance.now()+60000;this.intent=Math.random()<.5?'desktop':'neighbor';this.arrived=false;this.expires=performance.now()+75000;void this.requestApproach(this.intent);}if(this.intent&&!this.root.open&&performance.now()>this.expires)this.intent=null;if(this.holding&&!this.arrived){this.arrived=true;this.onArrive();this.bubble(this.intent==='desktop'?'想去主人桌面看看。点暖金色门，决定要不要出发。':'想去小伙伴岛上玩。点蓝色门，决定要不要出发。');}this.view?.update(dt,p.model?.position,this.intent);if(this.entry){this.entry.crossing.update(dt);if(this.entry.crossing.done)void this.acknowledgeEntry(this.entry);}if(this.away&&p.model&&!this.entry)p.model.visible=false;this.syncConfirm();}
   hit(ray){if(!this.view)return null;return ray.intersectObjects(this.view.nodes.map(n=>n.pane),false)[0]?.object.userData.portal||null;}
  }
  root.PetPortals={Controller,Gates};

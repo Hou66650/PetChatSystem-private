@@ -3,8 +3,9 @@
 (function(root){
  'use strict';
  const ASSETS=Object.freeze({'moss-bow':'moss-bow','coral-bow':'coral-bow',daisy:'daisy','blue-beret':'blue-beret'}),cache=new Map();
- async function piece(T,item){
+ async function piece(T,item,loadAccessory){
   if(!Object.prototype.hasOwnProperty.call(ASSETS,item.id))throw Error('未知装扮资源');
+  if(loadAccessory){const group=await loadAccessory(item.id);group.name='wardrobe:'+item.id;return group;}
   if(!cache.has(item.id))cache.set(item.id,new Promise((resolve,reject)=>new T.GLTFLoader().load('/static/models/wardrobe-v1/'+ASSETS[item.id]+'.glb',g=>resolve(g.scene),undefined,reject)).catch(error=>{cache.delete(item.id);throw error;}));
   const source=await cache.get(item.id),group=source.clone(true);
   // Instances own their GPU resources; the four small source assets stay cached.
@@ -27,7 +28,8 @@
  }
  function dispose(group){const geometries=new Set(),materials=new Set();group.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());group.parent?.remove(group);}
  class Controller{
-  constructor(T,rootModel,{custom=false}={}){
+  constructor(T,rootModel,{custom=false,loadAccessory=null}={}){
+   this.loadAccessory=loadAccessory;
    this.T=T;this.root=rootModel;this.mounts={};this.objects=[];this.epoch=0;rootModel.userData.accessories=this.objects;rootModel.userData.wardrobe=this;
    if(custom)return;
    rootModel.updateMatrixWorld(true);
@@ -84,7 +86,7 @@
     for(const item of items||[]){
      const mount=this.mounts[item.slot];if(!mount||used.has(item.slot))continue;
      const local=mount.frames[item.design];if(!local)continue;
-     const design=await piece(this.T,item);
+     const design=await piece(this.T,item,this.loadAccessory);
      if(epoch!==this.epoch){dispose(design);pending.forEach(dispose);return 0;}
      const holder=new this.T.Group();local.decompose(holder.position,holder.quaternion,holder.scale);
      holder.add(design);holder.userData.item=item.id;pending.push(holder);used.add(item.slot);
