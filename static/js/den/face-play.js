@@ -189,8 +189,8 @@
       } else if(b.phase==='chase'&&Math.hypot(m.position.x-b.target.x,m.position.z-b.target.z)<.15){
         b.phase='pickup';b.at=now;this.a.act('noseLick',650);this.note('叼到啦，马上回来。');
       } else if(b.phase==='pickup'){
-        b.mesh.position.lerp(this.a.mouth(),.2);
-        if(now-b.at>750){b.phase='return';this.a.act('idle',0);if(!loc.goTo(b.home,{gait:'trot'})){this.reset();this.note('回程暂时被挡住了，这轮先结束，再换块空地吧。');}}
+        b.mesh.position.lerp(this.a.mouth(),1-Math.exp(-12*Math.max(0,Math.min(.05,dt))));
+        if(now-b.at>750){b.mesh.position.copy(this.a.mouth());b.phase='return';this.a.act('idle',0);if(!loc.goTo(b.home,{gait:'trot'})){this.reset();this.note('回程暂时被挡住了，这轮先结束，再换块空地吧。');}}
       } else if(b.phase==='return'){
         b.mesh.position.copy(this.a.mouth());
         if(Math.hypot(m.position.x-b.home.x,m.position.z-b.home.z)<.15){b.phase='drop';b.at=now;b.from=b.mesh.position.clone();this.a.act('greet',1700);this.note((this.a.id()===3?'猫咪':this.a.id()===2?'雪球':'球球')+'把'+(b.item?.label||'球')+'还给你：再来一次！');}

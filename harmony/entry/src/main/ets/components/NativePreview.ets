@@ -3,7 +3,8 @@ import { http } from '@kit.NetworkKit';
 import { fileIo as fs } from '@kit.CoreFileKit';
 import { preferences } from '@kit.ArkData';
 import { NativeAsset, NATIVE_ASSETS, NATIVE_PETS } from '../model/NativeAssets';
-import { NativePetController, PetAction, readPetSnapshot } from '../model/NativePetController';
+import { NativePetController, readPetSnapshot } from '../model/NativePetController';
+import { PetAction, NATIVE_ACTIONS, NativeAction } from '../model/NativeActions';
 
 @Component
 export struct NativePreview {
@@ -12,6 +13,7 @@ export struct NativePreview {
   petMode: boolean = false;
   @Prop @Watch('activityChanged') active: boolean = true;
   @State private behavior: string = '';
+  @State private actionIndex: number = 0;
   @State private sleeping: boolean = false;
   @State private paused: boolean = false;
   @State private storageWarning: string = '';
@@ -169,7 +171,7 @@ export struct NativePreview {
       this.pivot = pivot; this.camera = camera;
       if (this.petMode) {
         this.pet = new NativePetController(item.id, actor, result.animations, (message: string) => {
-          this.behavior = message; this.sleeping = this.pet?.action === 'sleep';
+          this.behavior = message; this.sleeping = this.pet?.action === 'sleep'; this.updateTimer();
         });
         let raw = '';
         try { raw = this.store?.getSync(this.storagePrefix() + item.id, '') as string || ''; }
@@ -243,6 +245,13 @@ export struct NativePreview {
         }.width('100%')
         if (this.petMode) {
           Text(this.paused ? this.behavior + ' · 已暂停' : this.behavior).fontSize(16)
+          Row({ space: 12 }) {
+            Select(NATIVE_ACTIONS.map((item: NativeAction): SelectOption => ({ value: item.label })))
+              .selected(this.actionIndex).value(NATIVE_ACTIONS[this.actionIndex].label)
+              .onSelect((index: number) => { this.actionIndex = index; })
+            Button('做这个动作').enabled(this.pet?.supports(NATIVE_ACTIONS[this.actionIndex].id) ?? false)
+              .onClick(() => { this.act(NATIVE_ACTIONS[this.actionIndex].id); })
+          }
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center }) {
             Button('待机').margin(4).onClick(() => { this.act('idle'); })
             Button('散步').margin(4).enabled(this.pet?.supports('walk') ?? false).onClick(() => { this.act('walk'); })

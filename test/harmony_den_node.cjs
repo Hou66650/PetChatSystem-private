@@ -2,12 +2,13 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const {stripTypeScriptTypes}=require('node:module');
 const source=fs.readFileSync('harmony/entry/src/main/ets/components/NativeDenNode.ets','utf8');
 const js=stripTypeScriptTypes(source.slice(source.indexOf('export class NativeDenNode')).replace('export class','class'))+'\nglobalThis.DenNode=NativeDenNode;';
-const behavior=stripTypeScriptTypes(fs.readFileSync('harmony/entry/src/main/ets/model/NativePetController.ets','utf8').replace(/^import .*;\r?\n/gm,'').replace(/export /g,''));
+const catalog=fs.readFileSync('harmony/entry/src/main/ets/model/NativeActions.ets','utf8').replace(/export /g,'');
+const behavior=stripTypeScriptTypes(catalog+fs.readFileSync('harmony/entry/src/main/ets/model/NativePetController.ets','utf8').replace(/^import .*;\r?\n/gm,'').replace(/export /g,''));
 function glb(){const b=new ArrayBuffer(20),d=new DataView(b);d.setUint32(0,0x46546c67,true);d.setUint32(4,2,true);d.setUint32(8,20,true);return b;}
 function harness(response, unsupported=false){
  const events=[],models=[];
  const animations=['idle_breathe','motion_walk','touch_head'].map(name=>({name,progress:0,enabled:false,speed:1,
-  stop(){},restart(){},pause(){},seek(p){this.progress=p;},onFinished(fn){this.done=fn;}}));
+  stop(){},start(){},restart(){},pause(){},seek(p){this.progress=p;},onFinished(fn){this.done=fn;}}));
  const content={destroy(){events.push('contentDestroyed');}};
  const scene={animations,environment:{},destroy(){events.push('sceneDestroyed');},
   importScene(){const model={};models.push(model);return model;},getResourceFactory(){return{

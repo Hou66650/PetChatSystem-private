@@ -89,6 +89,7 @@
         .action-btn:active { transform: translateY(0); }
         .action-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
         #btn-shiba-acting[hidden] { display: none; }
+        #shiba-acting-options .action-btn { min-height:48px;touch-action:manipulation; }
         #shiba-acting-dialog::backdrop { background: rgba(45,32,25,.3); }
 
         /* 场景内气泡 */
@@ -405,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-recall">过来</button><button class="action-btn" id="btn-run">跑一跑</button>
             <button class="action-btn" id="btn-sniff">闻闻</button>
             <button class="action-btn" id="btn-rest">休息</button>
-            <button class="action-btn" id="btn-shiba-acting" hidden>球球的小表情</button></div>
+            <button class="action-btn" id="btn-shiba-acting" hidden>陪伴动作</button><button class="action-btn" id="btn-companion-stop">停止动作</button></div>
             <button class="action-btn" id="btn-growth-actions">成长互动</button><button class="action-btn" id="btn-imprint">熟悉的样子</button><span id="growth-mood" class="text-sub" role="status"></span>
         </section>
         <section class="dock-panel" id="dock-more" aria-labelledby="dock-more-title" hidden><header><div><h2 id="dock-more-title">小窝里的小乐趣</h2><p>玩耍、记录，或者一起安静一会。</p></div><button type="button" class="dock-close" aria-label="收起小窝里的小乐趣">✕</button></header>
@@ -432,9 +433,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <p style="font-size:13px">随岛屿切换旋律，通话时自动轻声陪伴。</p>
             <form method="dialog"><button class="action-btn">回到小窝</button></form>
         </dialog>
-        <dialog id="shiba-acting-dialog" aria-labelledby="shiba-acting-title" style="border:1px solid #dfcbbb;border-radius:22px;background:#fffaf3;color:#654b3c;padding:24px;max-width:min(420px,88vw);box-shadow:0 18px 70px #44302244;">
-            <h3 id="shiba-acting-title" style="margin:0 0 6px">球球的小表情</h3>
-            <p style="margin:0 0 18px;font-size:14px">选一个，看看它怎样回应你。</p>
+        <dialog id="shiba-acting-dialog" aria-labelledby="shiba-acting-title" style="border:1px solid #dfcbbb;border-radius:22px;background:#fffaf3;color:#654b3c;padding:24px;width:min(520px,88vw);max-width:88vw;max-height:75dvh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 18px 70px #44302244;">
+            <h3 id="shiba-acting-title" style="margin:0 0 6px">陪伴动作</h3>
+            <p style="margin:0 0 18px;font-size:14px">选择一个动作；坐卧后先起身再移动。原有照料、玩具和面对面互动仍在原入口。</p>
             <div id="shiba-acting-options" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
             <form method="dialog" style="margin-top:18px;text-align:right"><button class="action-btn">回到小窝</button></form>
         </dialog>
@@ -574,6 +575,8 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/scene-navigation.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/pet-locomotion.js') }}"></script>
     <script src="{{ url_for('static', filename='js/den/dialogue-actions.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/den/action-catalog.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/den/action-blend.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/shiba-expression.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/head-look.js') }}?v={{ app_version }}"></script>
     <link rel="stylesheet" href="/static/css/island-bowls.css?v={{ app_version }}">
@@ -1167,6 +1170,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // ---------- GLB 宠物（Quaternius CC0 动物包，本地 static/models，带骨骼动画） ----------
         for(const spec of Object.values(SPECS))if(spec.expressive)
             for(const [key,act] of Object.entries(ShibaExpression.acts))spec.anims[key]=act.clip;
+        for(const spec of Object.values(SPECS))for(const entry of PetActionCatalog.catalog)
+            spec.anims[PetActionCatalog.denKey(entry.id)]=entry.clips[0];
         const standardCatSpec={...SPECS[3],anims:{...SPECS[3].anims}};
         function applyCatAppearance(coat){
             SPECS[3]={...standardCatSpec,anims:{...standardCatSpec.anims},glb:coat.model+'?v={{ app_version }}',appearance:coat.id||'tabby'};
@@ -1187,40 +1192,27 @@ document.addEventListener('DOMContentLoaded', () => {
         controls.addEventListener('change',()=>viewAttention.moved(performance.now()));
         let mixer = null, actions = {}, activeAction = null, facialBlinkAction = null, faceMode = "open";
         let shibaExpression = null, lastShibaIdle = 'idle';
-        let locomotion = null, locomotionEpoch = 0, actionTransition = null;
+        let locomotion = null, locomotionEpoch = 0, actionTransition = null, bodyBlend = new PetActionBlend.Controller(THREE);
         const anim = { state: 'idle', until: 0, lastInteract: performance.now(), birth: 1, lie: 0 };
         function playAction(key, timeScale) {
             const a = actions[key] || actions.idle;
             if (!a) return;
-            a.timeScale = timeScale;
-            if (activeAction === a) return;
             const moving=['walk','trot','run'];
             const phase=moving.includes(key)&&activeAction&&moving.some(k=>actions[k]===activeAction)?activeAction.time/activeAction.getClip().duration:0;
-            a.reset();a.setEffectiveWeight(1);a.time=phase%1*a.getClip().duration;
-            a.setLoop(THREE.LoopRepeat, Infinity);
-            a.clampWhenFinished = false;
-            if (activeAction) a.crossFadeFrom(activeAction, 0.25, false);
-            a.play();
+            bodyBlend.play(a,{speed:timeScale,phase});
             activeAction = a;
         }
         function playOnceThen(key, next) {
             const a=actions[key];
             if (!a) { next(); return; }
-            a.reset();a.timeScale=1;a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true;
-            if (activeAction) a.crossFadeFrom(activeAction,.2,false);
-            a.play();activeAction=a;actionTransition={action:a,next};
+            bodyBlend.play(a,{once:true});activeAction=a;actionTransition={action:a,next};
         }
         // 睡觉：播「倒下」动画一次并定格在躺平末帧（Death 片段即躺倒姿势），之后由 tick 做极慢呼吸起伏
         function playSleep() {
             if (petModel?.userData.pbr) { playOnceThen('lieDown',()=>playAction('sleep', .85)); return; }
             const a = actions.sleep;
             if (!a) { playAction('idle', 0.4); return; }
-            a.reset();
-            a.setLoop(THREE.LoopOnce, 1);
-            a.clampWhenFinished = true;
-            a.timeScale = 0.85;            // 慢慢倒下（约2-3秒）
-            if (activeAction) a.crossFadeFrom(activeAction, 0.3, false);
-            a.play();
+            bodyBlend.play(a,{once:true,speed:.85});
             activeAction = a;
         }
         window.__denAnimDebug = () => ({
@@ -1459,7 +1451,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const assetTicket=assetLoader.begin();
             if (locomotion) locomotion.interrupt(); locomotion = null;
             clearTimeout(chainTimer); chainTimer = null; performingUntil = 0;
-            if (mixer) {mixer.stopAllAction();mixer.uncacheRoot(mixer.getRoot());} mixer = null; actions = {}; activeAction = null; facialBlinkAction=null; shibaExpression=null;
+            if (mixer) {mixer.stopAllAction();mixer.uncacheRoot(mixer.getRoot());} mixer = null; actions = {}; activeAction = null; bodyBlend = new PetActionBlend.Controller(THREE); facialBlinkAction=null; shibaExpression=null;
             document.getElementById('shiba-acting-dialog').close();
             document.getElementById('btn-shiba-acting').hidden=true;
             showPetLoading(true);
@@ -1590,7 +1582,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (!actions.idle && gltf.animations[0]) actions.idle = mixer.clipAction(gltf.animations[0]);
             if(spec.expressive)shibaExpression=new ShibaExpression.Controller(model,{eyeRetraction:spec.eyeRetraction});
-            document.getElementById('btn-shiba-acting').hidden=!shibaExpression;
+            document.getElementById('btn-shiba-acting').hidden=!Object.keys(actions).length;
+            refreshCompanionActions();
 
             let headBone = model.getObjectByName('head'), neckBone = model.getObjectByName('neck');
             model.traverse((o) => {
@@ -2589,7 +2582,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('btn-sniff').addEventListener('click',()=>{if (petModel && !interactionBusy()) setAnim(actions.sniff?'sniff':'petting',2400);});
         document.getElementById('btn-rest').addEventListener('click',()=>{if (petModel && !interactionBusy()) setAnim(actions.sit?'sit':'sleep',12000);});
-        window.__denLocomotionDebug=()=>locomotion ? {...locomotion.debug(),petId:currentPetId,modeledStage,animation:anim.state,clips:Object.keys(actions),bodyRadius:locomotion.navigation.clearance-.08,originalHeight:petModel.userData.origH,modelScale:petModel.children[0].scale.x,pbr:petModel.userData.pbr} : null;
+        window.__denLocomotionDebug=()=>locomotion ? {...locomotion.debug(),blocked:movementBlocked(),transition:!!actionTransition,portalHolding:!!portals?.holding,petId:currentPetId,modeledStage,animation:anim.state,clips:Object.keys(actions),bodyRadius:locomotion.navigation.clearance-.08,originalHeight:petModel.userData.origH,modelScale:petModel.children[0].scale.x,pbr:petModel.userData.pbr} : null;
         window.__denMoveTo=(x,z)=>!movementBlocked() && locomotion ? locomotion.goTo({x,z}) : false;
 
 
@@ -2622,18 +2615,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const dialogueRunner=new DialogueActions.Runner({
             // Portal buttons share command ownership, without adding travel to AI/chat actions.
-            actions:new Set([...DialogueActions.allowed,'portal_desktop','portal_neighbor']),
+            actions:new Set([...DialogueActions.allowed,...PetActionCatalog.catalog.map(a=>'companion:'+a.id),'companion:run','companion:trot','portal_desktop','portal_neighbor']),
             status(message){document.getElementById('dialogue-status').textContent=message;},
-            label:a=>a==='portal_desktop'?'正在走向现实传送门':a==='portal_neighbor'?'正在走向友邻传送门':actionLabels[a],
+            label:a=>a.startsWith('companion:')?(PetActionCatalog.byId.get(a.slice(10))?.label||'跑动中'):a==='portal_desktop'?'正在走向现实传送门':a==='portal_neighbor'?'正在走向友邻传送门':actionLabels[a],
             isHeld:()=>dialogueHeld,
             begin(){finishSupplyCare(false);toyWorkshop?.cancel();facePlay?.reset();catAgent?.interrupt();if(!dialogueHeld)dialogueRestoreRoam=locomotion?locomotion.enabled:true;dialogueHeld=true;if(locomotion){locomotion.interrupt();locomotion.enabled=false;}clearTimeout(chainTimer);performingUntil=0;},
             cancel(){if(locomotion)locomotion.interrupt();endDialogueHold();if(petModel)setAnim('idle',0);},
-            finish(last){if(!['quiet','sit','lie_down','stop'].includes(last))endDialogueHold();updateRoamingButton();},
+            finish(last){if(!['quiet','sit','lie_down','stop','companion:sit','companion:sleep','companion:idle'].includes(last))endDialogueHold();updateRoamingButton();},
             async execute(action,current){
                 await actionWait(()=>petModel&&!spawnBusy&&anim.birth>=1&&!grabbed&&!dropping&&!interactionBusy()&&!breathActive&&gameOverlay.hidden,current);
                 if(!locomotion)throw Error('宠物还没有准备好');
                 await standForDialogue(current);
-                if(action==='portal_desktop'||action==='portal_neighbor'){
+                if(action.startsWith('companion:')){
+                    const id=action.slice(10),key=PetActionCatalog.denKey(id);
+                    if(!actions[key])throw Error('这只宠物尚未适配这个动作');
+                    if(['walk','run','trot'].includes(id)){
+                        let route=null;
+                        for(let attempt=0;attempt<8;attempt++){const candidate=locomotion.navigation.randomDestination(petModel.position);const end=candidate?.[candidate.length-1];if(end&&Math.hypot(end.x-petModel.position.x,end.z-petModel.position.z)>.4){route=candidate;break;}}
+                        if(!route?.length||!locomotion.goTo(route[route.length-1],{gait:id}))throw Error('暂时没有安全路线');
+                        await actionWait(()=>!locomotion.path.length,current,60000);setAnim('idle',0);
+                    }else if(['idle','sit','sleep'].includes(id)){
+                        setAnim(key,0);await actionWait(()=>!actionTransition,current,20000);
+                    }else{
+                        setAnim(key,0);playOnceThen(key,()=>{anim.state='idle';anim.until=0;playAction('idle',1);});
+                        await actionWait(()=>!actionTransition,current,20000);
+                    }
+                }else if(action==='portal_desktop'||action==='portal_neighbor'){
                     const kind=action.slice(7),point=portals.view?.positions[kind];
                     if(portals.intent!==kind||portals.away||!point)throw Error('传送目标已变化，请重新选择');
                     if(!portals.holding){
@@ -2666,24 +2673,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
-        document.getElementById('btn-action-stop').onclick=()=>{dialogueRunner.cancel('已停止');endDialogueHold();if(petModel)setAnim('idle',0);};
+        document.getElementById('btn-companion-stop').onclick=document.getElementById('btn-action-stop').onclick=()=>{dialogueRunner.cancel('已停止');endDialogueHold();if(petModel)setAnim('idle',0);};
         const actingDialog=document.getElementById('shiba-acting-dialog');
-        for(const [key,act] of Object.entries(ShibaExpression.acts)){
-            const button=document.createElement('button');button.className='action-btn';button.type='button';button.textContent=act.label;
-            button.onclick=()=>{
-                actingDialog.close();if(!shibaExpression||spawnBusy||grabbed||dropping||interactionBusy())return;
-                if(voiceUI?.isActive()||chatBusy){toast('等这轮对话结束，再来玩小表情吧','info');return;}
-                dialogueRunner.cancel('');endDialogueHold();
-                const duration=(actions[key]?.getClip().duration||2.4)*1000;
-                if(['sit','sleep','standUp'].includes(anim.state)){
-                    const serial=dialogueRunner.serial;
-                    standForDialogue(()=>serial===dialogueRunner.serial&&!!shibaExpression).then(()=>setAnim(key,duration)).catch(()=>{});
-                }else setAnim(key,duration);
-                showBubble(act.label,1800,true);
-            };
-            document.getElementById('shiba-acting-options').appendChild(button);
+        function refreshCompanionActions(){
+            const host=document.getElementById('shiba-acting-options');host.replaceChildren();
+            const entries=[...PetActionCatalog.catalog,{id:'run',label:'跑一跑'},{id:'trot',label:'小跑'},{id:'come',label:'到我身边'},{id:'wander',label:'自由活动'},{id:'stand',label:'起身 / 停止'}];
+            for(const entry of entries){
+                const button=document.createElement('button');button.type='button';button.className='action-btn';button.textContent=entry.label;button.dataset.companionAction=entry.id;
+                const key=PetActionCatalog.denKey(entry.id),special=['come','wander','stand'].includes(entry.id);
+                const supported=special?!!actions.idle:!!actions[key]&&(!entry.enter||(!!actions[entry.id==='sit'?'sitDown':'lieDown']&&!!actions.standUp));
+                button.disabled=!supported;button.title=supported?'':'当前模型暂不支持';
+                button.onclick=()=>{
+                    if(!supported||spawnBusy||grabbed||dropping||interactionBusy())return;
+                    if(voiceUI?.isActive()||chatBusy){toast('等这轮对话结束，再来玩动作吧','info');return;}
+                    actingDialog.close();void dialogueRunner.run([special?entry.id:'companion:'+entry.id]);
+                };
+                host.appendChild(button);
+            }
         }
-        document.getElementById('btn-shiba-acting').onclick=()=>{if(shibaExpression&&!spawnBusy)actingDialog.showModal();};
+        document.getElementById('btn-shiba-acting').onclick=()=>{if(petModel&&!spawnBusy){refreshCompanionActions();actingDialog.showModal();}};
         window.__denExpression=()=>shibaExpression?{...shibaExpression.debug(),state:anim.state,clips:Object.keys(ShibaExpression.acts).filter(k=>actions[k])}:null;
         // Explicit user interactions override an old dialogue plan.
         ['btn-pet','btn-feed-bone','btn-feed-fish','btn-feed-cookie','btn-roam','btn-recall','btn-run','btn-rest','btn-sniff','btn-games','btn-breath','btn-vision'].forEach(id=>{
@@ -3142,7 +3150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const spec = SPECS[currentPetId];
             const g = window.PetProfile ? PetProfile.label(PetProfile.get(currentPetId).gender) : '';
             document.getElementById('chat-title').textContent = `和${spec.displayName||spec.name}聊天` + (g ? `（${g}）` : '');
-            const actingTitle=`${spec.displayName||spec.name}的小表情`;
+            const actingTitle=`${spec.displayName||spec.name}的陪伴动作`;
             document.getElementById('btn-shiba-acting').textContent=actingTitle;
             document.getElementById('shiba-acting-title').textContent=actingTitle;
         }
@@ -3808,6 +3816,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         facialBlinkAction.time=facialBlinkAction.closedTime;facialBlinkAction.paused=true;facialBlinkAction.play();faceMode='sleep';
                     } else if (anim.state!=='sleep' && faceMode==='sleep') {facialBlinkAction.stop();faceMode='open';}
                 }
+                bodyBlend.update(actionTransition ? poseDt : dt);
                 if (mixer) mixer.update(actionTransition ? poseDt : dt);
                 if(shibaExpression)shibaExpression.update(poseDt,anim.state,activeAction?activeAction.time/Math.max(.01,activeAction.getClip().duration):0);
                 if (actionTransition && actionTransition.action.time>=actionTransition.action.getClip().duration-.0001) {

@@ -29,6 +29,6 @@ assert.ok(Math.abs(eye.position.z-.168)<.00001,'Walking recovers open eyes');ass
 let cancelled=false,resolveStep;const calls=[];
 const runner=new D.Runner({status(){},label:a=>a,isHeld:()=>false,begin(){},cancel(){cancelled=true},finish(){},execute(a){calls.push(a);return new Promise(r=>resolveStep=r)}});
 (async()=>{const task=runner.run(['curious','play_bow']);runner.cancel();resolveStep();await task;assert.ok(cancelled);assert.deepEqual(calls,['curious']);
-const page=await (await fetch('http://127.0.0.1:5002/den')).text();
-for(const match of page.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
+const page=await (await fetch((process.env.PET_TEST_BASE||'http://127.0.0.1:5091')+'/den')).text();
+for(const match of page.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g))if(!/type=["'](?:application\/json|importmap)["']/.test(match[1]))new vm.Script(match[2]);
 console.log('PASS: 35 clips, 45 bones, facial morphs, calm behavior, no eye drift, cancellation, rendered page syntax');})();

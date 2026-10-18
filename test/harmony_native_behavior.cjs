@@ -1,15 +1,16 @@
 const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
 const { stripTypeScriptTypes } = require('node:module');
+const catalog=fs.readFileSync('harmony/entry/src/main/ets/model/NativeActions.ets','utf8').replace(/export /g,'');
 let source = fs.readFileSync('harmony/entry/src/main/ets/model/NativePetController.ets', 'utf8');
 source = source.replace(/^import .*;\r?\n/gm, '').replace(/export /g, '');
 const context = {};
-vm.runInNewContext(stripTypeScriptTypes(source, {mode:'transform'}) +
+vm.runInNewContext(stripTypeScriptTypes(catalog+source, {mode:'transform'}) +
   '\nglobalThis.Controller = NativePetController; globalThis.readSnapshot = readPetSnapshot;', context);
 function clip(name) {
   return {name, enabled:false, starts:0, stops:0, pauses:0, callback:null,
-    progress:0,stop(){this.stops++;},pause(){this.pauses++;},restart(){this.starts++;},seek(v){this.progress=v;},onFinished(fn){this.callback=fn;}};
+    progress:0,running:false,resumes:0,start(){this.resumes++;this.running=true;},stop(){this.stops++;},pause(){this.pauses++;},restart(){this.starts++;this.running=true;},seek(v){this.progress=v;},onFinished(fn){this.callback=fn;}};
 }
-function make(names = ['idle_breathe','motion_walk','run','touch_head','sleep_loop','stand_up','happy']) {
+function make(names = ['idle_breathe','motion_walk','run','touch_head','sleep_loop','lie_down','sit_idle','sit_down','stand_up','happy']) {
   const clips = names.map(clip), root = {}, messages = [];
   const pet = new context.Controller('cat', root, clips, m=>messages.push(m));
   pet.restore(null);
@@ -19,7 +20,7 @@ const a = make();
 assert.equal(a.pet.action,'idle');
 a.pet.perform('petting'); const stale = a.get('touch_head').callback;
 a.pet.perform('sleep'); stale(); assert.equal(a.pet.action,'sleep','stale one-shot completion cannot wake a sleeping pet');
-a.get('sleep_loop').callback(); assert.equal(a.get('sleep_loop').starts,2);
+a.get('lie_down').callback();a.get('sleep_loop').callback(); assert.equal(a.get('sleep_loop').starts,2);
 a.pet.perform('wake'); a.get('stand_up').callback(); assert.equal(a.pet.action,'idle');
 a.pet.perform('petting'); a.get('touch_head').callback(); assert.equal(a.pet.action,'idle');
 
@@ -33,7 +34,8 @@ const pausedPosition = JSON.stringify(a.root.position);
 a.pet.suspend(); a.pet.step(1); assert.equal(JSON.stringify(a.root.position),pausedPosition);
 const starts = a.get('motion_walk').starts; a.get('motion_walk').callback();
 assert.equal(a.get('motion_walk').starts,starts,'background animation cannot restart');
-a.pet.resume(); assert.equal(a.get('motion_walk').starts,starts+1);
+a.pet.resume(); assert.equal(a.get('motion_walk').starts,starts+1,'a loop completed while paused starts its next cycle only on resume');
+a.get('motion_walk').progress=.42;a.pet.suspend();a.pet.resume();assert.equal(a.get('motion_walk').progress,.42);assert.equal(a.get('motion_walk').resumes,1);
 a.pet.come(); for(let i=0;i<300;i++) a.pet.step(1/30);
 assert.equal(a.pet.action,'happy'); assert.equal(a.pet.moving,false);
 assert.equal(a.root.position.x,0); assert.equal(a.root.position.z,.55);
@@ -69,11 +71,18 @@ follower.get('motion_walk').callback();assert.equal(follower.get('motion_walk').
 assert.equal(follower.pet.moving,false,'web following cannot start autonomous standalone roaming');
 assert.equal(follower.pet.follow('unknown',0,1,true),false);
 
+
+const queued=make();queued.pet.perform('sleep');queued.pet.perform('walk');assert.equal(queued.pet.moving,false);
+queued.get('lie_down').callback();assert.equal(queued.pet.action,'wake');assert.equal(queued.pet.moving,false);
+queued.get('stand_up').callback();assert.equal(queued.pet.action,'walk');assert.equal(queued.pet.moving,true);
+queued.pet.perform('petting');queued.pet.suspend();queued.get('touch_head').callback();assert.equal(queued.pet.action,'petting');queued.pet.resume();assert.equal(queued.pet.action,'idle');
+queued.pet.perform('sit');queued.get('sit_down').callback();assert.equal(queued.pet.action,'sit');queued.pet.come();assert(!queued.pet.moving);queued.get('stand_up').callback();assert(queued.pet.moving);
+
 // Check semantic aliases against actual shipped GLB animation names, not mock names only.
 for(const path of ['petchat-cat-v3/cat.glb','petchat-shiba-v4/qiuqiu.glb','petchat-husky-v3/xueqiu.glb','petchat-shepherd-v2/shepherd.glb']) {
   const bytes=fs.readFileSync('static/models/'+path);
   const gltf=JSON.parse(bytes.subarray(20,20+bytes.readUInt32LE(12)).toString());
   const actual=make(gltf.animations.map(a=>a.name));
-  for(const action of ['idle','walk','run','petting','sleep','wake','happy']) assert(actual.pet.supports(action),path+': '+action);
+  for(const action of [...require('../static/js/den/action-catalog').catalog.map(a=>a.id),'run','trot','wake']) assert(actual.pet.supports(action),path+': '+action);
 }
 console.log('PASS native behavior: interruptions, one-shots, movement bounds, call/return, suspension, persistence and four original GLBs');

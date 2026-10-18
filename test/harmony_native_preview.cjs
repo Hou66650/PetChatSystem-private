@@ -8,15 +8,15 @@ source = source.replace(/@Prop @Watch\('[^']*'\) /g, '');
 const js = stripTypeScriptTypes(source) + '\nglobalThis.Preview = NativePreview;';
 const behaviorSource = fs.readFileSync('harmony/entry/src/main/ets/model/NativePetController.ets', 'utf8')
   .replace(/^import .*;\r?\n/gm, '').replace(/export /g, '');
-const behaviorJs = stripTypeScriptTypes(behaviorSource);
+const behaviorJs = stripTypeScriptTypes(fs.readFileSync('harmony/entry/src/main/ets/model/NativeActions.ets','utf8').replace(/export /g,'')+behaviorSource);
 const asset = { id: 'cat', path: '/static/models/petchat-cat-v3/cat.glb', cx: 1, cy: 2, cz: 3, scale: 2, triangles: 154155 };
 function glb() { const b = new ArrayBuffer(20), d = new DataView(b);d.setUint32(0,0x46546c67,true);d.setUint32(4,2,true);d.setUint32(8,20,true);return b; }
 function harness(response) {
   const events = [], nodes = [], timers = new Map(), saved = new Map(); let timerId = 0;
   const request = { async request(url, options) { events.push(['request',url,options.maxLimit]);return await response(); },destroy(){ events.push(['httpDestroy']); } };
   const content = { destroy(){ events.push(['contentDestroy']); } };
-  const animations = ['idle_breathe','motion_walk','run','touch_head','sleep_loop','stand_up','happy'].map(name=>({
-    name, enabled:false, stop(){},pause(){},restart(){},onFinished(fn){this.finish=fn;}
+  const animations = ['idle_breathe','motion_walk','run','touch_head','sleep_loop','lie_down','stand_up','happy'].map(name=>({
+    name, enabled:false, stop(){},pause(){},start(){},restart(){},onFinished(fn){this.finish=fn;}
   }));
   const scene = { animations, environment: {}, destroy(){events.push(['sceneDestroy']);},
     importScene(){ const n={};nodes.push(n);return n; }, getResourceFactory(){return {
