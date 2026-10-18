@@ -65,5 +65,4 @@ let picked=null,point=null;menu.takeKind=id=>{picked=id;menu.dialog.open=false;m
 assert(menu.grab(false,null,'lost'));assert.equal(picked,null);
 assert(menu.grab(true,{pinchX:280,pinchY:120}));assert.equal(picked,'rattle');assert.deepEqual(point,{x:280,y:120});
 menu.hand({present:true,pinching:true,pinchX:300,pinchY:130});assert.deepEqual(point,{x:300,y:130});
-menu.quick={hidden:false,getBoundingClientRect:()=>({left:100,right:250,top:200,bottom:270})};assert(menu.quickHit(85,150));assert(!menu.quickHit(500,500));
 console.log('PASS large toy cards, canvas offsets, gap tolerance, disabled choices, modal grab ownership and carried handoff');

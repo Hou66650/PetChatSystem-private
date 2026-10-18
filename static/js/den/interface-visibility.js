@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ['navigation', '顶部网站导航', 'body > .navbar'],
     ['pets', '宠物切换', '#den-pets'],
     ['info', '宠物信息与陪伴菜单', '#intimacy-panel, .cat-companion-standalone'],
-    ['toys', '选玩具快捷入口', '#toy-quick-open'],
     ['fullscreen', '全屏按钮', '#scene-fullscreen'],
     ['dock', '底部操作栏', '.glass-dock'],
   ];

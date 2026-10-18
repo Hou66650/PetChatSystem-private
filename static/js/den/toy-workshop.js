@@ -12,7 +12,6 @@
    this.grip=new ToyGrip.Controller({THREE:api.THREE,element:document.getElementById('toy-grip'),camera:api.camera,canvas:api.canvas});
    for(const item of catalog){const b=document.createElement('button');b.type='button';b.dataset.toy=item.id;b.innerHTML='<span aria-hidden="true">'+item.icon+'</span><strong>'+item.name+'</strong><small>'+item.hint+'</small>';b.onclick=()=>this.takeKind(item.id);this.grid.append(b);}
    document.getElementById('btn-toys').onclick=()=>this.open();
-   this.quick=document.getElementById('toy-quick-open');this.quick.onclick=()=>this.open();
    this.menuCursor=document.getElementById('toy-menu-cursor');
    this.dialog.addEventListener('close',()=>this.menuHover(null));
    this.fullscreenButton=document.getElementById('scene-fullscreen');
@@ -94,9 +93,7 @@
    if(this.menuCursor){this.menuCursor.style.left=x+'px';this.menuCursor.style.top=y+'px';}
    return best;
   }
-  quickHit(x,y){if(!this.quick||this.quick.hidden)return false;const c=this.a.canvas.getBoundingClientRect(),r=this.quick.getBoundingClientRect();return x+c.left>=r.left-18&&x+c.left<=r.right+18&&y+c.top>=r.top-18&&y+c.top<=r.bottom+18;}
   handPick(x,y){
-   if(this.quickHit(x,y))return 'cabinet';
    const direct=this.pick(x,y);if(direct)return direct;
    // Modest screen-space tolerance for camera jitter; mouse picking remains exact.
    for(const [dx,dy] of [[-12,0],[12,0],[0,-12],[0,12],[-8,-8],[8,-8],[-8,8],[8,8]]){
