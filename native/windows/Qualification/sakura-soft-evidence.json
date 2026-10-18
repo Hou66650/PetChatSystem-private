@@ -1,0 +1,44 @@
+{
+  "version": "1.100.2",
+  "date": "2026-10-18",
+  "scope": "P1_SakuraV2 only; other islands, Home preview and Web image backgrounds unchanged",
+  "settings": {
+    "shadow_gamma": 1.25,
+    "midtone_gamma": 1.08,
+    "saturation": 0.86,
+    "sky_intensity": 2.4,
+    "previous_sky_intensity": 1.8
+  },
+  "package_log": "Saved/Qualification/sakura-soft-package.log",
+  "build_cook_package_passed": true,
+  "runtime_directory": "Saved\\Qualification\\IslandHome-20261018-141823",
+  "flow": {
+    "passed": true,
+    "islands_entered": 5,
+    "returned_home": 5,
+    "manual_mouse_checked": false
+  },
+  "launch": {
+    "executable_sha256": "501AD09B422DD20725A350CEE7568BAD1DCBDA3999CCA2F07F0238AAC19FF100",
+    "exit_code": 0,
+    "manual_mouse_checked": false,
+    "performance_qualified": false,
+    "production_mutations": false
+  },
+  "before": "Saved/Qualification/IslandHome-20261018-134214/island-0.png",
+  "after": "Qualification/sakura-soft-runtime.png",
+  "after_sha256": "97323dd98c0e44d7bf1bb7e18c458dc62bfe89820d2b88864a76ce5ddce1572b",
+  "visual_review": "Same camera: foliage/wood/rock shadows lifted, pink saturation softened, sunlit blossoms retain detail; background unchanged. SDR 1600x900.",
+  "daily_package_matches_tested_hashes": {
+    "PaitIsland.exe": "abaea733166adf14381e37ecf8f0060a284752d2fb11fb963ec0aeeedd1dc5ad",
+    "PaitIsland/Binaries/Win64/PaitIsland-Win64-Shipping.exe": "501ad09b422dd20725a350cee7568bad1dcbda3999cca2f07f0238aac19ff100",
+    "PaitIsland/Content/Paks/global.ucas": "30f41c5949ecab6ffc2ca7d57431120eeb58f284111420fdaa521b285215606f",
+    "PaitIsland/Content/Paks/global.utoc": "9bf084e87725e26d49e9bf521ad3607e79deee141005c49084106aeffd61b409",
+    "PaitIsland/Content/Paks/PaitIsland-Windows.pak": "9539d3626f3ab5b7ed149631d71ab796794cb476504039d4664eb4c60d612528",
+    "PaitIsland/Content/Paks/PaitIsland-Windows.ucas": "55e91319dda70eb4859527ad440593a703169331218354e4d15207518c2b162d",
+    "PaitIsland/Content/Paks/PaitIsland-Windows.utoc": "f15c1e6ce98e9f8d585551cd6f7a96bcfcabce078726b9e45f902f489eddd035"
+  },
+  "performance_qualified": false,
+  "manual_mouse_checked": false,
+  "hdr_checked": false
+}

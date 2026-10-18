@@ -1,4 +1,4 @@
 #pragma once
 class UWorld;
-// Web theme image behind native geometry; authored lighting/exposure stay intact.
+// Web theme image behind native geometry, with a softer Sakura-only daylight grade.
 void ApplyPaitDaylight(UWorld* World);
