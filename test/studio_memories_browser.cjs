@@ -10,6 +10,14 @@ try{
  await page.locator('#studio-create input[name=name]').fill('回忆整合测试');await page.locator('#studio-create button').click();assert(await page.locator('#memory-files').isDisabled());releaseCreate();
  await page.locator('#studio-name').getByText('回忆整合测试').waitFor();assert(await page.locator('#studio-memories').isVisible());assert(!(await page.locator('#studio-appearance').isVisible()));
  await page.waitForFunction(()=>!document.getElementById('memory-files').disabled);
+ const memoryRoute='**/api/pet-studio/*/memories';
+ for(const fault of [{status:405,contentType:'text/html',body:'<!doctype html><h1>Method Not Allowed</h1>',message:'更新并重启服务'},{status:500,contentType:'application/json',body:'{broken',message:'HTTP 500'}]){
+  await page.route(memoryRoute,route=>route.fulfill({status:fault.status,contentType:fault.contentType,body:fault.body}));await page.locator('#memory-refresh').click();
+  await page.waitForFunction(message=>document.getElementById('memory-status').textContent.includes(message),fault.message);
+  assert(!(await page.locator('#memory-status').innerText()).includes('Unexpected token'));
+  await page.unroute(memoryRoute);
+ }
+ await page.locator('#memory-refresh').click();await page.getByText('还没有回忆素材。可以一次选择多个文件。',{exact:true}).waitFor();
  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64');
  await page.locator('#memory-files').setInputFiles([{name:'example.png',mimeType:'image/png',buffer:png},{name:'duplicate.png',mimeType:'image/png',buffer:png},{name:'invalid.mp4',mimeType:'video/mp4',buffer:Buffer.from('invalid media')}]);
  await page.waitForFunction(()=>document.getElementById('memory-status').textContent.includes('2 / 3'));

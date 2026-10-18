@@ -11,7 +11,11 @@
  $('studio-tab-model').onclick=()=>tabs('model');$('studio-tab-memories').onclick=()=>tabs('memories');tabs(section);
  const legacyPet=Number(params.get('petId')); // Only used to open pre-existing island records.
  function lock(on){working=on;document.querySelectorAll('#studio-memories button,#studio-memories input,#studio-memories select,#studio-memories textarea,.studio-choice,#studio-create button,#studio-delete').forEach(el=>el.disabled=on||studioBusy);}
- async function request(url,body){const form=body instanceof FormData;const r=await fetch(url,{paitQuiet:true,method:body===undefined?'GET':'POST',cache:'no-store',headers:body===undefined?{}:form?{'X-Profile-Scope':scope}:{'X-Profile-Scope':scope,'Content-Type':'application/json'},body:body===undefined?undefined:form?body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw Error(d.error||'操作未完成');if(d.scope!==scope)throw Error('账号已变化，请刷新页面');return d;}
+ async function request(url,body){const form=body instanceof FormData;const r=await fetch(url,{paitQuiet:true,method:body===undefined?'GET':'POST',cache:'no-store',headers:body===undefined?{}:form?{'X-Profile-Scope':scope}:{'X-Profile-Scope':scope,'Content-Type':'application/json'},body:body===undefined?undefined:form?body:JSON.stringify(body)});const responseError=()=>Error(r.redirected||r.status===401?'登录状态已失效，请重新登录后重试':r.status===404||r.status===405?'当前服务尚未提供记忆素材接口，请更新并重启服务后刷新页面':r.status===413?'文件过大，请按页面标注的大小限制重新选择':'记忆服务暂时不可用，请稍后重试（HTTP '+r.status+'）');
+  if(!r.headers.get('content-type')?.toLowerCase().includes('application/json'))throw responseError();
+  let d;try{d=await r.json();}catch{throw responseError();}
+  if(!d||typeof d!=='object'||Array.isArray(d))throw responseError();
+  if(!r.ok)throw Error(typeof d.error==='string'?d.error:'操作未完成');if(d.scope!==scope)throw Error('账号已变化，请刷新页面');return d;}
  function changed(){if(window.BroadcastChannel){const ch=new BroadcastChannel('companion-memory:'+scope);ch.postMessage('changed');ch.close();}if($('studio-existing').open)loadExisting();}
  async function load(){if(!task)return;const id=task.id,token=epoch;try{const d=await request(endpoint(id)+'/memories');if(token===epoch){state=d;render();}}catch(e){if(token===epoch)say(e.message);}}
  function mediaURL(media,view){return endpoint(task.id)+'/memories/'+media.id+'/'+view;}
