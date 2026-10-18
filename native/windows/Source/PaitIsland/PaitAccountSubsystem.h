@@ -8,6 +8,8 @@ class SWidget;
 class IHttpRequest;
 class UAudioComponent;
 struct FPaitMicBuffer;
+struct FPaitRealtime;
+class USoundWaveProcedural;
 using FPaitApiReply = TFunction<void(bool, TSharedPtr<FJsonObject>, FString)>;
 
 /** Account transport lives across map travel. Credentials are memory-only. */
@@ -37,6 +39,14 @@ public:
     void UploadRecording(const FString& Name, const FString& Transcript, bool Consent, FPaitApiReply Reply);
     void PreviewVoice(const FString& Profile, FPaitApiReply Reply);
     void Speak(const FString& Text, const FString& Profile, FPaitApiReply Reply);
+    void StartLive();
+    void StopLive();
+    void InterruptLive();
+    bool TestLiveProtocol(FString& Error);
+    bool IsLiveRoundComplete() const;
+    TSharedRef<FJsonObject> LiveDiagnostics() const;
+    bool IsLive() const { return Realtime.IsValid(); }
+    FString LiveStatus, LiveUserText, LivePetText;
     bool IsLoggedIn() const { return !Token.IsEmpty(); }
     bool IsPanelVisible() const { return Panel.IsValid(); }
     uint64 GetSessionRevision() const { return SessionEpoch; }
@@ -46,8 +56,13 @@ public:
     TSharedPtr<FJsonObject> GardenState;
     FString SelectedBed;
     bool GardenLoading = false;
+    bool CareBusy = false;
     FString GardenStatus;
 private:
+    friend struct FPaitRealtime;
+    TSharedPtr<FPaitRealtime> Realtime;
+    UPROPERTY(Transient) TObjectPtr<USoundWaveProcedural> LiveWave;
+    UPROPERTY(Transient) TObjectPtr<UAudioComponent> LiveAudio;
     void ClearSession();
     FString Token;
     uint64 SessionEpoch = 0;
@@ -62,6 +77,7 @@ private:
     bool PlayWave(const TArray<uint8>& Bytes, FString& Error);
     void AudioRequest(const FString& Path, TArray<uint8> Bytes, const FString& ContentType, bool Playback, FPaitApiReply Reply);
     void RunFixtureStep(int32 Step);
+    double FixtureFoodBefore=0;
     void FinishFixture(bool Success, const FString& Error);
     void LoadOutbox();
     FString OutboxPath() const;

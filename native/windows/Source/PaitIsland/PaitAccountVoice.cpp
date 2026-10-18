@@ -28,6 +28,7 @@ void UPaitAccountSubsystem::SelectPet(int32 Id)
 {if(Id>=1 && Id<=4 && Id!=PetId){CancelVoice();PetId=Id;}}
 void UPaitAccountSubsystem::CancelVoice()
 {
+    StopLive();
     ++VoiceEpoch;
     if(Mic && Mic->Capture.IsStreamOpen())Mic->Capture.AbortStream();
     Mic.Reset();Recording.Empty();RecordingRequestId.Empty();

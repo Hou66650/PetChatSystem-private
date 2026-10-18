@@ -1,5 +1,6 @@
 #include "PaitQualificationGameMode.h"
 #include "PaitPreviewPawn.h"
+#include "PaitExperience.h"
 #include "PaitQualificationRun.h"
 #include "PaitMeadowPet.h"
 #include "PaitGarden.h"
@@ -36,8 +37,14 @@ void APaitQualificationGameMode::BeginPlay()
     if(!StartupDestinationConsumed)
     {
         StartupDestinationConsumed=true; FString Destination;
+        const bool Explicit=FParse::Value(FCommandLine::Get(),TEXT("PaitIsland="),Destination);
+        bool Test=false;for(const TCHAR* Flag:{TEXT("PaitQualification"),TEXT("PaitSmoke"),TEXT("PaitAccountFixture"),TEXT("PaitMeadowTest"),TEXT("PaitAgentTest"),TEXT("PaitCareTest")})Test|=FParse::Param(FCommandLine::Get(),Flag);
+        if(Test&&!Explicit&&GetWorld()->GetMapName().Contains(TEXT("IslandHome")))
+        {UGameplayStatics::OpenLevel(this,FName(FParse::Param(FCommandLine::Get(),TEXT("PaitQualification"))?TEXT("/Game/Qualification/P0_Lighting"):TEXT("/Game/Preview/P1_MeadowV2")));return;}
+        if((Destination==TEXT("Home")||(!Explicit&&!Test))&&!GetWorld()->GetMapName().Contains(TEXT("IslandHome")))
+        {UGameplayStatics::OpenLevel(this,FName(TEXT("/Game/Preview/P2_IslandHome")));return;}
         if(FParse::Value(FCommandLine::Get(),TEXT("PaitIsland="),Destination) &&
-           (Destination==TEXT("Sakura") || Destination==TEXT("Snow") || Destination==TEXT("Camp")) &&
+           (Destination==TEXT("Meadow") || Destination==TEXT("Sakura") || Destination==TEXT("Snow") || Destination==TEXT("Camp")) &&
            !GetWorld()->GetMapName().Contains(Destination))
         { UGameplayStatics::OpenLevel(this,FName(*(TEXT("/Game/Preview/P1_")+Destination+TEXT("V2")))); return; }
     }
@@ -56,6 +63,8 @@ void APaitQualificationGameMode::BeginPlay()
         GetWorld()->SpawnActor<APaitQualificationRun>();
         return;
     }
+    if(GetWorld()->GetMapName().Contains(TEXT("IslandHome"))||!FParse::Param(FCommandLine::Get(),TEXT("PaitQualification")))GetWorld()->SpawnActor<APaitExperience>();
+    if(auto* PC=GetWorld()->GetFirstPlayerController())if(auto* H=PC->GetHUD())H->bShowHUD=FParse::Param(FCommandLine::Get(),TEXT("PaitDebug"));
     bSmokeRun = FParse::Param(FCommandLine::Get(), TEXT("PaitSmoke"));
     if (GetWorld()->GetMapName().StartsWith(TEXT("P1_")))
         GetWorld()->SpawnActor<APaitMeadowPet>();

@@ -14,6 +14,8 @@
 #include "Dom/JsonObject.h"
 #include "Serialization/JsonSerializer.h"
 #include "UnrealClient.h"
+#include "PaitAccountSubsystem.h"
+#include "Engine/GameInstance.h"
 
 void APaitMeadowPet::InitializeCare()
 {
@@ -38,6 +40,11 @@ void APaitMeadowPet::InitializeCare()
 }
 bool APaitMeadowPet::Care(const FString& Kind,bool FromAgent)
 {
+    if(CareAccount.IsValid()&&CareAccount->IsLoggedIn()&&(Kind==TEXT("food")||Kind==TEXT("water")))
+    {
+        if(!AccountBowlsReady||CareAccount->HasPendingMutation()||CareAccount->CareBusy){Status=TEXT("Waiting for account bowls / pending inventory operation");return false;}
+        if((Kind==TEXT("food")?Food:Water)<=0){Status=TEXT("Account bowl is empty. Open I > Supplies to refill");return false;}
+    }
     if (!bReady || !Stations.Contains(Kind)) { Status=TEXT("That station is not available yet"); return false; }
     const FString Required=Kind==TEXT("home") ? TEXT("sit_idle") : Kind==TEXT("toy") ? TEXT("play_bow") : TEXT("eat");
     if(!AgentClips.FindRef(Required)) { Status=TEXT("The required pet animation is unavailable"); return false; }
@@ -66,12 +73,53 @@ bool APaitMeadowPet::CareAt(const FVector& Hit)
 }
 void APaitMeadowPet::Refill()
 {
+    if(CareAccount.IsValid()&&CareAccount->IsLoggedIn()){if(!CareAccount->IsPanelVisible())CareAccount->TogglePanel();Status=TEXT("Open Supplies to refill your account bowls");return;}
     Food=100; Water=100; SaveMemory(); Status=TEXT("Both bowls refilled - local preview only");
     const bool Previous=bAgentAction; bAgentAction=false; Remember(TEXT("refill"),TEXT("completed")); bAgentAction=Previous;
 }
 FString APaitMeadowPet::GetCareSummary() const
 {
+    if(CareAccount.IsValid()&&CareAccount->IsLoggedIn())return FString::Printf(TEXT("Account bowls: food %.0f%% / water %.0f%% | Refills use saved inventory | I supplies"),Food,Water);
     return FString::Printf(TEXT("Local preview bowls: food %.0f%% / water %.0f%% | F eat  V drink  N home  T toy  B refill"),Food,Water);
+}
+
+void APaitMeadowPet::CancelAccountCare()
+{
+    if(!AccountCareKind.IsEmpty()&&CareAccount.IsValid())CareAccount->CareBusy=false;
+    AccountCareKind.Empty();AccountCareToken.Empty();
+}
+void APaitMeadowPet::TickAccountCare(float Dt)
+{
+    if(bSakura||bAdditionalIsland||bTest||bAgentTest||bCareTest)return;
+    auto* Account=GetGameInstance()->GetSubsystem<UPaitAccountSubsystem>();
+    if(!Account)return;CareAccount=Account;
+    const uint64 Revision=Account->GetSessionRevision();
+    if(Revision!=CareRevision){
+        if(!AccountCareKind.IsEmpty()||!PendingCare.IsEmpty()||ActiveAction==TEXT("food")||ActiveAction==TEXT("water")){InterruptAction(TEXT("account_changed"));SetClip(Idle);}
+        CareRevision=Revision;AccountBowlsReady=false;AccountBowlsLoading=false;BowlRefresh=0;Food=100;Water=100;
+    }
+    if(!Account->IsLoggedIn()||Account->CareBusy||Account->HasPendingMutation())return;
+    BowlRefresh-=Dt;if(BowlRefresh>0||AccountBowlsLoading)return;
+    BowlRefresh=10;AccountBowlsLoading=true;TWeakObjectPtr<APaitMeadowPet> Weak(this);
+    Account->Call(TEXT("GET"),TEXT("supplies"),nullptr,[Weak,Revision](bool Ok,TSharedPtr<FJsonObject> Data,FString){
+        if(!Weak.IsValid()||Weak->CareRevision!=Revision)return;Weak->AccountBowlsLoading=false;
+        if(!Ok){Weak->AccountBowlsReady=false;return;}
+        const TSharedPtr<FJsonObject>* Bowls=nullptr;const TSharedPtr<FJsonObject>* Cat=nullptr;
+        double F=100,W=100;
+        if(Data->TryGetObjectField(TEXT("bowls"),Bowls)&&(*Bowls)->TryGetObjectField(TEXT("3"),Cat)){(*Cat)->TryGetNumberField(TEXT("food"),F);(*Cat)->TryGetNumberField(TEXT("water"),W);}
+        Weak->Food=F;Weak->Water=W;Weak->AccountBowlsReady=true;
+    });
+}
+void APaitMeadowPet::CompleteAccountCare()
+{
+    if(AccountCareKind.IsEmpty())return;
+    if(!CareAccount.IsValid()||!CareAccount->IsLoggedIn()||CareRevision!=CareAccount->GetSessionRevision()){CancelAccountCare();return;}
+    auto Body=MakeShared<FJsonObject>();Body->SetStringField(TEXT("kind"),AccountCareKind);Body->SetStringField(TEXT("pet"),TEXT("3"));Body->SetStringField(TEXT("token"),AccountCareToken);
+    CancelAccountCare();AccountBowlsReady=false;const uint64 Revision=CareRevision;TWeakObjectPtr<APaitMeadowPet> Weak(this);
+    CareAccount->Mutate(TEXT("supplies/bowl-consume"),Body,[Weak,Revision](bool Ok,TSharedPtr<FJsonObject>,FString Error){
+        if(!Weak.IsValid()||Weak->CareRevision!=Revision)return;Weak->BowlRefresh=0;
+        Weak->Status=Ok?TEXT("Meal completed and account bowl saved"):TEXT("Bowl save pending: ")+Error;
+    });
 }
 void APaitMeadowPet::TickCareTest(float Dt)
 {

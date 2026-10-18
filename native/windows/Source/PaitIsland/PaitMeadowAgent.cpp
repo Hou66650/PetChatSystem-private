@@ -13,6 +13,7 @@
 #include "Dom/JsonObject.h"
 #include "Serialization/JsonSerializer.h"
 #include "UnrealClient.h"
+#include "PaitAccountSubsystem.h"
 
 // Native local policy: sense real surfaces -> choose a reachable destination ->
 // execute -> record actual outcome. No LLM calls, accounts or economic writes.
@@ -57,6 +58,7 @@ void APaitMeadowPet::InitializeAgent()
 }
 void APaitMeadowPet::EndPlay(const EEndPlayReason::Type Reason)
 {
+    CancelAccountCare();
     if (!bTest && !bAgentTest && !bCareTest) SaveMemory();
     Super::EndPlay(Reason);
 }
@@ -96,7 +98,7 @@ void APaitMeadowPet::Remember(const FString& Action,const FString& Outcome)
 }
 void APaitMeadowPet::SaveMemory() const
 {
-    if (bTest) return;
+    if (bTest || (CareAccount.IsValid()&&CareAccount->IsLoggedIn())) return;
     TSharedRef<FJsonObject> Root=MakeShared<FJsonObject>(), Stored=MakeShared<FJsonObject>();
     for (const auto& Pair : Visits) Stored->SetNumberField(Pair.Key,Pair.Value);
     Root->SetNumberField(TEXT("schema"),1);
@@ -113,6 +115,7 @@ void APaitMeadowPet::SaveMemory() const
 }
 void APaitMeadowPet::InterruptAction(const FString& Reason)
 {
+    CancelAccountCare();
     if (!ActiveAction.IsEmpty()) Remember(ActiveAction,Reason);
     PendingCare.Empty();
     ActiveAction.Empty(); Route.Reset(); ActionSteps.Reset(); GreetingRemaining=0;
@@ -121,6 +124,8 @@ void APaitMeadowPet::InterruptAction(const FString& Reason)
 void APaitMeadowPet::StartAction(const FString& Action,bool FromAgent)
 {
     if (!bReady) return;
+    if(CareAccount.IsValid()&&CareAccount->IsLoggedIn()&&(Action==TEXT("food")||Action==TEXT("water"))&&(!AccountBowlsReady||CareAccount->HasPendingMutation()))
+    {InterruptAction(TEXT("account_not_ready"));SetClip(Idle);Status=TEXT("Account inventory is not ready");return;}
     InterruptAction(TEXT("interrupted"));
     auto Add=[this](const TCHAR* Name,float Duration=0.f,bool Loop=false)
     {
@@ -139,6 +144,8 @@ void APaitMeadowPet::StartAction(const FString& Action,bool FromAgent)
     else Add(TEXT("alert_scan"));
     if (ActionSteps.IsEmpty()) { SetClip(Idle); NextDecision=AgentClock+8; return; }
     ActiveAction=Action; bAgentAction=FromAgent; ActionStep=0;
+    if(CareAccount.IsValid()&&CareAccount->IsLoggedIn()&&AccountBowlsReady&&(Action==TEXT("food")||Action==TEXT("water")))
+    {AccountCareKind=Action;AccountCareToken=FGuid::NewGuid().ToString(EGuidFormats::Digits);CareAccount->CareBusy=true;}
     for (const FActionStep& Step : ActionSteps) GreetingRemaining+=Step.Seconds;
     ActionStepRemaining=ActionSteps[0].Seconds;
     CurrentClip=nullptr; SetClip(AgentClips[ActionSteps[0].Clip],ActionSteps[0].Loop);
@@ -166,8 +173,9 @@ void APaitMeadowPet::TickAction(float Dt)
         return;
     }
     Remember(ActiveAction,TEXT("completed"));
-    if (ActiveAction==TEXT("food")) { Food=FMath::Max(0.f,Food-10.f); Fullness=1.f; ++Meals; }
-    if (ActiveAction==TEXT("water")) { Water=FMath::Max(0.f,Water-8.f); Hydration=1.f; ++Drinks; }
+    if (ActiveAction==TEXT("food")) { if(AccountCareKind.IsEmpty())Food=FMath::Max(0.f,Food-10.f); Fullness=1.f; ++Meals; }
+    if (ActiveAction==TEXT("water")) { if(AccountCareKind.IsEmpty())Water=FMath::Max(0.f,Water-8.f); Hydration=1.f; ++Drinks; }
+    CompleteAccountCare();
     if (ActiveAction==TEXT("home")) ++HomeRests;
     if (ActiveAction==TEXT("toy")) { ++Plays; Curiosity=.1f; }
     if (ActiveAction==TEXT("rest")) ++CompletedRests;

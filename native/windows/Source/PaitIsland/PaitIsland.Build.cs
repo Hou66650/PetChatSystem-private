@@ -8,6 +8,6 @@ public class PaitIsland : ModuleRules
         PublicDependencyModuleNames.AddRange(new string[] {
             "Core", "CoreUObject", "Engine", "InputCore"
         });
-        PrivateDependencyModuleNames.AddRange(new string[] { "RHI", "Json", "NavigationSystem", "HTTP", "Slate", "SlateCore", "AudioCaptureCore", "AudioMixer" });
+        PrivateDependencyModuleNames.AddRange(new string[] { "RHI", "Json", "NavigationSystem", "HTTP", "Slate", "SlateCore", "AudioCaptureCore", "AudioMixer", "WebSockets", "MoviePlayer" });
     }
 }

@@ -86,7 +86,7 @@ def service_error(error):
 
 @bp.get('/bootstrap')
 def bootstrap():
-    return jsonify(apiVersion=1, fixture=bool(current_app.config.get('NATIVE_FIXTURE', False)), capabilities=['account', 'inventory', 'farm-beds', 'chat', 'voice-profiles'],
+    return jsonify(apiVersion=1, fixture=bool(current_app.config.get('NATIVE_FIXTURE', False)), providerFixture=bool(current_app.config.get('NATIVE_PROVIDER_FIXTURE', False)), capabilities=['account', 'inventory', 'farm-beds', 'chat', 'voice-profiles', 'realtime', 'account-cat-bowls'],
                    pending=['native-map-placement', 'portal-lease', 'runtime-private-model'])
 
 
@@ -159,8 +159,12 @@ def inventory():
 
 @bp.post('/supplies/<operation>')
 def supply_operation(operation):
-    if operation not in ('daily', 'buy', 'cancel', 'bowl-refill'):
+    if operation not in ('daily', 'buy', 'cancel', 'bowl-refill', 'bowl-consume'):
         return jsonify(error='该操作尚未完成原生行为确认适配'), 409
+    if operation in ('bowl-refill', 'bowl-consume') and get_db().execute(
+            "SELECT 1 FROM portal_trips WHERE owner=? AND pet=? AND status IN ('pairing','active')",
+            (companion.owner_key(), str(request.get_json().get('pet')))).fetchone():
+        return jsonify(error='请先召回宠物再使用岛上的食盆'), 409
     return jsonify(supplies.operate(companion.owner_key(), operation, request.get_json()))
 
 
@@ -267,3 +271,74 @@ def market_operation(operation):
     if operation not in ('daily', 'buy'):
         return jsonify(error='原生换装显示仍在适配，当前外观不变'), 409
     return jsonify(market.operate(companion.owner_key(), operation, request.get_json()))
+
+
+def _voice_ticket():
+    from itsdangerous import URLSafeTimedSerializer
+    return URLSafeTimedSerializer(current_app.secret_key, salt='native-voice-round-v1')
+
+
+def _voice_call_context(data):
+    from itsdangerous import BadSignature, SignatureExpired
+    from ..services import voiceprint_service
+    try:
+        ticket = _voice_ticket().loads(data.get('ticket', ''), max_age=600)
+    except (BadSignature, SignatureExpired, TypeError):
+        raise voices.VoiceError('通话已过期，请重新连接', 409)
+    owner = companion.owner_key()
+    if ticket.get('session') != g.native_user['digest']:
+        raise voices.VoiceError('通话账号已变化', 409)
+    if voiceprint_service.requested_enabled(owner):
+        raise voices.VoiceError('已开启声纹保护，原生声纹闸门适配前请使用网页通话', 409)
+    selected = voices.active(owner, ticket['pet'])
+    if (ticket['revision'] != companion.settings(owner)['revision']
+            or ticket['voice'] != (selected['id'] if selected else None)):
+        raise voices.VoiceError('档案或音色已更新，请重新开始通话', 409)
+    return ticket
+
+
+@bp.post('/realtime/session')
+def realtime_session():
+    from ..services import realtime_service, voiceprint_service
+    from .realtime import _rate_limited
+    from .pet_voice import pet
+    owner = companion.owner_key()
+    number = pet(request.get_json().get('petId'))
+    if voiceprint_service.requested_enabled(owner):
+        return jsonify(error='声纹保护已开启，原生声纹识别适配前请使用网页语音'), 409
+    if _rate_limited('native:' + owner):
+        return jsonify(error='连接过于频繁，请稍后重试'), 429
+    try:
+        payload = realtime_service.build_realtime_session(number, surface='chat')
+    except realtime_service.RealtimeError as error:
+        return jsonify(error=str(error)), error.status
+    # The native client has not yet implemented the scene action protocol.
+    # Keep conversation in chat mode instead of promising unexecuted actions.
+    payload['ticket'] = _voice_ticket().dumps(dict(
+        session=g.native_user['digest'], pet=number,
+        revision=payload['profileRevision'],
+        voice=payload['customVoice']['id'] if payload['customVoice'] else None))
+    return jsonify(payload)
+
+
+@bp.post('/realtime/check')
+def realtime_check():
+    _voice_call_context(request.get_json())
+    return jsonify(ok=True)
+
+
+@bp.post('/realtime/round')
+def realtime_round():
+    data = request.get_json()
+    context = _voice_call_context(data)
+    user, answer, request_id = data.get('message'), data.get('assistantText'), data.get('requestId')
+    if (not isinstance(user, str) or not 1 <= len(user.strip()) <= 1000
+            or not isinstance(answer, str) or not 1 <= len(answer.strip()) <= 2000
+            or not isinstance(request_id, str) or not 8 <= len(request_id) <= 80):
+        return jsonify(error='缺少完整语音回合'), 400
+    from ..services.chat_service import handle_chat
+    payload, status = handle_chat(dict(message=user, petId=context['pet'],
+        assistantText=answer, requestId=request_id, surface='chat',
+        profileRevision=context['revision'], profileScope=companion.browser_scope()),
+        observed_reply=answer)
+    return jsonify(payload), status

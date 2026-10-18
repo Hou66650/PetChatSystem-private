@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-18",
+  "version": "1.97.0",
+  "branch": "codex/windows-client",
+  "complete_migration": false,
+  "backend_tests": {
+    "passed": 29,
+    "log": "Saved/Qualification/native-live-api-tests-final.log",
+    "isolated_database": true
+  },
+  "build": {
+    "editor_compile": true,
+    "shipping_compile": true,
+    "incremental_package": true,
+    "log": "Saved/Qualification/native-live-delivery.log"
+  },
+  "compiled_account_care": {
+    "directory": "Saved/Qualification/NativeBusiness-20261018-102054",
+    "result": {
+      "passed": true,
+      "error": "",
+      "scope": "compiled native HTTP: accounts, farm, chat, account meal commit and realtime event lifecycle; no production writes, microphone or paid provider test",
+      "account_meal_commit": true,
+      "realtime_interrupt_and_stale_events": true,
+      "synthetic_provider_round": false
+    },
+    "launch": {
+      "executable_sha256": "90CD119D1538C63421AE9ADCC57D2AFD085DC98BA9E3A7F3663B95697061A704",
+      "exit_code": 0,
+      "fixture_port": 5013,
+      "microphone_validated": false,
+      "synthetic_realtime_provider_verified": false,
+      "cloned_voice_provider_validated": false
+    }
+  },
+  "synthetic_provider": {
+    "directory": "Saved/Qualification/NativeBusiness-20261018-101629",
+    "result": {
+      "connected": true,
+      "completed_responses": 1,
+      "audio_bytes": 193912,
+      "saved_rounds": 0,
+      "input_transcript_received": false,
+      "microphone_tested": false,
+      "speaker_playback_tested": false
+    },
+    "launch": {
+      "executable_sha256": "5A44A32A2FD7B3D03908677318BFA33D31D8CF9C988B2EDE92562C807E1D4A28",
+      "exit_code": 0,
+      "fixture_port": 5014,
+      "microphone_validated": false,
+      "synthetic_realtime_provider_verified": true,
+      "cloned_voice_provider_validated": false
+    },
+    "actual_provider_used": true,
+    "user_microphone_captured": false,
+    "production_account_modified": false,
+    "saved_user_transcript": false,
+    "report_scope_note": "The raw account report at this earlier build has a legacy no-paid-provider string. The separate provider diagnostics and launch flag are authoritative; this reporting string was fixed in the subsequent delivery build."
+  },
+  "initial_failed_provider_test": {
+    "directory": "Saved/Qualification/NativeBusiness-20261018-095724",
+    "cause": "Provider returned completed text/audio but no input transcription or speech_stopped. Earlier test incorrectly required archival to pass. Client now handles response completion and explicitly skips history without transcription."
+  },
+  "remaining": [
+    "Physical microphone and speaker playback",
+    "Cloned-voice creation and playback end to end",
+    "Native voiceprint identity gate (protected accounts fail closed)",
+    "Input transcription fallback for conversation memory",
+    "Other pets account bowls and cross-device action leases"
+  ],
+  "newer_home_package_evidence": "island-home-evidence.json"
+}

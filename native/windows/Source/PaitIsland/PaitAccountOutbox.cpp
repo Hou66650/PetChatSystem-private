@@ -18,6 +18,7 @@ void UPaitAccountSubsystem::Mutate(const FString& Path,TSharedPtr<FJsonObject> B
 {
     if(!Path.StartsWith(TEXT("farm/")) && !Path.StartsWith(TEXT("supplies/")) && !Path.StartsWith(TEXT("market/"))){Call(TEXT("POST"),Path,Body,MoveTemp(Reply));return;}
     if(!IsLoggedIn()){Reply(false,nullptr,TEXT("请先登录"));return;}
+    if(CareBusy && Path!=TEXT("supplies/bowl-consume")){Reply(false,nullptr,TEXT("宠物正在吃喝，请等这次动作完成后再操作库存"));return;}
     if(HasPendingMutation()){Reply(false,nullptr,TEXT("还有一笔结果未确认的操作，请先点击重试，避免重复扣款"));return;}
     MutationPath=Path;MutationBody=Body.IsValid()?Body:MakeShared<FJsonObject>();
     if(!MutationBody->HasField(TEXT("token")))MutationBody->SetStringField(TEXT("token"),FGuid::NewGuid().ToString(EGuidFormats::Digits));

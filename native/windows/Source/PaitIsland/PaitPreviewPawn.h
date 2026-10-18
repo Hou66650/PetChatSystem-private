@@ -13,6 +13,8 @@ class PAITISLAND_API APaitPreviewPawn : public APawn
     GENERATED_BODY()
 public:
     void FocusGarden();
+    void SetExperienceView(FVector Center,float Distance,float Tilt,float Heading,bool Smooth);
+    void OrbitExperience(float Degrees);
     APaitPreviewPawn();
     virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(UInputComponent* Input) override;
@@ -44,6 +46,9 @@ private:
     void Eat(); void Drink(); void GoHome(); void Play(); void FillBowls();
     void Meadow(); void Sakura();
     void Snow(); void Camp();
+    FVector ExperienceCenter;
+    float ExperiencePitch=0,ExperienceYaw=0;
+    bool ExperienceBlend=false;
     float IslandLoadDelay = 0.f;
     bool bOrbit = false;
     bool bPan = false;

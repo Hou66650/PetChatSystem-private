@@ -115,6 +115,12 @@ void SPaitAccountPanel::Render(TSharedPtr<FJsonObject> Data)
     if(Page==TEXT("supplies"))
     {
         Line(FString::Printf(TEXT("可用代币：%.0f"),Num(Data,TEXT("balance"))));
+        const TSharedPtr<FJsonObject>* Bowls=nullptr;const TSharedPtr<FJsonObject>* Cat=nullptr;
+        double Food=100,Water=100;
+        if(Data->TryGetObjectField(TEXT("bowls"),Bowls)&&(*Bowls)->TryGetObjectField(TEXT("3"),Cat)){Food=Num(*Cat,TEXT("food"));Water=Num(*Cat,TEXT("water"));}
+        Line(FString::Printf(TEXT("猫咪岛食盆 %.0f%% · 水盆 %.0f%%"),Food,Water));
+        Button(TEXT("补充猫咪口粮 · 消耗 1 份库存，增加 25%"),[this](){auto B=Params(TEXT("kind"),TEXT("food"));B->SetStringField(TEXT("pet"),TEXT("3"));Mutate(TEXT("supplies/bowl-refill"),B);});
+        Button(TEXT("加满猫咪饮水 · 免费"),[this](){auto B=Params(TEXT("kind"),TEXT("water"));B->SetStringField(TEXT("pet"),TEXT("3"));Mutate(TEXT("supplies/bowl-refill"),B);});
         const TSharedPtr<FJsonObject>* Stock=nullptr;Data->TryGetObjectField(TEXT("inventory"),Stock);
         for(auto Value:Rows(Data,TEXT("catalog"))){auto Item=Value->AsObject();const FString Id=Str(Item,TEXT("id"));
             Line(FString::Printf(TEXT("%s · 库存 %.0f"),*Str(Item,TEXT("name")),Stock?Num(*Stock,*Id):0));
@@ -151,6 +157,12 @@ void SPaitAccountPanel::Render(TSharedPtr<FJsonObject> Data)
     }
     if(Page==TEXT("history"))
     {
+        Line(TEXT("语音通话会使用麦克风并发送至当前语音服务；建议佩戴耳机。停止、收起面板或换宠物会关闭麦克风。"));
+        Content->AddSlot().AutoHeight().Padding(0,6)[SNew(SButton).Text_Lambda([this](){return FText::FromString(Account->IsLive()?TEXT("结束语音通话"):TEXT("开始语音通话"));}).OnClicked_Lambda([this](){if(Account->IsLive())Account->StopLive();else Account->StartLive();return FReply::Handled();})];
+        Content->AddSlot().AutoHeight()[SNew(SButton).Text(FText::FromString(TEXT("打断回复"))).IsEnabled_Lambda([this](){return Account->IsLive();}).OnClicked_Lambda([this](){Account->InterruptLive();return FReply::Handled();})];
+        Content->AddSlot().AutoHeight().Padding(0,6)[SNew(STextBlock).AutoWrapText(true).Text_Lambda([this](){return FText::FromString(Account->LiveStatus);})];
+        Content->AddSlot().AutoHeight()[SNew(STextBlock).AutoWrapText(true).Text_Lambda([this](){return FText::FromString(Account->LiveUserText.IsEmpty()?TEXT(""):TEXT("你：")+Account->LiveUserText);})];
+        Content->AddSlot().AutoHeight()[SNew(STextBlock).AutoWrapText(true).Text_Lambda([this](){return FText::FromString(Account->LivePetText.IsEmpty()?TEXT(""):TEXT("它：")+Account->LivePetText);})];
         FString LastReply;
         for(auto Value:Rows(Data,TEXT("messages"))){auto Row=Value->AsObject();const bool User=Str(Row,TEXT("role"))==TEXT("user");const FString Text=Str(Row,TEXT("content"));Line((User?TEXT("你："):TEXT("它："))+Text);if(!User)LastReply=Text;}
         if(!LastReply.IsEmpty())Button(TEXT("朗读最近一条回复"),[this,LastReply](){ReadAloud(LastReply);});

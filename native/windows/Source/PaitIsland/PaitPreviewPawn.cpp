@@ -1,4 +1,5 @@
 #include "PaitPreviewPawn.h"
+#include "PaitExperience.h"
 #include "PaitMeadowPet.h"
 #include "PaitGarden.h"
 #include "PaitAccountSubsystem.h"
@@ -93,6 +94,12 @@ void APaitPreviewPawn::Tick(float DeltaSeconds)
         IslandLoadDelay-=DeltaSeconds;
         if(IslandLoadDelay<=0) { const FString Map=LoadingIsland; LoadingIsland.Empty(); UGameplayStatics::OpenLevel(this,FName(*Map)); return; }
     }
+    if(ExperienceBlend){
+        const float A=1.f-FMath::Exp(-3.f*DeltaSeconds);
+        SetActorLocation(FMath::Lerp(GetActorLocation(),ExperienceCenter,A));
+        Pitch=FMath::Lerp(Pitch,ExperiencePitch,A);Yaw=FMath::Lerp(Yaw,ExperienceYaw,A);
+        Arm->SetRelativeRotation(FRotator(Pitch,Yaw,0));
+    }
     // Exponential smoothing keeps zoom time consistent across frame rates.
     const float Alpha = 1.f - FMath::Exp(-12.f * DeltaSeconds);
     Arm->TargetArmLength = FMath::Lerp(Arm->TargetArmLength, TargetDistance, Alpha);
@@ -137,9 +144,9 @@ void APaitPreviewPawn::Zoom(float Value)
 {
     TargetDistance = FMath::Clamp(TargetDistance * FMath::Exp(-Value * .12f), 250.f, 8000.f);
 }
-void APaitPreviewPawn::StartOrbit() { bOrbit = true; UpdateCursor(); }
+void APaitPreviewPawn::StartOrbit() { ExperienceBlend=false; bOrbit = true; UpdateCursor(); }
 void APaitPreviewPawn::StopOrbit() { bOrbit = false; UpdateCursor(); }
-void APaitPreviewPawn::StartPan() { bPan = true; UpdateCursor(); }
+void APaitPreviewPawn::StartPan() { ExperienceBlend=false; bPan = true; UpdateCursor(); }
 void APaitPreviewPawn::StopPan() { bPan = false; UpdateCursor(); }
 void APaitPreviewPawn::CancelDrag() { bOrbit = bPan = false; UpdateCursor(); }
 void APaitPreviewPawn::UpdateCursor()
@@ -192,8 +199,14 @@ void APaitPreviewPawn::ResetView()
     { SetActorLocation(FVector(-300,-650,180)); TargetDistance=6500; Pitch=-32; Yaw=55; }
     else if(GetWorld()->GetMapName().Contains(TEXT("Snow")) || GetWorld()->GetMapName().Contains(TEXT("Camp")))
     { SetActorLocation(FVector(0,0,120)); TargetDistance=2400; Pitch=-32; Yaw=-45; }
+    if(GetWorld()->GetMapName().Contains(TEXT("IslandHome"))){SetActorLocation(FVector(0,0,-150));TargetDistance=9000;Pitch=-48;Yaw=-90;}
     Arm->SetRelativeRotation(FRotator(Pitch, Yaw, 0.f));
 }
+void APaitPreviewPawn::SetExperienceView(FVector Center,float Distance,float Tilt,float Heading,bool Smooth){
+    CancelDrag();ExperienceCenter=Center;TargetDistance=Distance;ExperiencePitch=Tilt;ExperienceYaw=Heading;ExperienceBlend=Smooth;
+    if(!Smooth){SetActorLocation(Center);Pitch=Tilt;Yaw=Heading;Arm->SetRelativeRotation(FRotator(Pitch,Yaw,0));}
+}
+void APaitPreviewPawn::OrbitExperience(float Degrees){ExperienceBlend=false;Yaw+=Degrees;Arm->SetRelativeRotation(FRotator(Pitch,Yaw,0));}
 void APaitPreviewPawn::FocusPet()
 {
     for (TActorIterator<ASkeletalMeshActor> It(GetWorld()); It; ++It)
@@ -226,6 +239,10 @@ void APaitPreviewPawn::MovePetToCursor()
     if (bOrbit || bPan) return;
     APlayerController* PC=Cast<APlayerController>(Controller);
     if(!PC) return;
+    if(GetWorld()->GetMapName().Contains(TEXT("IslandHome"))){
+        FHitResult Hit;PC->GetHitResultUnderCursor(ECC_Visibility,true,Hit);
+        for(TActorIterator<APaitExperience> E(GetWorld());E;++E){E->Click(Hit.GetActor());break;}return;
+    }
     float X=0,Y=0; PC->GetMousePosition(X,Y);
     int32 W=0,H=0; PC->GetViewportSize(W,H);
     if(PC->GetHUD() && PC->GetHUD()->bShowHUD && Y>H-70 && Y<H-20 && X>=20 && X<820)

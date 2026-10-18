@@ -6,6 +6,7 @@
 class ASkeletalMeshActor;
 class UAnimSequence;
 class ACameraActor;
+class UPaitAccountSubsystem;
 
 /** Isolated local interaction driver; no production Agent or account requests. */
 UCLASS()
@@ -30,7 +31,16 @@ public:
     FString GetAgentSummary() const;
     FString GetLastEvent() const;
     const FString& GetStatus() const { return Status; }
+    int32 GetCompletedMeals() const { return Meals; }
 private:
+    void TickAccountCare(float Dt);
+    void CompleteAccountCare();
+    void CancelAccountCare();
+    TWeakObjectPtr<UPaitAccountSubsystem> CareAccount;
+    uint64 CareRevision=MAX_uint64;
+    bool AccountBowlsReady=false,AccountBowlsLoading=false;
+    float BowlRefresh=0;
+    FString AccountCareKind,AccountCareToken;
     void InitializeCare();
     void TickCareTest(float Dt);
     void FinishCareTest(const FString& Error);

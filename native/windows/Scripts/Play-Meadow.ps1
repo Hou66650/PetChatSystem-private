@@ -1,6 +1,6 @@
 param(
     [ValidateSet('Shipping','Development')][string]$Configuration='Shipping',
-    [ValidateSet('Meadow','Sakura','Snow','Camp')][string]$Island='Meadow'
+    [ValidateSet('Home','Meadow','Sakura','Snow','Camp')][string]$Island='Home'
 )
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot

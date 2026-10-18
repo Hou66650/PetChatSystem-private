@@ -13,6 +13,7 @@
 #include "UnrealClient.h"
 #include "PaitGarden.h"
 #include "EngineUtils.h"
+#include "PaitMeadowPet.h"
 
 void UPaitAccountSubsystem::FinishFixture(bool Success,const FString& Error)
 {
@@ -20,7 +21,11 @@ void UPaitAccountSubsystem::FinishFixture(bool Success,const FString& Error)
     if(Directory.IsEmpty())Directory=FPaths::ProjectSavedDir()/TEXT("Qualification/NativeAccount");
     IFileManager::Get().MakeDirectory(*Directory,true);
     auto Report=MakeShared<FJsonObject>();Report->SetBoolField(TEXT("passed"),Success);Report->SetStringField(TEXT("error"),Error);
-    Report->SetStringField(TEXT("scope"),TEXT("compiled native HTTP: isolated accounts, farm persistence, chat and voice-state; no production writes or microphone test"));
+    Report->SetStringField(TEXT("scope"),FParse::Param(FCommandLine::Get(),TEXT("PaitProviderCheck"))
+        ? TEXT("compiled native HTTP and synthetic realtime provider round; isolated accounts, no production writes, microphone or speaker playback")
+        : TEXT("compiled native HTTP: accounts, farm, chat, account meal commit and realtime event lifecycle; no production writes, microphone or paid provider test"));
+    Report->SetBoolField(TEXT("account_meal_commit"),Success);Report->SetBoolField(TEXT("realtime_interrupt_and_stale_events"),Success);
+    Report->SetBoolField(TEXT("synthetic_provider_round"),Success&&FParse::Param(FCommandLine::Get(),TEXT("PaitProviderCheck")));
     FString Json;FJsonSerializer::Serialize(Report,TJsonWriterFactory<>::Create(&Json));FFileHelper::SaveStringToFile(Json,*(Directory/TEXT("native-account.json")));
     if(Success && FParse::Param(FCommandLine::Get(),TEXT("PaitAccountCapture")))
     {
@@ -44,6 +49,12 @@ void UPaitAccountSubsystem::RunFixtureStep(int32 Step)
         if(Ok && Step==0)Ok=Data->TryGetBoolField(TEXT("fixture"),Flag) && Flag;
         if(Ok && (Step==2 || Step==9)){Data->TryGetStringField(TEXT("username"),Name);Ok=Name==(Step==2?TEXT("native-check-a"):TEXT("native-check-b"));}
         if(Ok && (Step==4 || Step==7))Ok=Data->TryGetBoolField(TEXT("started"),Flag)&&Flag;
+        if(Ok && (Step==13||Step==15)){
+            const TSharedPtr<FJsonObject>* Bowls=nullptr;const TSharedPtr<FJsonObject>* Cat=nullptr;double Food=100;
+            if(Data->TryGetObjectField(TEXT("bowls"),Bowls)&&(*Bowls)->TryGetObjectField(TEXT("3"),Cat))(*Cat)->TryGetNumberField(TEXT("food"),Food);
+            if(Step==13){Weak->FixtureFoodBefore=Food;Ok=Food>=25;}
+            else Ok=Food==Weak->FixtureFoodBefore-25;
+        }
         if(!Ok){Weak->FinishFixture(false,FString::Printf(TEXT("step %d: %s"),Step,*Error));return;}
         Weak->RunFixtureStep(Step+1);
     };
@@ -58,6 +69,31 @@ void UPaitAccountSubsystem::RunFixtureStep(int32 Step)
     case 10:Call(TEXT("GET"),TEXT("voices?petId=3"),nullptr,MoveTemp(Next));break;
     case 11:{auto Body=MakeShared<FJsonObject>();Body->SetNumberField(TEXT("petId"),3);Body->SetStringField(TEXT("message"),TEXT("你好"));Body->SetStringField(TEXT("requestId"),FGuid::NewGuid().ToString(EGuidFormats::Digits));Call(TEXT("POST"),TEXT("chat"),Body,MoveTemp(Next));break;}
     case 12:Logout();Login(TEXT("native-check-a"),TEXT("native-isolated-check"),MoveTemp(Next));break;
-    default:FinishFixture(true,TEXT(""));break;
+    case 13:case 15:Call(TEXT("GET"),TEXT("supplies"),nullptr,MoveTemp(Next));break;
+    case 14:{
+        const double Start=FPlatformTime::Seconds();
+        FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([Weak,Start,Started=false,Meals=0](float)mutable{
+            if(!Weak.IsValid())return false;
+            if(FPlatformTime::Seconds()-Start>180){Weak->FinishFixture(false,TEXT("Account meal timeout"));return false;}
+            for(TActorIterator<APaitMeadowPet> Pet(Weak->GetWorld());Pet;++Pet){
+                if(!Started){Meals=Pet->GetCompletedMeals();Started=Pet->Care(TEXT("food"));return true;}
+                if(Pet->GetCompletedMeals()>Meals&&!Weak->CareBusy&&!Weak->HasPendingMutation()){Weak->RunFixtureStep(15);return false;}
+            }return true;
+        }),.5f);break;}
+    default:{
+        FString Error;if(!TestLiveProtocol(Error)){FinishFixture(false,Error);break;}
+        if(!FParse::Param(FCommandLine::Get(),TEXT("PaitProviderCheck"))){FinishFixture(true,TEXT(""));break;}
+        StartLive();const double Start=FPlatformTime::Seconds();
+        FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([Weak,Start](float){
+            if(!Weak.IsValid())return false;
+            if(Weak->IsLiveRoundComplete()){
+                FString Directory;FParse::Value(FCommandLine::Get(),TEXT("PaitEvidenceDir="),Directory);
+                FString Json;FJsonSerializer::Serialize(Weak->LiveDiagnostics(),TJsonWriterFactory<>::Create(&Json));FFileHelper::SaveStringToFile(Json,*(Directory/TEXT("native-live-provider.json")));
+                Weak->StopLive();Weak->FinishFixture(true,TEXT(""));return false;
+            }
+            if(!Weak->IsLive()||FPlatformTime::Seconds()-Start>90){const FString Error=Weak->LiveStatus;Weak->StopLive();Weak->FinishFixture(false,Error);return false;}
+            return true;
+        }),.25f);break;
+    }
     }
 }

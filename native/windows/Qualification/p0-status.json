@@ -194,16 +194,22 @@
     "package": "Saved/Packages/ShippingDaily",
     "held_drag_manual_check_pending": true
   },
-  "application_version": "1.94.0",
+  "application_version": "1.97.0",
   "p2_progress": {
     "scope": "../业务迁移范围与进度.md",
-    "evidence": "native-business-evidence.json",
+    "evidence": "native-live-evidence.json",
     "complete": false,
     "launcher": "打开派特岛客户端.cmd",
     "api_port": 5012,
     "fixture_port": 5013,
     "api_data": "existing account service; automated checks use isolated fixture only",
     "garden_catalog_entries": 141,
-    "voice": "recording/clone UI and playback compiled; real microphone/provider not validated"
+    "voice": "compiled realtime round with synthetic audio passed actual provider; physical microphone/speaker/clone creation and missing input transcription remain unverified",
+    "care": "authenticated cat bowl sync and completed-meal commit verified; other pets remain local preview",
+    "home": {
+      "evidence": "island-home-evidence.json",
+      "four_island_round_trip_verified": true,
+      "full_web_parity": false
+    }
   }
 }

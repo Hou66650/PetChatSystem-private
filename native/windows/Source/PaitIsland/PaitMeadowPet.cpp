@@ -188,6 +188,7 @@ void APaitMeadowPet::Greet()
 void APaitMeadowPet::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
+    TickAccountCare(DeltaSeconds);
     if (!bReady)
     {
         RetryIn-=DeltaSeconds;

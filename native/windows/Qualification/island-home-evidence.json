@@ -1,0 +1,126 @@
+{
+  "date": "2026-10-18",
+  "version": "1.97.0",
+  "branch": "codex/windows-client",
+  "complete_web_parity": false,
+  "home_map": "/Game/Preview/P2_IslandHome",
+  "scene_build": {
+    "map": "/Game/Preview/P2_IslandHome",
+    "source_maps_unchanged": true,
+    "layout": [
+      [
+        "Sakura",
+        [
+          -1450,
+          -1300,
+          0
+        ],
+        0.32
+      ],
+      [
+        "Snow",
+        [
+          1450,
+          1400,
+          100
+        ],
+        0.72
+      ],
+      [
+        "Meadow",
+        [
+          -1450,
+          1400,
+          0
+        ],
+        0.38
+      ],
+      [
+        "Camp",
+        [
+          1450,
+          -1300,
+          0
+        ],
+        0.72
+      ]
+    ],
+    "mesh_actors": 464,
+    "counts": {
+      "Sakura": 104,
+      "Snow": 27,
+      "Meadow": 305,
+      "Camp": 28
+    },
+    "runtime_verified": false
+  },
+  "package": "Saved/Packages/ShippingDaily",
+  "compile_and_cook": {
+    "passed": true,
+    "cook_log": "Saved/Qualification/home-delivery.log",
+    "final_incremental_log": "Saved/Qualification/home-final.log"
+  },
+  "final_overview": {
+    "directory": "Saved/Qualification/IslandHome-20261018-112612",
+    "runtime": {
+      "status": "rendered_capture_saved",
+      "actual_map": "P2_IslandHome",
+      "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+      "screenshot": "D:/PetChatSystem-Client/native/windows/Saved/Qualification/IslandHome-20261018-112612/runtime-smoke.png",
+      "frames": 1839,
+      "performance_qualified": false
+    },
+    "launch": {
+      "executable_sha256": "7B0D31138B94416F927FC5A6BC40466EEDD4697682AC1238141397A9259C808D",
+      "exit_code": 0,
+      "manual_mouse_checked": false,
+      "performance_qualified": false,
+      "production_mutations": false
+    }
+  },
+  "four_island_round_trip": {
+    "directory": "Saved/Qualification/IslandHome-20261018-112103",
+    "result": {
+      "passed": true,
+      "islands_entered": 4,
+      "returned_home": 4,
+      "manual_mouse_checked": false
+    },
+    "launch": {
+      "executable_sha256": "1EDB2804AFC723ED8B3303C319DE9CAAB8DCDCCF6F782A46E1DD0365A9C0DFBD",
+      "exit_code": 0,
+      "manual_mouse_checked": false,
+      "performance_qualified": false,
+      "production_mutations": false
+    },
+    "later_change": "Only overview description-row visibility changed after this flow run; final overview and business checks used the final binary."
+  },
+  "final_business_regression": {
+    "directory": "Saved/Qualification/NativeBusiness-20261018-112701",
+    "result": {
+      "passed": true,
+      "error": "",
+      "scope": "compiled native HTTP: accounts, farm, chat, account meal commit and realtime event lifecycle; no production writes, microphone or paid provider test",
+      "account_meal_commit": true,
+      "realtime_interrupt_and_stale_events": true,
+      "synthetic_provider_round": false
+    },
+    "launch": {
+      "executable_sha256": "7B0D31138B94416F927FC5A6BC40466EEDD4697682AC1238141397A9259C808D",
+      "exit_code": 0,
+      "fixture_port": 5013,
+      "microphone_validated": false,
+      "synthetic_realtime_provider_verified": false,
+      "cloned_voice_provider_validated": false
+    }
+  },
+  "source_island_levels_modified": false,
+  "production_account_mutations": false,
+  "limitations": [
+    "Cloud sea still has visible grain and is not final cinematic quality",
+    "Fine island lighting and material consistency need further work",
+    "Mouse binding is implemented; four-island route verified via actual game functions, physical mouse sequence not yet checked",
+    "Remaining business migration follows 业务迁移范围与进度.md",
+    "No FPS or full parity claim"
+  ]
+}

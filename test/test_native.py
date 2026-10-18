@@ -1,5 +1,6 @@
 """Isolated native sessions and durable business writes, never production data."""
 import unittest
+from unittest.mock import patch
 from test_mobile import MobileTests
 from app.db import get_db
 
@@ -9,12 +10,68 @@ class NativeTests(unittest.TestCase):
     setUp = MobileTests.setUp
     tearDown = MobileTests.tearDown
 
+    def test_realtime_ticket_is_bound_to_session_and_voice(self):
+        from app.services import companion_service, voiceprint_service
+        from app.routes.realtime import _rate_hits
+        _rate_hits.clear()
+        alice, bob = self.auth(), self.auth('bob')
+        owner = 'user:' + str(self.client.get('/api/native/v1/account', headers=alice).json['accountId'])
+        payload = dict(profileRevision=0, customVoice=None, token='fake-short-token',
+                       config={}, wsBaseUrl='wss://example.invalid')
+        with self.app.app_context():
+            payload['profileRevision'] = companion_service.settings(owner)['revision']
+        with patch('app.services.realtime_service.build_realtime_session', return_value=payload):
+            response = self.client.post('/api/native/v1/realtime/session', json={'petId': 3}, headers=alice)
+        self.assertEqual(response.status_code, 200)
+        ticket = response.json['ticket']
+        def check(headers, value=ticket):
+            return self.client.post('/api/native/v1/realtime/check', json={'ticket': value}, headers=headers)
+        self.assertEqual(check(alice).status_code, 200)
+        self.assertEqual(check(bob).status_code, 409)
+        self.assertEqual(check(alice, 'tampered').status_code, 409)
+        again = self.auth()
+        self.assertEqual(check(again).status_code, 409)
+        with patch('app.services.pet_voice_service.active', return_value={'id':'new-voice'}):
+            self.assertEqual(check(alice).status_code, 409)
+        with patch.object(voiceprint_service, 'requested_enabled', return_value=True):
+            self.assertEqual(check(alice).status_code, 409)
+            self.assertEqual(self.client.post('/api/native/v1/realtime/session', json={'petId':3}, headers=alice).status_code,409)
+        body = dict(ticket=ticket, message='你好', assistantText='我在这里', requestId='native-live-round-001', petId=4)
+        first = self.client.post('/api/native/v1/realtime/round', json=body, headers=alice)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first.json['pet']['id'], 3)
+        repeat = self.client.post('/api/native/v1/realtime/round', json=body, headers=alice)
+        self.assertTrue(repeat.json['duplicate'])
+        self.assertEqual(self.client.post('/api/native/v1/realtime/round', json=body, headers=bob).status_code,409)
+        with self.app.app_context():
+            db=get_db();db.execute('UPDATE companion_owners SET revision=revision+1 WHERE owner=?',(owner,));db.commit()
+        self.assertEqual(check(alice).status_code, 409)
+
     def auth(self, name='alice'):
         response = self.client.post('/api/native/v1/session', json={
             'username': name, 'password': 'tablet-test-password'})
         self.assertEqual(response.status_code, 200)
         self.assertNotIn('Set-Cookie', response.headers)
         return {'Authorization': 'Bearer ' + response.json['token']}
+
+    def test_account_bowls_commit_and_refill_are_idempotent(self):
+        alice = self.auth()
+        def post(op, **body):
+            return self.client.post('/api/native/v1/supplies/'+op, json=body, headers=alice)
+        self.assertEqual(post('daily',token='care-daily-0001').status_code,200)
+        eaten=post('bowl-consume',pet='3',kind='food',token='care-meal-00001')
+        self.assertEqual(eaten.status_code,200)
+        self.assertEqual(eaten.json['bowls']['3']['food'],75)
+        repeated=post('bowl-consume',pet='3',kind='food',token='care-meal-00001')
+        self.assertEqual(repeated.json['bowls']['3']['food'],75)
+        self.assertEqual(post('bowl-consume',pet='3',kind='water',token='care-meal-00001').status_code,409)
+        filled=post('bowl-refill',pet='3',kind='food',token='care-refill-001')
+        self.assertEqual(filled.json['bowls']['3']['food'],100)
+        self.assertEqual(filled.json['inventory']['kibble'],2)
+        repeat=post('bowl-refill',pet='3',kind='food',token='care-refill-001')
+        self.assertEqual(repeat.json['inventory']['kibble'],2)
+        self.assertEqual(post('bowl-refill',pet='3',kind='food',token='care-refill-002').status_code,409)
+        self.assertEqual(post('bowl-consume',pet='4',kind='food',token='care-wrong-pet').status_code,400)
 
     def test_identity_cookie_isolation_revoke_and_expire(self):
         self.assertEqual(self.client.get('/api/native/v1/account').status_code, 401)

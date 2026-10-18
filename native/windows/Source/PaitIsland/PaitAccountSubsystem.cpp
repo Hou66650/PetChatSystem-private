@@ -36,6 +36,7 @@ void UPaitAccountSubsystem::ClearSession()
     for (auto& Request : Pending) if (Request) { Request->OnProcessRequestComplete().Unbind(); Request->CancelRequest(); }
     Pending.Empty(); Token.Empty(); Username.Empty();
     GardenState.Reset();SelectedBed.Empty();GardenStatus.Empty();GardenLoading=false;
+    CareBusy=false;
     MutationBody.Reset();MutationPath.Empty();
 }
 void UPaitAccountSubsystem::Deinitialize()
