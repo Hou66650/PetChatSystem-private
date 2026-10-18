@@ -6,17 +6,22 @@
 </style><main>
 <div>派特岛 / 中央公共乐园 / 第二版</div><h1>自然木石，温柔的游乐场</h1>
 <p>四座生活岛继续沿用。中央掌垫岛以开阔草坪和环形散步路径组织八处设施：草坡猫耳隧道、低桥、花朵跳圈、攀爬树屋、遮阴座椅、饮水点、玩具柜和入口。</p>
-<p class="note">本页分开展示视觉目标与真实三维成果。概念图由 AI 生成；下方精细母版通过 Blender MCP 制作。轻量运行版已接入当前开发分支的首页和公共乐园；平板旧服务尚未切换，设施专属玩法与鸿蒙多人性能仍待完成。</p>
+<p class="note">本页分开展示概念目标、实际模型与历史运行截图。新入口通过 Blender MCP 制作；Windows 接入目标是 codex/windows-client 分支中的 Unreal Engine 原生工程，本页不代表已在客户端上线。</p>
+<h2>入口重做 / 实际三维近景</h2>
+<p>本轮重做入口木构、石砌柱脚、金属节点、灯具和爪印铺装。下图来自实际 Blender 模型渲染，不是 AI 概念图；尚未作为 UE 客户端运行效果验收。</p>
+<figure><img src="../paw-commons-v3/review/07-entrance-front.png" alt="重做入口实际三维正面"><figcaption>实体弧形木梁、斜撑、石砌柱脚、入口徽章与两侧花池。</figcaption></figure>
+<div class="grid"><figure><img src="../paw-commons-v3/review/08-entrance-joints.png" alt="入口结构连接近景"><figcaption>柱梁节点、螺栓垫圈、立柱与壁灯的真实厚度。</figcaption></figure><figure><img src="../paw-commons-v3/review/09-entrance-threshold.png" alt="入口石铺地面近景"><figcaption>逐块石铺门槛与深色爪印拼花。</figcaption></figure></div>
+<p><a href="../paw-commons-v3/paw-commons-quality.blend">更新后的可编辑母版</a> · <a href="../paw-commons-v3/entrance-crafted.glb">独立入口 GLB</a> · <a href="../paw-commons-v3/entrance-report.json">入口构建记录</a></p>
 <h2>01 / 整体效果概念</h2><figure><img src="design/01-overall-concept.png" alt="中央乐园整体效果概念"><figcaption>内置 imagegen 生成的视觉目标，不是游戏截图。主要确定材质、氛围与设施语言。</figcaption></figure>
 <h2>02 / 设施细节概念</h2><figure><img src="design/02-facility-details.png" alt="六类设施结构与材质细节概念"><figcaption>与整体图保持一致的细节参考；图中尺寸与结构以实际设计文件为准。</figcaption></figure>
 <h2>03 / 布局与尺寸</h2><figure><img src="design/03-dimensions.svg" alt="五岛布局、乐园平面、隧道和桥尺寸图"><figcaption>虚拟场景设计，单位米；四座生活岛保持现有资产。尺寸为设计名义值，详见 layout-detailed.json。</figcaption></figure>
-<h2>04 / Blender MCP 精细母版</h2><figure><img src="review/06-detailed-overview.png" alt="MCP 精细母版实际整体渲染"><figcaption>真实三维渲染：双隧道、分层树屋、叶脉遮棚、中央树景、草簇、花境与垂藤。</figcaption></figure>
+<h2>04 / 前一版 Blender MCP 母版（对照）</h2><figure><img src="review/06-detailed-overview.png" alt="MCP 精细母版实际整体渲染"><figcaption>真实三维渲染：双隧道、分层树屋、叶脉遮棚、中央树景、草簇、花境与垂藤。</figcaption></figure>
 <div class="grid"><figure><img src="review/07-detailed-tunnels.png" alt="精细隧道近景"><figcaption>贯通隧道与草坡近景。</figcaption></figure><figure><img src="review/08-detailed-treehouse.png" alt="精细树屋近景"><figcaption>设施研究图（隐藏树冠以便检查）：叶形踏台、连续阶梯、螺旋麻绳与双出口木屋。</figcaption></figure></div>
 <figure><img src="review/09-detailed-canopy.png" alt="精细叶脉遮棚近景"><figcaption>设施研究图（隐藏树冠以便检查）：叶形外缘、主梁、弧形肋条与座椅连接。</figcaption></figure>
-<h2>05 / 旋转检查实际模型</h2><p>拖动旋转，滚轮或双指缩放。精细母版文件较大，仅用于设计审阅。</p>
-<button id="load">加载三维设计稿</button> <span id="status" role="status">尚未加载</span><div id="viewer"></div>
+<h2>05 / 旋转检查新版入口</h2><p>拖动旋转，滚轮或双指缩放。此处加载本轮重做的独立入口模型。</p>
+<button id="load">加载新版入口</button> <span id="status" role="status">尚未加载</span><div id="viewer"></div>
 <p><a href="paw-commons-detailed.blend">可编辑精细 Blender 工程</a> · <a href="../../static/models/paw-commons-v2/park-detailed.glb">精细 GLB 模型</a> · <a href="design/layout-detailed.json">尺寸数据</a> · <a href="detailed-build-report.json">构建报告</a> · <a href="design/prompts.json">图像提示词</a></p>
-<h2>06 / 已接入的运行场景</h2><p>下面是实际浏览器截图：两位测试用户入园及五岛首页。中央岛使用轻量运行模型，四座生活岛沿用原资产；设施专属玩法与真机性能仍需继续开发和验收。</p>
+<h2>06 / 前一版运行场景（历史记录）</h2><p>下面是实际浏览器截图：两位测试用户入园及五岛首页。中央岛使用轻量运行模型，四座生活岛沿用原资产；设施专属玩法与真机性能仍需继续开发和验收。</p>
 <figure><img src="review/10-runtime-park.png" alt="两位测试用户在实际公共乐园同场"><figcaption>公共乐园：44.3 万三角面、19 个静态材质批次，支持绕障走动与原有动作同步。</figcaption></figure>
 <figure><img src="review/11-runtime-islands.png" alt="原四岛与新中央乐园的首页五岛布局"><figcaption>首页中央岛使用 15.6 万面的独立预览版，保留四座原有生活岛。</figcaption></figure>
 </main>
@@ -27,11 +32,11 @@ const button=this,status=document.getElementById('status'),host=document.getElem
 let renderer,controls;
 try{
 const scene=new THREE.Scene();scene.background=new THREE.Color(0xb7c9ce);
-const camera=new THREE.PerspectiveCamera(42,1,.1,180);camera.position.set(18,20,28);
+const camera=new THREE.PerspectiveCamera(42,1,.1,180);camera.position.set(5,4.5,17);
 renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;host.appendChild(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xf5f4e4,0x5b6e65,.7));const sun=new THREE.DirectionalLight(0xffe5b7,1.3);sun.position.set(-12,25,15);scene.add(sun);
-controls=new THREE.OrbitControls(camera,renderer.domElement);controls.target.set(0,-.5,0);controls.minDistance=5;controls.maxDistance=70;controls.update();
-const gltf=await new Promise((resolve,reject)=>new THREE.GLTFLoader().load('../../static/models/paw-commons-v2/park-detailed.glb',resolve,undefined,reject));scene.add(gltf.scene);
+controls=new THREE.OrbitControls(camera,renderer.domElement);controls.target.set(0,1.6,9.2);controls.minDistance=2;controls.maxDistance=20;controls.update();
+const gltf=await new Promise((resolve,reject)=>new THREE.GLTFLoader().load('../paw-commons-v3/entrance-crafted.glb',resolve,undefined,reject));scene.add(gltf.scene);
 function draw(){renderer.render(scene,camera)}function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();draw()}
 controls.addEventListener('change',draw);new ResizeObserver(resize).observe(host);resize();window.reviewModel=gltf.scene;
 status.textContent='已加载 · 拖动查看结构';button.hidden=true;

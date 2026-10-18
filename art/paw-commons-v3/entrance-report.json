@@ -1,0 +1,17 @@
+{
+  "source": "paw-commons-quality.blend",
+  "transport": "Blender MCP / execute_blender_code",
+  "groups": [
+    "E01 Masonry foundations",
+    "E02 Timber frame and joinery",
+    "E03 Welcome badge and lanterns",
+    "E04 Flagstone threshold",
+    "E05 Side planting bowls"
+  ],
+  "clearWidthMetres": 3.435,
+  "postSectionMetres": 0.265,
+  "entranceGLB": "entrance-crafted.glb",
+  "sha256": "c8eac42a21ffee505d1b9ea2cc89a4328c832c19d1c339754dcfa30e80b8e006",
+  "ueImported": false,
+  "note": "Visual construction model, not a certified structural design."
+}

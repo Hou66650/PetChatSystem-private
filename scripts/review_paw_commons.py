@@ -4,7 +4,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
-ALLOWED = [ROOT / p for p in ('art/paw-commons-v2', 'static/models/paw-commons-v2', 'static/js/vendor')]
+ALLOWED = [ROOT / p for p in ('art/paw-commons-v2', 'art/paw-commons-v3', 'static/models/paw-commons-v2', 'static/models/paw-commons-v3', 'static/js/vendor')]
 
 
 class ReviewHandler(SimpleHTTPRequestHandler):

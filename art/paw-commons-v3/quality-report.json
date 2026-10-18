@@ -1,0 +1,12 @@
+{
+  "transport": "MCP stdio -> mcp-for-blender 2.1.9 -> official addon execute_blender_code",
+  "reference": "art/paw-commons-v2/design/01-overall-concept.png + 02-facility-details.png",
+  "newGroups": [
+    "Q01 Layered cat ear portal joinery",
+    "Q02 Bridge joinery",
+    "Q03 Playful craft details",
+    "Q04 Botanical clusters"
+  ],
+  "master": "paw-commons-quality.blend",
+  "facilityPathsChanged": false
+}
