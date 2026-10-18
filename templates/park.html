@@ -4,7 +4,7 @@
 {% block body %}
 <main id="pet-park" data-scope="{{ companion_scope }}" data-version="{{ app_version }}" data-auth="{{ 'yes' if park_logged_in else 'no' }}">
  <canvas id="park-canvas" tabindex="0" aria-label="宠物公共乐园，点草坪散步，拖动旋转；也可使用下方活动按钮"></canvas>
- <header class="park-heading"><a href="/">← 回到五岛</a><p>PAW COMMONS / 在这里相遇</p><h1>爪心乐园</h1><span>四座小窝之外，一起玩一会儿。</span></header>
+ <header class="park-heading"><a href="/">← 回到五岛</a><p>PAW COMMONS / 云海之上的相遇</p><h1>爪心乐园</h1><span>在云间的小岛上，一起玩一会儿。</span></header>
  <aside class="park-presence"><strong id="park-count">公共乐园</strong><p>仅显示实际入园的在线伙伴</p><div id="park-players"></div></aside>
  <section class="park-dock" aria-label="乐园活动">
   <p id="park-status" role="status" aria-live="polite">正在展开爪心乐园…</p><button id="park-retry" hidden>重新加载乐园</button>
@@ -22,5 +22,6 @@
 <script type="application/json" id="park-navigation">{{ park_navigation|tojson }}</script><script src="/static/js/park-navigation.js?v={{ app_version }}"></script>
 <script src="/static/js/park-facilities.js?v={{ app_version }}"></script>
 <script src="/static/js/park-agent.js?v={{ app_version }}"></script><script src="/static/js/park-motion.js?v={{ app_version }}"></script>
+<script src="/static/js/home-atmosphere.js?v={{ app_version }}"></script>
 <script src="/static/js/park-scene.js?v={{ app_version }}"></script><script src="/static/js/public-park.js?v={{ app_version }}"></script>
 {% endblock %}

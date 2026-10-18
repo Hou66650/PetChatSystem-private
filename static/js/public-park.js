@@ -1,10 +1,17 @@
 /* Real, opt-in presence: no fake users, no control of another owner's pet. */
-(()=>{'use strict';
+(async()=>{'use strict';
  const root=document.getElementById('pet-park'),canvas=document.getElementById('park-canvas'),status=document.getElementById('park-status'),join=document.getElementById('park-join'),leave=document.getElementById('park-leave'),select=document.getElementById('park-pet'),buttons=[...root.querySelectorAll('[data-action]')];
- const T=THREE,scene=new T.Scene();scene.background=new T.Color(0xdce7df);scene.fog=new T.Fog(0xdce7df,45,100);
+ // Older running servers may still cache the template without this dependency.
+ if(!window.HomeAtmosphere)try{await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/static/js/home-atmosphere.js?v='+encodeURIComponent(root.dataset.version);script.onload=resolve;script.onerror=reject;document.head.append(script);});}catch(_){status.textContent='云海环境未能加载，请刷新页面重试。';if(join)join.disabled=true;return;}
+ const T=THREE,scene=new T.Scene();scene.fog=new T.Fog(0xa8bac1,75,230);
+ const atmosphere=new HomeAtmosphere.Environment(T,scene),reduced=matchMedia('(prefers-reduced-motion: reduce)');let atmosphereFrame=-Infinity;
+ // Keep the cloud deck well below the rock base; distant ridges frame the horizon.
+ const ridges=atmosphere.group.children[1];ridges.scale.set(1.8,1,1.8);ridges.position.y=-6;
+ atmosphere.group.children[2].position.y=-23;for(const cloud of atmosphere.clouds)cloud.position.y-=5;
+ root.dataset.environment='cloud-island';
  let renderer;try{renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'low-power'});}catch(e){status.textContent='三维暂不可用，请返回群岛后重试。';if(join)join.disabled=true;return;}
- window.PaitWebCompat?.prepareRenderer(renderer);renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;
- const camera=new T.PerspectiveCamera(42,1,.1,150);camera.position.set(14,20,25);const controls=new T.OrbitControls(camera,canvas);controls.target.set(0,0,0);controls.enableDamping=true;controls.enablePan=false;controls.minDistance=12;controls.maxDistance=48;controls.maxPolarAngle=1.3;
+ window.PaitWebCompat?.prepareRenderer(renderer);renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;
+ const camera=new T.PerspectiveCamera(42,1,.1,600);camera.position.set(25,18,34);const controls=new T.OrbitControls(camera,canvas);controls.target.set(0,-1.8,0);controls.enableDamping=true;controls.enablePan=false;controls.minDistance=12;controls.maxDistance=72;controls.minPolarAngle=.25;controls.maxPolarAngle=1.38;let viewScale=1;
  scene.add(new T.HemisphereLight(0xfffaeb,0x61755d,.85));const sun=new T.DirectionalLight(0xffecd0,1.1);sun.position.set(-15,22,10);scene.add(sun);
  const navigation=ParkNavigation.create(JSON.parse(document.getElementById('park-navigation').textContent)),sceneLoader=new SelectedAssets.Loader(new T.GLTFLoader()),retry=document.getElementById('park-retry');
  const actors=new Map(),ray=new T.Raycaster(),pointer=new T.Vector2(),plane=new T.Plane(new T.Vector3(0,1,0),0),hit=new T.Vector3();
@@ -74,7 +81,7 @@
  canvas.addEventListener('pointercancel',()=>gesture=null);
  canvas.addEventListener('pointerup',e=>{const g=gesture;gesture=null;if(!g||g.id!==e.pointerId||!token||Math.hypot(e.clientX-g.x,e.clientY-g.y)>6)return;const r=canvas.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,1-(e.clientY-r.top)/r.height*2);ray.setFromCamera(pointer,camera);if(ray.ray.intersectPlane(plane,hit)&&(hit.x/8)**2+(hit.z/6)**2<=1){destination({x:hit.x,z:hit.z},'正在草坪上散步。');}});
  function frame(now){raf=requestAnimationFrame(frame);if(document.hidden||now-last<1000/30)return;const dt=last?Math.min((now-last)/1000,.08):0;last=now;
-  const w=canvas.clientWidth,h=canvas.clientHeight;if(w&&h&&(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio()))){renderer.setPixelRatio(Math.min(devicePixelRatio,1.25,Math.sqrt(1800000/(w*h))));renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();dirty=true;}
+  const w=canvas.clientWidth,h=canvas.clientHeight;if(w&&h&&(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio()))){renderer.setPixelRatio(Math.min(devicePixelRatio,1.25,Math.sqrt(1800000/(w*h))));renderer.setSize(w,h,false);camera.aspect=w/h;const nextScale=Math.max(1,Math.min(2.8,1.2/camera.aspect));camera.position.sub(controls.target).multiplyScalar(nextScale/viewScale).add(controls.target);controls.maxDistance=72*nextScale;viewScale=nextScale;camera.updateProjectionMatrix();dirty=true;}
   think(now/1000);
   let walking=false,budget=dt*moveSpeed;
   if(facility&&facility.confirmed){const f=facilitySpecs.get(facility.id),next=Math.min(ParkFacilities.length(f),facility.progress+dt*f.speed),point=ParkFacilities.sample(f,next);const occupied=(state?.players||[]).some(p=>!p.mine&&Math.hypot(point.x-p.x,point.z-p.z)<1&&Math.hypot(point.x-p.x,point.z-p.z)<Math.hypot(self.x-p.x,self.z-p.z));if(!occupied){walking=next>facility.progress;facility.progress=next;Object.assign(self,point);}if(intent)intent.textContent=occupied?'前面有伙伴，等它走开再继续。':pauseAfterFacility?'回到草坪后暂停自主游玩。':f.message;root.dataset.facility=facility.id;root.dataset.facilityProgress=facility.progress.toFixed(3);}
@@ -88,10 +95,10 @@
    const current=isMine?(now<actionUntil?action:'idle'):remote.action,moving=isMine?walking:d>.035;a.motion.update(moving?((isMine?moveSpeed>1.4:remote.action==='ball')?'run':'walk'):current==='ball'?'sniff':current,dt,moving?.9:1);
    const goal=isMine?aiGoal:remote.behavior?.goal;a.ball.visible=!!goal||current==='ball';if(a.ball.visible){if(goal)a.ball.position.set(goal.x,.18,goal.z);else a.ball.position.set(p.x+Math.sin(now*.004)*.6,.2+Math.abs(Math.sin(now*.006))*.35,p.z+1.1);}
    const activity=isMine?behavior().activity:remote.behavior?.activity,label=fs?facilitySpecs.get(fs.id)?.message:ParkAgent.labels[activity];const caption=remote.spec.name+(isMine?' · 我':'')+(label?' · '+label:'');if(a.label.textContent!==caption)a.label.textContent=caption;
-  }const changed=controls.update();if(dirty||changed||actors.size){renderer.render(scene,camera);dirty=false;}
+  }const changed=controls.update();if(!reduced.matches&&now-atmosphereFrame>=1000/12){atmosphere.update(now/1000,false);atmosphereFrame=now;dirty=true;}else if(reduced.matches&&atmosphere.time.value!==0){atmosphere.update(0,true);dirty=true;}if(dirty||changed||actors.size){renderer.render(scene,camera);dirty=false;}
  }
  document.addEventListener('visibilitychange',()=>{if(document.hidden)stop('已暂停公开游玩，回来后可以重新入园。');});
- addEventListener('pagehide',e=>{disposed=true;sceneLoader.begin();clearTimeout(timer);cancelAnimationFrame(raf);stop(null);if(!e.persisted){if(parkModel)SelectedAssets.disposeTree(parkModel);controls.dispose();renderer.dispose();}});
+ addEventListener('pagehide',e=>{disposed=true;sceneLoader.begin();clearTimeout(timer);cancelAnimationFrame(raf);stop(null);if(!e.persisted){if(parkModel)SelectedAssets.disposeTree(parkModel);SelectedAssets.disposeTree(atmosphere.group);controls.dispose();renderer.dispose();}});
  addEventListener('pageshow',e=>{if(e.persisted){disposed=false;last=0;dirty=true;if(!sceneReady)loadPark();else poll();raf=requestAnimationFrame(frame);}});
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();stop('画面已暂停，请刷新后重新入园。');cancelAnimationFrame(raf);if(join)join.disabled=true;});
  loadPark();raf=requestAnimationFrame(frame);
