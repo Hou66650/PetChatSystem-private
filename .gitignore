@@ -1,6 +1,7 @@
 *.rar
 *.zip
 *.mp4
+!/video/pait-island-demo-s1-s4.mp4
 venv/
 .idea/
 node_modules/
