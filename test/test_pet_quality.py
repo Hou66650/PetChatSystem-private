@@ -37,7 +37,7 @@ class QualityTests(unittest.TestCase):
     def test_unknown_blocks_paid_generation_before_launch(self):
         task = self.create_studio(); self.photo(task)
         with patch.object(generation,'available',return_value=True), patch.object(generation,'launch') as launch:
-            self.assertEqual(self.post(task,'generate',consent=True).status_code,409)
+            self.assertEqual(self.post(task,'generate',consent=True,provider='hyper3d').status_code,409)
             launch.assert_not_called()
 
     def test_checkboxes_and_legacy_review_cannot_bypass_gates(self):
@@ -90,7 +90,7 @@ class QualityTests(unittest.TestCase):
         task=self.create_studio();self.photo(task)
         with self.app.app_context():
             db=get_db();digest=generation.inputs(task)[1]
-            db.execute('INSERT INTO pet_studio_generations VALUES (?,?,?,?,?,?,?,?,?)',
+            db.execute('INSERT INTO pet_studio_generations (task,id,job,status,source_hash,credits,message,created,updated) VALUES (?,?,?,?,?,?,?,?,?)',
                        (task,'token','known','processing',digest,50,'',time.time(),time.time()));db.commit()
             generation._finish(task,'token',digest,b'synthetic-glb',50,
                                {'reason':'疑似重复尾巴','rearBranchCountsAssumingMinusY':[2,2,2]})

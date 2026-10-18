@@ -34,31 +34,31 @@ class GenerationTests(unittest.TestCase):
         key=self.ready()
         with patch.object(cloud,'available',return_value=True),patch.object(cloud,'launch') as launch:
             self.assertEqual(self.post(key,'generate').status_code,409)
-            self.assertEqual(self.post(key,'generate',{'consent':True}).status_code,200)
-            self.assertEqual(self.post(key,'generate',{'consent':True}).status_code,409)
+            self.assertEqual(self.post(key,'generate',{'consent':True,'provider':'hyper3d'}).status_code,200)
+            self.assertEqual(self.post(key,'generate',{'consent':True,'provider':'hyper3d'}).status_code,409)
             self.assertEqual(launch.call_count,1)
             payload=launch.call_args.args[3]
-            self.assertIn('ImageBase64',payload);self.assertNotIn('ImageUrl',payload)
-            self.assertEqual(payload['Model'],'3.1')
+            self.assertIn('front',payload);self.assertIsInstance(payload['front'],bytes)
+            self.assertEqual(self.row()['generation']['provider'],'hyper3d')
             self.assertEqual(self.photo(key).status_code,409)
             scope=self.b.get('/api/pet-studio').json['scope']
-            self.assertEqual(self.b.post('/api/pet-studio/'+key+'/generate',json={'consent':True},headers={'X-Profile-Scope':scope}).status_code,404)
+            self.assertEqual(self.b.post('/api/pet-studio/'+key+'/generate',json={'consent':True,'provider':'hyper3d'},headers={'X-Profile-Scope':scope}).status_code,404)
 
     def test_submit_timeout_is_uncertain_not_retried(self):
         key=self.ready()
         with patch.object(cloud,'available',return_value=True),patch.object(cloud,'launch'):
-            self.post(key,'generate',{'consent':True}); token=self.row()['generation']['id']
-        with self.app.app_context(),patch.object(cloud,'_call',side_effect=TimeoutError) as call:
+            self.post(key,'generate',{'consent':True,'provider':'hyper3d'}); token=self.row()['generation']['id']
+        with self.app.app_context(),patch.object(cloud.rodin,'call',side_effect=TimeoutError) as call:
             cloud._worker(key,token,{'test':True})
             self.assertEqual(cloud.state(key)['status'],'uncertain')
             cloud.resume(key,explicit=True)
             self.assertEqual(call.call_count,1)
-        self.assertEqual(self.post(key,'generate',{'consent':True}).status_code,409)
+        self.assertEqual(self.post(key,'generate',{'consent':True,'provider':'hyper3d'}).status_code,409)
 
     def test_deleted_job_and_private_download(self):
         key=self.ready();raw=Path('static/models/petchat-cat-v3/cat.glb').read_bytes()
         with patch.object(cloud,'launch'),patch.object(cloud,'available',return_value=True):
-            self.post(key,'generate',{'consent':True});token=self.row()['generation']['id']
+            self.post(key,'generate',{'consent':True,'provider':'hyper3d'});token=self.row()['generation']['id']
         with self.app.app_context():digest=cloud.inputs(key)[1]
         self.post(key,'delete')
         with self.app.app_context():cloud._finish(key,token,digest,raw,50)
@@ -69,7 +69,7 @@ class GenerationTests(unittest.TestCase):
         key=self.ready()
         with self.app.app_context():
             digest=cloud.inputs(key)[1];db=get_db()
-            db.execute('INSERT INTO pet_studio_generations VALUES (?,?,?,?,?,?,?,?,?)',(key,'token','known-job','paused',digest,None,'',time.time(),time.time()));db.commit()
+            db.execute('INSERT INTO pet_studio_generations (task,id,job,status,source_hash,credits,message,created,updated) VALUES (?,?,?,?,?,?,?,?,?)',(key,'token','known-job','paused',digest,None,'',time.time(),time.time()));db.commit()
         with patch.object(cloud,'launch') as launch:
             self.assertEqual(self.post(key,'resume-generation').status_code,200)
             launch.assert_called_once()
@@ -97,7 +97,7 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(self.photo(key).status_code,200)
         self.assertNotIn('custom',self.a.get('/api/cat-market').json['effectiveAppearance'])
 
-    @unittest.skipUnless(os.getenv('PET_STUDIO_QUERY_JOB'),'Requires an existing completed cloud job; never submits')
+    @unittest.skip('Legacy live helper retired: use isolated provider contract tests; never submit in tests')
     def test_real_cloud_result_stays_quarantined(self):
         key=self.create_studio();folder=Path('uploads/hunyuan-test-cat-20261015/paid-check-20261015')
         for view in ('front','left','back'):
@@ -111,9 +111,9 @@ class GenerationTests(unittest.TestCase):
             if action=='submit':return 200,{'JobId':os.environ['PET_STUDIO_QUERY_JOB']}
             return real_call(action,payload)
         with patch.object(cloud,'_call',side_effect=transport):
-            self.assertEqual(self.post(key,'generate',{'consent':True}).status_code,200)
+            self.assertEqual(self.post(key,'generate',{'consent':True,'provider':'hyper3d'}).status_code,200)
             # Reopening the workspace and double-clicking must not create another job.
-            self.assertEqual(self.post(key,'generate',{'consent':True}).status_code,409)
+            self.assertEqual(self.post(key,'generate',{'consent':True,'provider':'hyper3d'}).status_code,409)
             row=self.wait_for(lambda r:r.get('generation',{}).get('status') not in cloud.ACTIVE)
         self.assertEqual(row['generation']['status'],'done',row['generation'])
         self.assertEqual(row['generation']['credits'],50)

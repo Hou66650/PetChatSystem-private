@@ -21,6 +21,7 @@ from ..config import BASE_DIR
 from ..db import get_db
 from . import pet_adaptation_service as adaptation
 from . import pet_quality_service as quality
+from . import hyper3d_service as rodin
 
 BASE = 'https://api.ai3d.cloud.tencent.com/v1/ai3d/'
 ACTIVE = ('submitting', 'waiting', 'running', 'processing', 'uncertain')
@@ -35,15 +36,19 @@ def init_schema():
         created REAL NOT NULL, updated REAL NOT NULL);
     CREATE TABLE IF NOT EXISTS pet_studio_equipped(owner TEXT PRIMARY KEY, task TEXT NOT NULL);
     ''')
+    db = get_db()
+    if 'provider' not in {r['name'] for r in db.execute('PRAGMA table_info(pet_studio_generations)')}:
+        db.execute("ALTER TABLE pet_studio_generations ADD COLUMN provider TEXT NOT NULL DEFAULT 'hunyuan'")
+        db.commit()
 
 
 def available():
-    return bool(os.getenv('HUNYUAN_3D_API_KEY')) and Path(adaptation.executable()).is_file()
+    return bool(os.getenv('RODIN_API_KEY', '').strip()) and Path(adaptation.executable()).is_file()
 
 
 def state(task_id):
     r = get_db().execute('SELECT * FROM pet_studio_generations WHERE task=?', (task_id,)).fetchone()
-    return {k:r[k] for k in ('id','status','credits','message','updated')} if r else None
+    return {k:r[k] for k in ('id','status','credits','message','updated','provider')} if r else None
 
 
 def locked(task_id):
@@ -51,7 +56,7 @@ def locked(task_id):
     return r and r['status'] in (*ACTIVE, 'paused')
 
 
-def inputs(task_id):
+def inputs(task_id, provider='hyper3d'):
     photos = {r['slot']:r['data'] for r in get_db().execute(
         "SELECT slot,data FROM pet_studio_assets WHERE task=? AND slot IN ('front','left','right','back') ORDER BY slot", (task_id,))}
     if 'front' not in photos:
@@ -61,6 +66,8 @@ def inputs(task_id):
     digest = hashlib.sha256()
     for slot, raw in sorted(photos.items()):
         digest.update(slot.encode()); digest.update(raw)
+    if provider == 'hyper3d':
+        return photos, digest.hexdigest(), .5
     encode = lambda raw: base64.b64encode(raw).decode('ascii')
     payload = dict(Model='3.1', ImageBase64=encode(photos['front']), EnablePBR=True,
                    FaceCount=100000, GenerateType='Normal')
@@ -70,8 +77,8 @@ def inputs(task_id):
 
 
 def start(task_id, consent):
-    if consent is not True: raise ValueError('请先确认照片上传腾讯云及云端计费')
-    if not available(): raise ValueError('服务器尚未配置混元 API Key 或 Blender')
+    if consent is not True: raise ValueError('请先确认照片上传影眸 Hyper3D 及 API 计费')
+    if not available(): raise ValueError('服务器尚未配置 Hyper3D 的 RODIN_API_KEY 或 Blender；会员兑换码不能作为 API Key')
     db = get_db(); db.execute('BEGIN IMMEDIATE')
     try:
         prior = state(task_id)
@@ -87,8 +94,8 @@ def start(task_id, consent):
         payload, digest, _ = inputs(task_id)
         quality.require(task_id, 'inputs')
         token = uuid.uuid4().hex; now = time.time()
-        db.execute('INSERT OR REPLACE INTO pet_studio_generations VALUES (?,?,?,?,?,?,?,?,?)',
-                   (task_id, token, None, 'submitting', digest, None, '正在提交，尚未取得任务编号', now, now))
+        db.execute('INSERT OR REPLACE INTO pet_studio_generations (task,id,job,status,source_hash,credits,message,created,updated,provider) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                   (task_id, token, None, 'submitting', digest, None, '正在提交至 Hyper3D，尚未取得任务编号', now, now, 'hyper3d'))
         db.commit()
     except Exception:
         db.rollback(); raise
@@ -138,12 +145,19 @@ def resume(task_id, explicit=False):
     with _guard:
         if key in _threads: return
     if r['status']=='submitting' and not r['job'] and time.time()-r['updated']>180:
-        _update(task_id,r['id'],status='uncertain',message='提交结果未知，禁止重复扣费。请管理员在腾讯云核对任务。')
+        _update(task_id,r['id'],status='uncertain',message='提交结果未知，禁止重复扣费。请管理员在原生成服务控制台核对任务。')
     elif r['job'] and (r['status'] in ACTIVE or (explicit and r['status']=='paused')):
         launch(current_app._get_current_object(),task_id,r['id'])
 
 
 def _worker(task_id, token, payload=None):
+    row = get_db().execute('SELECT provider FROM pet_studio_generations WHERE task=? AND id=?', (task_id,token)).fetchone()
+    if not row: return
+    if row['provider'] == 'hyper3d':
+        return _hyper_worker(task_id, token, payload)
+    if row['provider'] != 'hunyuan':
+        _update(task_id, token, status='paused', message='无法识别原生成服务，请管理员核对')
+        return
     try:
         if payload is not None:
             try:
@@ -187,6 +201,56 @@ def _worker(task_id, token, payload=None):
     except Exception:
         # URLs may contain signatures; exceptions are intentionally not persisted.
         _update(task_id,token,status='paused',message='查询、下载或整理暂未完成。可继续查询原任务，不会重新生成或扣费。')
+
+
+def _hyper_worker(task_id, token, payload=None):
+    try:
+        if payload is not None:
+            try:
+                code, value = rodin.call('rodin', payload)
+            except Exception:
+                _update(task_id,token,status='uncertain',message='Hyper3D 提交结果未知，请在 API 控制台核对；不会自动重试或再次扣费。')
+                return
+            if not rodin.accepted(code, value):
+                # A receipt/5xx/partial response must never lead to a second paid call.
+                rejected = not value.get('uuid') and code < 500 and (code in (400,401,403,422,429) or bool(value.get('error')))
+                _update(task_id,token,status='failed' if rejected else 'uncertain',
+                    message='Hyper3D 拒绝请求，请检查 API Key、API 额度与照片参数。' if rejected else 'Hyper3D 返回不完整任务凭据，请管理员核对，禁止重复提交。')
+                return
+            receipt = dict(uuid=value['uuid'], subscription_key=value['jobs']['subscription_key'])
+            _update(task_id,token,job=json.dumps(receipt),credits=rodin.credit(value.get('consumed')),
+                    status='waiting',message='Hyper3D 已接收，正在排队')
+        deadline = time.monotonic()+1800
+        delay = 5
+        while time.monotonic() < deadline:
+            time.sleep(delay)
+            r = get_db().execute('SELECT * FROM pet_studio_generations WHERE task=? AND id=?',(task_id,token)).fetchone()
+            if not r or not r['job']: return
+            receipt = json.loads(r['job'])
+            code, value = rodin.call('status', {'subscription_key':receipt['subscription_key']})
+            # Stop on throttling; an explicit resume can query the same receipt later.
+            if code not in (200,201) or value.get('error'): raise ValueError('query')
+            jobs = value.get('jobs')
+            if not isinstance(jobs,list) or not jobs or any(not isinstance(j,dict) for j in jobs): raise ValueError('jobs')
+            states = [j.get('status') for j in jobs]
+            if 'Failed' in states:
+                _update(task_id,token,status='failed',message='Hyper3D 生成失败，请核对云端详情后决定是否重新生成。'); return
+            if any(s not in ('Waiting','Generating','Done') for s in states): raise ValueError('status')
+            if all(s == 'Done' for s in states):
+                _update(task_id,token,status='processing',message='Hyper3D 生成完成，正在下载并用 Blender 整理模型')
+                code, value = rodin.call('download', {'task_uuid':receipt['uuid']})
+                if code not in (200,201) or value.get('error'): raise ValueError('download')
+                entry = next((f for f in value.get('list',[]) if isinstance(f,dict) and str(f.get('name','')).lower().endswith('.glb')),None)
+                if not entry: raise ValueError('missing GLB')
+                raw, diagnostics = _prepare(rodin.download(entry['url']))
+                _finish(task_id,token,r['source_hash'],raw,r['credits'],diagnostics)
+                return
+            _update(task_id,token,status='running' if 'Generating' in states else 'waiting',
+                    message='Hyper3D 正在生成几何与 PBR 材质' if 'Generating' in states else 'Hyper3D 排队中')
+            delay = min(30, delay+5)
+        raise ValueError('query timeout')
+    except Exception:
+        _update(task_id,token,status='paused',message='Hyper3D 查询、下载或整理暂未完成（可能限流）。可稍后继续查询原任务，不会重新生成或扣费。')
 
 
 def _download(url):

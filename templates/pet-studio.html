@@ -34,7 +34,7 @@
    <p class="studio-hint">JPG / PNG，每张不超过 8 MB。照片会去除 EXIF 信息；补充侧面与背面有助于减少猜测。更换参考照会移除旧模型预览。</p>
    <button id="studio-prepare">保存素材，准备生成</button>
    <a id="studio-download">下载素材包 ↗</a>
-   <div class="studio-notice"><strong>把照片变成可以旋转的它。</strong><p>使用混元 3D 3.1，生成约 10 万面及 PBR 材质。单图预计 40 积分，多视图预计 50 积分，以云端实际结算为准。费用由本站配置的腾讯云账户承担，不使用游戏代币。</p><p>点击生成后，正面与已上传的左侧、右侧、背面照片将发送至腾讯云；花纹细节照仅供人工核对。保存素材不会自动生成。</p><label><input id="studio-cloud-consent" type="checkbox"> 我同意上传这些照片并发起一次计费生成</label><div class="studio-actions"><button id="studio-generate">开始云端生成</button><button id="studio-generation-resume" hidden>继续查询原任务</button></div><p id="studio-generation-status" role="status"></p></div>
+   <div class="studio-notice"><strong>把照片变成可以旋转的它。</strong><p>使用影眸 Hyper3D · Rodin Gen-2.5 High，目标约 10 万面，输出 PBR 材质 GLB。当前参数预计 0.5 API credits / 次，以官方实际结算为准，不使用游戏代币。会员兑换权益是否包含 API 额度，请以账号控制台为准。</p><p>点击生成后，正面与已上传的左侧、右侧、背面照片将发送至影眸 Hyper3D；花纹细节照仅供人工核对。保存素材不会自动生成。</p><label><input id="studio-cloud-consent" type="checkbox"> 我同意上传这些照片并发起一次计费生成</label><div class="studio-actions"><button id="studio-generate">开始云端生成</button><button id="studio-generation-resume" hidden>继续查询原任务</button></div><p id="studio-generation-status" role="status"></p></div>
    <details><summary>已有生成模型？导入并核对外貌</summary><p>导入 Blender 导出的自包含 GLB（最多 30 MB）。此处仅预览外貌，尚未通过动作验收的模型不会替换岛上的猫咪。</p><input id="studio-model" type="file" accept=".glb" aria-label="导入 GLB 模型"></details>
    <div id="studio-preview-wrap" hidden><canvas id="studio-preview" aria-label="拖动旋转模型，滚轮缩放"></canvas><p id="studio-preview-note">拖动旋转 · 滚轮缩放</p><div id="studio-motion-buttons" class="studio-actions" hidden></div><label id="studio-head-control" hidden>转头检查<input id="studio-head" type="range" min="-0.4" max="0.4" step="0.02" value="0"></label></div>
    <label class="studio-notes">想保留的特征 / 需要修正的地方<textarea id="studio-notes" maxlength="1000" rows="3" placeholder="例如：左耳有一小块白毛，尾巴尖是深色的。"></textarea></label>
@@ -42,7 +42,7 @@
    <p id="studio-next" class="studio-hint"></p>
    <section aria-label="模型质量审核"><h3>模型质量审核</h3><p>照片一致性、身体结构、蒙皮和动作需依次通过制作端审核。待审核或发现异常的模型仅作私人草稿，不会进入小岛。重新上传素材后需重新审核；网页确认不能替代质量审核。</p><ul id="studio-quality"></ul></section>
    <section id="studio-adaptation" class="studio-adaptation" hidden>
-    <h3>让它动起来</h3><p>已有标准猫骨骼时复用动作；无骨骼的站立猫可以尝试模板蒙皮。草稿仍需要你逐项检查，不会直接替换岛上的伙伴。</p><p class="studio-hint">混元生成的外貌模型通常不含骨骼，这不代表生成失败。四脚站立模型请选择「无骨骼站立猫 · 模板蒙皮草稿」；坐卧、蜷缩模型需要先在 Blender 中调整姿态。此步骤不重新调用云端生成。</p>
+    <h3>让它动起来</h3><p>已有标准猫骨骼时复用动作；无骨骼的站立猫可以尝试模板蒙皮。草稿仍需要你逐项检查，不会直接替换岛上的伙伴。</p><p class="studio-hint">AI 生成的外貌模型通常不含骨骼，这不代表生成失败。四脚站立模型请选择「无骨骼站立猫 · 模板蒙皮草稿」；坐卧、蜷缩模型需要先在 Blender 中调整姿态。此步骤不重新调用云端生成。</p>
     <label>适配方式<select id="studio-adapt-mode"><option value="auto">兼容骨骼 · 保留原蒙皮</option><option value="template-skin">无骨骼站立猫 · 模板蒙皮草稿</option></select></label>
     <label>模板蒙皮时的朝向校正<select id="studio-adapt-forward"><option value="-Y">保持默认朝向</option><option value="+Y">旋转 180°</option><option value="+X">旋转 90°</option><option value="-X">旋转 -90°</option></select></label>
     <button id="studio-adapt-start">开始本机 Blender 适配</button><p id="studio-adapt-status" role="status"></p><ul id="studio-adapt-report"></ul>

@@ -231,6 +231,8 @@ def operate(task_id, operation):
             db.execute('DELETE FROM pet_studio_tasks WHERE id=?', (task_id,))
         return snapshot()
     if operation == 'generate':
+        if data.get('provider') != 'hyper3d':
+            return jsonify(error='生成服务已改为影眸 Hyper3D，请刷新页面并重新确认照片上传及 API 计费'), 409
         try: generation.start(task_id, data.get('consent'))
         except ValueError as exc: return jsonify(error=str(exc)), 409
         return snapshot()
