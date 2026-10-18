@@ -84,6 +84,8 @@ def create_app(config_object=Config):
         pet_quality_service.init_schema()
         from .services import desktop_agent_service
         desktop_agent_service.init_schema()
+        from .services import desktop_task_service
+        desktop_task_service.init_schema()
 
     @app.context_processor
     def _companion_scope():
@@ -104,4 +106,7 @@ def create_app(config_object=Config):
     for blueprint in ALL_BLUEPRINTS:
         app.register_blueprint(blueprint)
 
+    from .routes.desktop_tasks import bp as desktop_tasks_bp
+    app.register_blueprint(desktop_tasks_bp)
+    desktop_task_service.install(app)
     return app

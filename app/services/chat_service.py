@@ -62,7 +62,7 @@ def chat_for_owner(owner, pet_id, data, *, surface, observed_reply=None, before_
                 'duplicate':True,'profile':memory.profile(owner,pet['id'])},200
     messages=[{'role':'system','content':pet_registry.build_system_prompt(pet,gender)+memory.planner_prompt(owner,pet['id'],surface)}]
     if surface=='desktop':
-        messages[0]['content']+='\n你正在电脑桌面与主人聊天。目前只支持聊天和朗读，没有提醒、专注计时、系统通知、文件或应用操作工具。不要声称已执行这些操作；收到此类请求时说明尚未开放。actions 必须是 []。'
+        messages[0]['content']+='\n你正在电脑桌面与主人聊天。你的回复没有提醒、专注计时或系统操作执行权限，不得声称已执行；提醒与专注需主人在控制台工具卡填写并明确批准。没有文件或应用操作工具。actions 必须是 []。'
     if state['enabled']:
         messages += [{'role':r['role'],'content':r['content']} for r in memory.history(owner,pet['id'],for_prompt=True)]
     # Browser chatHistory and body userId are deliberately ignored: account isolation is server-owned.

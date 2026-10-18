@@ -1,8 +1,9 @@
 'use strict';
-const {app,BrowserWindow,ipcMain,screen,Menu}=require('electron');
+const {app,BrowserWindow,ipcMain,screen,Menu,Notification}=require('electron');
 const path=require('node:path'),{pathToFileURL}=require('node:url'),{execFile}=require('node:child_process');
 const {createHash,randomUUID}=require('node:crypto'),{clampTarget}=require('./motion'),{TripContext}=require('./trip-context');
 const {validateHookSpeech,validateReaction}=require('./vendor/openpets/events.cjs');
+const {DeliveryDispatcher}=require('./notifications');
 let control,pairing=false,quitting=false,generation=0,status='请在网页确认桌面传送，再粘贴一次性配对码。';
 const contexts=new Map(),senders=new Map();
 const phases=['preparing','entering','emerging','roaming'];
@@ -14,7 +15,8 @@ function sender(e){
  const c=senders.get(e.sender.id),w=e.sender===control?.webContents?control:c?.window,file=w===control?'index.html':'pet.html';
  if(!w||w.isDestroyed()||e.sender!==w.webContents||e.senderFrame!==w.webContents.mainFrame||e.senderFrame.url!==pathToFileURL(path.join(__dirname,file)).href)throw Error('无效的客户端来源');return c;
 }
-function state(c){return live(c)?{connected:true,status:c.status,sensing:c.sensing,action:c.action,pet:c.pet,trip:c.trip,phase:c.phase,expiresAt:c.expiresAt,generation:c.generation,version:c.manifest?.version,chatEnabled:!!c.manifest?.chatEnabled,voiceEnabled:!!c.manifest?.voiceEnabled,reaction:c.reaction,assetSha256:c.manifest?.modelSha256}:{connected:false,status};}
+function state(c){return live(c)?{connected:true,status:c.status,sensing:c.sensing,action:c.action,pet:c.pet,trip:c.trip,phase:c.phase,expiresAt:c.expiresAt,generation:c.generation,version:c.manifest?.version,chatEnabled:!!c.manifest?.chatEnabled,voiceEnabled:!!c.manifest?.voiceEnabled,toolsEnabled:!!c.manifest?.toolsEnabled,tasks:c.tasks||[],taskClock:c.taskClock,reaction:c.reaction,assetSha256:c.manifest?.modelSha256}:{connected:false,status};}
+function taskSnapshot(c,snapshot){c.tasks=snapshot.tasks;c.taskClock={serverTime:snapshot.serverTime,observedAt:Date.now()};publish(c);}
 function publish(c){for(const w of [c?.window,control])if(w&&!w.isDestroyed()&&(w!==control||!c||senders.get(w.webContents.id)===c))w.webContents.send('desktop:state',state(c));}
 function reaction(c,value,text){if(!live(c))return;c.reaction=validateReaction(value);c.status=validateHookSpeech(text);publish(c);}
 function stop(c,message){
@@ -25,7 +27,8 @@ function stop(c,message){
 async function request(c,op,body){
  if(!live(c))throw Error('行程已变化');const task=c.signal(['chat','speech'].includes(op)?180000:op==='plan'?32000:10000);
  try{
-  const r=await fetch(c.origin+'/api/portals/desktop/'+op,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',Authorization:'Bearer '+c.token},body:body?JSON.stringify(body):undefined,redirect:'error',signal:task.signal});
+  const endpoint=op.startsWith('tasks/')?'/api/desktop/v1/'+op.slice(6):'/api/portals/desktop/'+op;
+  const r=await fetch(c.origin+endpoint,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',Authorization:'Bearer '+c.token},body:body?JSON.stringify(body):undefined,redirect:'error',signal:task.signal});
   const d=await r.json();if(!live(c))throw Error('行程已变化');
   if(!r.ok){if(r.status===409&&d.code==='TRIP_ENDED')stop(c,'宠物已返回小岛。');const error=Error(d.error||'连接失败');error.code=d.code;throw error;}
   if(Number.isFinite(d.expiresAt))c.expiresAt=d.expiresAt;return d;
@@ -39,7 +42,7 @@ function syncPhase(c,phase){if(!live(c)||!phases.includes(phase)||phases.indexOf
 async function refresh(c){
  const manifest=await request(c,'manifest',{}),old=c.manifest;
  if(old&&(old.modelSha256!==manifest.modelSha256||JSON.stringify(old.accessories)!==JSON.stringify(manifest.accessories))){await recall(c);throw Error('宠物模型已变化，请重新传送');}
- c.manifest=manifest;if(old?.version!==manifest.version||old?.chatEnabled!==manifest.chatEnabled||old?.voiceEnabled!==manifest.voiceEnabled)publish(c);return manifest;
+ c.manifest=manifest;if(old?.toolsEnabled&&!manifest.toolsEnabled)c.deliveryDispatcher?.dispose();if(old?.version!==manifest.version||old?.chatEnabled!==manifest.chatEnabled||old?.voiceEnabled!==manifest.voiceEnabled||old?.toolsEnabled!==manifest.toolsEnabled)publish(c);return manifest;
 }
 async function bytes(url,c,limit,hash,authenticated=false){
  if(!/^[a-f0-9]{64}$/.test(hash||''))throw Error('模型缺少校验信息');const task=c.signal(30000);
@@ -60,6 +63,11 @@ async function pair(raw){
  const c=new TripContext(origin,d,++generation);contexts.set(c.trip,c);senders.set(control.webContents.id,c);
  try{
   if(d.protocol!==2)throw Error('服务器版本过旧，请升级后再传送');await refresh(c);
+  c.deliveryDispatcher=new DeliveryDispatcher({Notification,alive:()=>live(c)&&!!c.manifest?.toolsEnabled,sendAck:async body=>{
+   // Receipts remain valid for this one claimed attempt after trip cancellation.
+   const r=await fetch(c.origin+'/api/desktop/v1/ack',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+c.token},body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(10000)});
+   if(!r.ok)throw Error('通知回执未确认');
+  }});
   c.window=windowFor('pet.html',{width:280,height:300,frame:false,transparent:true,backgroundColor:'#00000000',alwaysOnTop:true,skipTaskbar:true,resizable:false,show:false});senders.set(c.window.webContents.id,c);
   c.window.on('closed',()=>{if(live(c))void recall(c);});
   const a=screen.getPrimaryDisplay().workArea,p=clampTarget({x:a.x+a.width/2-140,y:a.y+a.height-300},a);c.motion.x=p.x;c.motion.y=p.y;c.window.setPosition(Math.round(p.x),Math.round(p.y));publish(c);
@@ -91,6 +99,17 @@ ipcMain.handle('desktop:command',async(e,command,data)=>{
    const d=await request(c,command,{});syncPhase(c,d.phase);return d;
   }
   if(command==='return'){await recall(c);return {ok:true};}
+  if(['task-propose','task-approve','task-cancel','task-retry'].includes(command)){
+   if(!isControl||c.phase!=='roaming')throw Error('请在控制台操作本次行程的任务');
+   const result=await request(c,'tasks/'+command.slice(5),data);
+   // A failed refresh cannot turn a confirmed approval into a false failure.
+   try{taskSnapshot(c,await request(c,'tasks/state',{}));}catch(_){}
+   if(command==='task-approve'&&result.task?.status==='succeeded'&&!result.duplicate){
+    reaction(c,'success','任务已确认并开始执行');
+    const timer=setTimeout(()=>{c.timers.delete(timer);if(live(c)&&c.reaction==='success')reaction(c,'idle','正在桌面陪伴你');},2200);c.timers.add(timer);
+   }
+   return result;
+  }
   if(command==='chat'||command==='speech'){
    if(!isControl||c.phase!=='roaming'||!c.manifest.chatEnabled)throw Error('请等待宠物到达桌面后在控制台聊天');
    if(data?.version!==c.manifest.version)throw Error('档案已更新，请重新发送');
@@ -106,7 +125,7 @@ ipcMain.handle('desktop:command',async(e,command,data)=>{
   if(command==='menu'){Menu.buildFromTemplate([{label:'和它聊天',enabled:c.phase==='roaming',click:()=>control.show()},{label:'摸摸它',enabled:c.phase==='roaming',click:()=>petting(c)},{label:'返回悬浮岛',click:()=>void recall(c)}]).popup({window:c.window});return {ok:true};}
   if(command==='ignore'&&!isControl){c.window.setIgnoreMouseEvents(data===true,{forward:true});return {ok:true};}
   throw Error('未知客户端操作');
- }catch(error){if(live(c)){reaction(c,'error','这次操作未能完成');if(error.code==='CONTEXT_CHANGED')await refresh(c).catch(()=>{});}return {error:error.message,code:error.code};}
+ }catch(error){if(live(c)){reaction(c,'error',command.startsWith('task-')?'操作结果请以任务卡为准':'这次操作未能完成');if(error.code==='CONTEXT_CHANGED')await refresh(c).catch(()=>{});}return {error:error.message,code:error.code};}
 });
 function sense(c){
  if(!c.sensing||c.sensorBusy||Date.now()-c.lastSensor<6000)return;c.lastSensor=Date.now();c.sensorBusy=true;
@@ -118,7 +137,13 @@ function sense(c){
 async function heartbeat(c){
  if(!live(c)||c.busy)return;c.busy=true;const now=Date.now();
  try{
-  if(now-c.lastPing>=2000){c.lastPing=now;await request(c,'ping',{});await refresh(c);}
+  if(now-c.lastPing>=2000){
+   c.lastPing=now;await request(c,'ping',{});await refresh(c);
+   if(c.phase==='roaming'){
+    taskSnapshot(c,await request(c,'tasks/state',{}));
+    if(c.manifest.toolsEnabled){const claimed=await request(c,'tasks/claim',{});if(claimed.delivery)c.deliveryDispatcher.deliver(claimed.delivery);}
+   }
+  }
   if(c.phase==='roaming'&&now-c.lastSample>=2000){c.lastSample=now;event(c,'position');const a=screen.getPrimaryDisplay().workArea,batch=c.events.splice(0,12);try{await request(c,'sample',{snapshot:{visitor:{x:(c.motion.x-a.x)/a.width,z:(c.motion.y-a.y)/a.height,yaw:c.motion.yaw,action:c.action}},events:batch});}catch(e){if(live(c))c.events=[...batch,...c.events].slice(-12);throw e;}}
   const d=await request(c,'state');c.lastContact=Date.now();syncPhase(c,d.phase);
  }catch(e){if(live(c)){if(Date.now()-c.lastContact>45000)stop(c,'连接中断，桌宠已收起；小岛会自动接回。');else reaction(c,'error','连接暂时未能确认');}}finally{c.busy=false;}
@@ -137,5 +162,5 @@ function frame(c){
  const p=clampTarget(c.motion,a);c.motion.x=p.x;c.motion.y=p.y;c.window.setPosition(Math.round(p.x),Math.round(p.y));
  c.window.webContents.send('desktop:motion',{trip:c.trip,generation:c.generation,assetSha256:c.manifest.modelSha256,yaw:c.motion.yaw,turnRate:c.motion.turnRate||0,speed:Math.hypot(c.motion.vx,c.motion.vy),action:c.action});
 }
-app.whenReady().then(()=>{control=windowFor('index.html',{width:460,height:760,title:'派特岛 · 桌面陪伴',autoHideMenuBar:true});control.on('closed',()=>app.quit());});
+app.whenReady().then(()=>{if(process.platform==='win32')app.setAppUserModelId('com.pait.island.desktop');control=windowFor('index.html',{width:460,height:760,title:'派特岛 · 桌面陪伴',autoHideMenuBar:true});control.on('closed',()=>app.quit());});
 app.on('before-quit',e=>{if(quitting)return;quitting=true;const trips=[...contexts.values()];if(trips.length){e.preventDefault();Promise.all(trips.map(recall)).finally(()=>app.quit());}});

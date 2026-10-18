@@ -14,6 +14,7 @@ class TripContext{
   if(!this.alive)return;this.alive=false;
   for(const timer of this.timers)clearInterval(timer);this.timers.clear();
   for(const controller of this.requests)controller.abort();this.requests.clear();
+  this.deliveryDispatcher?.dispose();
   this.sensor?.kill();this.sensor=null;this.motion.halt();this.events=[];this.target=null;this.sensing=false;
  }
 }

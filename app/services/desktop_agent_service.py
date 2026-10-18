@@ -61,7 +61,7 @@ def manifest(t):
     enabled=bool(current_app.config.get('DESKTOP_AGENT_ENABLED')) and pet is not None
     return dict(version=version,modelSha256=model_hash,accessories=accessories,
                 chatEnabled=enabled,voiceEnabled=enabled and bool(current_app.config.get('GLM_API_KEY')),
-                toolsEnabled=False,multipetEnabled=False,expiresAt=portal.expires_at(t))
+                toolsEnabled=enabled and bool(current_app.config.get('TOOLS_ENABLED',True)),multipetEnabled=False,expiresAt=portal.expires_at(t))
 
 
 def check(t,version):

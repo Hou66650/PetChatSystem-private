@@ -44,6 +44,23 @@ async function until(test,timeout=60000){const end=Date.now()+timeout;while(Date
   assert.equal(await control.evaluate(()=>audio),null);
   assert.notEqual((await control.evaluate(()=>paitDesktop.command('state'))).reaction,'success');
   await control.screenshot({path:path.join(output,'chat.png')});
+  // Real UI -> durable approval -> server clock -> main-process OS notification.
+  await control.locator('#tool-title').fill('派特岛测试提醒');await control.locator('#tool-duration').fill('10');await control.locator('#tool-unit').selectOption('1');await control.locator('#tool-propose').click();
+  const reminder=control.locator('.task-card').filter({hasText:'派特岛测试提醒'});
+  await reminder.getByRole('button',{name:'批准并执行',exact:true}).waitFor();
+  assert.match(await reminder.innerText(),/等待你的批准/);assert.doesNotMatch(await reminder.innerText(),/设置成功/);
+  await reminder.getByRole('button',{name:'批准并执行',exact:true}).click();await reminder.getByText('任务：设置成功',{exact:true}).waitFor();
+  await until(async()=>await reminder.innerText().then(text=>text.includes('提醒已到点')&&/系统报告已显示|通知结果未知|系统不支持通知/.test(text)),30000);
+  const notificationResult=await reminder.innerText();console.log('OS delivery result:',notificationResult);
+  // Natural language creates only a pending card. Rejection cannot start a timer.
+  await control.locator('#message').fill('专注1分钟');await control.locator('#send').click();
+  const focus=control.locator('.task-card').filter({hasText:'专注时间'});await focus.getByRole('button',{name:'拒绝',exact:true}).click();await focus.getByText('任务：审批已取消',{exact:true}).waitFor();
+  await control.locator('#tool-kind').selectOption('focus_timer.start');await control.locator('#tool-title').fill('派特岛测试专注');await control.locator('#tool-propose').click();
+  const timer=control.locator('.task-card').filter({hasText:'派特岛测试专注'});await timer.getByRole('button',{name:'批准并执行',exact:true}).click();await timer.getByText('任务：设置成功',{exact:true}).waitFor();
+  const remaining=timer.locator('[data-due]');await remaining.waitFor();const initialRemaining=await remaining.textContent();assert.match(initialRemaining,/剩余 00:/);
+  await until(async()=>await remaining.textContent()!==initialRemaining,4000);await control.screenshot({path:path.join(output,'focus-timer.png')});
+  await timer.getByRole('button',{name:'取消计时',exact:true}).click();await timer.getByText('效果：效果已取消',{exact:true}).waitFor();
+  await control.screenshot({path:path.join(output,'tasks.png')});
   assert(Number.isFinite(connectedState.expiresAt));
   assert.match(await control.locator('#deadline').innerText(),/最迟返程/);
   // Exercise real main.js request handling: an application conflict, including a
@@ -86,6 +103,6 @@ async function until(test,timeout=60000){const end=Date.now()+timeout;while(Date
   await control.locator('#code').fill(await page.locator('[data-pair] code').innerText());await control.locator('#pair button').click();await until(async()=>await control.evaluate(async()=>(await paitDesktop.command('state')).phase==='preparing'));
   await control.locator('#return').click();await until(async()=>await control.evaluate(async()=>!(await paitDesktop.command('state')).connected));await page.waitForTimeout(3500);
   assert.equal(await app.evaluate(()=>globalThis.transferReadyCount),0);assert(await page.evaluate(()=>__den.petModel.visible));
-  console.log(JSON.stringify({passed:'Actual island approach, slow preparation, IPC wardrobe, entry acknowledgement, desktop emerging/settling, chat and original-voice playback, IPC role isolation, deadline, business/legacy conflicts without recall, server recall, hash mismatch, accessory failure rollback, cancellation with bytes in flight',stats,output},null,2));
+  console.log(JSON.stringify({passed:'Actual island approach, slow preparation, IPC wardrobe, entry acknowledgement, desktop emerging/settling, chat and original-voice playback, approvals, reminder due and OS receipt, focus rejection and cancellation, IPC role isolation, deadline, business/legacy conflicts without recall, server recall, hash mismatch, accessory failure rollback, cancellation with bytes in flight',stats,output},null,2));
  }finally{if(app)await app.close();await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

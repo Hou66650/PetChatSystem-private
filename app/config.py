@@ -46,6 +46,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
     DEBUG = _bool('DEBUG', True)
     DESKTOP_AGENT_ENABLED = _bool('DESKTOP_AGENT_ENABLED', True)
+    TOOLS_ENABLED = _bool('TOOLS_ENABLED', True)
+    DESKTOP_TASK_SCHEDULER_ENABLED = _bool('DESKTOP_TASK_SCHEDULER_ENABLED', True)
 
     # --- 数据库 -----------------------------------------------------
     # 绝对路径，保证在任意工作目录下启动都能找到同一个库
@@ -95,7 +97,7 @@ class Config:
     # --- 版本管理（强制）：每次改动必须升版本并记 CHANGELOG.md ----------------
     # 修复→补丁位 / 新功能→次版本位 / 破坏性→主版本位；
     # 用 scripts/bump_version.py 升号（自动校验 CHANGELOG 已记账），提交打同名 tag。
-    APP_VERSION = os.environ.get('APP_VERSION', '1.93.0')
+    APP_VERSION = os.environ.get('APP_VERSION', '1.95.0')
     VISION_REMOTE_ENABLED = os.environ.get('VISION_REMOTE_ENABLED', '0') == '1'
 
     # --- 真实宠物叫声（v1.0.0）：petId → 物种，决定叫声库目录 ---------------

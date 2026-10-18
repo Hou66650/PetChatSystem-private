@@ -116,7 +116,7 @@ class DesktopAgentTests(unittest.TestCase):
 
     def test_flag_and_asset_manifest(self):
         self.pair();m=self.call('manifest').json
-        self.assertRegex(m['modelSha256'],r'^[a-f0-9]{64}$');self.assertFalse(m['toolsEnabled']);self.assertFalse(m['multipetEnabled'])
+        self.assertRegex(m['modelSha256'],r'^[a-f0-9]{64}$');self.assertTrue(m['toolsEnabled']);self.assertFalse(m['multipetEnabled'])
         self.app.config['DESKTOP_AGENT_ENABLED']=False
         self.assertFalse(self.call('manifest').json['chatEnabled']);self.assertEqual(self.chat().json['code'],'AGENT_DISABLED')
         self.assertEqual(self.call('ping').status_code,200);self.assertEqual(self.call('return').status_code,200)

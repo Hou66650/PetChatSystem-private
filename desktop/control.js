@@ -10,6 +10,7 @@ function render(s){
  current=s;window.PaitLoading?.sync('desktop-model',s.connected&&s.phase==='preparing','正在准备桌宠模型与饰品');
  $('status').textContent=s.status;$('pair').hidden=s.connected;$('connected').hidden=!s.connected;$('sense').checked=s.sensing;$('sense').disabled=s.phase!=='roaming';
  $('deadline').textContent=Number.isFinite(s.expiresAt)?'本次最迟返程：'+new Date(s.expiresAt*1000).toLocaleString('zh-CN')+'（本机时区）。召回或断线会提前结束。':'当前服务未提供最迟返程时间。';controls();
+ window.DesktopTasks?.render(s);
 }
 function matches(trip,version){return current.connected&&current.chatEnabled&&current.trip===trip&&current.version===version;}
 function line(label,text){const p=document.createElement('p');p.textContent=label+'：'+text;$('messages').append(p);while($('messages').children.length>40)$('messages').firstChild.remove();p.scrollIntoView({block:'nearest'});return p;}
@@ -21,6 +22,8 @@ $('chat-form').onsubmit=async e=>{
  const message=$('message').value.trim();if(!message)return;
  const {trip,version}=current,requestId=crypto.randomUUID();busy=true;controls();$('chat-error').textContent='';line('我',message);$('message').value='';
  try{
+  const tool=window.DesktopTasks?.parse(message);
+  if(tool){await window.DesktopTasks.propose(tool.capability,tool.title,tool.seconds);if(matches(trip,version))line('宠物','审批卡已准备好，请核对参数后批准。尚未开始执行。');return;}
   const r=await api.command('chat',{requestId,version,message});if(!matches(trip,version))return;if(r.error)throw Error(r.error);
   const p=line(current.pet?.name||'宠物',r.reply);
   if(current.voiceEnabled){

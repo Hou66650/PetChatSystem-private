@@ -112,6 +112,9 @@ def ensure(owner):
 def finish(trip,reason='主人召回'):
     db=get_db();now=time.time()
     changed=db.execute("UPDATE portal_trips SET status='returned',ended=?,updated=?,reason=?,pair_hash=NULL,token_hash=NULL WHERE id=? AND status IN ('pairing','active')",(now,now,reason,trip['id'])).rowcount
+    if changed and trip['kind']=='desktop':
+        from . import desktop_task_service
+        desktop_task_service.cancel_trip(db,trip['id'],reason,now)
     if changed and trip['status']=='active' and str(trip['pet']) in PETS:
         from . import diary_service
         diary_service.record(db,trip['owner'],int(trip['pet']),'journey:'+trip['id'],'event',

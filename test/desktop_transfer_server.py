@@ -36,4 +36,7 @@ with app.app_context():
 @app.get('/__qa/login')
 def login():
     session['user_id']='desktop-test';session['auth_kind']='user';return redirect('/den?pet=1')
-if __name__=='__main__':app.run(host='127.0.0.1',port=5091,debug=False,use_reloader=False)
+if __name__=='__main__':
+    from app.services import desktop_task_service
+    app.testing=False;desktop_task_service.install(app)
+    app.run(host='127.0.0.1',port=5091,debug=False,use_reloader=False)
