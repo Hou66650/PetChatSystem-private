@@ -17,14 +17,15 @@
   return new T.Mesh(g,new T.MeshStandardMaterial({vertexColors:true,roughness:1,side:T.DoubleSide}));
  }
  class Environment{
-  constructor(T,scene){
+  constructor(T,scene,{lightweight=false}={}){
    this.T=T;this.time={value:0};this.group=new T.Group();scene.add(this.group);
    const sky=new T.Mesh(new T.SphereGeometry(290,32,16),new T.ShaderMaterial({side:T.BackSide,depthWrite:false,uniforms:{},vertexShader:'varying vec3 vDir;void main(){vDir=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:`varying vec3 vDir;void main(){vec3 d=normalize(vDir);float h=clamp(d.y,0.,1.);vec3 color=mix(vec3(.76,.80,.78),vec3(.18,.35,.48),pow(h,.48));float sun=dot(d,normalize(vec3(-.6,.26,-.65)));color+=vec3(.34,.23,.10)*pow(max(sun,0.),10.);color+=vec3(.7,.53,.3)*pow(max(sun,0.),180.);color+=vec3(1.,.9,.68)*smoothstep(.9994,.9998,sun);gl_FragColor=vec4(color,1.);}` }));sky.renderOrder=-10;this.group.add(sky);
    this.group.add(mountains(T));
    const floor=new T.Mesh(new T.CircleGeometry(230,80),new T.MeshBasicMaterial({color:0xadbfc4}));floor.rotation.x=-Math.PI/2;floor.position.y=-19;this.group.add(floor);
    this.clouds=[];
-   for(let i=0;i<4;i++){
-    const material=new T.ShaderMaterial({transparent:true,depthWrite:false,side:T.DoubleSide,uniforms:{uTime:this.time,uLayer:{value:i}},vertexShader:'varying vec3 vWorld;void main(){vec4 w=modelMatrix*vec4(position,1.);vWorld=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',fragmentShader:`varying vec3 vWorld;uniform float uTime;uniform float uLayer;${noise}
+   const cloudNoise=lightweight?noise.replace('i<4','i<2'):noise;
+   for(let i=0;i<(lightweight?2:4);i++){
+    const material=new T.ShaderMaterial({transparent:true,depthWrite:false,side:T.DoubleSide,uniforms:{uTime:this.time,uLayer:{value:i}},vertexShader:'varying vec3 vWorld;void main(){vec4 w=modelMatrix*vec4(position,1.);vWorld=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',fragmentShader:`varying vec3 vWorld;uniform float uTime;uniform float uLayer;${cloudNoise}
      void main(){vec2 p=vWorld.xz*.043+vec2(uTime*.006,uLayer*5.3);float n=fbm(p);float detail=fbm(p*3.1+uLayer);float density=smoothstep(.24,.64,n*.8+detail*.2);float edge=1.-smoothstep(130.,210.,length(vWorld.xz));float light=fbm(p+vec2(-.25,-.35))-n;vec3 col=mix(vec3(.42,.55,.61),vec3(.91,.91,.84),clamp(.54+light*3.+detail*.25,0.,1.));gl_FragColor=vec4(col,density*edge*.72);}`});
     const cloud=new T.Mesh(new T.PlaneGeometry(440,440),material);cloud.rotation.x=-Math.PI/2;cloud.position.y=-7-i*2.8;cloud.renderOrder=-4+i;this.group.add(cloud);this.clouds.push(cloud);
    }
