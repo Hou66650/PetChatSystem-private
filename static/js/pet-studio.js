@@ -2,7 +2,7 @@
 (()=>{'use strict';
  const $=id=>document.getElementById(id),scope=window.PET_STUDIO_SCOPE;
  const labels={draft:'收集照片',awaiting_generation:'等待生成',review:'核对外貌',approved:'等待动作适配'};
- let generationAvailable=false;let rows=[],selected=null,busy=false,renderer,scene,camera,controls,model,frame,previewTicket=0,mixer,activeAction,pollTimer;
+ let generationAvailable=false;let rows=[],selected=new URLSearchParams(location.search).get('task'),busy=false,renderer,scene,camera,controls,model,frame,previewTicket=0,mixer,activeAction,pollTimer;
  const qualityPass=(row,stage)=>{const stages=['inputs','geometry','rig','motion'];return stages.slice(0,stages.indexOf(stage)+1).every(k=>row.quality?.[k]?.status==='pass');};
  const jobs=new Set(),adaptChoices=new Map();let previewProgress;
  const note=t=>{$('studio-message').textContent=t;};
@@ -11,8 +11,8 @@
   const data=await response.json();if(!response.ok)throw Error(data.error||'暂时无法保存，请稍后重试');
   if(data.scope!==scope)throw Error('账号已变化，请刷新页面');return data;
  }
- function setBusy(value){busy=value;for(const el of document.querySelectorAll('.pet-studio button,.pet-studio input,.pet-studio textarea,.pet-studio select'))el.disabled=value;if(!value)generationControls();}
- async function change(path,body,form=false){if(busy)return;setBusy(true);try{const data=await api(path,body,form);generationAvailable=!!data.generationAvailable;rows=data.tasks;paint();note('已保存。');schedulePoll();}catch(e){note(e.message);}finally{setBusy(false);}}
+ function setBusy(value){busy=value;for(const el of document.querySelectorAll('.studio-layout>aside button,.studio-layout>aside input,#studio-appearance button,#studio-appearance input,#studio-appearance textarea,#studio-appearance select'))el.disabled=value;if(!value)generationControls();}
+ async function change(path,body,form=false){if(busy||window.StudioMemories?.busy())return;setBusy(true);try{const data=await api(path,body,form);generationAvailable=!!data.generationAvailable;rows=data.tasks;paint();note('已保存。');schedulePoll();}catch(e){note(e.message);}finally{setBusy(false);}}
  function generationControls(){
   const row=rows.find(r=>r.id===selected);if(!row)return;const g=row.generation;
   const locked=['submitting','waiting','running','processing','uncertain','paused'].includes(g?.status);
@@ -57,28 +57,28 @@
    $('studio-motion-buttons').replaceChildren(...gltf.animations.filter(c=>names[c.name]).map(clip=>{const b=document.createElement('button');b.textContent=names[clip.name];b.onclick=()=>{activeAction?.fadeOut(.15);activeAction=mixer.clipAction(clip);activeAction.reset().fadeIn(.15).play();for(const sibling of b.parentElement.children)sibling.setAttribute('aria-pressed',String(sibling===b));};return b;}));
    if(adapted)$('studio-motion-buttons').firstChild?.click();
    const head=model.getObjectByName('head');let headBase=null;
-   let last=0;const tick=now=>{frame=requestAnimationFrame(tick);if(document.hidden||now-last<33)return;const dt=Math.min(.05,(now-last)/1000);last=now;if(headBase)head.quaternion.copy(headBase);mixer.update(dt);if(head&&adapted){headBase=head.quaternion.clone();head.rotation.y+=Number($('studio-head').value);}const c=$('studio-preview');renderer.setSize(c.clientWidth,c.clientHeight,false);camera.aspect=c.clientWidth/Math.max(c.clientHeight,1);camera.updateProjectionMatrix();controls.update();renderer.render(scene,camera);progress?.done();};frame=requestAnimationFrame(tick);
+   let last=0;const tick=now=>{frame=requestAnimationFrame(tick);if(document.hidden||$('studio-appearance').hidden||now-last<33)return;const dt=Math.min(.05,(now-last)/1000);last=now;if(headBase)head.quaternion.copy(headBase);mixer.update(dt);if(head&&adapted){headBase=head.quaternion.clone();head.rotation.y+=Number($('studio-head').value);}const c=$('studio-preview');renderer.setSize(c.clientWidth,c.clientHeight,false);camera.aspect=c.clientWidth/Math.max(c.clientHeight,1);camera.updateProjectionMatrix();controls.update();renderer.render(scene,camera);progress?.done();};frame=requestAnimationFrame(tick);
    $('studio-preview-note').textContent=adapted?'动作草稿 · 地面网格用于检查脚掌 · 请逐项验收':'拖动旋转 · 滚轮缩放 · 外貌预览不代表动作已适配';
   }catch(e){progress?.fail('模型预览未完成，请查看页面提示');if(ticket===previewTicket){dispose();$('studio-preview-note').textContent='预览失败：'+e.message;}}
  }
  function paint(){
   selected=rows.some(r=>r.id===selected)?selected:rows[0]?.id;const row=rows.find(r=>r.id===selected);
-  $('studio-list').replaceChildren(...rows.map(r=>{const b=document.createElement('button');b.className='studio-choice';b.setAttribute('aria-pressed',String(r.id===selected));b.textContent=r.name;const small=document.createElement('small');small.textContent=labels[r.status];b.append(small);b.onclick=()=>{if(!busy){selected=r.id;paint();}};return b;}));
-  $('studio-detail').hidden=!row;$('studio-empty').hidden=!!row;if(!row){dispose();return;}
+  $('studio-list').replaceChildren(...rows.map(r=>{const b=document.createElement('button');b.className='studio-choice';b.setAttribute('aria-pressed',String(r.id===selected));b.textContent=r.name;const small=document.createElement('small');small.textContent=(r.assets.includes('model')?'已保存模型 · ':'')+labels[r.status];b.append(small);b.onclick=()=>{if(!busy&&!window.StudioMemories?.busy()){selected=r.id;paint();}};return b;}));
+  $('studio-detail').hidden=!row;$('studio-empty').hidden=!!row;window.StudioMemories?.select(row);if(!row){dispose();return;}
   $('studio-name').textContent=row.name;$('studio-status').textContent=labels[row.status];$('studio-mode').textContent=row.mode==='memory'?'留一份想念 · 私人档案':'身边的伙伴 · 私人档案';
   $('studio-download').href='/api/pet-studio/'+row.id+'/references';
-  $('studio-guidance').textContent=row.mode==='memory'?'从已有照片里选清楚的一张就好。不必凑齐所有角度，未拍到的细节需要后续与你一起核对。':'尽量在柔和光线下拍摄站立的全身照，保持姿势相近，让耳朵、四肢与尾巴都在画面内。手机可直接拍照上传；视频抽帧稍后开放。';
+  $('studio-guidance').textContent=row.mode==='memory'?'从已有照片里选清楚的一张就好。不必凑齐所有角度，未拍到的细节需要后续与你一起核对。':'尽量在柔和光线下拍摄站立的全身照，保持姿势相近，让耳朵、四肢与尾巴都在画面内。手机可直接拍照上传；回忆视频抽帧已移至「照片、视频与记忆」。';
   $('studio-photos').replaceChildren(...Object.entries({front:'正面 · 必填',left:'左侧',right:'右侧',back:'背面',detail:'花纹细节'}).map(([slot,title])=>{const label=document.createElement('label');label.className='studio-photo';const caption=document.createElement('span');caption.textContent=title;label.append(caption);if(row.assets.includes(slot)){const img=document.createElement('img');img.src='/api/pet-studio/'+row.id+'/assets/'+slot+'?v='+row.updated;img.alt=title;label.append(img);}else{const box=document.createElement('span');box.className='photo-placeholder';box.textContent='＋';label.append(box);}const input=document.createElement('input');input.type='file';input.accept='image/jpeg,image/png';input.setAttribute('aria-label','上传'+title+'照片');input.onchange=()=>upload(row.id,slot,input.files[0]);label.append(input);return label;}));
   $('studio-quality').replaceChildren(...Object.entries({inputs:'参考照片一致性',geometry:'身体结构',rig:'骨骼与蒙皮',motion:'网格动作'}).map(([key,label])=>{const li=document.createElement('li'),q=row.quality?.[key];li.textContent=label+'：'+({pass:'通过',fail:'不通过',unknown:'待审核'}[q?.status]||'待审核')+(q?.reason?' · '+q.reason:'');return li;}));
   $('studio-notes').value=row.notes;$('studio-approve').hidden=row.status!=='review';$('studio-prepare').hidden=['review','approved'].includes(row.status);
-  $('studio-next').textContent=row.status==='approved'?'外貌已确认，可在下方适配动作。动作验收后可手动启用到自己的猫咪岛。':'保存说明后，可随时回来继续。模型生成及外貌核对不会自动公开档案。';paintAdaptation(row);generationControls();$('studio-cloud-consent').checked=false;void preview(row);
+  $('studio-next').textContent=row.status==='approved'?'外貌已确认，可在下方适配动作。动作验收后可手动启用到自己的猫咪岛。':'保存说明后，可随时回来继续。模型生成及外貌核对不会自动公开档案。';paintAdaptation(row);generationControls();$('studio-cloud-consent').checked=false;if($('studio-appearance').hidden)dispose();else void preview(row);
  }
  function paintAdaptation(row){$('studio-adaptation').hidden=row.status!=='approved';const a=row.adaptation,r=a?.report||{},states={running:'Blender 正在适配，通常需要几十秒。你可以离开页面，稍后回来查看。',review_motion:'动作草稿已生成，请在上方逐一播放并检查。',needs_manual:'需要手动修正后重试',failed:'此次适配未完成，可以重试',reviewed:'已记录你的动作验收。现在可以手动启用到猫咪岛。'};$('studio-adapt-status').textContent=states[a?.status]||'在本机运行，不调用混元，不消耗云端额度。';$('studio-adapt-start').hidden=a?.status==='running';$('studio-adapt-report').replaceChildren(...[r.error,...(r.warnings||[])].filter(Boolean).map(text=>{const li=document.createElement('li');li.textContent=text;return li;}));$('studio-adapt-downloads').hidden=!row.assets.includes('adapted');$('studio-adapt-glb').href='/api/pet-studio/'+row.id+'/assets/adapted';$('studio-adapt-glb').download='cat-animated.glb';$('studio-adapt-blend').href='/api/pet-studio/'+row.id+'/assets/blend';$('studio-motion-checks').hidden=a?.status!=='review_motion';for(const c of $('studio-motion-checks').querySelectorAll('input'))c.checked=false;$('studio-equip-controls').hidden=a?.status!=='reviewed';$('studio-equip').hidden=!!row.equipped;$('studio-unequip').hidden=!row.equipped;const noRig=a?.status==='needs_manual'&&r.error?.startsWith('未发现骨骼');const saved=adaptChoices.get(row.id);$('studio-adapt-mode').value=saved?.mode||(noRig?'template-skin':r.mode||(row.generation?.status==='done'?'template-skin':'auto'));$('studio-adapt-forward').value=saved?.forward||'-Y';if(noRig)$('studio-adapt-status').textContent='模型没有骨骼。请先完成身体结构审核；合格的站立猫可尝试模板蒙皮草稿，坐卧或异常结构需先修正网格。';}
  function upload(id,slot,file){if(!file)return;const limit=(slot==='model'?30:8)*1024*1024;if(file.size>limit){note('文件过大，请压缩后再上传。');return;}if(slot!=='model'&&rows.find(r=>r.id===id)?.assets.includes('model')&&!confirm('更换参考照将移除旧模型预览，继续吗？'))return;const data=new FormData();data.append('file',file);void change('/'+id+'/assets/'+slot,data,true);}
  $('studio-create').onsubmit=e=>{e.preventDefault();const data=new FormData(e.target);selected=null;void change('',{name:data.get('name'),mode:data.get('mode')});};
  $('studio-model').onchange=e=>upload(selected,'model',e.target.files[0]);
  for(const [id,op] of [['studio-prepare','prepare'],['studio-save','notes'],['studio-approve','approve']])$(id).onclick=()=>change('/'+selected+'/'+op,{notes:$('studio-notes').value});
- $('studio-delete').onclick=()=>{if(confirm('永久删除这个私人档案、照片和模型？'))void change('/'+selected+'/delete',{});};
+ $('studio-delete').onclick=()=>{if(confirm('永久删除这个私人档案、照片、模型、回忆素材及其已应用的记忆？'))void change('/'+selected+'/delete',{});};
  for(const id of ['studio-adapt-mode','studio-adapt-forward'])$(id).onchange=()=>{if(selected)adaptChoices.set(selected,{mode:$('studio-adapt-mode').value,forward:$('studio-adapt-forward').value});};
  $('studio-adapt-start').onclick=()=>change('/'+selected+'/adapt',{mode:$('studio-adapt-mode').value,forward:$('studio-adapt-forward').value});
  $('studio-motion-accept').onclick=()=>{const checks=[...$('studio-motion-checks').querySelectorAll('input:checked')].map(c=>c.value);if(checks.length!==8){note('请播放动作并完成全部 8 项检查。');return;}void change('/'+selected+'/review-motion',{checks,jobId:rows.find(r=>r.id===selected)?.adaptation?.id});};
@@ -86,6 +86,7 @@
  $('studio-generation-resume').onclick=()=>change('/'+selected+'/resume-generation',{});
  $('studio-equip').onclick=()=>change('/'+selected+'/equip',{jobId:rows.find(r=>r.id===selected)?.adaptation?.id});
  $('studio-unequip').onclick=()=>change('/'+selected+'/unequip',{});
+ addEventListener('studio-tab-changed',()=>{const row=rows.find(r=>r.id===selected);if(row&&!$('studio-appearance').hidden)void preview(row);else dispose();});
  addEventListener('pagehide',()=>{clearTimeout(pollTimer);dispose();});
  const initial=window.PaitLoading?.start('正在读取宠物档案');
  api().then(data=>{generationAvailable=!!data.generationAvailable;rows=data.tasks;paint();schedulePoll();initial?.done();}).catch(e=>{initial?.fail('宠物档案未能读取，请查看页面提示');note(e.message);$('studio-login').hidden=false;setBusy(true);});

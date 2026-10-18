@@ -1,5 +1,5 @@
 from urllib.parse import urlsplit
-from flask import Blueprint, jsonify, render_template, request, Response
+from flask import Blueprint, jsonify, render_template, request, Response, redirect, url_for
 from ..services import companion_service as memory, pet_imprint_service as imprint
 
 bp = Blueprint('pet_imprint', __name__)
@@ -40,7 +40,10 @@ def owner(pet):
 
 @bp.get('/pet-imprint')
 def page():
-    return render_template('pet-imprint.html')
+    if request.args.get('embedded') != '1':
+        pet=request.args.get('petId',default=1,type=int)
+        return redirect(url_for('pet_studio.page',section='memories',petId=pet if pet in (1,2,3,4) else 1))
+    return render_template('pet-imprint.html', embedded=True)
 
 
 @bp.route('/api/pet-imprint/<int:pet>', methods=['GET', 'POST'])

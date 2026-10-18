@@ -22,6 +22,8 @@ app = create_app(C)
 class DemoLLM:
     def chat(self, *args, **kwargs):
         raise RuntimeError('The review server never calls a paid model')
+    def observe_pet_memory(self, *args):
+        return '{"observations":[{"quote":"自动化测试草稿，仅用于验证确认流程。","frame":1}]}'
 app.extensions['llm'] = DemoLLM()
 with app.app_context():
     db = get_db()

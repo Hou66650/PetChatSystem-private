@@ -141,6 +141,24 @@ class GLMClient:
         finally:
             self._sem.release()
 
+    def observe_pet_memory(self, image_bytes, prompt):
+        """One explicit visual request. Unknown outcomes are never auto-retried."""
+        payload = {'model': self.vision_model, 'temperature': 0.1, 'max_tokens': 900,
+                   'messages': [{'role': 'user', 'content': [
+                       {'type': 'image_url', 'image_url': {'url': 'data:image/jpeg;base64,'+base64.b64encode(image_bytes).decode()}},
+                       {'type': 'text', 'text': prompt}]}]}
+        if not self._sem.acquire(timeout=5):
+            raise LLMError('视觉服务繁忙，请稍后重试')
+        try:
+            response = self.session.post(self.base_url+'/chat/completions', json=payload, timeout=(10,60))
+            if response.status_code != 200:
+                raise LLMError('视觉服务暂时不可用')
+            return self._content(response.json())
+        except requests.RequestException as exc:
+            raise LLMError('视觉请求未返回，未自动重试') from exc
+        finally:
+            self._sem.release()
+
     def describe_image(self, image_bytes, mime='image/png', prompt=None):
         """视觉模型看图说话：头像动漫化管线的第一步（描述上传的照片）。"""
         prompt = prompt or (

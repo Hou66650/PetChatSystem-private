@@ -17,6 +17,7 @@ from .cat_market import bp as cat_market_bp
 
 from .supplies import bp as supplies_bp
 from .pet_studio import bp as pet_studio_bp
+from . import studio_memories  # Registers endpoints on the same private blueprint.
 from .farm import bp as farm_bp
 from .pet_voice import bp as pet_voice_bp
 from .mobile import bp as mobile_bp

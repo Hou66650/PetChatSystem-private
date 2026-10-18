@@ -66,7 +66,7 @@ class PetStudioTests(unittest.TestCase):
         self.assertEqual(r.status_code,400)
 
     def test_limit_and_template(self):
-        for _ in range(5): self.create_studio()
+        for _ in range(20): self.create_studio()
         self.assertEqual(self.a.post('/api/pet-studio',json={'name':'six','mode':'companion'},headers=self.headers).status_code,409)
         r=self.a.get('/pet-studio');self.assertEqual(r.status_code,200)
         self.assertIn('视频抽帧'.encode(),Path('static/js/pet-studio.js').read_bytes())

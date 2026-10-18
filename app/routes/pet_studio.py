@@ -16,6 +16,7 @@ from ..services import companion_service as identity
 from ..services import pet_adaptation_service as adaptation
 from ..services import pet_generation_service as generation
 from ..services import pet_quality_service as quality
+from ..services import studio_memory_service as memories
 
 bp = Blueprint('pet_studio', __name__)
 VIEWS = ('front', 'left', 'right', 'back', 'detail')
@@ -31,6 +32,7 @@ def init_schema():
       task TEXT NOT NULL, slot TEXT NOT NULL, mime TEXT NOT NULL, data BLOB NOT NULL,
       PRIMARY KEY(task,slot));
     ''')
+    memories.init_schema()
 
 
 @bp.before_request
@@ -105,9 +107,9 @@ def create():
         return jsonify(error='请填写 1–30 字的名字，并选择创建方式'), 400
     db = get_db()
     db.execute('BEGIN IMMEDIATE')
-    if db.execute('SELECT COUNT(*) FROM pet_studio_tasks WHERE owner=?', (identity.owner_key(),)).fetchone()[0] >= 5:
+    if db.execute('SELECT COUNT(*) FROM pet_studio_tasks WHERE owner=?', (identity.owner_key(),)).fetchone()[0] >= 20:
         db.rollback()
-        return jsonify(error='最多保存 5 个档案，请先删除不需要的档案'), 409
+        return jsonify(error='最多保存 20 个档案，请先删除不需要的档案'), 409
     now = time.time()
     with db:
         db.execute('INSERT INTO pet_studio_tasks VALUES (?,?,?,?,?,?,?,?)',
@@ -221,6 +223,7 @@ def operate(task_id, operation):
     status = row['status']
     if operation == 'delete':
         with db:
+            memories.clear(task_id)
             generation.clear(task_id)
             adaptation.clear(task_id)
             db.execute('DELETE FROM pet_studio_assets WHERE task=?', (task_id,))

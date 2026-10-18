@@ -186,3 +186,5 @@ def call_audio(owner, pet, kind, revision):
 
 def forget(db, owner):
     db.execute('DELETE FROM pet_imprints WHERE owner=?', (owner,))
+    from . import studio_memory_service
+    studio_memory_service.forget(db, owner)

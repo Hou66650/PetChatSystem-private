@@ -2,7 +2,7 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const base=process.env.PET_IMPRINT_BASE||'http://127.0.0.1:5094',out=fs.mkdtempSync(path.join(os.tmpdir(),'pait-imprint-review-'));
 (async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.PET_TEST_CHROME||'C:/Program Files/Google/Chrome/Application/chrome.exe'});let page,created=[];
- try{page=await browser.newPage({viewport:{width:1400,height:900}});const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/__qa/tangyuan');await page.waitForFunction(()=>document.querySelectorAll('.card').length>=3);
+ try{page=await browser.newPage({viewport:{width:1400,height:900}});const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/__qa/tangyuan');await page.goto(base+'/pet-imprint?embedded=1&petId=1');await page.waitForFunction(()=>document.querySelectorAll('.card').length>=3);
   assert(await page.locator('#policy').textContent());
   await page.locator('#kind').selectOption('greeting');await page.locator('#value').selectOption('sit');await page.locator('#quote').fill('测试样本：坐在身边等待主人。');await page.locator('#form button[type=submit]').click();await page.waitForFunction(()=>[...document.querySelectorAll('.card')].some(e=>e.textContent.includes('测试样本')));
   const card=page.locator('.card').filter({hasText:'测试样本'});assert((await card.textContent()).includes('待确认'));await card.locator('input[type=checkbox]').check();await card.getByRole('button',{name:'确认并启用'}).click();await page.waitForFunction(()=>[...document.querySelectorAll('.card')].some(e=>e.textContent.includes('测试样本')&&e.textContent.includes('已确认')));

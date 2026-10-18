@@ -1,15 +1,18 @@
 {% extends "layout.html" %}
 {% block title %}把它带到岛上 · 派特岛{% endblock %}
-{% block head %}<link rel="stylesheet" href="/static/css/pet-studio.css?v={{ app_version }}">{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/css/pet-studio.css?v={{ app_version }}"><link rel="stylesheet" href="/static/css/studio-memories.css?v={{ app_version }}">{% endblock %}
 {% block body %}
 <main class="pet-studio">
- <header><a href="/">← 回到云端群岛</a><span>PAIT ISLAND / A PLACE FOR YOUR COMPANION</span><h1>让熟悉的它，<br>在这里有一个家。</h1><p>从一张照片开始，慢慢找回它独有的模样。</p></header>
+ <header><a href="/">← 回到云端群岛</a><span>PAIT ISLAND / A PLACE FOR YOUR COMPANION</span><h1>让熟悉的它，<br>在这里有一个家。</h1><p>在同一份档案里，留下它的模样、照片、视频和熟悉的习惯。</p></header>
  <p id="studio-message" role="status" aria-live="polite"></p>
  <a id="studio-login" href="/reader_login" hidden>登录后创建私人宠物档案 ↗</a>
  <div class="studio-layout">
-  <aside><h2>我的伙伴</h2><div id="studio-list"></div><form id="studio-create"><label>它的名字<input name="name" maxlength="30" required placeholder="例如：橘子"></label><fieldset><legend>以哪种方式开始？</legend><label><input type="radio" name="mode" value="companion" checked> 它正在我身边</label><label><input type="radio" name="mode" value="memory"> 为想念的它留一个位置</label></fieldset><button type="submit">创建档案 ＋</button></form><small>档案和素材仅自己可见。当前先支持猫咪，可随时删除。纪念档案不会自动公开或允许串门。</small></aside>
+  <aside><h2>我的伙伴</h2><div id="studio-list"></div><form id="studio-create"><label>它的名字<input name="name" maxlength="30" required placeholder="例如：橘子"></label><fieldset><legend>以哪种方式开始？</legend><label><input type="radio" name="mode" value="companion" checked> 它正在我身边</label><label><input type="radio" name="mode" value="memory"> 为想念的它留一个位置</label></fieldset><button type="submit">创建档案 ＋</button></form><small>档案和素材仅自己可见。外貌适配当前先支持猫咪；回忆素材不限猫犬。最多保存 20 份档案，可随时删除。纪念档案不会自动公开或允许串门。</small></aside>
   <section id="studio-detail" hidden>
    <div class="studio-title"><div><small id="studio-mode"></small><h2 id="studio-name"></h2></div><span id="studio-status"></span></div>
+   <nav class="studio-tabs" aria-label="档案内容"><button id="studio-tab-model" type="button" aria-pressed="true" aria-controls="studio-appearance">模样与动作</button><button id="studio-tab-memories" type="button" aria-pressed="false" aria-controls="studio-memories">照片、视频与记忆</button></nav>
+   {% include "_studio_memories.html" %}
+   <div id="studio-appearance">
    <ol class="studio-steps"><li>01 收集模样</li><li>02 生成与核对</li><li>03 动作适配</li></ol>
    <p id="studio-guidance"></p>
    <section class="photo-guide" aria-labelledby="photo-guide-title">
@@ -47,9 +50,11 @@
     <fieldset id="studio-motion-checks" hidden><legend>动作验收 · 请播放动作后逐项确认</legend><label><input type="checkbox" value="appearance"> 外形和毛色没有改变</label><label><input type="checkbox" value="walk"> 走路自然，四肢没有拉扯</label><label><input type="checkbox" value="run"> 跑动没有明显穿插</label><label><input type="checkbox" value="sit"> 坐下、起身正常</label><label><input type="checkbox" value="sleep"> 趴卧、休息正常</label><label><input type="checkbox" value="eat"> 吃饭时头颈自然</label><label><input type="checkbox" value="head"> 转头时眼睛、耳朵跟随正常</label><label><input type="checkbox" value="paws"> 脚掌没有明显滑动或穿地</label><button id="studio-motion-accept">记录动作验收通过</button></fieldset>
     <div id="studio-equip-controls" class="studio-actions" hidden><button id="studio-equip">启用到我的猫咪岛</button><button id="studio-unequip" hidden>恢复原来的猫咪</button><a href="/den?pet=3">进入猫咪岛 ↗</a></div><p>启用仅替换你自己的猫咪外形，继续使用猫咪岛的探索和照料玩法。通过动作验收的私人模型可使用桌面传送门和好友串门；仅向有效行程的参与者提供动画模型，不分享原始照片。启用时默认关闭访客权限，可在传送门中手动开启。</p>
    </section>
+   </div>
   </section>
-  <section id="studio-empty"><div class="studio-orbit">✦</div><h2>每一只，都值得被记住。</h2><p>先为它留一个名字，再放上熟悉的照片。<br>不用一次准备完，档案会替你保存进度。</p></section>
+  <section id="studio-empty"><div class="studio-orbit">✦</div><h2>每一只，都值得被记住。</h2><p>先为它留一个名字，再放上熟悉的照片。<br>不用一次准备完，档案会替你保存进度。<br>以前上传的档案保存在上传时的账号中。</p></section>
  </div>
+ <details id="studio-existing"><summary>岛上已有的习惯与原声 · 手动补充 / 试听 / 暂停</summary><p>已记录的回忆都保留在这里。声音仍需试听确认，再绑定重逢、陪伴或玩耍场景。</p><iframe id="studio-existing-frame" title="岛上伙伴的真实回忆与原声管理"></iframe></details>
 </main>
 {% endblock %}
-{% block script %}<script>window.PET_STUDIO_SCOPE={{ scope|tojson }};</script><script src="/static/js/vendor/three.min.js"></script><script src="/static/js/vendor/GLTFLoader.js"></script><script src="/static/js/vendor/OrbitControls.js"></script><script src="/static/js/den/pet-model-bounds.js?v={{ app_version }}"></script><script src="/static/js/pet-studio.js?v={{ app_version }}"></script>{% endblock %}
+{% block script %}<script>window.PET_STUDIO_SCOPE={{ scope|tojson }};</script><script src="/static/js/vendor/three.min.js"></script><script src="/static/js/vendor/GLTFLoader.js"></script><script src="/static/js/vendor/OrbitControls.js"></script><script src="/static/js/den/pet-model-bounds.js?v={{ app_version }}"></script><script src="/static/js/studio-memories.js?v={{ app_version }}"></script><script src="/static/js/pet-studio.js?v={{ app_version }}"></script>{% endblock %}

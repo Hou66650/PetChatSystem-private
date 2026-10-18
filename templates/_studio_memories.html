@@ -1,0 +1,15 @@
+<section id="studio-memories" hidden aria-label="照片、视频与记忆">
+ <h3>让模样之外的它，也被记住。</h3>
+ <p>把曾经的照片、视频放在这份档案里。先整理画面里的细节，再由你补充它熟悉的习惯。</p>
+ <ol class="studio-steps"><li>01 批量放入回忆</li><li>02 提取并核对</li><li>03 带到岛上相处</li></ol>
+ <label class="memory-upload">选择多张照片 / 多段视频<input id="memory-files" type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"></label>
+ <p class="studio-hint">照片 ≤ 8 MB；视频 ≤ 30 MB、2 分钟。每份档案最多 40 份素材，账号共 300 MB。这里的上传不会替换建模参考照或模型。</p>
+ <p id="memory-status" role="status" aria-live="polite"></p>
+ <div id="memory-media" class="memory-media"></div>
+ <div class="studio-notice"><strong>从影像中整理记忆草稿</strong><p>照片和每段视频的 6 张关键帧将发送给本站配置的视觉模型。视频间隙、声音和长期习惯不会自动推断；结果需要你对照原片核对。服务可能按本站账户计费，失败不会自动重试。</p><label><input id="memory-consent" type="checkbox"> 我同意将这些照片 / 视频关键帧发送至视觉服务进行分析</label><button id="memory-analyze">为未完成的素材提取记忆</button><button id="memory-refresh" type="button">刷新进度</button></div>
+ <h3>待你核对的记忆</h3>
+ <p class="studio-hint">每条草稿都保留原始素材入口。照片记录的是一个瞬间；只有你确认它符合真实经历，才用于往事理解或选定的互动。动作仍采用现有模板，不能自动复原独特步态。</p>
+ <label>把确认的记忆交给哪位岛上伙伴？<select id="memory-pet"><option value="1">柴犬岛的伙伴</option><option value="2">雪境木屋的哈士奇</option><option value="3">雾林温室的猫咪（含已启用的私人模型）</option><option value="4">山岭营地的德牧</option></select></label>
+ <p class="studio-hint">确认同类新习惯会替换这位伙伴的旧习惯；纯往事可以并存。请选择与这份档案对应的伙伴，不会自动绑定或替换外形。</p>
+ <div id="memory-cards"></div>
+</section>
