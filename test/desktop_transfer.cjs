@@ -37,6 +37,7 @@ async function until(test,timeout=60000){const end=Date.now()+timeout;while(Date
   assert.match((await control.evaluate(()=>paitDesktop.command('model',{trip:'forged'}))).error,/变化/);
   assert.match((await control.evaluate(()=>paitDesktop.command('model'))).error,/仅宠物/);
   assert.match((await petPage.evaluate(()=>paitDesktop.command('chat',{message:'forged'}))).error,/控制台/);
+  await require('./desktop_actions_browser.cjs')(control,petPage,output);
   await control.locator('#message').fill('你好，桌面上的伙伴');await control.locator('#send').click();
   await control.getByText('柴犬：我在桌面陪你。',{exact:false}).waitFor();
   await control.getByRole('button',{name:'用它的声音朗读',exact:true}).click();

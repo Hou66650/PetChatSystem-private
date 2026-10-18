@@ -10,6 +10,11 @@ function render(s){
  current=s;window.PaitLoading?.sync('desktop-model',s.connected&&s.phase==='preparing','正在准备桌宠模型与饰品');
  $('status').textContent=s.status;$('pair').hidden=s.connected;$('connected').hidden=!s.connected;$('sense').checked=s.sensing;$('sense').disabled=s.phase!=='roaming';
  $('deadline').textContent=Number.isFinite(s.expiresAt)?'本次最迟返程：'+new Date(s.expiresAt*1000).toLocaleString('zh-CN')+'（本机时区）。召回或断线会提前结束。':'当前服务未提供最迟返程时间。';controls();
+ const selected=$('action-select').value,items=s.actions||[],signature=items.map(a=>a.id).join(',');
+ if($('action-select').dataset.signature!==signature){$('action-select').replaceChildren(...items.map(a=>new Option(a.label,a.id)));$('action-select').dataset.signature=signature;if(items.some(a=>a.id===selected))$('action-select').value=selected;}
+ $('action-play').disabled=s.phase!=='roaming'||!items.length;$('action-select').disabled=$('action-play').disabled;
+ $('autonomous').checked=s.autonomous!==false;$('autonomous').disabled=s.phase!=='roaming';
+ $('action-status').textContent=items.length?items.length+' 个已适配动作 · 当前：'+(items.find(a=>a.id===s.action)?.label||'安静陪伴'):'正在读取这只宠物支持的动作';
  window.DesktopTasks?.render(s);
 }
 function matches(trip,version){return current.connected&&current.chatEnabled&&current.trip===trip&&current.version===version;}
@@ -43,3 +48,6 @@ $('chat-form').onsubmit=async e=>{
  finally{if(matches(trip,version)){busy=false;controls();}}
 };
 window.addEventListener('beforeunload',stopAudio);
+
+$('action-form').onsubmit=async e=>{e.preventDefault();const r=await api.command('action',{trip:current.trip,id:$('action-select').value});if(r.error)$('action-status').textContent=r.error;};
+$('autonomous').onchange=()=>api.command('autonomous',$('autonomous').checked);

@@ -4,6 +4,7 @@ const path=require('node:path'),{pathToFileURL}=require('node:url'),{execFile}=r
 const {createHash,randomUUID}=require('node:crypto'),{clampTarget}=require('./motion'),{TripContext}=require('./trip-context');
 const {validateHookSpeech,validateReaction}=require('./vendor/openpets/events.cjs');
 const {DeliveryDispatcher}=require('./notifications');
+const Actions=require('./actions');
 let control,pairing=false,quitting=false,generation=0,status='请在网页确认桌面传送，再粘贴一次性配对码。';
 const contexts=new Map(),senders=new Map();
 const phases=['preparing','entering','emerging','roaming'];
@@ -15,7 +16,7 @@ function sender(e){
  const c=senders.get(e.sender.id),w=e.sender===control?.webContents?control:c?.window,file=w===control?'index.html':'pet.html';
  if(!w||w.isDestroyed()||e.sender!==w.webContents||e.senderFrame!==w.webContents.mainFrame||e.senderFrame.url!==pathToFileURL(path.join(__dirname,file)).href)throw Error('无效的客户端来源');return c;
 }
-function state(c){return live(c)?{connected:true,status:c.status,sensing:c.sensing,action:c.action,pet:c.pet,trip:c.trip,phase:c.phase,expiresAt:c.expiresAt,generation:c.generation,version:c.manifest?.version,chatEnabled:!!c.manifest?.chatEnabled,voiceEnabled:!!c.manifest?.voiceEnabled,toolsEnabled:!!c.manifest?.toolsEnabled,tasks:c.tasks||[],taskClock:c.taskClock,reaction:c.reaction,assetSha256:c.manifest?.modelSha256}:{connected:false,status};}
+function state(c){return live(c)?{connected:true,status:c.status,sensing:c.sensing,action:c.action,actions:c.actions,autonomous:c.autonomous,pet:c.pet,trip:c.trip,phase:c.phase,expiresAt:c.expiresAt,generation:c.generation,version:c.manifest?.version,chatEnabled:!!c.manifest?.chatEnabled,voiceEnabled:!!c.manifest?.voiceEnabled,toolsEnabled:!!c.manifest?.toolsEnabled,tasks:c.tasks||[],taskClock:c.taskClock,reaction:c.reaction,assetSha256:c.manifest?.modelSha256}:{connected:false,status};}
 function taskSnapshot(c,snapshot){c.tasks=snapshot.tasks;c.taskClock={serverTime:snapshot.serverTime,observedAt:Date.now()};publish(c);}
 function publish(c){for(const w of [c?.window,control])if(w&&!w.isDestroyed()&&(w!==control||!c||senders.get(w.webContents.id)===c))w.webContents.send('desktop:state',state(c));}
 function reaction(c,value,text){if(!live(c))return;c.reaction=validateReaction(value);c.status=validateHookSpeech(text);publish(c);}
@@ -71,11 +72,20 @@ async function pair(raw){
   c.window=windowFor('pet.html',{width:280,height:300,frame:false,transparent:true,backgroundColor:'#00000000',alwaysOnTop:true,skipTaskbar:true,resizable:false,show:false});senders.set(c.window.webContents.id,c);
   c.window.on('closed',()=>{if(live(c))void recall(c);});
   const a=screen.getPrimaryDisplay().workArea,p=clampTarget({x:a.x+a.width/2-140,y:a.y+a.height-300},a);c.motion.x=p.x;c.motion.y=p.y;c.window.setPosition(Math.round(p.x),Math.round(p.y));publish(c);
-  c.every(()=>void heartbeat(c),500);c.every(()=>void think(c),32000);c.every(()=>frame(c),33);return {ok:true};
+  c.every(()=>void heartbeat(c),500);c.every(()=>void think(c),32000);c.every(()=>frame(c),16);return {ok:true};
  }catch(error){await recall(c);throw error;}
 }
 function event(c,kind){if(!live(c)||c.phase!=='roaming')return;const a=screen.getPrimaryDisplay().workArea;c.events.push({id:randomUUID(),kind,x:(c.motion.x-a.x)/a.width,z:(c.motion.y-a.y)/a.height});c.events=c.events.slice(-12);}
-function petting(c){if(!live(c)||c.phase!=='roaming')return;c.motion.halt();c.action='petting';c.animationUntil=Date.now()+2500;event(c,'pet');publish(c);}
+function setAction(c,id,replay=false){if(c.action===id&&!replay)return;c.action=id;c.actionSerial++;c.poseReady=false;publish(c);}
+function perform(c,id){
+ if(!live(c)||c.phase!=='roaming')throw Error('请等待宠物到达桌面');
+ const action=c.actions.find(a=>a.id===id);if(!action)throw Error('这只宠物尚未适配该动作');
+ c.motion.halt();c.target=null;c.lastWalk=Date.now();c.lastCursor=Date.now();if(!c.chatBusy&&!c.speechBusy){c.status=messages.roaming;c.reaction='idle';}
+ c.animationUntil=Date.now()+action.duration*1000+1200;
+ if(id==='walk'){const a=screen.getPrimaryDisplay().workArea;c.target=clampTarget({x:c.motion.x<a.x+a.width/2?a.x+a.width-280:a.x,y:c.motion.y},a);c.animationUntil=0;}
+ setAction(c,id,true);return {ok:true};
+}
+function petting(c){if(!live(c)||c.phase!=='roaming')return;const id=c.actions.some(a=>a.id==='petting')?'petting':'idle';if(c.actions.some(a=>a.id===id))perform(c,id);event(c,'pet');}
 ipcMain.handle('desktop:command',async(e,command,data)=>{
  const c=sender(e),isControl=e.sender===control.webContents;
  try{
@@ -96,6 +106,9 @@ ipcMain.handle('desktop:command',async(e,command,data)=>{
     const raw=await bytes(c.origin+'/static/models/wardrobe-v1/'+id+'.glb',c,4*1024*1024,c.manifest.accessories[id]);c.accessoriesLoaded.add(id);return {bytes:raw,trip:c.trip,generation:c.generation};
    }
    if(command==='ready'&&(!c.modelLoaded||(c.pet.wardrobe||[]).some(i=>!c.accessoriesLoaded.has(i.id))))throw Error('模型与饰品尚未完成校验');
+   if(command==='ready'){
+    c.actions=Actions.catalog.flatMap(a=>{const supplied=data?.actions?.find(x=>x.id===a.id);return supplied&&Number.isFinite(supplied.duration)&&supplied.duration>0&&supplied.duration<=30?[{id:a.id,label:a.label,duration:supplied.duration}]:[];});
+   }
    const d=await request(c,command,{});syncPhase(c,d.phase);return d;
   }
   if(command==='return'){await recall(c);return {ok:true};}
@@ -120,17 +133,26 @@ ipcMain.handle('desktop:command',async(e,command,data)=>{
     if(command==='speech')return {bytes:Uint8Array.from(Buffer.from(d.audio,'base64')),mime:d.mime,version:d.version,trip:c.trip};return {...d,trip:c.trip};
    }finally{c[busyKey]=false;}
   }
+  if(command==='action')return perform(c,data?.id);
+  if(command==='autonomous'){
+   if(c.phase!=='roaming')throw Error('请等待宠物到达桌面');
+   c.autonomous=data===true;c.target=null;c.motion.halt();c.animationUntil=0;c.lastWalk=Date.now();setAction(c,'idle');publish(c);return {ok:true};
+  }
+  if(command==='pose'){
+   if(isControl||data?.generation!==c.generation||data?.assetSha256!==c.manifest.modelSha256||data?.serial!==c.actionSerial)throw Error('动作回执不属于当前模型或行程');
+   c.poseReady=data.ready===true;return {ok:true};
+  }
   if(command==='pet'){petting(c);return {ok:true};}
   if(command==='sense'){c.sensing=data===true&&c.phase==='roaming';publish(c);return {ok:true};}
-  if(command==='menu'){Menu.buildFromTemplate([{label:'和它聊天',enabled:c.phase==='roaming',click:()=>control.show()},{label:'摸摸它',enabled:c.phase==='roaming',click:()=>petting(c)},{label:'返回悬浮岛',click:()=>void recall(c)}]).popup({window:c.window});return {ok:true};}
+  if(command==='menu'){Menu.buildFromTemplate([{label:'和它聊天',enabled:c.phase==='roaming',click:()=>control.show()},{label:'摸摸它',enabled:c.phase==='roaming',click:()=>petting(c)},{label:'陪伴动作',enabled:c.phase==='roaming',submenu:c.actions.map(a=>({label:a.label,click:()=>perform(c,a.id)}))},{label:'自主活动',type:'checkbox',checked:c.autonomous,click:item=>{c.autonomous=item.checked;c.target=null;c.motion.halt();c.animationUntil=0;setAction(c,'idle');publish(c);}},{label:'返回悬浮岛',click:()=>void recall(c)}]).popup({window:c.window});return {ok:true};}
   if(command==='ignore'&&!isControl){c.window.setIgnoreMouseEvents(data===true,{forward:true});return {ok:true};}
   throw Error('未知客户端操作');
  }catch(error){if(live(c)){reaction(c,'error',command.startsWith('task-')?'操作结果请以任务卡为准':'这次操作未能完成');if(error.code==='CONTEXT_CHANGED')await refresh(c).catch(()=>{});}return {error:error.message,code:error.code};}
 });
 function sense(c){
- if(!c.sensing||c.sensorBusy||Date.now()-c.lastSensor<6000)return;c.lastSensor=Date.now();c.sensorBusy=true;
+ if(!c.actions.some(a=>a.id==='walk')||!c.autonomous||!c.sensing||c.sensorBusy||Date.now()-c.lastSensor<6000)return;c.lastSensor=Date.now();c.sensorBusy=true;
  c.sensor=execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(__dirname,'sense.ps1')],{windowsHide:true,timeout:4000,maxBuffer:16384},(error,stdout)=>{
-  c.sensorBusy=false;c.sensor=null;if(error||!live(c)||!c.sensing||c.phase!=='roaming')return;
+  c.sensorBusy=false;c.sensor=null;if(error||!live(c)||!c.autonomous||!c.sensing||c.phase!=='roaming'||Date.now()<c.animationUntil)return;
   try{const d=JSON.parse(stdout);if(!['document','video','desktop'].includes(d.kind)||Date.now()-c.lastContext<30000)return;c.lastContext=Date.now();const a=screen.getPrimaryDisplay().workArea;let p={x:a.x+a.width-290,y:a.y+a.height-310};if(d.bounds&&['video','desktop'].includes(d.kind)){const b=screen.screenToDipPoint({x:Math.round(d.bounds.x),y:Math.round(d.bounds.y)});p={x:b.x,y:b.y-300};}c.target={...clampTarget(p,a),purpose:d.kind==='desktop'?'icon':d.kind};}catch(_){}
  });
 }
@@ -144,23 +166,35 @@ async function heartbeat(c){
     if(c.manifest.toolsEnabled){const claimed=await request(c,'tasks/claim',{});if(claimed.delivery)c.deliveryDispatcher.deliver(claimed.delivery);}
    }
   }
-  if(c.phase==='roaming'&&now-c.lastSample>=2000){c.lastSample=now;event(c,'position');const a=screen.getPrimaryDisplay().workArea,batch=c.events.splice(0,12);try{await request(c,'sample',{snapshot:{visitor:{x:(c.motion.x-a.x)/a.width,z:(c.motion.y-a.y)/a.height,yaw:c.motion.yaw,action:c.action}},events:batch});}catch(e){if(live(c))c.events=[...batch,...c.events].slice(-12);throw e;}}
+  if(c.phase==='roaming'&&now-c.lastSample>=2000){c.lastSample=now;event(c,'position');const a=screen.getPrimaryDisplay().workArea,batch=c.events.splice(0,12);try{await request(c,'sample',{snapshot:{visitor:{x:(c.motion.x-a.x)/a.width,z:(c.motion.y-a.y)/a.height,yaw:c.motion.yaw,action:Actions.wire(c.action)}},events:batch});}catch(e){if(live(c))c.events=[...batch,...c.events].slice(-12);throw e;}}
   const d=await request(c,'state');c.lastContact=Date.now();syncPhase(c,d.phase);
  }catch(e){if(live(c)){if(Date.now()-c.lastContact>45000)stop(c,'连接中断，桌宠已收起；小岛会自动接回。');else reaction(c,'error','连接暂时未能确认');}}finally{c.busy=false;}
 }
-async function think(c){if(!live(c)||c.phase!=='roaming')return;try{const d=await request(c,'plan',{});if(c.phase!=='roaming')return;if(d.visitor==='rest'){c.motion.halt();c.action='sleep';c.animationUntil=Date.now()+5000;event(c,'rest');publish(c);}else if(d.visitor==='cursor'){const p=screen.getCursorScreenPoint();c.target=clampTarget({x:p.x-140,y:p.y-220},screen.getPrimaryDisplay().workArea);}}catch(_){} }
+async function think(c){if(!live(c)||c.phase!=='roaming'||!c.autonomous||Date.now()<c.animationUntil)return;try{const d=await request(c,'plan',{});if(!live(c)||c.phase!=='roaming'||!c.autonomous||Date.now()<c.animationUntil)return;if(d.visitor==='rest'&&c.actions.some(a=>a.id==='sleep')){perform(c,'sleep');event(c,'rest');}else if(d.visitor==='cursor'&&c.actions.some(a=>a.id==='walk')){const p=screen.getCursorScreenPoint();c.target=clampTarget({x:p.x-140,y:p.y-220},screen.getPrimaryDisplay().workArea);}}catch(_){} }
+
 function frame(c){
  const now=Date.now(),dt=Math.min(.05,(now-c.lastFrame)/1000);c.lastFrame=now;if(c.phase!=='roaming')return;
  const a=screen.getPrimaryDisplay().workArea,pointer=screen.getCursorScreenPoint();if(c.target)c.target={...c.target,...clampTarget(c.target,a)};sense(c);
  if(now>=c.animationUntil){
-  if(Math.hypot(pointer.x-c.motion.x-140,pointer.y-c.motion.y-160)<100&&now-c.lastCursor>15000){c.lastCursor=now;petting(c);}
+  if(c.autonomous&&Math.hypot(pointer.x-c.motion.x-140,pointer.y-c.motion.y-160)<100&&now-c.lastCursor>15000){c.lastCursor=now;petting(c);}
   else{
-   if(!c.target&&now-c.lastWalk>4000){c.lastWalk=now;if(Math.random()<.25){c.action='sleep';c.animationUntil=now+5000;event(c,'rest');publish(c);}else{c.target=clampTarget({x:a.x+Math.random()*Math.max(1,a.width-280),y:a.y+a.height-300},a);event(c,'walk');}}
-   if(now>=c.animationUntil){const m=c.motion.step(c.target,dt),next=m.speed>1?'walk':'idle';if(c.action!==next){c.action=next;publish(c);}if(m.arrived&&c.target){const purpose=c.target.purpose;c.target=null;c.lastWalk=now;if(purpose){c.action='sleep';c.animationUntil=now+4000;event(c,purpose);publish(c);}}}
+   if(c.autonomous&&!c.target&&now-c.lastWalk>5500){
+    c.lastWalk=now;
+    if(Math.random()<.7||!c.actions.some(a=>a.id==='walk')){
+     const id=Actions.choose(c.actions.map(a=>a.id),c.recentActions);if(c.actions.some(a=>a.id===id)){perform(c,id);c.recentActions=[...c.recentActions,id].slice(-6);if(id==='sleep')event(c,'rest');}
+    }else{c.target=clampTarget({x:a.x+Math.random()*Math.max(1,a.width-280),y:a.y+a.height-300},a);event(c,'walk');}
+   }
+   if(now>=c.animationUntil){
+    const next=c.target?'walk':'idle';setAction(c,next);
+    // Wait for this exact request's standing pose and gait blend before moving the window.
+    if(c.target&&c.poseReady){const m=c.motion.step(c.target,dt);if(m.arrived){const purpose=c.target.purpose;c.target=null;c.lastWalk=now;c.motion.halt();setAction(c,'idle');if(purpose){event(c,purpose);if(c.actions.some(a=>a.id==='sit'))perform(c,'sit');}}}
+    else c.motion.halt();
+   }
   }
  }
- const p=clampTarget(c.motion,a);c.motion.x=p.x;c.motion.y=p.y;c.window.setPosition(Math.round(p.x),Math.round(p.y));
- c.window.webContents.send('desktop:motion',{trip:c.trip,generation:c.generation,assetSha256:c.manifest.modelSha256,yaw:c.motion.yaw,turnRate:c.motion.turnRate||0,speed:Math.hypot(c.motion.vx,c.motion.vy),action:c.action});
+
+ const p=clampTarget(c.motion,a);c.motion.x=p.x;c.motion.y=p.y;const x=Math.round(p.x),y=Math.round(p.y);if(c.windowX!==x||c.windowY!==y){c.window.setPosition(x,y);c.windowX=x;c.windowY=y;}
+ c.window.webContents.send('desktop:motion',{trip:c.trip,generation:c.generation,assetSha256:c.manifest.modelSha256,yaw:c.motion.yaw,turnRate:c.motion.turnRate||0,speed:Math.hypot(c.motion.vx,c.motion.vy),action:c.action,actionSerial:c.actionSerial});
 }
 app.whenReady().then(()=>{if(process.platform==='win32')app.setAppUserModelId('com.pait.island.desktop');control=windowFor('index.html',{width:460,height:760,title:'派特岛 · 桌面陪伴',autoHideMenuBar:true});control.on('closed',()=>app.quit());});
 app.on('before-quit',e=>{if(quitting)return;quitting=true;const trips=[...contexts.values()];if(trips.length){e.preventDefault();Promise.all(trips.map(recall)).finally(()=>app.quit());}});
