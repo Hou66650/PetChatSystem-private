@@ -15,8 +15,12 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1},{x:x+140,y,id:2}]});for(let i=1;i<=6;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x-i*8,y,id:1},{x:x+140+i*8,y,id:2}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});assert((await info()).distance<rotated.distance);
   await page.waitForTimeout(1200);const start=await info();await page.waitForTimeout(5000);const end=await info();assert(end.frames>start.frames,'actual ArkWeb render keeps updating');
   const button=page.locator('.park-help summary');if(await button.count()){const tap=async()=>{const r=await button.boundingBox();await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:r.x+r.width/2,y:r.y+r.height/2,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});};await tap();assert(await page.locator('.park-help').evaluate(e=>e.open));await tap();}
+  const tapControl=async selector=>{const r=await page.locator(selector).boundingBox();assert(r);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:r.x+r.width/2,y:r.y+r.height/2,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});};
+  await tapControl('#park-fullscreen');await page.waitForFunction(()=>document.fullscreenElement?.id==='pet-park');
+  await tapControl('#park-visibility');assert(await page.locator('.park-dock').isHidden());assert(await page.locator('#park-visibility').isVisible());await tapControl('#park-visibility');
+  await tapControl('#park-fullscreen');await page.waitForFunction(()=>!document.fullscreenElement);assert(await page.locator('.park-dock').isVisible());
   assert.deepEqual(errors,[]);fs.writeFileSync(path.join(output,'report.json'),JSON.stringify({before,after:end,idleDrawsInFiveSeconds:end.frames-start.frames,touchRotate:true,touchPinch:true,errors},null,2));
-  console.log(JSON.stringify({passed:'real ArkWeb cloud budget, single-finger rotation, two-finger zoom and touch controls',output,idleDrawsInFiveSeconds:end.frames-start.frames}));
+  console.log(JSON.stringify({passed:'real ArkWeb cloud budget, single-finger rotation, two-finger zoom, touch controls, fullscreen and UI restoration',output,idleDrawsInFiveSeconds:end.frames-start.frames}));
  }finally{
   await page.unroute(pattern);if(cdp){await cdp.send('Network.setCacheDisabled',{cacheDisabled:false});await cdp.detach();}
   // Restore the production source, default view, and a usable page after instrumentation.

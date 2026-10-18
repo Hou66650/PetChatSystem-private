@@ -1,4 +1,36 @@
 /* Real, opt-in presence: no fake users, no control of another owner's pet. */
+// View controls remain usable even while the model is still loading.
+(()=>{
+ 'use strict';
+ const root=document.getElementById('pet-park');if(!root)return;
+ const bar=document.createElement('nav');bar.className='park-view-controls';bar.setAttribute('aria-label','乐园视图');
+ const full=document.createElement('button'),visibility=document.createElement('button'),message=document.createElement('span');
+ full.type=visibility.type='button';full.id='park-fullscreen';visibility.id='park-visibility';message.className='park-view-message';message.setAttribute('role','status');
+ bar.append(full,visibility,message);root.append(bar);
+ let hidden=false,fallback=false,busy=false;
+ function sync(){
+  const expanded=document.fullscreenElement===root||fallback;
+  document.body.classList.toggle('park-expanded',expanded);root.classList.toggle('park-expanded',expanded);
+  document.body.classList.toggle('park-interface-hidden',hidden);root.classList.toggle('park-interface-hidden',hidden);
+  full.textContent=expanded?(fallback?'退出铺满':'退出全屏'):'全屏';full.setAttribute('aria-pressed',String(expanded));full.disabled=busy;
+  visibility.textContent=hidden?'显示界面':'隐藏界面';visibility.setAttribute('aria-pressed',String(hidden));
+ }
+ visibility.onclick=()=>{hidden=!hidden;sync();};
+ full.onclick=async()=>{
+  if(busy)return;busy=true;message.textContent='';sync();
+  try{
+   if(document.fullscreenElement===root)await document.exitFullscreen();
+   else if(fallback)fallback=false;
+   else if(root.requestFullscreen){try{await root.requestFullscreen();}catch(_){fallback=true;message.textContent='系统全屏不可用，已铺满网页。';}}
+   else{fallback=true;message.textContent='系统全屏不可用，已铺满网页。';}
+  }catch(_){message.textContent='未能退出全屏，请使用系统返回键或 Esc。';}
+  finally{busy=false;sync();}
+ };
+ document.addEventListener('fullscreenchange',()=>{fallback=false;message.textContent='';sync();});
+ document.addEventListener('keydown',event=>{if(event.key==='Escape'){hidden=false;fallback=false;message.textContent='';sync();}});
+ addEventListener('pagehide',()=>{document.body.classList.remove('park-expanded','park-interface-hidden');});
+ addEventListener('pageshow',()=>{hidden=false;fallback=false;sync();});sync();
+})();
 (async()=>{'use strict';
  const root=document.getElementById('pet-park'),canvas=document.getElementById('park-canvas'),status=document.getElementById('park-status'),join=document.getElementById('park-join'),leave=document.getElementById('park-leave'),select=document.getElementById('park-pet'),buttons=[...root.querySelectorAll('[data-action]')];
  // Older running servers may still cache the template without this dependency.
