@@ -2,6 +2,7 @@
 #include "PaitPreviewPawn.h"
 #include "PaitExperience.h"
 #include "PaitPark.h"
+#include "PaitDaylight.h"
 #include "PaitQualificationRun.h"
 #include "PaitMeadowPet.h"
 #include "PaitGarden.h"
@@ -51,6 +52,7 @@ void APaitQualificationGameMode::BeginPlay()
            !GetWorld()->GetMapName().Contains(Destination))
         { UGameplayStatics::OpenLevel(this,FName(*(TEXT("/Game/Preview/P1_")+Destination+TEXT("V2")))); return; }
     }
+    ApplyPaitDaylight(GetWorld());
     if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
     {
         PC->bShowMouseCursor = true;

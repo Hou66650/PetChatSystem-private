@@ -1,0 +1,130 @@
+{
+  "version": "1.100.1",
+  "date": "2026-10-18",
+  "branch": "codex/windows-client",
+  "sources": [
+    {
+      "theme": "Cloud",
+      "source": "static/textures/cloud-sky-v1/day.webp",
+      "sha256": "04dd1f4b003dc12f2366ff47ea631cf405f2dcbc55e5547c110514bf11985a89"
+    },
+    {
+      "theme": "Mountain",
+      "source": "static/textures/mistwood-sky-v1/day.webp",
+      "sha256": "1c236ab0cb5e35996cb23da57d589656092ef4a18a48cafc9c880a6460535c7b"
+    },
+    {
+      "theme": "Sakura",
+      "source": "static/textures/realistic-sakura-sky-v1/day.webp",
+      "sha256": "437ba4e1b61be0c2949e7e62f255070b7c089ccfef37111bf7b73991d0f50053"
+    },
+    {
+      "theme": "Snow",
+      "source": "static/textures/realistic-snow-sky-v1/day.webp",
+      "sha256": "37bab4e844802fb065ee5065ce169762bdb56930dc0ad383b76b7f998091e517"
+    }
+  ],
+  "theme_mapping": {
+    "Home": "Cloud",
+    "Park": "Cloud",
+    "Meadow": "Mountain",
+    "Camp": "Mountain",
+    "Sakura": "Sakura",
+    "Snow": "Snow"
+  },
+  "import_log": "Saved/Qualification/web-background-import-srgb.log",
+  "package_log": "Saved/Qualification/web-background-package-srgb.log",
+  "full_flow_directory": "Saved\\Qualification\\IslandHome-20261018-134214",
+  "full_flow": {
+    "passed": true,
+    "islands_entered": 5,
+    "returned_home": 5,
+    "manual_mouse_checked": false
+  },
+  "overview_directory": "Saved\\Qualification\\IslandHome-20261018-134920",
+  "overview_launch": {
+    "executable_sha256": "1ABE9E613E8D0EE84A7CB6259B0011B8134CA12D16151D41364186D7024F2EDA",
+    "exit_code": 0,
+    "manual_mouse_checked": false,
+    "performance_qualified": false,
+    "production_mutations": false
+  },
+  "five_island_screenshots_visually_reviewed": true,
+  "overview_visually_reviewed": true,
+  "color_probes": [
+    {
+      "xy": [
+        50,
+        450
+      ],
+      "source": [
+        160,
+        171,
+        233
+      ],
+      "runtime": [
+        161,
+        171,
+        233
+      ]
+    },
+    {
+      "xy": [
+        1500,
+        450
+      ],
+      "source": [
+        247,
+        191,
+        198
+      ],
+      "runtime": [
+        248,
+        191,
+        198
+      ]
+    },
+    {
+      "xy": [
+        800,
+        40
+      ],
+      "source": [
+        97,
+        160,
+        250
+      ],
+      "runtime": [
+        97,
+        160,
+        250
+      ]
+    }
+  ],
+  "delivery_package": "Saved/Packages/ShippingDaily",
+  "delivery_matches_tested_package": {
+    "PaitIsland.exe": "abaea733166adf14381e37ecf8f0060a284752d2fb11fb963ec0aeeedd1dc5ad",
+    "PaitIsland/Binaries/Win64/PaitIsland-Win64-Shipping.exe": "1abe9e613e8d0ee84a7cb6259b0011b8134ca12d16151d41364186d7024f2eda",
+    "PaitIsland/Content/Paks/global.ucas": "30f41c5949ecab6ffc2ca7d57431120eeb58f284111420fdaa521b285215606f",
+    "PaitIsland/Content/Paks/global.utoc": "9bf084e87725e26d49e9bf521ad3607e79deee141005c49084106aeffd61b409",
+    "PaitIsland/Content/Paks/PaitIsland-Windows.pak": "eedbc261bedfbcb2eb8bbb417510630bc7d7f78f53fac56fc5470d80e5483908",
+    "PaitIsland/Content/Paks/PaitIsland-Windows.ucas": "55e91319dda70eb4859527ad440593a703169331218354e4d15207518c2b162d",
+    "PaitIsland/Content/Paks/PaitIsland-Windows.utoc": "f15c1e6ce98e9f8d585551cd6f7a96bcfcabce078726b9e45f902f489eddd035"
+  },
+  "screenshots": {
+    "web-background-home.png": "bc4769b112932708737b7c56e2f4f1a6fa20b1e88bf3a7063bc9745fe67fa948",
+    "web-background-meadow.png": "5dadd787eccf504603a0c82f241405d6f4691ca6e5bb940a710594cae5f1c43b"
+  },
+  "scope": "Static cover-cropped Web day images behind native 3D geometry. Existing sunlight and exposure retained; volumetric clouds hidden after successful material load.",
+  "limitations": [
+    "SDR 1600x900 checked; HDR/night variants not qualified",
+    "Manual mouse and performance not measured in this change",
+    "Transparent-only effects against sky and close-up glass not separately qualified"
+  ],
+  "reproduce": [
+    "Run Scripts/prepare_web_backgrounds.py with Pillow",
+    "Run Scripts/import_web_backgrounds.py in UE Editor Python",
+    "Build/Cook/package Shipping with WebBackground always-cook directory",
+    "Run Test-IslandHome.ps1 against resulting package"
+  ]
+}

@@ -31,8 +31,8 @@ const TCHAR* Pets[]={TEXT("球球 · 柴犬"),TEXT("雪球 · 哈士奇"),TEXT("
 const TCHAR* Descriptions[]={TEXT("风吹过花瓣，它跑过桥来迎接你。"),TEXT("踩着松软的雪，一起去找新的快乐。"),TEXT("阳光落在叶子上，留一会儿给慵懒。"),TEXT("山风与远方，还有始终陪着你的它。"),TEXT("带伙伴去草坪上认识新朋友，一起自在游玩。")};
 const FVector Centers[]={FVector(-2700,-350,-100),FVector(-1300,-2300,0),FVector(1300,-2300,-100),FVector(2700,-350,-100),FVector(0,1900,0)};
 const FSlateRoundedBoxBrush Glass(FLinearColor::White,18.f);
-const FLinearColor Ink(.9f,.94f,.88f), Shade(.025f,.08f,.065f,.75f);
-TSharedRef<SWidget> Text(const FString& Value,int32 Size=16){return SNew(STextBlock).Text(FText::FromString(Value)).Font(FCoreStyle::GetDefaultFontStyle("Regular",Size)).ColorAndOpacity(Ink);}
+const FLinearColor DayInk(.025f,.08f,.065f), Ink(.9f,.94f,.88f), Shade(.025f,.08f,.065f,.75f);
+TSharedRef<SWidget> Text(const FString& Value,int32 Size=16,FLinearColor Color=Ink){return SNew(STextBlock).Text(FText::FromString(Value)).Font(FCoreStyle::GetDefaultFontStyle("Regular",Size)).ColorAndOpacity(Color);}
 const FButtonStyle& SoftButton(){static const FButtonStyle S=FButtonStyle().SetNormal(FSlateRoundedBoxBrush(FLinearColor(.06f,.14f,.12f,.76f),18.f)).SetHovered(FSlateRoundedBoxBrush(FLinearColor(.14f,.28f,.22f,.92f),18.f)).SetPressed(FSlateRoundedBoxBrush(FLinearColor(.2f,.35f,.27f),18.f));return S;}
 TSharedRef<SWidget> Button(const FString& Value,TFunction<void()> Action){return SNew(SButton).ButtonStyle(&SoftButton()).ContentPadding(FMargin(18,12)).OnClicked_Lambda([Action](){Action();return FReply::Handled();})[Text(Value)];}
 APaitPreviewPawn* Pawn(AActor* A){return Cast<APaitPreviewPawn>(UGameplayStatics::GetPlayerPawn(A,0));}
@@ -100,14 +100,14 @@ void APaitExperience::BuildInterface(){
     auto Main=SNew(SOverlay).Visibility_Lambda([W](){if(!W.IsValid()||W->InterfaceHidden)return EVisibility::Collapsed;auto* A=W->GetGameInstance()->GetSubsystem<UPaitAccountSubsystem>();return A&&A->IsPanelVisible()?EVisibility::Collapsed:EVisibility::SelfHitTestInvisible;});
     Root->AddSlot()[Main];
     Main->AddSlot().HAlign(HAlign_Fill).VAlign(VAlign_Top).Padding(28,20)
-      [SNew(SHorizontalBox)+SHorizontalBox::Slot().AutoWidth()[Text(TEXT("派特岛"),26)]
-       +SHorizontalBox::Slot().FillWidth(1).Padding(24,5)[Text(IsHome()?TEXT("云端群岛 / ABOVE THE CLOUDS"):TEXT("留一点时间，陪它慢慢生活。"),14)]
+      [SNew(SHorizontalBox)+SHorizontalBox::Slot().AutoWidth()[Text(TEXT("派特岛"),26,DayInk)]
+       +SHorizontalBox::Slot().FillWidth(1).Padding(24,5)[Text(IsHome()?TEXT("云端群岛 / ABOVE THE CLOUDS"):TEXT("留一点时间，陪它慢慢生活。"),14,DayInk)]
        +SHorizontalBox::Slot().AutoWidth()[Button(IsHome()?TEXT("群岛全景"):TEXT("返回群岛"),[W](){if(W.IsValid()){if(W->IsHome())W->Overview();else W->ReturnHome();}})]
        +SHorizontalBox::Slot().AutoWidth().Padding(8,0)[Button(TEXT("我的陪伴 / 登录"),[W](){if(W.IsValid())W->Account();})]];
     if(IsHome()){
         Main->AddSlot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(46,115)
-          [SNew(SVerticalBox).Visibility_Lambda([W](){return W.IsValid()&&W->Selected==INDEX_NONE?EVisibility::SelfHitTestInvisible:EVisibility::Collapsed;})+SVerticalBox::Slot().AutoHeight()[Text(TEXT("在云海尽头，\n与你相遇。"),38)]
-           +SVerticalBox::Slot().AutoHeight().Padding(0,18)[Text(TEXT("穿过山风与晨雾，抵达它等你的地方。"),15)]
+          [SNew(SVerticalBox).Visibility_Lambda([W](){return W.IsValid()&&W->Selected==INDEX_NONE?EVisibility::SelfHitTestInvisible:EVisibility::Collapsed;})+SVerticalBox::Slot().AutoHeight()[Text(TEXT("在云海尽头，\n与你相遇。"),38,DayInk)]
+           +SVerticalBox::Slot().AutoHeight().Padding(0,18)[Text(TEXT("穿过山风与晨雾，抵达它等你的地方。"),15,DayInk)]
            +SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left)[Button(TEXT("自动环绕"),[W](){if(W.IsValid())W->AutoOrbit=!W->AutoOrbit;})]];
         auto Choices=SNew(SHorizontalBox);
         for(int32 I=0;I<5;++I)Choices->AddSlot().FillWidth(1).Padding(4)[SNew(SButton).ButtonStyle(&SoftButton()).ContentPadding(FMargin(20,15))
@@ -118,8 +118,8 @@ void APaitExperience::BuildInterface(){
           [SNew(SBox).MaxDesiredWidth(1050)[SNew(SVerticalBox)
            +SVerticalBox::Slot().AutoHeight().Padding(8,12)[SNew(SHorizontalBox).Visibility_Lambda([W](){return W.IsValid()&&W->Selected>=0?EVisibility::SelfHitTestInvisible:EVisibility::Collapsed;})
             +SHorizontalBox::Slot().FillWidth(1)[SNew(SVerticalBox)
-             +SVerticalBox::Slot().AutoHeight()[SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle("Regular",28)).ColorAndOpacity(Ink).Text_Lambda([W](){return FText::FromString(W.IsValid()&&W->Selected>=0?Names[W->Selected]:TEXT("五座岛屿，一片属于你的世界"));})]
-             +SVerticalBox::Slot().AutoHeight().Padding(0,6)[SNew(STextBlock).ColorAndOpacity(Ink).Text_Lambda([W](){return FText::FromString(W.IsValid()&&W->Selected>=0?Descriptions[W->Selected]:TEXT("点击岛屿近看 · 右键环绕 · 滚轮缩放"));})]]
+             +SVerticalBox::Slot().AutoHeight()[SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle("Regular",28)).ColorAndOpacity(DayInk).Text_Lambda([W](){return FText::FromString(W.IsValid()&&W->Selected>=0?Names[W->Selected]:TEXT("五座岛屿，一片属于你的世界"));})]
+             +SVerticalBox::Slot().AutoHeight().Padding(0,6)[SNew(STextBlock).ColorAndOpacity(DayInk).Text_Lambda([W](){return FText::FromString(W.IsValid()&&W->Selected>=0?Descriptions[W->Selected]:TEXT("点击岛屿近看 · 右键环绕 · 滚轮缩放"));})]]
             +SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[SNew(SBox).Visibility_Lambda([W](){return W.IsValid()&&W->Selected>=0?EVisibility::Visible:EVisibility::Hidden;})[Button(TEXT("进入小岛  ↗"),[W](){if(W.IsValid())W->Enter();})]]]
            +SVerticalBox::Slot().AutoHeight()[Choices]]];
     }else if(!GetWorld()->GetMapName().Contains(TEXT("P2_Park"))){
@@ -132,7 +132,7 @@ void APaitExperience::BuildInterface(){
       [SNew(SBorder).Visibility_Lambda([W](){return W.IsValid()&&W->Flight>0?EVisibility::Visible:EVisibility::Collapsed;})
        .BorderBackgroundColor_Lambda([W](){return FLinearColor(.78f,.87f,.83f,W.IsValid()?FMath::Clamp((W->Flight-.3f)/1.1f,0.f,1.f):0.f);})
        .HAlign(HAlign_Center).VAlign(VAlign_Center)[SNew(SBox).WidthOverride(440)[SNew(SVerticalBox)
-        +SVerticalBox::Slot().AutoHeight().Padding(0,16)[Text(TEXT("正在穿过云海…"),24)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,16)[Text(TEXT("正在穿过云海…"),24,DayInk)]
         +SVerticalBox::Slot().AutoHeight()[SNew(SProgressBar).Percent(TOptional<float>())]]]];
     Interface=Root;GetGameInstance()->GetGameViewportClient()->AddViewportWidgetContent(Root,10);
 }

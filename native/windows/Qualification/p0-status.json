@@ -194,7 +194,7 @@
     "package": "Saved/Packages/ShippingDaily",
     "held_drag_manual_check_pending": true
   },
-  "application_version": "1.100.0",
+  "application_version": "1.100.1",
   "p2_progress": {
     "scope": "../业务迁移范围与进度.md",
     "evidence": "native-live-evidence.json",
@@ -224,5 +224,6 @@
     "full_web_parity": false,
     "daily_package_updated": true,
     "through_home_facilities_passed": true
-  }
+  },
+  "web_background_evidence": "Qualification/web-background-evidence.json"
 }

@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory=$true)][string]$Executable,
     [ValidateSet("Development", "Shipping")][string]$Configuration = "Development",
     [int]$TimeoutSeconds = 240,
-    [ValidateSet("/Game/Qualification/P0_Lighting", "/Game/Preview/P1_MeadowV2")][string]$Map = "/Game/Preview/P1_MeadowV2"
+    [ValidateSet("/Game/Qualification/P0_Lighting", "/Game/Preview/P1_MeadowV2", "/Game/Preview/P1_SakuraV2", "/Game/Preview/P1_SnowV2", "/Game/Preview/P1_CampV2", "/Game/Preview/P2_Park")][string]$Map = "/Game/Preview/P1_MeadowV2"
 )
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -14,8 +14,9 @@ if (Test-Path -LiteralPath $log) {
     Move-Item -LiteralPath $log -Destination ($log + "." + (Get-Date -Format "yyyyMMdd-HHmmss"))
 }
 # This is a bounded automated render smoke, not a performance measurement.
+$destination = if($Map -like '*/P0_*'){'Qualification'}else{($Map.Split('/')[-1] -replace '^P[12]_|V2$','')}
 $process = Start-Process -FilePath $exe -WindowStyle Hidden -PassThru -ArgumentList @(
-    $Map, "-dx12", "-windowed", "-ResX=1600", "-ResY=900", "-PaitSmoke", "-unattended",
+    $Map, "-PaitIsland=$destination", "-dx12", "-windowed", "-ResX=1600", "-ResY=900", "-PaitSmoke", "-unattended",
     "-nosplash", "-NoSound", "-abslog=`"$log`"", "-PaitEvidenceDir=`"$evidence`""
 )
 if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
