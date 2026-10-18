@@ -9,7 +9,7 @@ function between(a,b){const start=html.indexOf(a);assert(start>=0,a);const end=h
 function setup({state='idle',chat=false,enabled=true,held=false}={}){
  let now=0,waiters=[],transition=null,cancelled=0,requests=0;
  const elements=new Map(),el=key=>{if(!elements.has(key))elements.set(key,{hidden:true,open:false,textContent:'',replaceChildren(){},classList:{contains:()=>!chat}});return elements.get(key);};
- const context={console,performance:{now:()=>now},DialogueActions,clearTimeout(){},setTimeout(){},
+ const context={console,performance:{now:()=>now},DialogueActions,PetActionCatalog:require('../static/js/den/action-catalog'),clearTimeout(){},setTimeout(){},
   document:{hidden:false,querySelector:()=>null,querySelectorAll:()=>[],getElementsByClassName:()=>[],getElementById:el},window:{},
   petModel:{position:{x:0,y:0,z:2},rotation:{y:0}},spawnBusy:false,grabbed:false,dropping:false,bounceBack:0,
   anim:{state,birth:1,until:0,lastInteract:0},actionTransition:null,actions:{standUp:{}},

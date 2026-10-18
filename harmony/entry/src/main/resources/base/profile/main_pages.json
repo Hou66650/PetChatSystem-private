@@ -1,1 +1,1 @@
-{ "src": ["pages/WebPage", "pages/Index"] }
+{ "src": ["pages/WebPage", "pages/Index", "pages/DesktopPet"] }

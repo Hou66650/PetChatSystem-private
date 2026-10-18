@@ -8,6 +8,7 @@ import BuildProfile from '../../../../build/default/generated/profile/default/Bu
 import { NativePreview } from '../components/NativePreview';
 import { NativeDenNode } from '../components/NativeDenNode';
 import { DenAck, parseDenFrame, isDenPage } from '../model/NativeDenProtocol';
+import { TabletDesktopHost, DesktopReply, parseDesktopRequest } from '../service/TabletDesktopHost';
 
 // Render the existing site directly: no replacement UI, injected CSS or copied business logic.
 @Entry
@@ -32,6 +33,10 @@ struct WebPage {
   private denTimer: number = -1;
   private denEpoch: number = 0;
   private denPending: boolean = false;
+  private desktopTimer: number = -1;
+  private desktopPending: boolean = false;
+  private desktopReply: DesktopReply = { id: 0, ok: true, message: '' };
+  private desktopEpoch: number = 0;
   private controller: webview.WebviewController = new webview.WebviewController();
   private webAudio: WebAudioCapture = new WebAudioCapture(
     () => this.getUIContext().getHostContext() as common.UIAbilityContext,
@@ -45,7 +50,25 @@ struct WebPage {
 
   onPageShow(): void { this.foreground = true; this.denNode?.setActive(true); }
   onPageHide(): void { this.foreground = false; this.webAudio.close(); this.denNode?.setActive(false); }
-  aboutToDisappear(): void { this.webAudio.close(); this.stopDen(); }
+  aboutToDisappear(): void { this.webAudio.close(); this.stopDen(); this.stopDesktopBridge(); }
+  private stopDesktopBridge(): void {
+    this.desktopEpoch++; this.desktopReply = { id: 0, ok: true, message: '' };
+    if (this.desktopTimer !== -1) { clearInterval(this.desktopTimer); this.desktopTimer = -1; }
+  }
+  private async pollDesktop(): Promise<void> {
+    if (this.desktopPending || !this.foreground || !this.appForeground || !this.trustedDen()) { return; }
+    const epoch = this.desktopEpoch; this.desktopPending = true;
+    try {
+      const raw = await this.controller.runJavaScript('window.PaitTabletDesktop?.exchange(' + JSON.stringify(this.desktopReply) + ')');
+      if (epoch !== this.desktopEpoch || !this.trustedDen()) { return; }
+      const request = parseDesktopRequest(raw);
+      if (request && request.id !== this.desktopReply.id) {
+        const reply = await TabletDesktopHost.shared().command(this.denOrigin(), request);
+        if (epoch === this.desktopEpoch) { this.desktopReply = reply; }
+        else { TabletDesktopHost.shared().cancel(); }
+      }
+    } catch (_) {} finally { this.desktopPending = false; }
+  }
 
   private trustedAudio(): boolean {
     if (!this.foreground || !this.appForeground || this.settings || this.nativePreview) { return false; }
@@ -250,8 +273,8 @@ struct WebPage {
           .onPermissionRequest((event) => { if (event) { this.permission(event.request); } })
           .onFullScreenEnter((event) => { if (event) { this.fullScreen = event.handler; } })
           .onFullScreenExit(() => { this.fullScreen = null; })
-          .onPageBegin(() => { this.error = ''; this.webAudio.close(); this.stopDen(); })
-          .onPageEnd(() => { this.startDen(); })
+          .onPageBegin(() => { this.error = ''; this.webAudio.close(); this.stopDen(); this.stopDesktopBridge(); })
+          .onPageEnd(() => { this.startDen(); if (this.trustedDen() && this.desktopTimer === -1) { this.desktopTimer = setInterval(() => { this.pollDesktop(); }, 200); } })
           .onErrorReceive((event) => {
             if (event && event.request.isMainFrame()) { this.error = '网页加载失败，请检查电脑服务与网络连接。'; }
           })

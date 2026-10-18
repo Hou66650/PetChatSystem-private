@@ -54,6 +54,13 @@ def visit(trip):
 @bp.get('/journeys')
 def journeys():return render_template('portal-journal.html',scope=companion.browser_scope())
 
+@bp.get('/tablet-companion')
+def tablet_companion():
+    response=Response(render_template('tablet-companion.html'),mimetype='text/html')
+    response.headers['Content-Security-Policy']="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' blob:; frame-ancestors 'none'"
+    response.headers['Referrer-Policy']='no-referrer'
+    return response
+
 @bp.get('/api/portals/trip/<trip>/model/<role>')
 def trip_model(trip,role):
     portal.expire()
