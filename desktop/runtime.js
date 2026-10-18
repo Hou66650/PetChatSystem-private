@@ -11,7 +11,7 @@ const phases=['preparing','entering','emerging','roaming'];
 const messages={preparing:'正在准备宠物与饰品',entering:'正在走入小岛传送门',emerging:'正在走出桌面传送门',roaming:'正在桌面陪伴你'};
 function live(c){return !!c?.alive&&contexts.get(c.trip)===c;}
 function checkedOrigin(raw){const u=new URL(raw);if(u.username||u.password||u.pathname!=='/'||u.search||u.hash)throw Error('只填写网站根地址');if(u.protocol!=='https:'&&!(u.protocol==='http:'&&['127.0.0.1','localhost','[::1]'].includes(u.hostname)))throw Error('公网连接必须使用 HTTPS；HTTP 仅允许本机地址');return u.origin;}
-function windowFor(file,options){const w=new BrowserWindow({icon:path.join(__dirname,'../static/images/pait-app-icon-f4.png'),...options,webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});w.webContents.setWindowOpenHandler(()=>({action:'deny'}));w.webContents.on('will-navigate',e=>e.preventDefault());w.loadFile(path.join(__dirname,file));return w;}
+function windowFor(file,options){const w=new BrowserWindow({icon:path.join(__dirname,'../static/images/pait-app-icon-f5.png'),...options,webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});w.webContents.setWindowOpenHandler(()=>({action:'deny'}));w.webContents.on('will-navigate',e=>e.preventDefault());w.loadFile(path.join(__dirname,file));return w;}
 function sender(e){
  const c=senders.get(e.sender.id),w=e.sender===control?.webContents?control:c?.window,file=w===control?'index.html':'pet.html';
  if(!w||w.isDestroyed()||e.sender!==w.webContents||e.senderFrame!==w.webContents.mainFrame||e.senderFrame.url!==pathToFileURL(path.join(__dirname,file)).href)throw Error('无效的客户端来源');return c;
