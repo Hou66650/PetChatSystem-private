@@ -11,7 +11,7 @@
   const data=await response.json();if(!response.ok)throw Error(data.error||'暂时无法保存，请稍后重试');
   if(data.scope!==scope)throw Error('账号已变化，请刷新页面');return data;
  }
- function setBusy(value){busy=value;for(const el of document.querySelectorAll('.studio-layout>aside button,.studio-layout>aside input,#studio-appearance button,#studio-appearance input,#studio-appearance textarea,#studio-appearance select'))el.disabled=value;if(!value)generationControls();}
+ function setBusy(value){busy=value;window.StudioMemories?.setStudioBusy(value);for(const el of document.querySelectorAll('.studio-layout>aside button,.studio-layout>aside input,#studio-appearance button,#studio-appearance input,#studio-appearance textarea,#studio-appearance select'))el.disabled=value;if(!value)generationControls();}
  async function change(path,body,form=false){if(busy||window.StudioMemories?.busy())return;setBusy(true);try{const data=await api(path,body,form);generationAvailable=!!data.generationAvailable;rows=data.tasks;paint();note('已保存。');schedulePoll();}catch(e){note(e.message);}finally{setBusy(false);}}
  function generationControls(){
   const row=rows.find(r=>r.id===selected);if(!row)return;const g=row.generation;
