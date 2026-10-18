@@ -12,6 +12,7 @@
 <body><main>
  <header><a href="/den">← 回到宠物小窝</a><span class="muted">v{{ app_version }}</span></header>
  <h1>我们的陪伴档案</h1>
+ <p><a class="button" href="/pet-imprint">它熟悉的样子 · 真实回忆与习惯</a></p>
  <p class="muted">直接和它聊天就会自动形成档案，语音和文字都可以。你的偏好会改变它的回应方式与小窝里的活动习惯。</p>
  <div class="toolbar"><label for="pet-select">与谁的故事</label><select id="pet-select">{% for pet in pets %}<option value="{{ pet.id }}">{{ pet.name }}</option>{% endfor %}</select><button id="toggle-memory">读取中…</button></div>
  <p id="identity" class="muted"></p><div id="notice" role="status" aria-live="polite"></div>

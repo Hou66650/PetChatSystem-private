@@ -406,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="action-btn" id="btn-sniff">闻闻</button>
             <button class="action-btn" id="btn-rest">休息</button>
             <button class="action-btn" id="btn-shiba-acting" hidden>球球的小表情</button></div>
-            <button class="action-btn" id="btn-growth-actions">成长互动</button><span id="growth-mood" class="text-sub" role="status"></span>
+            <button class="action-btn" id="btn-growth-actions">成长互动</button><button class="action-btn" id="btn-imprint">熟悉的样子</button><span id="growth-mood" class="text-sub" role="status"></span>
         </section>
         <section class="dock-panel" id="dock-more" aria-labelledby="dock-more-title" hidden><header><div><h2 id="dock-more-title">小窝里的小乐趣</h2><p>玩耍、记录，或者一起安静一会。</p></div><button type="button" class="dock-close" aria-label="收起小窝里的小乐趣">✕</button></header>
             <div class="dock-grid"><button type="button" class="action-btn cat-backup" onclick="document.querySelector('[data-dock-panel=&quot;dock-actions&quot;]').click()">动作与照料</button><a class="action-btn" href="/supplies" target="_blank" rel="noopener">派特补给站 / 我的物品</a><button class="action-btn" id="btn-dress" data-icon="dress">装扮商店</button>
@@ -632,6 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script src="{{ url_for('static', filename='js/den/diary-events.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/den/growth-assets.js?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/den/growth-runtime.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/den/pet-imprint-runtime.js') }}?v={{ app_version }}"></script>
     <script src="/static/js/pet-sounds.js?v={{ app_version }}"></script>
     <script src="/static/js/den/render-budget.js?v={{ app_version }}"></script>
     <script src="/static/js/den/face-play.js?v={{ app_version }}"></script>
@@ -685,6 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentPetId = SPECS[requestedPet] ? requestedPet : (SPECS[state.selectedPetId] ? Number(state.selectedPetId) : 1);
         let currentSpec = null;
         let voiceUI=null, voiceBusy=false, companionBehavior=null;
+        let imprintRuntime=null, imprintRevision=null;
         // 陪伴天数（S1-07）：每只宠物独立记录领养日；旧数据只补今天，不按亲密度倒推
         function localDateKey(d) {
             const p = (n) => String(n).padStart(2, '0');
@@ -1469,6 +1471,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentPetId = id;
             state.selectedPetId=id;saveState();
             companionBehavior=null;
+            window.PetImprintPolicy=null;imprintRevision=null;imprintRuntime?.invalidate();
             if(voiceUI) voiceUI.restartForPet();
             stopDenSpeech();
             if (typeof denHistory !== 'undefined') denHistory = [];   // 聊天记忆逐宠隔离
@@ -2691,7 +2694,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function applyCompanionName(profile){
             if(!profile || profile.pet.id!==currentPetId)return;
+            if(imprintRevision!==profile.revision){imprintRuntime?.invalidate();imprintRevision=profile.revision;}
             companionBehavior=profile.pet.behavior||null;
+            window.PetImprintPolicy=companionBehavior?.imprint||null;
             if(locomotion)locomotion.setBehavior(companionBehavior);
             SPECS[currentPetId].displayName=profile.pet.name;
             updatePetTitles();
@@ -2843,7 +2848,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const petCareRuntime=new PetCareRuntime.Controller({scope:COMPANION_SCOPE,pet:()=>({id:currentPetId}),
             open:()=>PetCareUI.open(currentPetId,SPECS[currentPetId].displayName||SPECS[currentPetId].name),
             available:careAvailable,noticeAvailable:()=>!voiceUI?.isActive()&&!chatBusy&&!interactionBusy()&&!document.querySelector('dialog[open]'),
-            voiceActive:()=>!!voiceUI?.isActive()||!ttsOn,
+            voiceActive:()=>!!voiceUI?.isActive()||voiceBusy||chatBusy||!!petPlayer||!!(denAudio&&!denAudio.paused)||!ttsOn,
+            imprint:()=>companionBehavior?.imprint,
             cancelComfort(){if(comfortSerial!==null&&dialogueRunner.serial===comfortSerial){dialogueRunner.cancel('留一点安静的空间');endDialogueHold();}comfortSerial=null;},
             async comfort(){if(!careAvailable())return;const targetEpoch=locomotionEpoch;
                 const plan=['come'];if(shibaExpression&&actions.affection&&companionBehavior?.mode!=='calm')plan.push('affection');plan.push(actions.sit?'sit':'stop');
@@ -2858,6 +2864,29 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('pointerdown',()=>petCareRuntime.manual(),true);
         document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.target===chatInput)petCareRuntime.manual();});
         window.addEventListener('pagehide',()=>petCareRuntime.dispose());
+
+        let imprintSerial=null;
+        imprintRuntime=new PetImprintRuntime.Controller({scope:COMPANION_SCOPE,pet:()=>currentPetId,hidden:()=>document.hidden,
+            available:careAvailable,supports:key=>key==='come'||(expressiveKeys[key]?!!shibaExpression&&!!actions[expressiveKeys[key]]:!!actions[key==='lie_down'?'sleep':key]),
+            status:text=>{document.getElementById('growth-mood').textContent=text;},
+            cancel(){petCareRuntime.stopAudio();if(imprintSerial!==null&&dialogueRunner.serial===imprintSerial){dialogueRunner.cancel('回忆表现已停止');endDialogueHold();}imprintSerial=null;},
+            async play(plan){const task=dialogueRunner.run(plan),serial=dialogueRunner.serial;imprintSerial=serial;await task;const completed=dialogueRunner.serial===serial&&dialogueRunner.message==='动作已完成';if(dialogueRunner.serial===serial)endDialogueHold();if(imprintSerial===serial)imprintSerial=null;return completed;},
+            call:(kind,options)=>petCareRuntime.call(kind,options)
+        });
+        document.getElementById('btn-imprint').onclick=()=>{const dialog=document.createElement('dialog');dialog.className='pet-care-dialog';
+            const title=document.createElement('h2');title.textContent='它熟悉的样子';const note=document.createElement('p');note.textContent='用已确认的真实回忆驱动现有动作。未适配的个体步态不会用其他动作冒充。';dialog.append(title,note);
+            for(const [kind,label] of [['greeting','我回来了'],['comfort','陪我坐一会儿'],['play','一起玩一会儿']]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{dialog.close();void imprintRuntime.trigger(kind,true);};dialog.append(b);}
+            const link=document.createElement('a');link.href='/pet-imprint?petId='+currentPetId;link.target='_blank';link.rel='noopener';link.textContent='记录或修改真实回忆';dialog.append(link);
+            const close=document.createElement('button');close.textContent='关闭';close.onclick=()=>dialog.close();dialog.append(close);dialog.onclose=()=>dialog.remove();document.body.append(dialog);dialog.showModal();};
+        document.addEventListener('pet-growth-interaction',e=>{if(e.detail?.petId===currentPetId){const kind={visit:'greeting',pet:'comfort',hand:'comfort',game:'play'}[e.detail.kind];if(kind)imprintRuntime.queue(kind);}});
+        document.addEventListener('pointerdown',()=>imprintRuntime.invalidate(),true);
+        document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.target===chatInput)imprintRuntime.invalidate();});
+        document.addEventListener('visibilitychange',()=>{if(document.hidden)imprintRuntime.invalidate();});
+        const imprintTick=setInterval(()=>imprintRuntime.tick(),500);
+        let imprintRefreshing=false;
+        const imprintRefresh=setInterval(async()=>{if(document.hidden||imprintRefreshing)return;imprintRefreshing=true;const pet=currentPetId,version=locomotionEpoch;
+            try{const r=await fetch('/api/companion?petId='+pet,{cache:'no-store',paitQuiet:true,signal:AbortSignal.timeout(5000)}),d=await r.json();if(!r.ok||d.scope!==COMPANION_SCOPE){imprintRuntime.invalidate();return;}if(pet===currentPetId&&version===locomotionEpoch&&d.revision!==imprintRevision)applyCompanionName(d);}catch{}finally{imprintRefreshing=false;}},15000);
+        window.addEventListener('pagehide',()=>{clearInterval(imprintTick);clearInterval(imprintRefresh);imprintRuntime.dispose();});
 
         // ---------- UI 绑定 ----------
         function renderPetChips() {

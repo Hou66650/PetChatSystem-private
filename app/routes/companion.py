@@ -52,6 +52,8 @@ def archive():
             diary.forget(db,owner)
             from ..services import growth_service
             growth_service.forget(db,owner)
+            from ..services import pet_imprint_service
+            pet_imprint_service.forget(db,owner)
             db.execute('DELETE FROM pet_care_events WHERE owner=?',(owner,))
             db.execute('DELETE FROM companion_memories WHERE owner=?',(owner,))
             db.execute('DELETE FROM companion_messages WHERE owner=?',(owner,))

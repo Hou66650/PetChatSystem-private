@@ -91,6 +91,15 @@ def source_audio(source_id):
     return current_app.response_class(row['audio'],mimetype='audio/wav')
 
 
+@bp.get('/api/pet-calls/source/<source_id>/info')
+def source_info(source_id):
+    import io, wave
+    row=calls.get_audio(memory.owner_key(),source_id,True)
+    if row['pet_id'] != pet(): raise calls.CallError('素材不属于当前宠物')
+    with wave.open(io.BytesIO(row['audio']),'rb') as wav: pcm=wav.readframes(wav.getnframes())
+    return jsonify(scope=memory.browser_scope(),petId=row['pet_id'],id=row['id'],duration=row['duration'],candidates=calls.candidates(pcm),note='声音强弱仅帮助定位，请试听并确认是宠物原声，未确认不会自动使用。')
+
+
 @bp.route('/api/pet-calls/<clip_id>',methods=['GET','DELETE'])
 def audio(clip_id):
     row=calls.get_audio(memory.owner_key(),clip_id)

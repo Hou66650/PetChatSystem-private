@@ -1,0 +1,16 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+{% include '_brand_icons.html' %}<title>它熟悉的样子 · 派特岛</title><link rel="stylesheet" href="/static/css/pet-imprint.css?v={{ app_version }}"></head>
+<body><main><header><a id="back" href="/den">← 回到小岛</a><span>它熟悉的样子</span></header>
+<h1>把真实的回忆，留在相处里</h1><p>记录它怎样迎接你、喜欢怎样玩、什么时候安静待着。确认后，这些习惯会影响小岛上的表现；叫声使用你试听保存的原声。</p>
+{% if imprint_demo %}<p class="note">{{ imprint_demo }}</p>{% endif %}
+<div class="toolbar"><label>当前伙伴 <select id="pet"><option value="1">柴犬</option><option value="2">哈士奇</option><option value="3">猫咪</option><option value="4">德牧</option></select></label><button id="calls">管理它本来的叫声</button><a id="demo" href="/den">去小岛体验</a></div>
+<p id="status" role="status" aria-live="polite"></p><p id="policy" class="note"></p>
+<section><h2>留下一条熟悉的习惯</h2><p class="note">先保存草稿，再确认启用。影像中的独特步态仍需专门制作，这里用现有动作表达习惯，不冒充逐帧复原。</p>
+<form id="form"><input id="edit-id" type="hidden"><div class="grid"><label>想保留什么<select id="kind"></select></label><label>怎样在岛上表达<select id="value"></select></label></div>
+<label>真实依据<textarea id="quote" maxlength="400" required placeholder="例如：汤圆平时活泼好动，但不太爱叫。"></textarea></label>
+<label>依据来源<select id="source"><option value="owner">主人记得的事</option><option value="media">影像中的片段</option></select></label>
+<div id="media-fields" hidden><label>参考文件名称<input id="media-name" maxlength="160"></label><div class="grid"><label>从第几秒<input id="start" type="number" min="0" step="0.01" value="0"></label><label>到第几秒<input id="end" type="number" min="0.01" step="0.01" value="1"></label></div><label>在本页对照原片（不上传）<input id="reference" type="file" accept="video/*,audio/*"></label><video id="reference-player" controls hidden></video><p class="note">保存文件名称、时间段与描述，原片留在你的设备。系统不会把手动标记说成自动识别结果。</p></div>
+<div class="toolbar"><button type="submit">保存为待确认草稿</button><button id="cancel-edit" type="button">取消编辑</button></div></form></section>
+<section><h2>已留下的回忆</h2><p class="note">确认同类新习惯会替换旧习惯；修改后需要重新确认。暂停长期记忆时不使用这些记录。明确设置的陪伴偏好仍优先于活动习惯。</p><div id="cards"></div></section>
+<section><h2>声音怎样回来</h2><p>在“管理它本来的叫声”中提取视频音轨，试听后保存片段，并开启原声开关。再在这里选择“重逢原声／陪伴原声／玩耍原声”，绑定已经确认的片段。不把普通犬叫或拟人说话音色当作它的叫声。</p><p class="note">未确认原声时保持缺失状态。“不太爱叫”会关闭成长互动的通用叫声，并降低自动原声频率。你仍可主动试听。</p><a id="archive" href="/companion">查看／暂停陪伴记忆</a></section>
+</main><script>window.COMPANION_SCOPE={{ companion_scope|tojson }};</script><script src="/static/js/pet-care-ui.js?v={{ app_version }}"></script><script src="/static/js/pet-imprint.js?v={{ app_version }}"></script></body></html>

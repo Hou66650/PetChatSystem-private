@@ -124,4 +124,5 @@ def save(owner, pet_id, data):
 def state(owner, pet_id):
     db=get_db();row=db.execute('SELECT enabled FROM pet_call_settings WHERE owner=? AND pet_id=?',(owner,pet_id)).fetchone()
     clips=[dict(r) for r in db.execute('SELECT id,name,kind,duration FROM pet_calls WHERE owner=? AND pet_id=? ORDER BY created DESC',(owner,pet_id))]
-    return dict(enabled=bool(row and row['enabled']),clips=clips)
+    sources=[dict(r) for r in db.execute('SELECT id,duration,created FROM pet_call_sources WHERE owner=? AND pet_id=? AND created>? ORDER BY created DESC',(owner,pet_id,time.time()-86400))]
+    return dict(enabled=bool(row and row['enabled']),clips=clips,sources=sources)

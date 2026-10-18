@@ -15,6 +15,7 @@
  }
  function interaction(e){const {petId,kind}=e.detail||{};if(petId!==adapter?.pet()||silent())return;const d=states.get(petId);if(!d?.enrolled||!d.memoryEnabled)return;adapter.mood?.({pet:'放松',hand:'亲近',feed:'满足',game:'兴奋',gaze:'安心',gesture:'好奇',visit:'好奇'}[kind]||'平静');if(!unlocked||Date.now()-effectAt<8000)return;effectAt=Date.now();
   if(['pet','hand'].includes(kind)&&d.prefs.haptics){try{if(window.PaitHarmonyAudio?.pulse)window.PaitHarmonyAudio.pulse(d.prefs.haptics);else navigator.vibrate?.([12*d.prefs.haptics,35,12*d.prefs.haptics]);}catch{}}
+  if(window.PetImprintPolicy?.vocality==='quiet'||window.PetImprintPolicy?.calls?.[{visit:'greeting',pet:'comfort',hand:'comfort',game:'play'}[kind]])return;
   if(d.prefs.sound&&window.PetSounds?.effect){voice?.stop();voice=window.PetSounds.effect(petId,petId===3?(['pet','hand','gaze'].includes(kind)?'purr':'meow'):(kind==='visit'?'bark':'whine'),d.appearance.voiceRate);}
  }
  function recorded(e){if(e.detail?.petId!==adapter?.pet())return;clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>void refresh(),800);}

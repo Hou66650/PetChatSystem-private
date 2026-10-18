@@ -74,6 +74,8 @@ def create_app(config_object=Config):
         from .services import pet_care_service, pet_call_service
         pet_care_service.init_schema()
         pet_call_service.init_schema()
+        from .services import pet_imprint_service
+        pet_imprint_service.init_schema()
         from .routes.pet_studio import init_schema as init_pet_studio
         init_pet_studio()
         from .services import pet_adaptation_service
@@ -108,5 +110,7 @@ def create_app(config_object=Config):
 
     from .routes.desktop_tasks import bp as desktop_tasks_bp
     app.register_blueprint(desktop_tasks_bp)
+    from .routes.pet_imprint import bp as pet_imprint_bp
+    app.register_blueprint(pet_imprint_bp)
     desktop_task_service.install(app)
     return app
