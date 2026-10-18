@@ -33,8 +33,73 @@ class StudioMemoryTests(unittest.TestCase):
     def analyze(self,media):return self.a.post(self.url+'/memories/'+media+'/analyze',json={'consent':True},headers=self.headers)
     def change(self,card,op='publish',**kw):
         return self.a.post(self.url+'/memory-cards/'+card['id']+'/'+op,json={
-            'version':card['version'],'revision':self.state()['revision'],'pet':1,'kind':'comfort','value':'sit',
+            'version':card['version'],'revision':self.state()['revision'],'kind':'comfort','value':'sit',
             'quote':card['quote'],'confirmed':True,**kw},headers=self.headers)
+
+    def profile_records(self):
+        with self.app.app_context():
+            return [dict(r,evidence=json.loads(r['evidence'])) for r in get_db().execute('SELECT * FROM studio_pet_imprints WHERE task=?',(self.task,))]
+
+    def equip_model(self, task):
+        import hashlib
+        from pet_quality_helpers import approve_quality
+        with self.app.app_context():
+            db=get_db()
+            if not db.execute('SELECT 1 FROM pet_studio_adaptations WHERE task=?',(task,)).fetchone():
+                # Synthetic immutable assets for the binding boundary, not a rendering test.
+                db.execute('INSERT INTO pet_studio_assets VALUES (?,?,?,?)',(task,'model','model/gltf-binary',b'model'))
+                db.execute('INSERT INTO pet_studio_assets VALUES (?,?,?,?)',(task,'adapted','model/gltf-binary',b'adapted'))
+                db.execute('INSERT INTO pet_studio_adaptations VALUES (?,?,?,?,?,?)',(task,'job-'+task,hashlib.sha256(b'model').hexdigest(),'reviewed','{}',0))
+                db.commit();approve_quality(task)
+        r=self.a.post('/api/pet-studio/'+task+'/equip',json={'jobId':'job-'+task},headers=self.headers)
+        self.assertEqual(r.status_code,200,r.json)
+
+    def test_profile_binding_switch_pause_and_default_pet_isolation(self):
+        first=self.task;media=self.upload();card=self.analyze(media).json['cards'][0]
+        # An obsolete or forged pet selection cannot redirect a profile memory.
+        self.assertEqual(self.change(card,pet=2).status_code,200)
+        self.assertEqual(self.a.get('/api/pet-imprint/2').json['policy']['responses'],{})
+        with self.app.app_context():
+            db=get_db();proof=json.dumps({'type':'owner','quote':'标准猫原有习惯'})
+            db.execute("INSERT INTO pet_imprints VALUES ('default-cat','user:1',3,'comfort','affection',?,1,0,0)",(proof,));db.commit()
+        second=self.a.post('/api/pet-studio',json={'name':'另一只宠物','mode':'memory'},headers=self.headers).json['tasks'][0]['id']
+        self.task=second;self.url='/api/pet-studio/'+second
+        media=self.upload();card=self.analyze(media).json['cards'][0];self.change(card,value='lie_down')
+        self.equip_model(first)
+        self.assertEqual(self.a.get('/api/pet-imprint/3').json['policy']['responses']['comfort']['action'],'sit')
+        self.assertIn('task='+first,self.a.get('/pet-imprint?petId=3').location)
+        self.equip_model(second)
+        self.assertEqual(self.a.get('/api/pet-imprint/3').json['policy']['responses']['comfort']['action'],'lie_down')
+        self.assertIn('task='+second,self.a.get('/pet-imprint?petId=3').location)
+        self.assertEqual(self.b.get('/api/pet-imprint/3').json['policy']['responses'],{})
+        self.a.patch('/api/companion',json={'enabled':False})
+        self.assertEqual(self.a.get('/api/pet-imprint/3').json['policy']['responses'],{})
+        self.a.patch('/api/companion',json={'enabled':True})
+        self.a.post(self.url+'/unequip',json={},headers=self.headers)
+        self.assertEqual(self.a.get('/api/pet-imprint/3').json['policy']['responses']['comfort']['action'],'affection')
+        self.equip_model(first)
+        self.assertEqual(self.a.get('/api/pet-imprint/3').json['policy']['responses']['comfort']['action'],'sit')
+        with self.app.app_context():
+            db=get_db();db.execute("DELETE FROM pet_studio_quality WHERE task=? AND stage='motion'",(first,));db.commit()
+        # A rejected model is not the runtime appearance, so it cannot carry memories.
+        self.assertEqual(self.a.get('/api/pet-imprint/3').json['policy']['responses']['comfort']['action'],'affection')
+
+    def test_migrate_existing_publications_keeps_confirmations_and_manual_records(self):
+        media=self.upload();card=self.analyze(media).json['cards'][0]
+        with self.app.app_context():
+            db=get_db();proof=json.dumps({'type':'owner','quote':'以前已确认的依据'})
+            db.execute("INSERT INTO pet_imprints VALUES ('old1','user:1',1,'comfort','sit',?,1,1,1)",(proof,))
+            db.execute("INSERT INTO pet_imprints VALUES ('old2','user:1',2,'comfort','lie_down',?,1,2,2)",(proof,))
+            db.execute("INSERT INTO pet_imprints VALUES ('manual','user:1',3,'comfort','affection',?,1,3,3)",(proof,))
+            db.execute("UPDATE studio_memory_cards SET published='old1',pet=1 WHERE id=?",(card['id'],))
+            db.execute("INSERT INTO studio_memory_cards(id,task,media,quote,start,end,published,pet,created) VALUES ('second',?,?,?,0,0,'old2',2,2)",(self.task,media,'以前已确认的依据'))
+            db.commit();service.init_schema();service.init_schema()
+            rows=db.execute('SELECT * FROM studio_pet_imprints ORDER BY id').fetchall()
+            self.assertEqual(len(rows),2);self.assertEqual([r['confirmed'] for r in rows],[0,1])
+            self.assertEqual([r['id'] for r in db.execute('SELECT * FROM pet_imprints')],['manual'])
+        self.assertTrue(all(c['pet'] is None for c in self.state()['cards']))
+        self.equip_model(self.task)
+        self.assertEqual(self.a.get('/api/pet-imprint/3').json['policy']['responses']['comfort']['action'],'lie_down')
 
     def test_private_deduplicated_media_does_not_invalidate_model(self):
         with self.app.app_context():
@@ -58,7 +123,10 @@ class StudioMemoryTests(unittest.TestCase):
         self.analyze(media);self.model.observe_pet_memory.assert_called_once()
         self.assertEqual(self.change(card,confirmed=False).status_code,400)
         r=self.change(card);self.assertEqual(r.status_code,200,r.json)
-        self.assertEqual(self.a.get('/api/pet-imprint/1').json['policy']['responses']['comfort']['action'],'sit')
+        self.assertTrue(r.json['cards'][0]['confirmed'])
+        for pet in (1,2,3,4):self.assertEqual(self.a.get('/api/pet-imprint/'+str(pet)).json['policy']['responses'],{})
+        self.equip_model(self.task)
+        self.assertEqual(self.a.get('/api/pet-imprint/3').json['policy']['responses']['comfort']['action'],'sit')
         self.assertEqual(self.change(card).status_code,409)
         current=r.json['cards'][0];self.assertEqual(self.change(current,'withdraw').status_code,200)
         self.assertEqual(self.a.get('/api/pet-imprint/1').json['policy']['responses'],{})
@@ -75,10 +143,12 @@ class StudioMemoryTests(unittest.TestCase):
         media=self.upload();card=self.analyze(media).json['cards'][0];self.change(card)
         self.a.post(self.url+'/memories/'+media+'/delete',json={},headers=self.headers)
         self.assertEqual(self.state()['media'],[]);self.assertEqual(self.state()['cards'],[])
+        self.assertEqual(self.profile_records(),[])
         self.assertEqual(self.a.get('/api/pet-imprint/1').json['cards'],[])
         media=self.upload();self.analyze(media)
         self.a.delete('/api/companion',json={})
         self.assertEqual(self.state()['media'],[]);self.assertEqual(self.state()['cards'],[])
+        self.assertEqual(self.profile_records(),[])
 
     def test_late_analysis_cannot_restore_deleted_material(self):
         media=self.upload()
@@ -110,7 +180,7 @@ class StudioMemoryTests(unittest.TestCase):
         self.model.observe_pet_memory.return_value='{"observations":[{"quote":"合成帧测试","frame":4}]}'
         card=self.analyze(media).json['cards'][0];self.assertEqual(card['start'],item['times'][3])
         self.assertEqual(self.change(card).status_code,200)
-        self.assertEqual(self.a.get('/api/pet-imprint/1').json['cards'][0]['evidence']['type'],'media')
+        self.assertEqual(self.profile_records()[0]['evidence']['type'],'media')
         source=self.a.get(self.url+'/memories/'+media+'/source',headers={'Range':'bytes=0-15'})
         self.assertEqual(source.status_code,206);self.assertEqual(len(source.data),16)
 

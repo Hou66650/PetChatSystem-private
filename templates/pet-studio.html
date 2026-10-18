@@ -54,7 +54,7 @@
   </section>
   <section id="studio-empty"><div class="studio-orbit">✦</div><h2>每一只，都值得被记住。</h2><p>先为它留一个名字，再放上熟悉的照片。<br>不用一次准备完，档案会替你保存进度。<br>以前上传的档案保存在上传时的账号中。</p></section>
  </div>
- <details id="studio-existing"><summary>岛上已有的习惯与原声 · 手动补充 / 试听 / 暂停</summary><p>已记录的回忆都保留在这里。声音仍需试听确认，再绑定重逢、陪伴或玩耍场景。</p><iframe id="studio-existing-frame" title="岛上伙伴的真实回忆与原声管理"></iframe></details>
+ <details id="studio-existing"><summary>查看原有岛上伙伴的记录</summary><p>这里保留四位原有岛上伙伴的习惯与原声。当前宠物的专属记忆在上方档案中管理。</p><iframe id="studio-existing-frame" title="岛上伙伴的真实回忆与原声管理"></iframe></details>
 </main>
 {% endblock %}
 {% block script %}<script>window.PET_STUDIO_SCOPE={{ scope|tojson }};</script><script src="/static/js/vendor/three.min.js"></script><script src="/static/js/vendor/GLTFLoader.js"></script><script src="/static/js/vendor/OrbitControls.js"></script><script src="/static/js/den/pet-model-bounds.js?v={{ app_version }}"></script><script src="/static/js/studio-memories.js?v={{ app_version }}"></script><script src="/static/js/pet-studio.js?v={{ app_version }}"></script>{% endblock %}

@@ -63,6 +63,10 @@ def rows(owner, pet):
 def active(owner, pet):
     if not memory.settings(owner)['enabled']:
         return []
+    from . import studio_memory_service
+    private=studio_memory_service.runtime_rows(owner,pet)
+    if private is not None:
+        return private
     return [r for r in rows(owner, pet) if r['confirmed']]
 
 

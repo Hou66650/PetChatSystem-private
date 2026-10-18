@@ -256,6 +256,7 @@ def operate(task_id, operation):
             db.execute("UPDATE portal_islands SET allow_visitors=0 WHERE owner=? AND pet='3'",(identity.owner_key(),))
         else:
             db.execute('DELETE FROM pet_studio_equipped WHERE owner=? AND task=?',(identity.owner_key(),task_id))
+        identity.invalidate_context(db, identity.owner_key())
         db.commit()
         return snapshot()
     if operation == 'adapt':

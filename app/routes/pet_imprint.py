@@ -42,6 +42,11 @@ def owner(pet):
 def page():
     if request.args.get('embedded') != '1':
         pet=request.args.get('petId',default=1,type=int)
+        if pet == 3:
+            from ..services import pet_generation_service
+            appearance=pet_generation_service.appearance(memory.owner_key())
+            if appearance:
+                return redirect(url_for('pet_studio.page',section='memories',task=appearance['task']))
         return redirect(url_for('pet_studio.page',section='memories',petId=pet if pet in (1,2,3,4) else 1))
     return render_template('pet-imprint.html', embedded=True)
 

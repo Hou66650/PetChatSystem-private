@@ -9,7 +9,7 @@
  <div class="studio-notice"><strong>从影像中整理记忆草稿</strong><p>照片和每段视频的 6 张关键帧将发送给本站配置的视觉模型。视频间隙、声音和长期习惯不会自动推断；结果需要你对照原片核对。服务可能按本站账户计费，失败不会自动重试。</p><label><input id="memory-consent" type="checkbox"> 我同意将这些照片 / 视频关键帧发送至视觉服务进行分析</label><button id="memory-analyze">为未完成的素材提取记忆</button><button id="memory-refresh" type="button">刷新进度</button></div>
  <h3>待你核对的记忆</h3>
  <p class="studio-hint">每条草稿都保留原始素材入口。照片记录的是一个瞬间；只有你确认它符合真实经历，才用于往事理解或选定的互动。动作仍采用现有模板，不能自动复原独特步态。</p>
- <label>把确认的记忆交给哪位岛上伙伴？<select id="memory-pet"><option value="1">柴犬岛的伙伴</option><option value="2">雪境木屋的哈士奇</option><option value="3">雾林温室的猫咪（含已启用的私人模型）</option><option value="4">山岭营地的德牧</option></select></label>
- <p class="studio-hint">确认同类新习惯会替换这位伙伴的旧习惯；纯往事可以并存。请选择与这份档案对应的伙伴，不会自动绑定或替换外形。</p>
+ <p id="memory-binding" class="studio-notice">记忆直接属于当前宠物。生成并启用它的专属形象后，记忆会随它一起生效。</p>
+ <p class="studio-hint">确认同类新习惯只替换这只宠物的旧习惯；纯往事可以并存。</p>
  <div id="memory-cards"></div>
 </section>

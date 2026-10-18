@@ -36,7 +36,48 @@ def init_schema():
       start REAL NOT NULL, end REAL NOT NULL, version INTEGER NOT NULL DEFAULT 0,
       published TEXT, pet INTEGER, created REAL NOT NULL);
     CREATE INDEX IF NOT EXISTS studio_memory_cards_task ON studio_memory_cards(task);
+    CREATE TABLE IF NOT EXISTS studio_pet_imprints(
+      id TEXT PRIMARY KEY, owner TEXT NOT NULL, task TEXT NOT NULL,
+      kind TEXT NOT NULL, value TEXT NOT NULL, evidence TEXT NOT NULL,
+      confirmed INTEGER NOT NULL DEFAULT 0, created REAL NOT NULL, confirmed_at REAL);
+    CREATE UNIQUE INDEX IF NOT EXISTS studio_pet_imprints_active ON studio_pet_imprints(owner,task,kind)
+      WHERE confirmed=1 AND kind!='memory';
     ''')
+    # Move only records published from studio cards. Manual island memories
+    # remain untouched. Task identity, not a selectable island slot, owns them.
+    db=get_db()
+    with db:
+        db.execute('BEGIN IMMEDIATE')
+        legacy=db.execute('''SELECT i.*,c.task,c.id AS card FROM pet_imprints i
+          JOIN studio_memory_cards c ON c.published=i.id
+          JOIN pet_studio_tasks t ON t.id=c.task AND t.owner=i.owner
+          ORDER BY coalesce(i.confirmed_at,i.created),i.id''').fetchall()
+        for row in legacy:
+            if row['confirmed'] and row['kind']!='memory':
+                db.execute('UPDATE studio_pet_imprints SET confirmed=0,confirmed_at=NULL WHERE owner=? AND task=? AND kind=?',
+                           (row['owner'],row['task'],row['kind']))
+            db.execute('INSERT INTO studio_pet_imprints VALUES (?,?,?,?,?,?,?,?,?)',
+                       (row['id'],row['owner'],row['task'],row['kind'],row['value'],row['evidence'],row['confirmed'],row['created'],row['confirmed_at']))
+            db.execute('DELETE FROM pet_imprints WHERE id=? AND owner=?',(row['id'],row['owner']))
+            db.execute('UPDATE studio_memory_cards SET pet=NULL,version=version+1 WHERE id=?',(row['card'],))
+        for owner in {r['owner'] for r in legacy}:
+            identity.invalidate_context(db,owner)
+
+
+def runtime_rows(owner, pet):
+    """The private appearance currently uses slot 3; it carries its own memory.
+
+    None means the standard pet is showing. An empty list means the equipped
+    private pet has no confirmed memories; never borrow another pet's habits.
+    """
+    if pet != 3:
+        return None
+    from . import pet_generation_service as generation
+    appearance=generation.appearance(owner)
+    if not appearance:
+        return None
+    return [dict(r) for r in get_db().execute('''SELECT * FROM studio_pet_imprints
+        WHERE owner=? AND task=? AND confirmed=1 ORDER BY created DESC,id''',(owner,appearance['task']))]
 
 
 def owned(task):
@@ -56,7 +97,7 @@ def media_row(task, media):
 
 
 def state(task):
-    owned(task)
+    profile=owned(task)
     db = get_db()
     media = []
     for row in db.execute('SELECT id,name,mime,duration,status,error,updated,times FROM studio_memory_media WHERE task=? ORDER BY updated DESC,id', (task,)):
@@ -66,8 +107,8 @@ def state(task):
             item.update(status='interrupted', error='上次分析未返回。可手动重试，可能产生新的视觉服务费用。')
         media.append(item)
     cards = [dict(r) for r in db.execute('''SELECT c.*,i.confirmed,i.kind,i.value FROM studio_memory_cards c
-        LEFT JOIN pet_imprints i ON i.id=c.published AND i.owner=? WHERE c.task=? ORDER BY c.created,c.id''', (identity.owner_key(), task))]
-    return dict(scope=identity.browser_scope(), media=media, cards=cards,
+        LEFT JOIN studio_pet_imprints i ON i.id=c.published AND i.owner=? AND i.task=c.task WHERE c.task=? ORDER BY c.created,c.id''', (identity.owner_key(), task))]
+    return dict(scope=identity.browser_scope(), media=media, cards=cards, profile=dict(id=task,name=profile['name']),
                 options={k:v for k,v in imprint.OPTIONS.items() if not k.startswith('call_')},
                 labels=imprint.LABELS, revision=identity.settings(identity.owner_key())['revision'])
 
@@ -235,29 +276,29 @@ def card_change(task, card, data, operation):
         if type(data.get('version')) is not int or data['version']!=row['version'] or type(data.get('revision')) is not int or data['revision']!=identity.settings(who)['revision']:
             raise Error('回忆状态已变化，请刷新再操作',409)
         if operation=='publish':
-            pet=data.get('pet'); kind=data.get('kind'); value=data.get('value'); quote=data.get('quote')
-            if type(pet) is not int or pet not in (1,2,3,4) or data.get('confirmed') is not True:
-                raise Error('请选择岛上伙伴，并核对确认这份真实依据')
+            kind=data.get('kind'); value=data.get('value'); quote=data.get('quote')
+            if data.get('confirmed') is not True:
+                raise Error('请核对并确认这份真实依据')
             if not isinstance(kind,str) or kind.startswith('call_') or kind not in imprint.OPTIONS or not isinstance(value,str) or value not in imprint.OPTIONS[kind]:
                 raise Error('请选择支持的表达方式')
             if not isinstance(quote,str) or not 1<=len(quote.strip())<=400:
                 raise Error('依据限 1–400 字')
-            if db.execute('SELECT count(*) FROM pet_imprints WHERE owner=? AND pet=? AND id!=?',(who,pet,row['published'] or '')).fetchone()[0]>=32:
-                raise Error('这个岛上伙伴已满 32 条回忆，请先整理',409)
+            if db.execute('SELECT count(*) FROM studio_pet_imprints WHERE owner=? AND task=? AND id!=?',(who,task,row['published'] or '')).fetchone()[0]>=32:
+                raise Error('这只宠物已满 32 条回忆，请先整理',409)
             source=media_row(task,row['media']); proof={'type':'owner','quote':quote.strip()}
             if source['duration']:
                 proof.update(type='media',name=source['name'],start=row['start'],end=row['end'])
             else:
                 proof['quote']=(quote.strip()+'（照片依据：'+source['name']+'）')[:400]
             key=row['published'] or uuid.uuid4().hex
-            db.execute('DELETE FROM pet_imprints WHERE id=? AND owner=?',(key,who))
+            db.execute('DELETE FROM studio_pet_imprints WHERE id=? AND owner=? AND task=?',(key,who,task))
             if kind!='memory':
-                db.execute('UPDATE pet_imprints SET confirmed=0,confirmed_at=NULL WHERE owner=? AND pet=? AND kind=?',(who,pet,kind))
-            db.execute('INSERT INTO pet_imprints VALUES (?,?,?,?,?,?,1,?,?)',
-                       (key,who,pet,kind,value,json.dumps(proof,ensure_ascii=False),time.time(),time.time()))
-            db.execute('UPDATE studio_memory_cards SET quote=?,published=?,pet=?,version=version+1 WHERE id=?',(quote.strip(),key,pet,card))
+                db.execute('UPDATE studio_pet_imprints SET confirmed=0,confirmed_at=NULL WHERE owner=? AND task=? AND kind=?',(who,task,kind))
+            db.execute('INSERT INTO studio_pet_imprints VALUES (?,?,?,?,?,?,1,?,?)',
+                       (key,who,task,kind,value,json.dumps(proof,ensure_ascii=False),time.time(),time.time()))
+            db.execute('UPDATE studio_memory_cards SET quote=?,published=?,pet=NULL,version=version+1 WHERE id=?',(quote.strip(),key,card))
         elif operation in ('withdraw','delete'):
-            db.execute('DELETE FROM pet_imprints WHERE id=? AND owner=?',(row['published'],who))
+            db.execute('DELETE FROM studio_pet_imprints WHERE id=? AND owner=? AND task=?',(row['published'],who,task))
             if operation=='delete': db.execute('DELETE FROM studio_memory_cards WHERE id=?',(card,))
             else: db.execute('UPDATE studio_memory_cards SET published=NULL,pet=NULL,version=version+1 WHERE id=?',(card,))
         else: raise Error('操作不支持')
@@ -268,7 +309,7 @@ def card_change(task, card, data, operation):
 def clear(task, media=None):
     db=get_db(); who=identity.owner_key(); owned(task)
     clause='task=?'+(' AND media=?' if media else ''); args=(task,media) if media else (task,)
-    db.execute('DELETE FROM pet_imprints WHERE owner=? AND id IN (SELECT published FROM studio_memory_cards WHERE '+clause+')',(who,*args))
+    db.execute('DELETE FROM studio_pet_imprints WHERE owner=? AND id IN (SELECT published FROM studio_memory_cards WHERE '+clause+')',(who,*args))
     db.execute('DELETE FROM studio_memory_cards WHERE '+clause,args)
     db.execute('DELETE FROM studio_memory_media WHERE task=?'+(' AND id=?' if media else ''),args)
     identity.invalidate_context(db,who)
@@ -277,5 +318,6 @@ def clear(task, media=None):
 def forget(db, owner):
     # Called by the existing account-wide forget transaction. In-flight analysis
     # cannot restore sources or cards that no longer exist.
+    db.execute('DELETE FROM studio_pet_imprints WHERE owner=?',(owner,))
     for table in ('studio_memory_cards','studio_memory_media'):
         db.execute('DELETE FROM '+table+' WHERE task IN (SELECT id FROM pet_studio_tasks WHERE owner=?)',(owner,))
