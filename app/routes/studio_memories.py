@@ -4,6 +4,7 @@ from flask import jsonify, request, send_file
 from .pet_studio import bp
 from ..db import get_db
 from ..services import studio_memory_service as service
+from ..services import pet_habit_service as habits
 
 
 @bp.errorhandler(service.Error)
@@ -45,3 +46,25 @@ def memory_change(task,card,operation):
     data=request.get_json(silent=True)
     if not isinstance(data,dict): raise service.Error('请求格式错误')
     return jsonify(service.card_change(task,card,data,operation))
+
+
+def habit_data():
+    data=request.get_json(silent=True)
+    if not isinstance(data,dict) or (request.content_length or 0)>16000:
+        raise service.Error('请提交不超过16KB的JSON')
+    return data
+
+
+@bp.post('/api/pet-studio/<task>/habits/<media>/analyze')
+def habit_analyze(task,media):
+    return jsonify(habits.analyze(task,media,habit_data()))
+
+
+@bp.post('/api/pet-studio/<task>/habit-events/<event>/review')
+def habit_review(task,event):
+    return jsonify(habits.review(task,event,habit_data()))
+
+
+@bp.post('/api/pet-studio/<task>/habit-rules')
+def habit_apply(task):
+    return jsonify(habits.apply(task,habit_data()))

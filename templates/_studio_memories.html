@@ -2,10 +2,20 @@
  <h3>让模样之外的它，也被记住。</h3>
  <p>把曾经的照片、视频放在这份档案里。先整理画面里的细节，再由你补充它熟悉的习惯。</p>
  <ol class="studio-steps"><li>01 批量放入回忆</li><li>02 提取并核对</li><li>03 带到岛上相处</li></ol>
- <label class="memory-upload">选择多张照片 / 多段视频<input id="memory-files" type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"></label>
- <p class="studio-hint">照片 ≤ 8 MB；视频 ≤ 30 MB、2 分钟。每份档案最多 40 份素材，账号共 300 MB。这里的上传不会替换建模参考照或模型。</p>
+ <label class="memory-upload">批量选择照片、视频或原声音频<input id="memory-files" type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,audio/wav,audio/mpeg,audio/flac,audio/ogg"></label>
+ <p class="studio-hint">照片 ≤ 8 MB；视频 / 音频 ≤ 30 MB、2 分钟。每份档案最多 40 份素材，账号共 300 MB。这里的上传不会替换建模参考照或模型。</p>
  <p id="memory-status" role="status" aria-live="polite"></p>
  <div id="memory-media" class="memory-media"></div>
+ <section class="studio-notice" aria-label="行为与习惯分析">
+  <h3>从片段里的动作，认出熟悉的它。</h3>
+  <p>视频按 8 秒分段、每秒 3 帧分析；照片记录姿态，音频及视频音轨在本地筛选可试听片段。快速动作可能漏检，声音含义、呼唤情境和动物身份需要你核对。照片与采样帧会发送至已配置的视觉服务；每段视频最多一次视觉请求，可能产生服务费用。</p>
+  <label><input id="habit-consent" type="checkbox"> 我同意分析本轮未完成的素材片段，先生成草稿，不自动应用习惯</label>
+  <div class="studio-actions"><button id="habit-analyze" type="button">分析行为 / 继续</button><button id="habit-stop" type="button" disabled>暂停后续片段</button></div>
+  <progress id="habit-progress" value="0" max="1" aria-label="片段分析进度"></progress><p id="habit-count" role="status"></p>
+  <p>每轮最多处理 12 个片段，可随时暂停；账号默认每天最多 60 次行为视觉请求（失败请求也计入，避免反复消耗）。同次拍摄的连拍、裁剪和转码请归为同一拍摄组。多次观察仅指素材里的重复表现，不代表已经证明日常作息或性格。</p>
+ </section>
+ <h3>行为事件 · 对照原片核对</h3><div id="habit-events"></div>
+ <h3>习惯候选 · 确认后才在岛上生效</h3><p>确认事件后，会按行为类别归纳候选。应用后可在岛上“熟悉的样子”体验；撤回或修改任何依据会使对应习惯失效。</p><div id="habit-candidates"></div>
  <div class="studio-notice"><strong>从影像中整理记忆草稿</strong><p>照片和每段视频的 6 张关键帧将发送给本站配置的视觉模型。视频间隙、声音和长期习惯不会自动推断；结果需要你对照原片核对。服务可能按本站账户计费，失败不会自动重试。</p><label><input id="memory-consent" type="checkbox"> 我同意将这些照片 / 视频关键帧发送至视觉服务进行分析</label><button id="memory-analyze">为未完成的素材提取记忆</button><button id="memory-refresh" type="button">刷新进度</button></div>
  <h3>待你核对的记忆</h3>
  <p class="studio-hint">每条草稿都保留原始素材入口。照片记录的是一个瞬间；只有你确认它符合真实经历，才用于往事理解或选定的互动。动作仍采用现有模板，不能自动复原独特步态。</p>

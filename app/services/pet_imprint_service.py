@@ -86,13 +86,20 @@ def policy(owner, pet):
                                    (owner, pet, value)).fetchone()
             if clip and clip['kind'] == kind[5:]:
                 result['calls'][clip['kind']] = dict(clip)
+    from . import pet_habit_service
+    habits = pet_habit_service.runtime(owner,pet)
+    if habits:
+        result['responses'].update(habits['responses'])
+        result['calls'].update(habits['calls'])
+        if habits['activity']: result['activity']=habits['activity']
+        result['habitTask']=habits['task']
     return result
 
 
 def behavior(owner, pet, base):
     data = policy(owner, pet)
     result = dict(base, imprint=data)
-    if data['activity'] and not base.get('sourceIds'):
+    if data['activity'] and (data.get('habitTask') or not base.get('sourceIds')):
         lively = data['activity'] == 'lively'
         result.update(mode='lively' if lively else 'calm', idleSeconds=[2, 5] if lively else [12, 20],
                       speedScale=1.08 if lively else .85, reaction='happy' if lively else 'subtle',
@@ -102,8 +109,14 @@ def behavior(owner, pet, base):
 
 
 def context(owner, pet):
-    return [dict(kind=r['kind'], expression=OPTIONS[r['kind']].get(r['value'], '已确认的原声片段'),
+    result = [dict(kind=r['kind'], expression=OPTIONS[r['kind']].get(r['value'], '已确认的原声片段'),
                  evidence=json.loads(r['evidence'])) for r in active(owner, pet)]
+    from . import pet_habit_service
+    habits=pet_habit_service.runtime(owner,pet)
+    if habits:
+        result += [dict(kind=kind,expression=r['label'],evidence=r['evidence'],source='主人核对过的素材习惯')
+                   for kind,r in habits['responses'].items()]
+    return result
 
 
 def state(owner, pet):
@@ -118,8 +131,11 @@ def state(owner, pet):
         cards.append({k:row[k] for k in ('id', 'kind', 'value', 'confirmed', 'created', 'confirmed_at')}
                      | dict(evidence=json.loads(row['evidence'])))
     settings = memory.settings(owner)
+    resolved=policy(owner,pet)
+    if any(c.get('habit') for c in resolved['calls'].values()):
+        clips=dict(clips,enabled=True)
     return dict(scope=memory.owner_scope(owner), petId=pet, revision=settings['revision'],
-                enabled=bool(settings['enabled']), cards=cards, policy=policy(owner, pet),
+                enabled=bool(settings['enabled']), cards=cards, policy=resolved,
                 labels=LABELS, options=OPTIONS, originalCalls=clips)
 
 
@@ -177,6 +193,9 @@ def mutate(owner, pet, data, card_id=None, operation='create'):
 
 
 def call_audio(owner, pet, kind, revision):
+    from . import pet_habit_service
+    audio=pet_habit_service.runtime_audio(owner,pet,kind,revision)
+    if audio is not None: return audio
     row = get_db().execute('''SELECT c.audio FROM pet_imprints i
         JOIN pet_calls c ON c.id=i.value AND c.owner=i.owner AND c.pet_id=i.pet AND c.kind=?
         JOIN companion_owners o ON o.owner=i.owner AND o.enabled=1 AND o.revision=?

@@ -10,7 +10,7 @@
  function tabs(value){section=value;$('studio-appearance').hidden=value!=='model';$('studio-memories').hidden=value!=='memories';$('studio-tab-model').setAttribute('aria-pressed',String(value==='model'));$('studio-tab-memories').setAttribute('aria-pressed',String(value==='memories'));dispatchEvent(new Event('studio-tab-changed'));}
  $('studio-tab-model').onclick=()=>tabs('model');$('studio-tab-memories').onclick=()=>tabs('memories');tabs(section);
  const legacyPet=Number(params.get('petId')); // Only used to open pre-existing island records.
- function lock(on){working=on;document.querySelectorAll('#studio-memories button,#studio-memories input,#studio-memories select,#studio-memories textarea,.studio-choice,#studio-create button,#studio-delete').forEach(el=>el.disabled=on||studioBusy);}
+ function lock(on){working=on;document.querySelectorAll('#studio-memories button,#studio-memories input,#studio-memories select,#studio-memories textarea,.studio-choice,#studio-create button,#studio-delete').forEach(el=>{if(el.id!=='habit-stop')el.disabled=on||studioBusy;});}
  async function request(url,body){const form=body instanceof FormData;const r=await fetch(url,{paitQuiet:true,method:body===undefined?'GET':'POST',cache:'no-store',headers:body===undefined?{}:form?{'X-Profile-Scope':scope}:{'X-Profile-Scope':scope,'Content-Type':'application/json'},body:body===undefined?undefined:form?body:JSON.stringify(body)});const responseError=()=>Error(r.redirected||r.status===401?'登录状态已失效，请重新登录后重试':r.status===404||r.status===405?'当前服务尚未提供记忆素材接口，请更新并重启服务后刷新页面':r.status===413?'文件过大，请按页面标注的大小限制重新选择':'记忆服务暂时不可用，请稍后重试（HTTP '+r.status+'）');
   if(!r.headers.get('content-type')?.toLowerCase().includes('application/json'))throw responseError();
   let d;try{d=await r.json();}catch{throw responseError();}
@@ -19,12 +19,12 @@
  function changed(){if(window.BroadcastChannel){const ch=new BroadcastChannel('companion-memory:'+scope);ch.postMessage('changed');ch.close();}if($('studio-existing').open)loadExisting();}
  async function load(){if(!task)return;const id=task.id,token=epoch;try{const d=await request(endpoint(id)+'/memories');if(token===epoch){state=d;render();}}catch(e){if(token===epoch)say(e.message);}}
  function mediaURL(media,view){return endpoint(task.id)+'/memories/'+media.id+'/'+view;}
- function source(media,start){const d=elem('details'),s=elem('summary','对照原始素材'+(media.duration?' · '+start.toFixed(2)+' 秒':''));d.append(s);let loaded=false;d.ontoggle=()=>{if(!d.open||loaded)return;loaded=true;const item=elem(media.duration?'video':'img');item.className='memory-source';item.src=mediaURL(media,'source');if(media.duration){item.controls=true;item.preload='metadata';item.onloadedmetadata=()=>{item.currentTime=start;};}else item.alt=media.name;d.append(item);};return d;}
+ function source(media,start){const d=elem('details'),s=elem('summary','对照原始素材'+(media.duration?' · '+start.toFixed(2)+' 秒':''));d.append(s);let loaded=false;d.ontoggle=()=>{if(!d.open||loaded)return;loaded=true;const item=elem(media.mime.startsWith('audio/')?'audio':media.duration?'video':'img');item.className='memory-source';item.src=mediaURL(media,'source');if(media.duration){item.controls=true;item.preload='metadata';item.onloadedmetadata=()=>{item.currentTime=start;};}else item.alt=media.name;d.append(item);};return d;}
  function render(){
   if(!state||!task)return;
   $('memory-binding').textContent='这些记忆属于「'+state.profile.name+'」。生成并启用它的专属形象后，记忆会随它一起生效。';
   $('memory-media').replaceChildren();
-  for(const media of state.media){const box=elem('article',null,'memory-tile'),img=elem('img');img.src=mediaURL(media,'preview');img.alt=media.duration?'视频 6 张关键帧':'回忆照片';img.loading='lazy';box.append(img,elem('strong',media.name));
+  for(const media of state.media){const box=elem('article',null,'memory-tile'),img=elem('img');img.src=mediaURL(media,'preview');img.alt=media.mime.startsWith('audio/')?'声音波形':media.duration?'视频预览':'回忆照片';img.loading='lazy';box.append(img,elem('strong',media.name));
    const names={ready:'待提取',analyzing:'正在分析',done:'已提取',failed:'未完成',interrupted:'上次分析中断'};
    box.append(elem('p',(names[media.status]||media.status)+(media.duration?' · '+media.duration.toFixed(1)+' 秒':'')),source(media,0));
    if(media.error)box.append(elem('p',media.error,'studio-hint'));
@@ -45,6 +45,7 @@
    if(card.confirmed)actions.append(button('撤回确认',()=>mutation('/memory-cards/'+card.id+'/withdraw',{version:card.version,revision:state.revision})));
    actions.append(button('删除这条',()=>{if(confirm('删除这条草稿及它已应用的记忆？原始素材保留。'))void mutation('/memory-cards/'+card.id+'/delete',{version:card.version,revision:state.revision});}));article.append(actions);$('memory-cards').append(article);
   }
+  const selectedTask=task.id,selectedEpoch=epoch;window.StudioHabits?.render({state,task,base:endpoint(task.id),say,request,lock,busy:()=>working||studioBusy,current:()=>task?.id===selectedTask&&epoch===selectedEpoch,update:d=>{state=d;render();},mutate:mutation});
   if(!state.cards.length)$('memory-cards').append(elem('p','上传后点击“提取记忆”，结果会先以草稿出现在这里。也可以在下方手动留下你记得的习惯。','studio-hint'));lock(working);
  }
  async function mutation(path,body){if(working||studioBusy||!task)return;const id=task.id,token=epoch;lock(true);try{const d=await request(endpoint(id)+path,body);if(token!==epoch)return;state=d;render();changed();say('已保存到当前宠物档案。启用它的专属形象时会自动使用已确认的记忆。');}catch(e){say(e.message);await load();}finally{lock(false);}}
@@ -53,7 +54,7 @@
    say('已保存 '+ok+' / '+files.length+' 份（重复文件自动合并）。'+(failed.length?'以下文件未完成，可重新选择重试：'+failed.join('；'):'现在可以开始提取记忆。'));
   }finally{event.target.value='';lock(false);}
  };
- $('memory-analyze').onclick=async()=>{if(working||studioBusy||!state||!task)return;if(!$('memory-consent').checked)return say('请先阅读并勾选视觉分析说明。');const media=state.media.filter(m=>m.status!=='done'&&m.status!=='analyzing');if(!media.length)return say('没有待分析的素材；正在处理的素材可稍后刷新。');const id=task.id,token=epoch;lock(true);let ok=0;const errors=[];
+ $('memory-analyze').onclick=async()=>{if(working||studioBusy||!state||!task)return;if(!$('memory-consent').checked)return say('请先阅读并勾选视觉分析说明。');const media=state.media.filter(m=>!m.mime.startsWith('audio/')&&m.status!=='done'&&m.status!=='analyzing');if(!media.length)return say('没有待分析的素材；正在处理的素材可稍后刷新。');const id=task.id,token=epoch;lock(true);let ok=0;const errors=[];
   try{for(let i=0;i<media.length;i++){if(token!==epoch)break;say('正在整理 '+(i+1)+' / '+media.length+'：'+media[i].name+'，每份可能需要约一分钟。');try{const result=await request(endpoint(id)+'/memories/'+media[i].id+'/analyze',{consent:true});if(token!==epoch)break;state=result;ok++;render();lock(true);}catch(e){errors.push(media[i].name+'：'+e.message);}}
    await load();say('完成 '+ok+' / '+media.length+' 份。请逐条对照原片，再确认应用。'+(errors.length?'未完成：'+errors.join('；'):''));
   }finally{$('memory-consent').checked=false;lock(false);}
@@ -62,6 +63,6 @@
  function loadExisting(){const frame=$('studio-existing-frame');frame.src='/pet-imprint?embedded=1&petId='+([1,2,3,4].includes(legacyPet)?legacyPet:1);}
  $('studio-existing').ontoggle=()=>{if($('studio-existing').open&&!$('studio-existing-frame').getAttribute('src'))loadExisting();};
  if(params.has('petId')&&section==='memories')$('studio-existing').open=true;
- window.StudioMemories={busy:()=>working,setStudioBusy:value=>{studioBusy=value;lock(working);},select:row=>{if(task?.id===row?.id)return;epoch++;task=row||null;state=null;$('memory-media').replaceChildren();$('memory-cards').replaceChildren();say('');$('memory-consent').checked=false;if(row)void load();}};
+ window.StudioMemories={busy:()=>working,setStudioBusy:value=>{studioBusy=value;lock(working);},select:row=>{if(task?.id===row?.id)return;epoch++;window.StudioHabits?.clear();task=row||null;state=null;$('memory-media').replaceChildren();$('memory-cards').replaceChildren();say('');$('memory-consent').checked=false;if(row)void load();}};
  addEventListener('beforeunload',event=>{if(working){event.preventDefault();event.returnValue='';}});
 })();

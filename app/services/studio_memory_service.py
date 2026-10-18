@@ -24,6 +24,8 @@ MAX_BYTES = 30 * 1024 * 1024
 
 
 def init_schema():
+    from . import pet_habit_service
+    pet_habit_service.init_schema()
     get_db().executescript('''
     CREATE TABLE IF NOT EXISTS studio_memory_media(
       id TEXT PRIMARY KEY, task TEXT NOT NULL, name TEXT NOT NULL, digest TEXT NOT NULL,
@@ -108,7 +110,8 @@ def state(task):
         media.append(item)
     cards = [dict(r) for r in db.execute('''SELECT c.*,i.confirmed,i.kind,i.value FROM studio_memory_cards c
         LEFT JOIN studio_pet_imprints i ON i.id=c.published AND i.owner=? AND i.task=c.task WHERE c.task=? ORDER BY c.created,c.id''', (identity.owner_key(), task))]
-    return dict(scope=identity.browser_scope(), media=media, cards=cards, profile=dict(id=task,name=profile['name']),
+    from . import pet_habit_service
+    return dict(scope=identity.browser_scope(), media=media, cards=cards, habits=pet_habit_service.snapshot(task), profile=dict(id=task,name=profile['name']),
                 options={k:v for k,v in imprint.OPTIONS.items() if not k.startswith('call_')},
                 labels=imprint.LABELS, revision=identity.settings(identity.owner_key())['revision'])
 
@@ -121,7 +124,13 @@ def jpeg(image):
 
 def decode(raw):
     if not raw or len(raw) > MAX_BYTES:
-        raise Error('照片最多 8 MB，视频最多 30 MB、2 分钟')
+        raise Error('照片最多 8 MB，视频 / 音频最多 30 MB、2 分钟')
+    from . import habit_media
+    if habit_media.audio_signature(raw):
+        try:
+            return habit_media.decode_audio(raw)
+        except (ValueError, subprocess.TimeoutExpired, ImportError) as exc:
+            raise Error('音频无法读取，请选择不超过2分钟的 WAV、MP3、FLAC 或 OGG') from exc
     try:
         with warnings.catch_warnings():
             warnings.simplefilter('error', Image.DecompressionBombWarning)
@@ -188,7 +197,7 @@ def decode(raw):
 def upload(task, file):
     owned(task)
     if file is None:
-        raise Error('请选择照片或视频')
+        raise Error('请选择照片、视频或 WAV / MP3 / FLAC / OGG 音频')
     raw=file.read(MAX_BYTES+1); digest=hashlib.sha256(raw).hexdigest(); db=get_db()
     if db.execute('SELECT 1 FROM studio_memory_media WHERE task=? AND digest=?',(task,digest)).fetchone():
         return state(task)
@@ -210,6 +219,8 @@ def upload(task, file):
 
 
 def analyze(task, media, data):
+    if media_row(task,media)['mime'].startswith('audio/'):
+        raise Error('音频请使用下方行为分析入口，先试听再确认原声')
     if data.get('consent') is not True:
         raise Error('请确认将照片或视频关键帧发送至本站配置的视觉服务')
     if not ANALYZE.acquire(blocking=False):
@@ -308,6 +319,8 @@ def card_change(task, card, data, operation):
 
 def clear(task, media=None):
     db=get_db(); who=identity.owner_key(); owned(task)
+    from . import pet_habit_service
+    pet_habit_service.clear(task,media)
     clause='task=?'+(' AND media=?' if media else ''); args=(task,media) if media else (task,)
     db.execute('DELETE FROM studio_pet_imprints WHERE owner=? AND id IN (SELECT published FROM studio_memory_cards WHERE '+clause+')',(who,*args))
     db.execute('DELETE FROM studio_memory_cards WHERE '+clause,args)
@@ -316,6 +329,9 @@ def clear(task, media=None):
 
 
 def forget(db, owner):
+    from . import pet_habit_service
+    for row in db.execute('SELECT id FROM pet_studio_tasks WHERE owner=?',(owner,)).fetchall():
+        pet_habit_service.clear(row['id'])
     # Called by the existing account-wide forget transaction. In-flight analysis
     # cannot restore sources or cards that no longer exist.
     db.execute('DELETE FROM studio_pet_imprints WHERE owner=?',(owner,))
