@@ -49,7 +49,7 @@ void UPaitAccountSubsystem::Call(const FString& Method, const FString& Path, TSh
     const uint64 Epoch = SessionEpoch;
     auto Request = FHttpModule::Get().CreateRequest();
     Request->SetURL(BaseUrl + TEXT("/api/native/v1/") + Path);
-    Request->SetVerb(Method); Request->SetTimeout(90.f);
+    Request->SetVerb(Method); Request->SetTimeout(Path.StartsWith(TEXT("park"))?4.5f:90.f);
     Request->SetHeader(TEXT("Accept"), TEXT("application/json"));
     if (!Token.IsEmpty()) Request->SetHeader(TEXT("Authorization"), TEXT("Bearer ") + Token);
     if (Method != TEXT("GET"))

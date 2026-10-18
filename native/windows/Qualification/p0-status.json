@@ -2,7 +2,7 @@
   "schema_version": 1,
   "date": "2026-10-18",
   "phase": "P2",
-  "status": "p2_partial_business_migration_four_islands",
+  "status": "p2_partial_business_migration_five_islands",
   "branch": "codex/windows-client",
   "client_version": "0.1.0",
   "framework": {
@@ -194,7 +194,7 @@
     "package": "Saved/Packages/ShippingDaily",
     "held_drag_manual_check_pending": true
   },
-  "application_version": "1.97.0",
+  "application_version": "1.100.0",
   "p2_progress": {
     "scope": "../业务迁移范围与进度.md",
     "evidence": "native-live-evidence.json",
@@ -209,7 +209,20 @@
     "home": {
       "evidence": "island-home-evidence.json",
       "four_island_round_trip_verified": true,
-      "full_web_parity": false
+      "full_web_parity": false,
+      "five_island_round_trip_verified": true,
+      "park_evidence": "public-park-evidence.json"
     }
+  },
+  "public_park": {
+    "version": "1.100.0",
+    "scene_imported": true,
+    "backend_checks_passed": 32,
+    "shipping_facilities_passed": true,
+    "five_island_home_pending": false,
+    "evidence": "public-park-evidence.json",
+    "full_web_parity": false,
+    "daily_package_updated": true,
+    "through_home_facilities_passed": true
   }
 }

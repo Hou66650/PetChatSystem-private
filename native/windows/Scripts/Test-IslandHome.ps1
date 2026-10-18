@@ -12,8 +12,8 @@ if($child.ExitCode -ne 0){throw "Home process failed: $($child.ExitCode) $out"}
 $report=Join-Path $out $(if($OverviewOnly){'runtime-smoke.json'}else{'home-flow.json'})
 if(-not(Test-Path -LiteralPath $report)){throw "Home evidence missing: $out"}
 $result=Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
-if(-not $OverviewOnly -and -not $result.passed){throw 'Home route failed'}
-$images=if($OverviewOnly){@('runtime-smoke.png')}else{@('home-0.png','home-1.png','home-2.png','home-3.png','island-0.png','island-1.png','island-2.png','island-3.png')}
+if(-not $OverviewOnly -and (-not $result.passed -or $result.islands_entered -ne 5 -or $result.returned_home -ne 5)){throw 'Five-island home route failed'}
+$images=if($OverviewOnly){@('runtime-smoke.png')}else{@('home-0.png','home-1.png','home-2.png','home-3.png','home-4.png','island-0.png','island-1.png','island-2.png','island-3.png','island-4.png')}
 foreach($name in $images){if(-not(Test-Path -LiteralPath (Join-Path $out $name))){throw "Capture missing: $name"}}
 [ordered]@{executable_sha256=(Get-FileHash -LiteralPath $exe).Hash;exit_code=$child.ExitCode;manual_mouse_checked=$false;performance_qualified=$false;production_mutations=$false} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $out 'launch.json') -Encoding utf8
 Write-Host "Passed $out"

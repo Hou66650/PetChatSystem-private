@@ -1,5 +1,6 @@
 #include "PaitPreviewPawn.h"
 #include "PaitExperience.h"
+#include "PaitPark.h"
 #include "PaitMeadowPet.h"
 #include "PaitGarden.h"
 #include "PaitAccountSubsystem.h"
@@ -148,7 +149,7 @@ void APaitPreviewPawn::StartOrbit() { ExperienceBlend=false; bOrbit = true; Upda
 void APaitPreviewPawn::StopOrbit() { bOrbit = false; UpdateCursor(); }
 void APaitPreviewPawn::StartPan() { ExperienceBlend=false; bPan = true; UpdateCursor(); }
 void APaitPreviewPawn::StopPan() { bPan = false; UpdateCursor(); }
-void APaitPreviewPawn::CancelDrag() { bOrbit = bPan = false; UpdateCursor(); }
+void APaitPreviewPawn::CancelDrag() { bOrbit = bPan = false; UpdateCursor(); if(GetWorld())for(TActorIterator<APaitPark> P(GetWorld());P;++P)P->ShowInterface(true); }
 void APaitPreviewPawn::UpdateCursor()
 {
     APlayerController* PC = Cast<APlayerController>(Controller);
@@ -199,7 +200,8 @@ void APaitPreviewPawn::ResetView()
     { SetActorLocation(FVector(-300,-650,180)); TargetDistance=6500; Pitch=-32; Yaw=55; }
     else if(GetWorld()->GetMapName().Contains(TEXT("Snow")) || GetWorld()->GetMapName().Contains(TEXT("Camp")))
     { SetActorLocation(FVector(0,0,120)); TargetDistance=2400; Pitch=-32; Yaw=-45; }
-    if(GetWorld()->GetMapName().Contains(TEXT("IslandHome"))){SetActorLocation(FVector(0,0,-150));TargetDistance=9000;Pitch=-48;Yaw=-90;}
+    if(GetWorld()->GetMapName().Contains(TEXT("IslandHome"))){SetActorLocation(FVector(0,450,-150));TargetDistance=11000;Pitch=-48;Yaw=-90;}
+    if(GetWorld()->GetMapName().Contains(TEXT("P2_Park"))){SetActorLocation(FVector(0,0,-140));TargetDistance=4400;Pitch=-34;Yaw=-60;}
     Arm->SetRelativeRotation(FRotator(Pitch, Yaw, 0.f));
 }
 void APaitPreviewPawn::SetExperienceView(FVector Center,float Distance,float Tilt,float Heading,bool Smooth){
@@ -239,6 +241,7 @@ void APaitPreviewPawn::MovePetToCursor()
     if (bOrbit || bPan) return;
     APlayerController* PC=Cast<APlayerController>(Controller);
     if(!PC) return;
+    if(GetWorld()->GetMapName().Contains(TEXT("P2_Park"))){FHitResult Hit;if(PC->GetHitResultUnderCursor(ECC_Visibility,true,Hit))for(TActorIterator<APaitPark> Park(GetWorld());Park;++Park){Park->MoveTo(Hit.ImpactPoint);break;}return;}
     if(GetWorld()->GetMapName().Contains(TEXT("IslandHome"))){
         FHitResult Hit;PC->GetHitResultUnderCursor(ECC_Visibility,true,Hit);
         for(TActorIterator<APaitExperience> E(GetWorld());E;++E){E->Click(Hit.GetActor());break;}return;

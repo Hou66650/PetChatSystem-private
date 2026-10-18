@@ -1,6 +1,7 @@
 #include "PaitQualificationGameMode.h"
 #include "PaitPreviewPawn.h"
 #include "PaitExperience.h"
+#include "PaitPark.h"
 #include "PaitQualificationRun.h"
 #include "PaitMeadowPet.h"
 #include "PaitGarden.h"
@@ -43,6 +44,8 @@ void APaitQualificationGameMode::BeginPlay()
         {UGameplayStatics::OpenLevel(this,FName(FParse::Param(FCommandLine::Get(),TEXT("PaitQualification"))?TEXT("/Game/Qualification/P0_Lighting"):TEXT("/Game/Preview/P1_MeadowV2")));return;}
         if((Destination==TEXT("Home")||(!Explicit&&!Test))&&!GetWorld()->GetMapName().Contains(TEXT("IslandHome")))
         {UGameplayStatics::OpenLevel(this,FName(TEXT("/Game/Preview/P2_IslandHome")));return;}
+        if(Destination==TEXT("Park")&&!GetWorld()->GetMapName().Contains(TEXT("P2_Park")))
+        {UGameplayStatics::OpenLevel(this,FName(TEXT("/Game/Preview/P2_Park")));return;}
         if(FParse::Value(FCommandLine::Get(),TEXT("PaitIsland="),Destination) &&
            (Destination==TEXT("Meadow") || Destination==TEXT("Sakura") || Destination==TEXT("Snow") || Destination==TEXT("Camp")) &&
            !GetWorld()->GetMapName().Contains(Destination))
@@ -71,6 +74,7 @@ void APaitQualificationGameMode::BeginPlay()
     if(GetWorld()->GetMapName().Contains(TEXT("Meadow")))GetWorld()->SpawnActor<APaitGarden>();
     if(auto* Account=GetGameInstance()->GetSubsystem<UPaitAccountSubsystem>())
         Account->SelectPet(GetWorld()->GetMapName().Contains(TEXT("Sakura"))?1:GetWorld()->GetMapName().Contains(TEXT("Snow"))?2:GetWorld()->GetMapName().Contains(TEXT("Camp"))?4:3);
+    if(GetWorld()->GetMapName().Contains(TEXT("P2_Park")))GetWorld()->SpawnActor<APaitPark>();
     if (bSmokeRun)
     {
         SmokeStarted = FPlatformTime::Seconds();

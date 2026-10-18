@@ -11,6 +11,7 @@ from ..db import get_db
 from ..services import companion_service as companion
 from ..services import cat_market_service as market, supply_service as supplies
 from ..services import farm_service as farm, pet_voice_service as voices
+from ..services import park_service as park, growth_service, wardrobe_service
 
 bp = Blueprint('native', __name__, url_prefix='/api/native/v1')
 _DUMMY = generate_password_hash('native-login-timing-only')
@@ -30,6 +31,9 @@ def install(state):
                 original.save_session(app, session, response)
     state.app.session_interface = NativeSessionInterface()
     with state.app.app_context():
+        growth_service.init_schema()
+        wardrobe_service.init_schema()
+        park.init_schema()
         get_db().execute('''CREATE TABLE IF NOT EXISTS native_sessions(
             digest TEXT PRIMARY KEY, user_id INTEGER NOT NULL,
             created REAL NOT NULL, expires REAL NOT NULL)''')
@@ -80,13 +84,41 @@ def private(response):
 
 @bp.errorhandler(market.MarketError)
 @bp.errorhandler(voices.VoiceError)
+@bp.errorhandler(park.ParkError)
 def service_error(error):
     return jsonify(error=str(error)), error.status
 
 
+@bp.get('/park')
+def park_snapshot():
+    from ..services.park_navigation import LAYOUT
+    return jsonify(**park.snapshot(g.companion_owner), navigation=LAYOUT)
+
+
+@bp.post('/park/<operation>')
+def park_operation(operation):
+    data = request.get_json()
+    if operation == 'join':
+        from ..services.park_navigation import LAYOUT
+        return jsonify(**park.join(g.companion_owner, data), navigation=LAYOUT)
+    if operation in ('sync', 'leave'):
+        return jsonify(**park.update(g.companion_owner, data, operation == 'leave'))
+    if operation == 'route':
+        from ..services.native_park_navigation import route
+        row = get_db().execute('SELECT * FROM park_presence WHERE owner=?', (g.companion_owner,)).fetchone()
+        token = data.get('token')
+        if (not row or not isinstance(token, str) or len(token) != 48
+                or any(c not in '0123456789abcdef' for c in token)
+                or not secrets.compare_digest(token, row['token']) or row['updated'] <= park.clock()-park.TTL):
+            raise park.ParkError('请重新带伙伴入园', 409)
+        x, z, _ = park.point(dict(x=data.get('x'), z=data.get('z'), yaw=0))
+        return jsonify(path=route((row['x'], row['z']), (x, z)))
+    return jsonify(error='操作不存在'), 404
+
+
 @bp.get('/bootstrap')
 def bootstrap():
-    return jsonify(apiVersion=1, fixture=bool(current_app.config.get('NATIVE_FIXTURE', False)), providerFixture=bool(current_app.config.get('NATIVE_PROVIDER_FIXTURE', False)), capabilities=['account', 'inventory', 'farm-beds', 'chat', 'voice-profiles', 'realtime', 'account-cat-bowls'],
+    return jsonify(apiVersion=1, fixture=bool(current_app.config.get('NATIVE_FIXTURE', False)), providerFixture=bool(current_app.config.get('NATIVE_PROVIDER_FIXTURE', False)), capabilities=['account', 'inventory', 'farm-beds', 'chat', 'voice-profiles', 'realtime', 'account-cat-bowls', 'public-park'],
                    pending=['native-map-placement', 'portal-lease', 'runtime-private-model'])
 
 

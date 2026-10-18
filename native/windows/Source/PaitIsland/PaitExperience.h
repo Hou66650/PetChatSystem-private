@@ -18,6 +18,7 @@ public:
     void ReturnHome();
     bool Click(AActor* Target);
     bool IsHome() const;
+    bool InterfaceHidden=false;
 private:
     void BuildInterface();
     void Travel(const FString& Map);

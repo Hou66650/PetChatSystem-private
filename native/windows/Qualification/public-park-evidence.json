@@ -1,0 +1,167 @@
+{
+  "version": "1.100.0",
+  "date": "2026-10-18",
+  "branch": "codex/windows-client",
+  "source_revision": "c077b62",
+  "source_rechecked_revision": "5cdd562",
+  "park_sources_unchanged_between_revisions": true,
+  "source_assets": {
+    "source_revision": "c077b62",
+    "source": "Web/Harmony paw-commons-v2",
+    "redesigned": false,
+    "assets": {
+      "play": {
+        "sha256": "65a86bf8c4d2d4f8324659f2dadd3dc54bcf25fb9513a072a68131f36efa6d0f",
+        "meshes": [
+          "/Game/Imported/P2Park/play/Paw_play_Amber_lantern_glass.Paw_play_Amber_lantern_glass",
+          "/Game/Imported/P2Park/play/Paw_play_Apricot_painted_edges.Paw_play_Apricot_painted_edges",
+          "/Game/Imported/P2Park/play/Paw_play_Bowl_water.Paw_play_Bowl_water",
+          "/Game/Imported/P2Park/play/Paw_play_Brushed_metal.Paw_play_Brushed_metal",
+          "/Game/Imported/P2Park/play/Paw_play_Daisy_ivory_petals.Paw_play_Daisy_ivory_petals",
+          "/Game/Imported/P2Park/play/Paw_play_Honey_oak.Paw_play_Honey_oak",
+          "/Game/Imported/P2Park/play/Paw_play_Layered_limestone.Paw_play_Layered_limestone",
+          "/Game/Imported/P2Park/play/Paw_play_Leaf_green.Paw_play_Leaf_green",
+          "/Game/Imported/P2Park/play/Paw_play_Leaf_sun_tips.Paw_play_Leaf_sun_tips",
+          "/Game/Imported/P2Park/play/Paw_play_Living_turf.Paw_play_Living_turf",
+          "/Game/Imported/P2Park/play/Paw_play_Rock_crevice_moss.Paw_play_Rock_crevice_moss",
+          "/Game/Imported/P2Park/play/Paw_play_Sage_painted_edges.Paw_play_Sage_painted_edges",
+          "/Game/Imported/P2Park/play/Paw_play_Small_blush_flowers.Paw_play_Small_blush_flowers",
+          "/Game/Imported/P2Park/play/Paw_play_Small_cream_flowers.Paw_play_Small_cream_flowers",
+          "/Game/Imported/P2Park/play/Paw_play_Verbena_lilac_petals.Paw_play_Verbena_lilac_petals",
+          "/Game/Imported/P2Park/play/Paw_play_Warm_gravel.Paw_play_Warm_gravel",
+          "/Game/Imported/P2Park/play/Paw_play_Warm_ivory.Paw_play_Warm_ivory",
+          "/Game/Imported/P2Park/play/Paw_play_Weathered_bark.Paw_play_Weathered_bark",
+          "/Game/Imported/P2Park/play/Paw_play_Woven_natural_fibre.Paw_play_Woven_natural_fibre"
+        ]
+      },
+      "preview": {
+        "sha256": "8fc5d15885e6dc48ec26c414da3b3108951b776eabca12284ae4c982dbfdedf2",
+        "meshes": [
+          "/Game/Imported/P2Park/preview/Paw_preview_Amber_lantern_glass.Paw_preview_Amber_lantern_glass",
+          "/Game/Imported/P2Park/preview/Paw_preview_Apricot_painted_edges.Paw_preview_Apricot_painted_edges",
+          "/Game/Imported/P2Park/preview/Paw_preview_Bowl_water.Paw_preview_Bowl_water",
+          "/Game/Imported/P2Park/preview/Paw_preview_Brushed_metal.Paw_preview_Brushed_metal",
+          "/Game/Imported/P2Park/preview/Paw_preview_Daisy_ivory_petals.Paw_preview_Daisy_ivory_petals",
+          "/Game/Imported/P2Park/preview/Paw_preview_Honey_oak.Paw_preview_Honey_oak",
+          "/Game/Imported/P2Park/preview/Paw_preview_Layered_limestone.Paw_preview_Layered_limestone",
+          "/Game/Imported/P2Park/preview/Paw_preview_Leaf_green.Paw_preview_Leaf_green",
+          "/Game/Imported/P2Park/preview/Paw_preview_Leaf_sun_tips.Paw_preview_Leaf_sun_tips",
+          "/Game/Imported/P2Park/preview/Paw_preview_Living_turf.Paw_preview_Living_turf",
+          "/Game/Imported/P2Park/preview/Paw_preview_Rock_crevice_moss.Paw_preview_Rock_crevice_moss",
+          "/Game/Imported/P2Park/preview/Paw_preview_Sage_painted_edges.Paw_preview_Sage_painted_edges",
+          "/Game/Imported/P2Park/preview/Paw_preview_Small_blush_flowers.Paw_preview_Small_blush_flowers",
+          "/Game/Imported/P2Park/preview/Paw_preview_Small_cream_flowers.Paw_preview_Small_cream_flowers",
+          "/Game/Imported/P2Park/preview/Paw_preview_Verbena_lilac_petals.Paw_preview_Verbena_lilac_petals",
+          "/Game/Imported/P2Park/preview/Paw_preview_Warm_gravel.Paw_preview_Warm_gravel",
+          "/Game/Imported/P2Park/preview/Paw_preview_Warm_ivory.Paw_preview_Warm_ivory",
+          "/Game/Imported/P2Park/preview/Paw_preview_Weathered_bark.Paw_preview_Weathered_bark",
+          "/Game/Imported/P2Park/preview/Paw_preview_Woven_natural_fibre.Paw_preview_Woven_natural_fibre"
+        ]
+      }
+    },
+    "map": "/Game/Preview/P2_Park"
+  },
+  "backend_checks": {
+    "count": 32,
+    "passed": true,
+    "log": "Saved/Qualification/park-api-tests-final.log"
+  },
+  "build_logs": [
+    "Saved/Qualification/park-package.log",
+    "Saved/Qualification/park-final-package.log",
+    "Saved/Qualification/park-facility-fix-build.log",
+    "Saved/Qualification/park-delivery-package.log",
+    "Saved/Qualification/park-wall-clock-build.log",
+    "Saved/Qualification/park-recovery-build.log",
+    "Saved/Qualification/park-prediction-build.log",
+    "Saved/Qualification/park-diagnostics-build.log"
+  ],
+  "visual_review": {
+    "scene_and_two_pets_seen": true,
+    "image_sha256": "70757e22d37f341a632870ce5d867c22ce0c37a58ab36d856a7c7f83460bc01c",
+    "cloud_grain_remaining": true
+  },
+  "manual_mouse_verified": false,
+  "performance_qualified": false,
+  "full_web_parity": false,
+  "remaining": [
+    "Growth-stage/coat/wardrobe rendering",
+    "Complete Web utility/social/ball choreography",
+    "Cloud appearance and performance qualification"
+  ],
+  "delivery_pending": false,
+  "gameplay": {
+    "directory": "Saved/Qualification/PublicPark-20261018-125915",
+    "result": {
+      "passed": true,
+      "status": "正沿草坪走过去…",
+      "step": 6,
+      "bridge_height_cm": 55.599998474121094,
+      "rendered_pets": 2,
+      "production_mutations": false,
+      "manual_mouse_verified": false,
+      "full_web_parity": false,
+      "facility": "",
+      "progress": 20.212055206298828,
+      "confirmed_progress": 20.212055206298828,
+      "ground_sync_pending": false,
+      "request_pending": false,
+      "path_points": 0
+    },
+    "launch": {
+      "performance_qualified": false,
+      "binary_sha256": "9847A00CF7ECCE27881BD07F9111EE3CF75C811AA2C4A193860A835A5310BF5A",
+      "fixture_port": 5013,
+      "exit_code": 0,
+      "through_home": true
+    }
+  },
+  "home_flow": {
+    "directory": "Saved/Qualification/IslandHome-20261018-120716",
+    "result": {
+      "passed": true,
+      "islands_entered": 5,
+      "returned_home": 5,
+      "manual_mouse_checked": false
+    },
+    "launch": {
+      "executable_sha256": "66A07586F3CA69549DBE0E512AF7F5E8550F75892EED39196A2E2F2F6231AE94",
+      "exit_code": 0,
+      "manual_mouse_checked": false,
+      "performance_qualified": false,
+      "production_mutations": false
+    },
+    "scope": "Five entry/return paths before final layout refinement; destinations unchanged."
+  },
+  "home_overview": {
+    "directory": "Saved/Qualification/IslandHome-20261018-122958",
+    "result": {
+      "status": "rendered_capture_saved",
+      "actual_map": "P2_IslandHome",
+      "adapter": "NVIDIA GeForce RTX 5060 Laptop GPU",
+      "screenshot": "D:/PetChatSystem-Client/native/windows/Saved/Qualification/IslandHome-20261018-122958/runtime-smoke.png",
+      "frames": 469,
+      "performance_qualified": false
+    },
+    "launch": {
+      "executable_sha256": "487DFC9A4F8EC59DA0FEF6B9AD51DB4E057CE94B34A5189CFD81B6407852A6D6",
+      "exit_code": 0,
+      "manual_mouse_checked": false,
+      "performance_qualified": false,
+      "production_mutations": false
+    },
+    "web_paw_orientation_reviewed": true
+  },
+  "delivery": {
+    "package": "Saved/Packages/ShippingDaily",
+    "binary_sha256": "9847a00cf7ecce27881bd07f9111ee3cf75c811aa2c4a193860a835a5310bf5a",
+    "source_package": "Saved/Packages/ShippingPark",
+    "saved_user_state_preserved": true,
+    "native_service_port": 5012
+  },
+  "regression_notes": [
+    "Earlier repeated runs exposed rate limiting and progress bursts after latency; response-based wall-clock interval and bounded prediction fixed.",
+    "Earlier connection timeout under memory pressure: bounded retries, previous-scene garbage collection and 60 render cap added.",
+    "Earlier 180-second fixture timeout preserved as failed evidence; fixture now allows 260 seconds, latest run passes; no gameplay timeout changed."
+  ]
+}
